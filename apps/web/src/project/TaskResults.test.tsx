@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -424,6 +425,148 @@ it('ignores a late authenticated PDF response after the selected Task retires', 
     ).not.toBeInTheDocument(),
   );
   expect(create).not.toHaveBeenCalled();
+});
+
+it('still rejects the current session when its native result read is unauthorized', async () => {
+  const rejected = vi.fn(async () => undefined);
+  const fetcher = installTransport({});
+  fetcher.mockResolvedValueOnce(new Response('', { status: 401 }));
+  render(show({ identity: { ...identity, rejectSession: rejected } }));
+  await screen.findByRole('alert');
+  expect(rejected).toHaveBeenCalledExactlyOnceWith();
+  expect(
+    screen.queryByRole('textbox', { name: 'Result declaration' }),
+  ).not.toBeInTheDocument();
+});
+
+it.each(['read', 'write', 'history', 'download'])(
+  'does not reject a newer complete Actor from an older %s 401',
+  async (request) => {
+    let release: (response: Response) => void = () => {
+      throw new Error('Missing held response');
+    };
+    const held = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    const rejected = vi.fn(async () => undefined);
+    const browserIdentity = { ...identity, rejectSession: rejected };
+    const fetcher = installTransport({
+      current: () =>
+        request === 'history' || request === 'download'
+          ? { ...snapshot, revision: 1, current: declaration }
+          : snapshot,
+    });
+    if (request === 'read') fetcher.mockImplementationOnce(() => held);
+    const view = render(show({ identity: browserIdentity }));
+    if (request === 'read')
+      await waitFor(() => expect(fetcher).toHaveBeenCalled());
+    else {
+      await screen.findByRole('button', { name: 'Reload result' });
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: 'Reload result' }),
+        ).toBeEnabled(),
+      );
+      fetcher.mockImplementationOnce(() => held);
+      if (request === 'write') await recordResult();
+      else
+        fireEvent.click(
+          screen.getByRole('button', {
+            name:
+              request === 'history'
+                ? 'Result history'
+                : 'Download exact PDF · Version 1',
+          }),
+        );
+    }
+    view.rerender(
+      show({
+        actor: { ...actor, displayName: 'Fresh complete Actor profile' },
+        identity: browserIdentity,
+      }),
+    );
+    await act(async () => {
+      release(new Response('', { status: 401 }));
+    });
+    await screen.findByRole('alert');
+    expect(rejected).not.toHaveBeenCalled();
+  },
+);
+
+it.each([1, 2])(
+  'preserves editor focus when parent Task version1 arrives after native version%i',
+  async (loadedVersion) => {
+    installTransport({
+      current: () => ({ ...snapshot, taskVersion: loadedVersion }),
+    });
+    const view = render(
+      <TaskResults
+        actor={actor}
+        identity={identity}
+        taskId="task"
+        projectId="project"
+      />,
+    );
+    await screen.findByText('No declared result.');
+    const editor = screen.getByRole('textbox', { name: 'Result declaration' });
+    fireEvent.change(editor, { target: { value: '  Literal Ș Я 001  ' } });
+    editor.focus();
+    if (!(editor instanceof HTMLTextAreaElement))
+      throw new Error('Expected the public declaration editor');
+    editor.setSelectionRange(5, 9);
+    view.rerender(
+      <TaskResults
+        actor={actor}
+        identity={identity}
+        taskId="task"
+        projectId="project"
+        observedTaskVersion={1}
+      />,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'Result declaration' }),
+      ).toHaveFocus(),
+    );
+    expect(editor).toHaveValue('  Literal Ș Я 001  ');
+    expect(editor.selectionStart).toBe(5);
+    expect(editor.selectionEnd).toBe(9);
+  },
+);
+
+it('uses the newer observed Task version when it arrives during eligible original loading', async () => {
+  let taskVersion = 1;
+  let release: (() => void) | undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let eligibleStarted = false;
+  const commands: RequestInit[] = [];
+  const ordinary = installTransport({
+    current: () => ({ ...snapshot, taskVersion }),
+    post: (request) => {
+      commands.push(request);
+      return receipt();
+    },
+  });
+  vi.stubGlobal('fetch', async (url: string, request?: RequestInit) => {
+    if (url.endsWith('/eligible-versions') && !eligibleStarted) {
+      eligibleStarted = true;
+      await held;
+    }
+    return ordinary(url, request);
+  });
+  const view = render(show());
+  await waitFor(() => expect(eligibleStarted).toBe(true));
+  taskVersion = 2;
+  view.rerender(show({ observedTaskVersion: 2 }));
+  await act(async () => release?.());
+  await recordResult();
+  await waitFor(() => expect(commands).toHaveLength(1));
+  expect(JSON.parse(String(commands[0]?.body))).toMatchObject({
+    expectedTaskVersion: 2,
+    expectedResultRevision: 0,
+  });
 });
 
 it('keeps a confirmed command confirmed when refresh fails, offering GET reload without resending', async () => {

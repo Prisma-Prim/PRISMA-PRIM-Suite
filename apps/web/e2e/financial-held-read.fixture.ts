@@ -29,6 +29,7 @@ export async function replaceScopeBeforeFinancialReply(input: {
     | { kind: 'authorized' }
     | {
         kind: 'denied';
+        status?: 403 | 404;
         revoke: () => Promise<void>;
         restore: () => Promise<void>;
       };
@@ -70,7 +71,7 @@ export async function replaceScopeBeforeFinancialReply(input: {
     const capture = await captured.promise;
     if (capture.kind === 'failure') throw capture.error;
     expect(capture.response.status()).toBe(
-      input.reply.kind === 'denied' ? 403 : 200,
+      input.reply.kind === 'denied' ? (input.reply.status ?? 403) : 200,
     );
     if (input.reply.kind === 'denied') {
       await input.reply.restore();

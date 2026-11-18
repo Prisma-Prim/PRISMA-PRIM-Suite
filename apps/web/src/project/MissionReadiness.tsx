@@ -1,3 +1,5 @@
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useActorObservation } from '../api/use-actor-requests';
 import { useEffect, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import { grantOf } from '../access/company-grants';
@@ -83,20 +85,27 @@ function MissionReadinessOwner({
   const [reload, setReload] = useState(0),
     [pending, setPending] = useState(false);
   const companyId = company?.id;
+  const readOperations = useScopedOperationGroup(String(evidence.generation));
+  const actorObservation = useActorObservation(actor);
+  const sessions = useScopedOperationGroup(String(actorObservation));
+
   useEffect(() => {
-    const controller = new AbortController();
+    const operation = readOperations.beginLatest();
+    if (!operation) return;
+    const currentActor = sessions.capture();
     setPending(true);
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
+        if (operation.signal.aborted) return;
         const response = await api.request(
           `/projects/${projectId}/mission-readiness`,
-          { companyContextId: companyId, signal: controller.signal },
+          { companyContextId: companyId, signal: operation.signal },
         );
-        if (controller.signal.aborted) return;
+        if (operation.signal.aborted) return;
         if (response.status === 'unauthorized') {
           setLoad({ kind: 'denied' });
-          await identity.rejectSession();
+          if (currentActor()) await identity.rejectSession();
           return;
         }
         if (response.status === 'forbidden' || response.status === 'notFound') {
@@ -117,12 +126,13 @@ function MissionReadinessOwner({
           setLoad({ kind: 'malformed' });
         }
       } catch {
-        if (!controller.signal.aborted) setLoad({ kind: 'error' });
+        if (!operation.signal.aborted) setLoad({ kind: 'error' });
       } finally {
-        if (!controller.signal.aborted) setPending(false);
+        operation.release();
+        if (!operation.signal.aborted) setPending(false);
       }
     })();
-    return () => controller.abort();
+    return operation.retire;
   }, [companyId, identity, projectId, plan, evidence.generation, reload]);
   const snapshot = load.kind === 'ready' ? load.snapshot : null;
   return (

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-work-1461-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1461,
+  "pullRequest": "not reported",
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Shared mission/result owners; final native4/4 and same-seed controlled-render-defect failure/exact restored replay pass. Independent Standards1P2/Spec1P2 same recovery admission defect fixed and confirmed; root checks and76 corrected public regressions pass. Earlier interrupted attempts retained. Usage telemetry unavailable."
+  }
+}

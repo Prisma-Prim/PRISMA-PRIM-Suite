@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import {
@@ -43,6 +44,7 @@ interface Props {
   companyId?: string;
   onConfirmed: () => void;
   onAuthorizationRefused: (status: ReviewAuthorityRefusal) => void;
+  captureSession: () => () => boolean;
 }
 
 /** This owner is retired on any consumed write capture change, without retiring readable history. */
@@ -54,6 +56,7 @@ export function MissionResultReviewForm({
   companyId,
   onConfirmed,
   onAuthorizationRefused,
+  captureSession,
 }: Props) {
   const copy = useMissionReviewCopy();
   const [draft, setDraft] = useState<Intent>({
@@ -66,8 +69,7 @@ export function MissionResultReviewForm({
   const [conflictSnapshot, setConflictSnapshot] =
     useState<AvailableMissionReview | null>(null);
   const requiresReload = conflictSnapshot === snapshot;
-  const [lifetime] = useState(() => new AbortController());
-  useEffect(() => () => lifetime.abort(), [lifetime]);
+  const writes = useScopedOperationGroup('review-command');
   const locked = state.kind === 'pending' || state.kind === 'uncertain';
   const stale =
     draft.items.length > 0 &&
@@ -100,9 +102,14 @@ export function MissionResultReviewForm({
     setState({ kind: 'editing' });
   };
   async function submit(command: Command) {
+    if (writes.isPending()) return;
+    const operation = writes.begin();
+    if (!operation) return;
+    const currentActor = captureSession();
     setState({ kind: 'pending', command });
     try {
       const api = await createAuthenticatedApiClient(identity);
+      if (operation.signal.aborted) return;
       const response = await api.request(
         `/projects/${projectId}/mission-result-reviews`,
         {
@@ -113,15 +120,16 @@ export function MissionResultReviewForm({
             'Idempotency-Key': command.key,
             'Content-Type': 'application/json',
           },
-          signal: lifetime.signal,
+          signal: operation.signal,
         },
       );
-      if (lifetime.signal.aborted) return;
+      if (operation.signal.aborted) return;
       if (response.status === 'unauthorized') {
+        const rejectCurrentSession = currentActor();
         setDraft({ ...draft, basis: '', items: [] });
         setState({ kind: 'denied' });
         onAuthorizationRefused(response.status);
-        await identity.rejectSession();
+        if (rejectCurrentSession) await identity.rejectSession();
         return;
       }
       if (response.status === 'forbidden' || response.status === 'notFound') {
@@ -159,7 +167,9 @@ export function MissionResultReviewForm({
         setState({ kind: 'uncertain', command });
       }
     } catch {
-      if (!lifetime.signal.aborted) setState({ kind: 'uncertain', command });
+      if (!operation.signal.aborted) setState({ kind: 'uncertain', command });
+    } finally {
+      operation.release();
     }
   }
   return (

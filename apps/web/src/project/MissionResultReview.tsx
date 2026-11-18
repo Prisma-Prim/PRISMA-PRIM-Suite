@@ -1,3 +1,5 @@
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useActorObservation } from '../api/use-actor-requests';
 import { useCallback, useEffect, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import { grantOf, holds } from '../access/company-grants';
@@ -137,24 +139,32 @@ function MissionReviewReader({
   const [older, setOlder] = useState<number | null>(null);
   const company = actor.activeCompany;
   const companyId = company?.id;
+  const readOperations = useScopedOperationGroup('snapshot');
+  const historyOperations = useScopedOperationGroup('older-history');
+  const actorObservation = useActorObservation(actor);
+  const sessions = useScopedOperationGroup(String(actorObservation));
+
   const retireProtectedRead = useCallback(() => {
     setLoad({ kind: 'denied' });
     setHistory(null);
   }, []);
   useEffect(() => {
-    const controller = new AbortController();
+    const operation = readOperations.beginLatest();
+    if (!operation) return;
+    const currentActor = sessions.capture();
     setPending(true);
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
+        if (operation.signal.aborted) return;
         const response = await api.request(
           `/projects/${projectId}/mission-result-reviews`,
-          { companyContextId: companyId, signal: controller.signal },
+          { companyContextId: companyId, signal: operation.signal },
         );
-        if (controller.signal.aborted) return;
+        if (operation.signal.aborted) return;
         if (response.status === 'unauthorized') {
           retireProtectedRead();
-          await identity.rejectSession();
+          if (currentActor()) await identity.rejectSession();
           return;
         }
         if (response.status === 'forbidden' || response.status === 'notFound') {
@@ -179,12 +189,12 @@ function MissionReviewReader({
         }
         const historyResponse = await api.request(
           `/projects/${projectId}/mission-result-reviews/history`,
-          { companyContextId: companyId, signal: controller.signal },
+          { companyContextId: companyId, signal: operation.signal },
         );
-        if (controller.signal.aborted) return;
+        if (operation.signal.aborted) return;
         if (historyResponse.status === 'unauthorized') {
           retireProtectedRead();
-          await identity.rejectSession();
+          if (currentActor()) await identity.rejectSession();
           return;
         }
         try {
@@ -212,28 +222,32 @@ function MissionReviewReader({
           setHistory(null);
         }
       } catch {
-        if (!controller.signal.aborted) setLoad({ kind: 'error' });
+        if (!operation.signal.aborted) setLoad({ kind: 'error' });
       } finally {
-        if (!controller.signal.aborted) setPending(false);
+        operation.release();
+        if (!operation.signal.aborted) setPending(false);
       }
     })();
-    return () => controller.abort();
+    return operation.retire;
   }, [companyId, identity, projectId, plan, reload, retireProtectedRead]);
   useEffect(() => {
     if (older === null) return;
-    const controller = new AbortController();
+    const operation = historyOperations.beginLatest();
+    if (!operation) return;
+    const currentActor = sessions.capture();
     setPending(true);
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
+        if (operation.signal.aborted) return;
         const response = await api.request(
           `/projects/${projectId}/mission-result-reviews/history?beforeRevision=${older}`,
-          { companyContextId: companyId, signal: controller.signal },
+          { companyContextId: companyId, signal: operation.signal },
         );
-        if (controller.signal.aborted) return;
+        if (operation.signal.aborted) return;
         if (response.status === 'unauthorized') {
           retireProtectedRead();
-          await identity.rejectSession();
+          if (currentActor()) await identity.rejectSession();
           return;
         }
         if (response.status === 'forbidden' || response.status === 'notFound') {
@@ -255,15 +269,16 @@ function MissionReviewReader({
         }));
         setHistoryFailed(false);
       } catch {
-        if (!controller.signal.aborted) setHistoryFailed(true);
+        if (!operation.signal.aborted) setHistoryFailed(true);
       } finally {
-        if (!controller.signal.aborted) {
+        operation.release();
+        if (!operation.signal.aborted) {
           setPending(false);
           setOlder(null);
         }
       }
     })();
-    return () => controller.abort();
+    return operation.retire;
   }, [older, companyId, identity, projectId, plan, retireProtectedRead]);
   const snapshot = load.kind === 'ready' ? load.snapshot : null;
   const canWrite =
@@ -333,6 +348,7 @@ function MissionReviewReader({
           </ol>
           {canWrite && (
             <MissionResultReviewForm
+              captureSession={sessions.capture}
               key={reviewerKey}
               snapshot={snapshot}
               fresh={!pending}

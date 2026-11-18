@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import {
+  act,
   render,
   screen,
   fireEvent,
@@ -105,6 +106,41 @@ function snapshot(projectId = 'project') {
   };
 }
 afterEach(() => vi.unstubAllGlobals());
+
+it.each([false, true])(
+  'rejects readiness401 only for its admitting complete Actor (replaced=%s)',
+  async (replaced) => {
+    let release: ((value: Response) => void) | undefined;
+    const held = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    const fetcher = vi.fn(() => held);
+    vi.stubGlobal('fetch', fetcher);
+    const rejectSession = vi.fn(async () => {});
+    const browserIdentity = { ...identity, rejectSession };
+    const view = render(
+      <MissionReadiness
+        actor={actor}
+        identity={browserIdentity}
+        projectId="project"
+        plan={plan}
+      />,
+    );
+    await waitFor(() => expect(fetcher).toHaveBeenCalledOnce());
+    if (replaced)
+      view.rerender(
+        <MissionReadiness
+          actor={{ ...actor, displayName: 'Fresh complete Actor' }}
+          identity={browserIdentity}
+          projectId="project"
+          plan={plan}
+        />,
+      );
+    await act(async () => release?.(new Response(null, { status: 401 })));
+    await screen.findByRole('alert');
+    expect(rejectSession).toHaveBeenCalledTimes(replaced ? 0 : 1);
+  },
+);
 
 it('retires held evidence across revoke/regrant while keeping independent Task facts', async () => {
   const releases: Array<() => void> = [];

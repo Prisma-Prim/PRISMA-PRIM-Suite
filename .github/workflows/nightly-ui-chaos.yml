@@ -1,7 +1,7 @@
 name: Nightly UI chaos
 
-# Seeded UI chaos (#1376) and generated native action sequences (#1422, #1425, #1427, #1431):
-# certification, Company switches/access loss, financial, Document and Contract commands run on
+# Seeded UI chaos (#1376) and generated native action sequences (#1422, #1425, #1427, #1431, #1461):
+# certification, Company switches/access loss, financial, Document, Contract and mission result commands run on
 # a throwaway PostgreSQL database under seeded response delays, out-of-order
 # responses, a slowed CPU, double submits and back navigation
 # (apps/web/e2e/ui-chaos.fixture.ts). No model or API cost. It runs on main
@@ -27,6 +27,7 @@ on:
           - access-action-sequences
           - document-action-sequences
           - contract-action-sequences
+          - mission-result-action-sequences
       seed:
         description: Numeric seed copied from a failure, or random for exploration
         type: string
@@ -48,7 +49,7 @@ jobs:
       # One journey's failure never cancels another journey's night.
       fail-fast: false
       matrix:
-        journey: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.journey != 'all' && format('["{0}"]', inputs.journey) || '["certification-journey","multi-company-home","financial-action-sequences","access-action-sequences","document-action-sequences","contract-action-sequences"]') }}
+        journey: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.journey != 'all' && format('["{0}"]', inputs.journey) || '["certification-journey","multi-company-home","financial-action-sequences","access-action-sequences","document-action-sequences","contract-action-sequences","mission-result-action-sequences"]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:

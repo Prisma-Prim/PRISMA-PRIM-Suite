@@ -3,6 +3,11 @@ import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import type { ApiResult } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 
 /** Recovery consumes a full Actor independently of the still-valid Client/Task read scope. */
 export function useClientMissionRejection(context: {
@@ -12,25 +17,16 @@ export function useClientMissionRejection(context: {
   onActorRevalidated: (actor: ActorContext) => void | Promise<void>;
   onWorkspaceAccessRejected?: () => void | Promise<void>;
 }) {
-  const current = useRef(context);
-  const recovery = useRef<AbortController | undefined>(undefined);
-  const lifetime = useRef(new AbortController());
-  if (
-    current.current.actor !== context.actor ||
-    current.current.identity !== context.identity
-  ) {
-    recovery.current?.abort();
-    recovery.current = undefined;
-  }
-  current.current = context;
+  const actorObservation = useActorObservation(context.actor);
+  const generation = useRequestLifetime(
+    context.identity,
+    String(actorObservation),
+  );
+  const requests = useScopedOperationGroup(String(generation));
+  const current = useRef({ context, requests });
   useLayoutEffect(() => {
-    const owner = new AbortController();
-    lifetime.current = owner;
-    return () => {
-      owner.abort();
-      recovery.current?.abort();
-    };
-  }, []);
+    current.current = { context, requests };
+  });
 
   return useCallback(
     async (input: {
@@ -38,41 +34,42 @@ export function useClientMissionRejection(context: {
       signal: AbortSignal;
       startedUnder: ActorContext;
     }) => {
+      const committed = current.current;
       if (
         input.signal.aborted ||
-        lifetime.current.signal.aborted ||
-        current.current.actor !== input.startedUnder
+        committed.context.actor !== input.startedUnder
       )
         return;
-      recovery.current?.abort();
-      const controller = new AbortController();
-      recovery.current = controller;
-      const owner = lifetime.current;
-      const abort = () => controller.abort();
+      const operation = committed.requests.beginLatest();
+      if (!operation) return;
+      const abort = operation.retire;
       input.signal.addEventListener('abort', abort, { once: true });
       const live = () =>
         !input.signal.aborted &&
-        !owner.signal.aborted &&
-        !controller.signal.aborted &&
-        recovery.current === controller &&
-        current.current.actor === input.startedUnder;
+        !operation.signal.aborted &&
+        current.current.context.actor === input.startedUnder;
       try {
         await handleAuthenticatedAccessRejection({
           result: input.result,
-          identity: current.current.identity,
+          identity: committed.context.identity,
           companyContextId: input.startedUnder.activeCompany?.id,
-          signal: controller.signal,
+          signal: operation.signal,
+          isCurrent: live,
           onActorRevalidated: (actor) =>
-            live() ? current.current.onActorRevalidated(actor) : undefined,
+            live()
+              ? current.current.context.onActorRevalidated(actor)
+              : undefined,
           onCompanyContextRejected: (id) => {
-            if (live()) current.current.onCompanyContextRejected(id);
+            if (live()) current.current.context.onCompanyContextRejected(id);
           },
           onWorkspaceAccessRejected: () =>
-            live() ? current.current.onWorkspaceAccessRejected?.() : undefined,
+            live()
+              ? current.current.context.onWorkspaceAccessRejected?.()
+              : undefined,
         });
       } finally {
         input.signal.removeEventListener('abort', abort);
-        if (recovery.current === controller) recovery.current = undefined;
+        operation.release();
       }
     },
     [],

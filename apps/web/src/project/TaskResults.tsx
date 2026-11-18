@@ -1,10 +1,12 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useActorObservation } from '../api/use-actor-requests';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
   type ApiResult,
 } from '../api/authenticated-api-client';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
 import { taskResultAuthority } from './project-authority';
@@ -132,49 +134,63 @@ function TaskResultOwner({
   const [downloadStatus, setDownloadStatus] = useState<
     'idle' | 'pending' | 'failed'
   >('idle');
-  const alive = useRef(true);
-  const visible = useRef(active);
-  visible.current = active;
-  const activeRead = useRef<AbortController | null>(null);
-  const activeHistory = useRef<AbortController | null>(null);
-  const activeDownload = useRef<AbortController | null>(null);
+  const actorObservation = useActorObservation(actor);
+  const sessions = useScopedOperationGroup(String(actorObservation));
+  const reads = useScopedOperationGroup('result');
+  const histories = useScopedOperationGroup('history');
+  const downloads = useScopedOperationGroup(String(active));
+  const writes = useScopedOperationGroup('write');
   const writing = useRef(false);
   useEffect(() => {
-    if (!active) {
-      activeDownload.current?.abort();
-      setDownloadStatus('idle');
-    }
+    if (!active) setDownloadStatus('idle');
   }, [active]);
   const path = `/tasks/${encodeURIComponent(taskId)}/results`;
   const expected = { taskId, projectId };
-  useEffect(() => {
-    alive.current = true;
-    return () => {
-      alive.current = false;
-      activeRead.current?.abort();
-      activeHistory.current?.abort();
-      activeDownload.current?.abort();
+  const observation = useRef({
+    taskVersion: observedTaskVersion,
+    projectStatus: observedProjectStatus,
+  });
+  const lastProjectStatus = useRef(observedProjectStatus);
+  useLayoutEffect(() => {
+    observation.current = {
+      taskVersion: observedTaskVersion,
+      projectStatus: observedProjectStatus,
     };
-  }, []);
+  }, [observedTaskVersion, observedProjectStatus]);
   useEffect(() => {
-    if (canRead) void reload();
-    // Task or Project lifecycle changes refresh availability without discarding an uncertain command.
-    // Authority and identity are owned by the keyed lifetime above.
+    const projectChanged = lastProjectStatus.current !== observedProjectStatus;
+    lastProjectStatus.current = observedProjectStatus;
+    if (!canRead) return;
+    // A late parent observation cannot replace an already newer native result read.
+    // Keep its focused draft and let an in-flight latest read validate that version.
+    if (!projectChanged && reads.isPending()) return;
+    if (
+      !projectChanged &&
+      read.kind === 'ready' &&
+      observedTaskVersion !== undefined &&
+      read.snapshot.taskVersion >= observedTaskVersion
+    )
+      return;
+    void reload();
   }, [observedTaskVersion, observedProjectStatus]);
 
   function deny() {
-    activeRead.current?.abort();
-    activeHistory.current?.abort();
-    activeDownload.current?.abort();
+    reads.retire();
+    histories.retire();
+    downloads.retire();
+    writes.retire();
     setRead({ kind: 'denied' });
     setMutation({ kind: 'idle' });
     setDraft({ declaration: '', versionId: '', reason: '' });
     setHistory(undefined);
     setCorrecting(false);
   }
-  async function value(result: ApiResult<unknown>): Promise<unknown> {
+  async function value(
+    result: ApiResult<unknown>,
+    currentActor: () => boolean,
+  ): Promise<unknown> {
     if (result.status === 'unauthorized') {
-      await identity.rejectSession();
+      if (currentActor()) await identity.rejectSession();
       throw new ResultReadFailure('denied');
     }
     if (result.status === 'forbidden' || result.status === 'notFound')
@@ -183,24 +199,25 @@ function TaskResultOwner({
     return result.value;
   }
   async function reload(): Promise<void> {
-    activeRead.current?.abort();
-    activeHistory.current?.abort();
-    const controller = new AbortController();
-    activeRead.current = controller;
+    const operation = reads.beginLatest();
+    if (!operation) return;
+    const currentActor = sessions.capture();
+    const observedAtStart = observation.current.taskVersion;
+    histories.retire();
     setRead({ kind: 'loading' });
     setHistory(undefined);
     setHistoryStatus('idle');
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (!alive.current || controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       const options = {
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
       };
       const currentValue = await api.request(path, options);
-      if (!alive.current || controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       const snapshot = readTaskResultSnapshot(
-        await value(currentValue),
+        await value(currentValue, currentActor),
         expected,
       );
       let versions: TaskResultReference[] = [];
@@ -209,40 +226,55 @@ function TaskResultOwner({
           `${path}/eligible-versions`,
           options,
         );
-        if (!alive.current || controller.signal.aborted) return;
+        if (operation.signal.aborted) return;
         const eligible = readTaskResultVersions(
-          await value(candidates),
+          await value(candidates, currentActor),
           expected,
         );
         if (!eligible.mutable) throw new ResultReadFailure('unavailable');
         versions = eligible.versions;
       }
-      if (!alive.current || controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
+      const observedNow = observation.current.taskVersion;
+      if (observedNow !== undefined && snapshot.taskVersion < observedNow) {
+        if (observedNow !== observedAtStart) {
+          void reload();
+          return;
+        }
+        // An inconsistent native read is never shown and cannot create a retry loop.
+        throw new ResultReadFailure('unavailable');
+      }
       setRead({ kind: 'ready', snapshot, versions });
     } catch (error: unknown) {
-      if (!alive.current || controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       if (error instanceof ResultReadFailure && error.kind === 'denied') deny();
       else
         setRead({
           kind:
             error instanceof ResultReadFailure ? 'unavailable' : 'malformed',
         });
+    } finally {
+      operation.release();
     }
   }
   async function submit(command: ResultCommand): Promise<void> {
     if (writing.current) return;
+    const operation = writes.begin();
+    if (!operation) return;
+    const currentActor = sessions.capture();
     writing.current = true;
     // Discard reads begun before this mutation; they cannot replace its confirmed refresh.
-    activeRead.current?.abort();
-    activeHistory.current?.abort();
+    reads.retire();
+    histories.retire();
     setMutation({ kind: 'pending', command });
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (!alive.current) return;
+      if (operation.signal.aborted) return;
       const result = await api.request(
         `${path}${command.kind === 'correct' ? '/corrections' : ''}`,
         {
           method: 'POST',
+          signal: operation.signal,
           companyContextId: companyId,
           headers: {
             'content-type': 'application/json',
@@ -251,10 +283,10 @@ function TaskResultOwner({
           body: command.body,
         },
       );
-      if (!alive.current) return;
+      if (operation.signal.aborted) return;
       if (result.status === 'unauthorized') {
         deny();
-        await identity.rejectSession();
+        if (currentActor()) await identity.rejectSession();
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
@@ -286,8 +318,10 @@ function TaskResultOwner({
       setDraft({ declaration: '', versionId: '', reason: '' });
       void reload();
     } catch {
-      if (alive.current) setMutation({ kind: 'uncertain', command });
+      if (!operation.signal.aborted)
+        setMutation({ kind: 'uncertain', command });
     } finally {
+      operation.release();
       writing.current = false;
     }
   }
@@ -335,19 +369,19 @@ function TaskResultOwner({
   async function loadHistory(beforeRevision?: number): Promise<void> {
     if (read.kind !== 'ready') return;
     const snapshot = read.snapshot;
-    activeHistory.current?.abort();
-    const controller = new AbortController();
-    activeHistory.current = controller;
+    const operation = histories.beginLatest();
+    if (!operation) return;
+    const currentActor = sessions.capture();
     setHistoryStatus('pending');
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (!alive.current || controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       const result = await api.request(
         `${path}/history${beforeRevision === undefined ? '' : `?beforeRevision=${beforeRevision}`}`,
-        { companyContextId: companyId, signal: controller.signal },
+        { companyContextId: companyId, signal: operation.signal },
       );
-      if (!alive.current || controller.signal.aborted) return;
-      const page = readTaskResultPage(await value(result), {
+      if (operation.signal.aborted) return;
+      const page = readTaskResultPage(await value(result, currentActor), {
         taskId,
         beforeRevision,
       });
@@ -356,7 +390,7 @@ function TaskResultOwner({
         (page.declarations[0]?.id ?? null) !== (snapshot.current?.id ?? null)
       )
         throw new Error('History/current changed');
-      if (!alive.current || controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       setHistory((previous) => ({
         ...page,
         declarations:
@@ -366,30 +400,30 @@ function TaskResultOwner({
       }));
       setHistoryStatus('idle');
     } catch (error: unknown) {
-      if (!alive.current || controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       if (error instanceof ResultReadFailure && error.kind === 'denied') deny();
       else setHistoryStatus('failed');
+    } finally {
+      operation.release();
     }
   }
   async function download(reference: TaskResultReference): Promise<void> {
-    if (!visible.current) return;
-    activeDownload.current?.abort();
-    const controller = new AbortController();
-    activeDownload.current = controller;
+    if (!active) return;
+    const operation = downloads.beginLatest();
+    if (!operation) return;
+    const currentActor = sessions.capture();
     setDownloadStatus('pending');
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (!alive.current || !visible.current || controller.signal.aborted)
-        return;
+      if (operation.signal.aborted) return;
       const result = await api.download(
         `/documents/${encodeURIComponent(reference.documentId)}/versions/${encodeURIComponent(reference.versionId)}/content/${encodeURIComponent(reference.representationId)}`,
-        { companyContextId: companyId, signal: controller.signal },
+        { companyContextId: companyId, signal: operation.signal },
       );
-      if (!alive.current || !visible.current || controller.signal.aborted)
-        return;
+      if (operation.signal.aborted) return;
       if (result.status === 'unauthorized') {
         deny();
-        await identity.rejectSession();
+        if (currentActor()) await identity.rejectSession();
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
@@ -415,8 +449,9 @@ function TaskResultOwner({
       }
       setDownloadStatus('idle');
     } catch {
-      if (alive.current && visible.current && !controller.signal.aborted)
-        setDownloadStatus('failed');
+      if (!operation.signal.aborted) setDownloadStatus('failed');
+    } finally {
+      operation.release();
     }
   }
   function renderDeclaration(item: TaskResultDeclaration) {

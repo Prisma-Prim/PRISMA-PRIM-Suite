@@ -189,11 +189,6 @@
       "count": 1
     }
   },
-  "apps/web/src/mission-plan/use-mission-plan-io.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "apps/web/src/offer-message/offer-message-preparation.tsx": {
     "no-restricted-syntax": {
       "count": 2
@@ -312,36 +307,6 @@
       "count": 3
     }
   },
-  "apps/web/src/project/ClientMissionOverview.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/project/ClientMissionTasks.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/project/MissionApplicability.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/project/MissionReadiness.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/project/MissionResultReview.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/project/MissionResultReviewForm.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "apps/web/src/project/ProjectDocuments.tsx": {
     "no-restricted-syntax": {
       "count": 3
@@ -402,22 +367,7 @@
       "count": 2
     }
   },
-  "apps/web/src/project/TaskResults.tsx": {
-    "no-restricted-syntax": {
-      "count": 3
-    }
-  },
   "apps/web/src/project/TeamTasks.tsx": {
-    "no-restricted-syntax": {
-      "count": 3
-    }
-  },
-  "apps/web/src/project/use-applicability-history.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/project/use-client-mission-rejection.ts": {
     "no-restricted-syntax": {
       "count": 3
     }

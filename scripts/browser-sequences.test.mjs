@@ -248,3 +248,36 @@ test('validates each native Contract replay against its own journey', () => {
     );
   }
 });
+
+test('selects the native mission result replay only in its registered journey', () => {
+  const command = browserSequenceReplayCommand({
+    caseId: 'mission-task-result',
+    width: 'narrow',
+    seed: 1461001,
+    steps: 10,
+    path: '0:1',
+  });
+  assert.equal(
+    command,
+    "UI_SEQUENCE_REPLAY='mission-task-result@narrow~10~0:1' pnpm verify:journey mission-result-action-sequences --chaos 1461001",
+  );
+  const environment = {
+    UI_CHAOS_SEED: '1461001',
+    UI_SEQUENCE_REPLAY: 'mission-task-result@narrow~10~0:1',
+  };
+  assert.equal(
+    readBrowserSequenceOptions({
+      journey: 'mission-result-action-sequences',
+      environment,
+    }).replay.caseId,
+    'mission-task-result',
+  );
+  assert.throws(
+    () =>
+      readBrowserSequenceOptions({
+        journey: 'financial-action-sequences',
+        environment,
+      }),
+    /Unknown sequence case/u,
+  );
+});

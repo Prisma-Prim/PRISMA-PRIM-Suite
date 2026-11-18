@@ -1,6 +1,15 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useRequestLifetime } from '../api/use-actor-requests';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
 import { useClientMissionRejection } from './use-client-mission-rejection';
 import {
@@ -29,15 +38,10 @@ type Props = {
 };
 type View =
   | { kind: 'loading' | 'error' | 'denied' }
-  | { kind: 'ready'; page: ClientProjectPage };
+  | { kind: 'ready'; page: ClientProjectPage; signal: AbortSignal };
 
 export function ClientMissionOverview(props: Props) {
-  const session = useRef({ identity: props.identity, generation: 0 });
-  if (session.current.identity !== props.identity)
-    session.current = {
-      identity: props.identity,
-      generation: session.current.generation + 1,
-    };
+  const generation = useRequestLifetime(props.identity, 'client-mission');
   const company = props.actor.activeCompany;
   const client = grantOf(company, 'company_director_client_access');
   const project = grantOf(company, 'company_project_access');
@@ -53,7 +57,7 @@ export function ClientMissionOverview(props: Props) {
   )
     return null;
   const capture = [
-    session.current.generation,
+    generation,
     props.actor.internalUserId,
     props.actor.workspaceMembershipId,
     props.actor.workspaceId,
@@ -85,21 +89,22 @@ function MissionOwner(
   const [selected, setSelected] = useState<
     ClientProjectPage['items'][number] | undefined
   >(undefined);
-  const pending = useRef<AbortController | undefined>(undefined);
-  const lifetime = useRef<AbortController | undefined>(undefined);
+  const reads = useScopedOperationGroup('directory');
   const callbacks = useRef(props);
-  callbacks.current = props;
+  useLayoutEffect(() => {
+    callbacks.current = props;
+  });
   const heading = useRef<HTMLHeadingElement>(null);
   const load = useCallback(
     (nextOffset: number, focus = false) => {
       const startedUnder = callbacks.current.actor;
-      lifetime.current?.abort();
-      lifetime.current = undefined;
+      const operation = reads.beginLatest();
+      if (!operation) return;
       setOffset(nextOffset);
       setSelected(undefined);
       setView({ kind: 'loading' });
       return runLatestAuthenticatedRequest({
-        pending,
+        signal: operation.signal,
         identity: callbacks.current.identity,
         execute: (api, signal) =>
           api.request(
@@ -120,8 +125,7 @@ function MissionOwner(
               clientDossierId: props.clientDossierId,
               offset: nextOffset,
             });
-            lifetime.current = new AbortController();
-            setView({ kind: 'ready', page });
+            setView({ kind: 'ready', page, signal });
           } else setView({ kind: 'error' });
         },
         onError: () => setView({ kind: 'error' }),
@@ -129,16 +133,13 @@ function MissionOwner(
           if (focus && callbacks.current.actor === startedUnder)
             heading.current?.focus();
         },
-      });
+      }).finally(operation.release);
     },
-    [props.company.id, props.clientDossierId],
+    [props.company.id, props.clientDossierId, reads, reject],
   );
   useEffect(() => {
     void load(0);
-    return () => {
-      pending.current?.abort();
-      lifetime.current?.abort();
-    };
+    return reads.retire;
   }, [load]);
   return (
     <section className="client-mission-work" aria-labelledby={`${id}-title`}>
@@ -187,7 +188,7 @@ function MissionOwner(
                     type="button"
                     aria-label={`${copy('openProject')}: ${project.title}`}
                     onClick={() => {
-                      const signal = lifetime.current?.signal;
+                      const signal = view.signal;
                       if (signal && !signal.aborted)
                         callbacks.current.onOpenProject(
                           { projectId: project.id, focus: 'project' },
@@ -226,12 +227,12 @@ function MissionOwner(
               {copy('next')}
             </button>
           </div>
-          {selected && lifetime.current && (
+          {selected && (
             <ClientMissionTasks
               key={selected.id}
               {...props}
               project={selected}
-              sourceSignal={lifetime.current.signal}
+              sourceSignal={view.signal}
             />
           )}
         </>

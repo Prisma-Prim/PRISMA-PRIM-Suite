@@ -35,6 +35,47 @@ function held() {
   return { promise, resolve };
 }
 
+it.each([401, 403])(
+  'keeps a late current-work read%s bound to its admitting complete Actor',
+  async (status) => {
+    const pending = held();
+    let recoveries = 0;
+    const fetcher = vi.fn((input: RequestInfo | URL) => {
+      const path = new URL(String(input), window.location.origin).pathname;
+      if (path.endsWith('/mission-plan/current-work')) return pending.promise;
+      recoveries++;
+      return Promise.resolve(new Response(null, { status: 503 }));
+    });
+    vi.stubGlobal('fetch', fetcher);
+    const rejectSession = vi.fn(async () => {});
+    const identity = { ...deterministicBrowserIdentity(), rejectSession };
+    const actor = currentActor();
+    const props = {
+      actor,
+      identity,
+      projectId: project.id,
+      clientAccountId: project.clientAccountId,
+      onActorRevalidated: vi.fn(),
+      onCompanyContextRejected: vi.fn(),
+      onWorkspaceAccessRejected: vi.fn(),
+      onOpenTask: vi.fn(),
+    };
+    const view = render(<MissionPlanCurrentWork {...props} />);
+    await waitFor(() => expect(fetcher).toHaveBeenCalledOnce());
+    view.rerender(
+      <MissionPlanCurrentWork
+        {...props}
+        actor={{ ...actor, displayName: 'Fresh complete Actor' }}
+      />,
+    );
+    await act(async () => pending.resolve(new Response(null, { status })));
+    await screen.findByRole('alert');
+    expect(rejectSession).not.toHaveBeenCalled();
+    expect(recoveries).toBe(0);
+    expect(props.onActorRevalidated).not.toHaveBeenCalled();
+  },
+);
+
 function network() {
   const state: {
     readStatus: number;
