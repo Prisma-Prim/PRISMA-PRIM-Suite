@@ -1,17 +1,17 @@
 {
   "schema": "prisma-prim-complete-audit-pilot-inputs/v1",
   "classification": "fictional local pilot; no real Client or account qualification",
-  "base": "6f3a9056c957b329adcb2451267f7ebb03679b89",
+  "base": "73f6f722c92f94edf08f08236782f56ffab4721b",
   "inputs": {
     "combinedQualification1458": "8b5303b7e62cab9c374ccdfa8b71a15a26c4f83a",
     "controlledDraftPreparation1457": "ba7634306e456852376a289d35ae7b184ecf3033",
     "freeOcrStructure1459": "e770566ff0ebb7a2794596c42c82a42719f8241c",
-    "recoverableIntake1466": "eb809c7b79ec62e2d3fcd965de235089b6438390",
+    "recoverableIntake1466": "60e463d385545c26cc171aa9e866d037484f7e19",
     "guidedPilot1468": "ff314c142179ff2c04e0c59baa44b69548bf11d7",
     "reviewedAuditDrafts1469": "6ac39d6ffee713f0c8e89dfc166b1a12faf07233"
   },
   "inputCi": [
-    44292369089, 44291134310, 44295203174, 44352294698, 44321032687, 44327225196
+    44292369089, 44291134310, 44295203174, 44362670045, 44321032687, 44327225196
   ],
   "conflicts": "Preserve the Stage superset of the byte-identical original application runtime; retain every pilot addition. Union sorted journey metadata, additive module imports/providers, OpenAPI paths/schemas and both PRD sections. No new production workflow or permission rule.",
   "production": "No main merge or deployment. Synthetic identity/scanner/provider boundaries remain explicit. Native grants, validation, immutable bytes and decisions remain authoritative.",
@@ -35,6 +35,11 @@
       "base": "9fe29e2fcf4114edfe03595a00a9db41e037a11d",
       "recoverableIntake1466": "74e5b42b4eea74407c15114d79cb7c01cd86d13c",
       "reason": "Previous green CI was followed by two demonstrated review findings: PDF association change during scanning and an unskippable stale-target refusal. The latest native owner and checkpoint corrections are independently reproduced by public native/rendered regressions."
+    },
+    {
+      "base": "6f3a9056c957b329adcb2451267f7ebb03679b89",
+      "recoverableIntake1466": "eb809c7b79ec62e2d3fcd965de235089b6438390",
+      "reason": "Previous green source CI was followed by a demonstrated PDF selection metadata race after preflight. Native selection now shares the admitted Word/PDF target fence under its insertion transaction locks; original receipts retain replay semantics."
     }
   ]
 }

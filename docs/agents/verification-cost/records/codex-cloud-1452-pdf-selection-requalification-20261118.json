@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1452-pdf-selection-requalification-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1452,
+  "pullRequest": 1470,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Composed60e463d3 on73f6f722:21 intake+6 Stage+1 compatibility native checks pass separately. Three RO/RU browser journeys2/2 each,0 retry/flaky/skip;10 original captures inspected. Source/composed types/lint/format, docs/cost checks pass. PDF selectionP2 counted once in source ledger; earlier unordered/deadlocked race harness attempts retained. Required new input/parent CI pending. No main merge/deployment/activation. Usage/time/price unreported."
+  }
+}
