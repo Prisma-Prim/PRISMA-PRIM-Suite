@@ -86,5 +86,26 @@
     "No main merge or deployment under1452",
     "No real account, provider/model call, scanner/OCR qualification or private1279 pilot",
     "Input1457 draft-preparation semantics are qualified by its native API tests and inputCI; this pilot does not claim every possible draft-preparation UI act"
-  ]
+  ],
+  "reviewedNativePilot": {
+    "journey": "local-audit-pilot",
+    "status": "passed",
+    "exitCode": 0,
+    "startedAt": "2026-11-18T13:39:35.476Z",
+    "finishedAt": "2026-11-18T13:42:49.046Z",
+    "tests": {
+      "passed": 2,
+      "failed": 0,
+      "flaky": 0,
+      "skipped": 0
+    }
+  },
+  "review": {
+    "source": "0c9b5b4fe74a6b0ba912054b4d7fe98c4f58bc75",
+    "standards": 0,
+    "spec": {
+      "P2": 1,
+      "disposition": "Guide incorrectly assigned Stage plans to auditor; public HTTP test failed, guide corrected in both locales, test and full native2/2 pass. Correction62d013d4f16aebb9161598a4725ce9ed297c82d7."
+    }
+  }
 }
