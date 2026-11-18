@@ -71,4 +71,19 @@ def generate(directory):
     manifest = {'schema': 'fictional-ocr-fixtures/v1', 'pillow': __version__,
                 'fontSha256': hashlib.sha256(font_path.read_bytes()).hexdigest(), 'pages': pages}
     (directory / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
+    # Independent structural labels are authored before inference. The detector
+    # receives pixels only, never this file or the existing known-cell boxes.
+    structures = []
+    for page in pages:
+        tables = []
+        if page['id'].endswith('-grid-merged'):
+            cells = []
+            for cell, (row, column, span, kind) in zip(page['cells'], [
+                (0, 0, 2, 'spanning_header'), (1, 0, 1, 'cell'), (1, 1, 1, 'cell'),
+                (2, 0, 1, 'cell'), (2, 1, 1, 'cell'),
+            ]):
+                cells.append({**cell, 'row': row, 'column': column, 'rowSpan': 1, 'columnSpan': span, 'kind': kind})
+            tables = [{'box': [40, 60, 1020, 270], 'cells': cells}]
+        structures.append({'case': page['id'], 'imageSha256': page['sha256'], 'tables': tables})
+    (directory / 'structure-labels.json').write_text(json.dumps({'schema': 'fictional-table-labels/v1', 'pages': structures}, ensure_ascii=False, indent=2) + '\n')
     return manifest
