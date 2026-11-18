@@ -22,20 +22,77 @@ function string(value: unknown, limit: number) {
     throw new Error('Invalid preparation text.');
   return value;
 }
+function insertableString(value: unknown, limit: number) {
+  const literal = string(value, limit);
+  if (literal.trim() !== literal || /[\p{Cc}\p{Cf}]/u.test(literal))
+    throw new Error('Invalid preparation text.');
+  return literal;
+}
+type ExpectedPreparation = {
+  projectId: string;
+  caseId: string;
+  revision: number;
+  runId: string;
+};
+export type StageDraftStep =
+  'stage_1_plan' | 'stage_2_plan' | 'stage_1_report' | 'stage_2_report';
+const SOURCE_FIELDS = [
+  'legalName',
+  'taxId',
+  'address',
+  'standard',
+  'auditType',
+  'auditDate',
+  'decisionDate',
+  'validFrom',
+  'validUntil',
+  'auditorDays',
+  'reference',
+  'scope',
+] as const;
 export function draftPreparation(
   value: unknown,
-  expected: {
-    projectId: string;
-    caseId: string;
-    revision: number;
-    runId: string;
-  },
+  expected: ExpectedPreparation,
+) {
+  return preparation(
+    value,
+    expected,
+    PREPARABLE_FIELDS,
+    'CERTIFICATION_APPLICATION_DRAFT/1',
+    (field) => CERTIFICATION_LIMITS[field],
+  );
+}
+export function stageDraftPreparation(
+  value: unknown,
+  expected: ExpectedPreparation & { step: StageDraftStep },
+) {
+  const allowed =
+    expected.step === 'stage_1_plan' || expected.step === 'stage_2_plan'
+      ? (['scope'] as const)
+      : SOURCE_FIELDS;
+  return preparation(
+    value,
+    expected,
+    allowed,
+    'CERTIFICATION_STAGE_DRAFT/1',
+    () => 2000,
+    expected.step,
+  );
+}
+function preparation<Field extends string>(
+  value: unknown,
+  expected: ExpectedPreparation,
+  fields: readonly Field[],
+  format: string,
+  limit: (field: Field) => number,
+  step?: StageDraftStep,
 ) {
   const x = object(value),
     target = object(x.target),
     run = object(x.run);
   if (
-    x.format !== 'CERTIFICATION_APPLICATION_DRAFT/1' ||
+    x.format !== format ||
+    target.step !== step ||
     target.caseId !== expected.caseId ||
     target.projectId !== expected.projectId ||
     target.revision !== expected.revision ||
@@ -49,7 +106,7 @@ export function draftPreparation(
   const rows: unknown[] = x.candidates;
   const candidates = rows.map((value) => {
     const row = object(value);
-    const field = PREPARABLE_FIELDS.find((f) => f === row.field);
+    const field = fields.find((f) => f === row.field);
     if (
       !field ||
       !uuid(row.suggestionId) ||
@@ -67,7 +124,7 @@ export function draftPreparation(
       throw new Error('Invalid review instant.');
     return {
       field,
-      value: string(row.value, CERTIFICATION_LIMITS[field]),
+      value: insertableString(row.value, limit(field)),
       proposalValue: string(row.proposalValue, 2000),
       suggestionId: row.suggestionId,
       reviewRevision: row.reviewRevision,
@@ -99,6 +156,7 @@ export function draftPreparation(
       caseId: expected.caseId,
       projectId: expected.projectId,
       revision: expected.revision,
+      ...(step ? { step } : {}),
     },
     run: { id: expected.runId, snapshotHash: run.snapshotHash },
     candidates,

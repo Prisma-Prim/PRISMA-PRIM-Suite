@@ -1065,37 +1065,15 @@ export class CertificationService {
         );
         const steps = await this.steps(actor, companyId, targetId);
         requireUndecided(steps);
-        if (!approvedTeam(steps))
-          throw stepConflict(
-            'CERTIFICATION_TEAM_NOT_APPROVED',
-            'Plan the Audit once the audit team is approved.',
-          );
-        if (stage === 'stage_2') {
-          const report = latest(steps, 'stage_1_report');
-          const value = report ? stage1Version(report).value : undefined;
-          if (value?.conclusion !== 'ready')
-            throw stepConflict(
-              'CERTIFICATION_STAGE_1_NOT_READY',
-              'Stage 2 is planned after a Stage 1 report concluding the client is ready.',
-            );
-          const findings = await this.findings(
-            actor,
-            companyId,
-            targetId,
-            steps,
-          );
-          if (
-            findings.some(
-              (finding) =>
-                finding.stage === 'stage_1' &&
-                isNonconformity(finding.classification) &&
-                finding.status !== 'verified_effective',
-            )
-          )
-            throw stepConflict(
-              'CERTIFICATION_STAGE_1_NONCONFORMITY_OPEN',
-              'Stage 2 starts once every Stage 1 nonconformity is verified as eliminated.',
-            );
+        const stage1 = await this.requirePlanReadiness({
+          actor,
+          companyId,
+          caseId: targetId,
+          stage,
+          steps,
+        });
+        if (stage1) {
+          const value = stage1;
           if (input.payload.startDate <= value.reportDate)
             throw stepConflict(
               'CERTIFICATION_STAGE_DATES',
@@ -1162,7 +1140,6 @@ export class CertificationService {
   }): Promise<unknown> {
     const idempotencyKey = requireIdempotencyKey(key);
     const targetId = requireUuid(caseId);
-    const planStep = stage === 'stage_1' ? 'stage_1_plan' : 'stage_2_plan';
     const step = stage === 'stage_1' ? 'stage_1_report' : 'stage_2_report';
     return this.command({
       actor,
@@ -1183,13 +1160,7 @@ export class CertificationService {
         );
         const steps = await this.steps(actor, companyId, targetId);
         requireUndecided(steps);
-        this.requireTeamLeader(actor, steps);
-        const plan = latest(steps, planStep);
-        if (!plan)
-          throw stepConflict(
-            'CERTIFICATION_STAGE_NOT_PLANNED',
-            'Record the Stage plan before its report.',
-          );
+        const plan = this.requireReportReadiness(actor, steps, stage);
         const planned = stagePlanVersion(plan).value;
         if (input.payload.reportDate < planned.startDate)
           throw stepConflict(
@@ -2628,6 +2599,115 @@ export class CertificationService {
       throw new ConflictException('The Case changed. Reload its draft.');
     requireUndecided(await this.steps(input.actor, companyId, row.id));
     return { caseId: row.id, projectId: row.projectId, revision: row.revision };
+  }
+
+  /** Read-only native step eligibility; ordinary commands retain all payload validation. */
+  async stageDraftContextWithinTransaction(input: {
+    actor: ActorContext;
+    projectId: string;
+    caseId: string;
+    expectedRevision: number;
+    step: 'stage_1_plan' | 'stage_2_plan' | 'stage_1_report' | 'stage_2_report';
+  }) {
+    const report =
+      input.step === 'stage_1_report' || input.step === 'stage_2_report';
+    const stage =
+      input.step === 'stage_1_plan' || input.step === 'stage_1_report'
+        ? 'stage_1'
+        : 'stage_2';
+    const companyId = await this.authorize(
+      input.actor,
+      report ? 'auditor' : 'programme_manager',
+      { lock: false },
+    );
+    const row = await this.visibleCase(
+      input.actor,
+      companyId,
+      requireUuid(input.caseId),
+    );
+    if (row.projectId !== requireUuid(input.projectId))
+      throw new NotFoundException();
+    if (row.revision !== input.expectedRevision)
+      throw new ConflictException('The Case changed. Reload its draft.');
+    if (row.status !== 'open')
+      throw stepConflict(
+        'CERTIFICATION_CASE_CLOSED',
+        'This Certification Case is closed.',
+      );
+    const steps = await this.steps(input.actor, companyId, row.id);
+    requireUndecided(steps);
+    if (report) this.requireReportReadiness(input.actor, steps, stage);
+    else
+      await this.requirePlanReadiness({
+        actor: input.actor,
+        companyId,
+        caseId: row.id,
+        stage,
+        steps,
+      });
+    return {
+      caseId: row.id,
+      projectId: row.projectId,
+      revision: row.revision,
+      step: input.step,
+    };
+  }
+
+  private async requirePlanReadiness(input: {
+    actor: ActorContext;
+    companyId: string;
+    caseId: string;
+    stage: AuditStage;
+    steps: readonly StepRow[];
+  }) {
+    const { actor, companyId, caseId, stage, steps } = input;
+    if (!approvedTeam(steps))
+      throw stepConflict(
+        'CERTIFICATION_TEAM_NOT_APPROVED',
+        'Plan the Audit once the audit team is approved.',
+      );
+    if (stage === 'stage_2') {
+      const report = latest(steps, 'stage_1_report');
+      const value = report ? stage1Version(report).value : undefined;
+      if (value?.conclusion !== 'ready')
+        throw stepConflict(
+          'CERTIFICATION_STAGE_1_NOT_READY',
+          'Stage 2 is planned after a Stage 1 report concluding the client is ready.',
+        );
+      const findings = await this.findings(actor, companyId, caseId, steps);
+      if (
+        findings.some(
+          (finding) =>
+            finding.stage === 'stage_1' &&
+            isNonconformity(finding.classification) &&
+            finding.status !== 'verified_effective',
+        )
+      )
+        throw stepConflict(
+          'CERTIFICATION_STAGE_1_NONCONFORMITY_OPEN',
+          'Stage 2 starts once every Stage 1 nonconformity is verified as eliminated.',
+        );
+      return value;
+    }
+    return null;
+  }
+
+  private requireReportReadiness(
+    actor: ActorContext,
+    steps: readonly StepRow[],
+    stage: AuditStage,
+  ) {
+    this.requireTeamLeader(actor, steps);
+    const plan = latest(
+      steps,
+      stage === 'stage_1' ? 'stage_1_plan' : 'stage_2_plan',
+    );
+    if (!plan)
+      throw stepConflict(
+        'CERTIFICATION_STAGE_NOT_PLANNED',
+        'Record the Stage plan before its report.',
+      );
+    return plan;
   }
 
   /** Only a current programme manager may discover eligible internal auditors. */
