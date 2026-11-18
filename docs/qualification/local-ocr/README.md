@@ -63,3 +63,7 @@ At most 20 labelled images, two configurations and two repetitions are admitted:
 No training, GPU, paid API or recurring job is introduced. The measured weights occupy about 31 MB; generated fictional images and inspected previews remain local publication artifacts. Run on an existing local machine; stop rather than provisioning a service or expanding these budgets.
 
 Rerun the actual codec/configuration regressions with `python3 tools/ocr-benchmark/check_native_failures.py --fixtures LOCAL_FICTIONAL_FIXTURE_DIRECTORY --models MODEL_DIRECTORY`. It uses a temporary copy, corrupts only a PNG checksum, and checks partial results through the compiled native OCR boundary; originals remain unchanged.
+
+## Different-architecture and table-structure follow-through
+
+[#1455](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1455) adds a separately measured [EasyOCR CPU and automatic ruled-table reconstruction comparison](structure.md). This original same-engine baseline and its retained results remain unchanged.
