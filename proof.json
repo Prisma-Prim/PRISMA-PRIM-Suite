@@ -1,0 +1,275 @@
+{
+  "issue": 1452,
+  "pullRequest": 1470,
+  "kind": "actual_native_execution_on_fictional_prepared_examples",
+  "executedSource": "0ef583062b99604facb40e853c096e7ef8de4af5",
+  "executedTree": "060c2035a9ea7c0d035e1aed5b8e368526e7badc",
+  "executionBase": "d72f10fb1980ff141d68928a8b4b08c435078a35",
+  "stageInput": {
+    "head": "d8d930a940e12bf5782ab87058740196e6463dab",
+    "requiredCi": 44414578477
+  },
+  "native": {
+    "files": 4,
+    "passed": 35,
+    "failed": 0,
+    "skipped": 0
+  },
+  "launcher": {
+    "command": "pnpm pilot:audit --check",
+    "exitCode": 0,
+    "releasedPorts": [
+      4173,
+      4174
+    ]
+  },
+  "priorEvidence": [
+    "ba142bb40461c73812f9bf9f83fa29212401d771",
+    "7d370544a8f4c6ddd2dc6d5dfac92dc93c4b342c"
+  ],
+  "journeys": [
+    {
+      "journey": "document-intake",
+      "startedAt": "2026-11-18T22:48:44.725Z",
+      "finishedAt": "2026-11-18T22:50:15.339Z",
+      "status": "passed",
+      "tests": {
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0
+      },
+      "retries": 0
+    },
+    {
+      "journey": "certification-stage-preparation",
+      "startedAt": "2026-11-18T22:50:25.128Z",
+      "finishedAt": "2026-11-18T22:52:16.147Z",
+      "status": "passed",
+      "tests": {
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0
+      },
+      "retries": 0
+    },
+    {
+      "journey": "local-audit-pilot",
+      "startedAt": "2026-11-18T22:52:25.007Z",
+      "finishedAt": "2026-11-18T22:55:24.240Z",
+      "status": "passed",
+      "tests": {
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0
+      },
+      "retries": 0
+    }
+  ],
+  "captures": [
+    {
+      "file": "desktop-ro-intake-partial-paused.png",
+      "sha256": "6ecb87eaf206d40abf622de0068f485bfcc18fd3017a9e989393d79a67e10eec",
+      "locale": "ro",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-ro-intake-resumed-complete.png",
+      "sha256": "2a8d9e7902b162e6ffb7c5739beb06f8f66819d91a353ee73abd8a0caa4d5d33",
+      "locale": "ro",
+      "viewport": "desktop"
+    },
+    {
+      "file": "narrow-ru-intake-partial-paused.png",
+      "sha256": "8775fd0669be0338b280d9a15319bbcb96413d3073512819684cb974b455ab96",
+      "locale": "ru",
+      "viewport": "narrow"
+    },
+    {
+      "file": "narrow-ru-intake-resumed-complete.png",
+      "sha256": "8ae838e1da904cb4fcb64124d8e074f022bd53cb275c2142c329a720b44ce216",
+      "locale": "ru",
+      "viewport": "narrow"
+    },
+    {
+      "file": "desktop-ro-stage-plan-edited.png",
+      "sha256": "d64790c256e629794a78ff1d9533646a09ec5d6bd47744f97579f1e3d89b746e",
+      "locale": "ro",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-ro-stage-report-edited.png",
+      "sha256": "0a399881b7b430cd0a7f98458eb068ea20f5fc9b38e2c0efdf3c58d18180f7fc",
+      "locale": "ro",
+      "viewport": "desktop"
+    },
+    {
+      "file": "narrow-ru-stage-plan-edited.png",
+      "sha256": "77d5bc5198de0c22642d6e255ff6f3d00da79d808751541d94bb3763f00c90e2",
+      "locale": "ru",
+      "viewport": "narrow"
+    },
+    {
+      "file": "narrow-ru-stage-report-edited.png",
+      "sha256": "1c853526ecaf860fc2559dee9510b4973dcc47b9cc71770367a5b047b387853c",
+      "locale": "ru",
+      "viewport": "narrow"
+    },
+    {
+      "file": "desktop-ro-pilot-guide.png",
+      "sha256": "add4f7d4ac93e0a0c7635c635e7fea9bfaff53c285d03b53f37a173d2e40deb2",
+      "locale": "ro",
+      "viewport": "desktop"
+    },
+    {
+      "file": "narrow-ru-pilot-guide.png",
+      "sha256": "dcbcc1902c1c03252063c79c8a1154c63a68cb7e8787fbcdfee145d5567a13a0",
+      "locale": "ru",
+      "viewport": "narrow"
+    }
+  ],
+  "nativePilotOutcomes": [
+    {
+      "schema": "prisma-prim-combined-audit-outcome/v1",
+      "locale": "ro",
+      "fixture": "fictional",
+      "caseId": "90887a0a-1dd3-48ea-8ba4-1d118bd257b3",
+      "runId": "7c4dbe87-03e5-4c66-b35a-435606023fed",
+      "freshRunId": "69e1a452-b240-4ae0-a6f2-fdc8e0a45741",
+      "exactSource": {
+        "documentId": "a0248397-1aa1-4741-bf86-0e2ebcce9a90",
+        "documentVersionId": "7b5a9459-64d5-4e6a-84fa-ade6703d1193",
+        "representationId": "5cbc857d-3e4a-4a2c-b213-dbba27e4822e",
+        "caseId": "90887a0a-1dd3-48ea-8ba4-1d118bd257b3",
+        "attachmentId": "20d6571d-3e94-45db-a015-be1fc382e8b4"
+      },
+      "originalSha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab",
+      "supplementarySha256": "7bfcd09e620409517f9cedf4a6a0baadc78f910cecd6cd2672fb6bc9a54e0835",
+      "registerSha256": "890c784f53cc2f75a09ab5da1d0d2e90d3f112b1e2dbe43cf7601f65c46e2e95",
+      "certificateSha256": "74786dad43179f37d70315dfaf9be7bcb6a199730d826075487dd94e0a175e9d",
+      "certificateNumber": "QUAL-90887a0a",
+      "status": "certified",
+      "boundaries": [
+        "local-demo identities",
+        "synthetic malware scanner",
+        "lost review receipt"
+      ],
+      "modelCalls": 0,
+      "privatePilotQualified": false,
+      "productionQualified": false
+    },
+    {
+      "schema": "prisma-prim-combined-audit-outcome/v1",
+      "locale": "ru",
+      "fixture": "fictional",
+      "caseId": "d3fd92ef-a97a-47df-ab0d-631467367980",
+      "runId": "4321549d-f985-4cc2-b1d7-4e8d5e484a23",
+      "freshRunId": "50893933-749e-482b-b797-cba0df4af8d0",
+      "exactSource": {
+        "documentId": "2503cc19-2887-402c-a52d-bd5247454cf9",
+        "documentVersionId": "72526e7e-234a-4248-84d6-32dca14f5f9a",
+        "representationId": "6dd4f43d-5f52-40f2-aa24-751852b4235c",
+        "caseId": "d3fd92ef-a97a-47df-ab0d-631467367980",
+        "attachmentId": "301d2b0b-3cc7-40cd-90af-e26f4d3ad233"
+      },
+      "originalSha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab",
+      "supplementarySha256": "5c21b63ca31b1e42bb4ef8f12895c3a3b3a7edd17ecc00e11eaed00f1ebfeb57",
+      "registerSha256": "4bb308717623cf88a18620816c91367835bc364e4d695e03ee15209f56ddd733",
+      "certificateSha256": "0383b2d8919b5d4b57fc3ca406513b73309a73e1f92c083db154390fc2e9f54e",
+      "certificateNumber": "QUAL-d3fd92ef",
+      "status": "certified",
+      "boundaries": [
+        "local-demo identities",
+        "synthetic malware scanner",
+        "lost review receipt"
+      ],
+      "modelCalls": 0,
+      "privatePilotQualified": false,
+      "productionQualified": false
+    }
+  ],
+  "nativeStageDrafts": [
+    {
+      "dataKind": "fictional",
+      "locale": "ro",
+      "caseId": "98afdcf7-fa43-4b1f-9ebf-9c749ee265cf",
+      "run1": "d163bc00-4c06-402c-9cfd-006811af55c8",
+      "run2": "6a3e8fab-0ede-4b9f-91dc-ce022e466ade",
+      "sourceId": "653c1c7c-e9f4-4787-8120-d2281a3829c4",
+      "sourceVersionId": "be34f30b-aedd-4fc3-982e-27bf7143d028",
+      "originalSha256": "de78b40f2f66281a8a892ebd63878a323c61c0404f5fc8e29bfdcb1131591885",
+      "scope": "Producție de lactate — ajustat explicit de auditor",
+      "summary": "Ручной текст аудитора.\n\nContext citat din surse — date din dosar verificate de o persoană, fără concluzii de audit\nDomeniu: «Producție de lactate — verificat»\nVerificare umană: Ada Ionescu · 2026-11-18T22:51:47.705Z · r1\nFictional bilingual scope source · domeniu-область.docx · v1 · be34f30b-aedd-4fc3-982e-27bf7143d028 · word/document.xml#paragraph:1\n«Producție de lactate»\nДополнение аудитора после проверки.",
+      "nativeStage2Revision": 17
+    },
+    {
+      "dataKind": "fictional",
+      "locale": "ru",
+      "caseId": "a8fa9ad0-f932-4540-961f-87b32acd3507",
+      "run1": "0653b458-4865-4cb9-b132-cedc24b9c00d",
+      "run2": "e92abd0b-dbb7-4b37-945d-d7c9f955abbf",
+      "sourceId": "838c8bdd-e525-4b49-97f0-44f43c38d5a0",
+      "sourceVersionId": "7736e2a5-fa64-4808-aaaa-6e92ac92bab0",
+      "originalSha256": "e92f0d8be4b784d701d5d6f28dc1d79dfac3b21e081e1ad6d61b8b5aa6bdd469",
+      "scope": "Producție de lactate — ajustat explicit de auditor",
+      "summary": "Ручной текст аудитора.\n\nЦитируемый контекст источников — данные досье, проверенные человеком, без выводов аудита\nОбласть: «Producție de lactate — verificat»\nПроверка человеком: Ada Ionescu · 2026-11-18T22:52:08.907Z · r1\nFictional bilingual scope source · domeniu-область.docx · v1 · 7736e2a5-fa64-4808-aaaa-6e92ac92bab0 · word/document.xml#paragraph:1\n«Producție de lactate»\nДополнение аудитора после проверки.",
+      "nativeStage2Revision": 17
+    }
+  ],
+  "nativeIntakeOriginals": [
+    {
+      "locale": "ro",
+      "batchId": "0e012737-8e70-418a-affd-85649ad50638",
+      "admittedItems": 6,
+      "completedOriginals": [
+        {
+          "fileName": "audit-ru.pdf",
+          "sha256": "53ee52dfaa4347710d59bfa954eefaa55b290fe0a12d57235a4ae43699ae3ef0",
+          "documentId": "cfda6396-e485-43e9-a482-4ede2a9f66dd",
+          "sourceId": "cb90d4e5-9a85-4dc5-bc54-bdff6e3b53b2"
+        },
+        {
+          "fileName": "tabel-ro.docx",
+          "sha256": "2174bcbe2f50b640c29e3e2fb8ce726a476d13eaa356599365a86b22074911f3",
+          "documentId": "4752d23a-52e7-4336-9391-63aa640931b6",
+          "sourceId": "d96f25d1-49b4-4ddf-9f4a-d31be03bd5ef"
+        },
+        {
+          "fileName": "resume-ru-ro.docx",
+          "sha256": "691fee3de31e7d1afa0ea65c504a57f4f8a4d4f858dfae730b1e786b34bde39c",
+          "documentId": "936474a8-981c-46f7-a519-92dda67d63d9",
+          "sourceId": "2235b556-d386-4f6e-a8b4-ce6c2aa84061"
+        }
+      ],
+      "syntheticTransportInterruption": true
+    },
+    {
+      "locale": "ru",
+      "batchId": "a246e042-4580-4b73-a5ef-a9aaae406ce7",
+      "admittedItems": 6,
+      "completedOriginals": [
+        {
+          "fileName": "audit-ru.pdf",
+          "sha256": "60596b9b11a2a453782a057b811f1221a9ddeec09acf8ddf40cdaf494f17eb6d",
+          "documentId": "3f890a33-5cea-47d9-9817-0d430827e1ee",
+          "sourceId": "8ece18cb-be09-4942-8dce-2ea378b612c9"
+        },
+        {
+          "fileName": "tabel-ro.docx",
+          "sha256": "ab4f68cb0841316b2c1b12ce549796c5457ff887bf6adbd0957f3c9065cbaeba",
+          "documentId": "fbe8146a-ee68-496b-b956-a70245da09b1",
+          "sourceId": "efbdbfb4-d68a-4276-9c59-ae0d5e213e2b"
+        },
+        {
+          "fileName": "resume-ru-ro.docx",
+          "sha256": "6c6482690b1460a273bf6432c83bd3d6988591d55b9d0b25fa88542220f0d3b9",
+          "documentId": "53245fff-5ec5-4717-a0f9-a3b766e30460",
+          "sourceId": "c564a5bc-ede3-4f70-8509-988376339393"
+        }
+      ],
+      "syntheticTransportInterruption": true
+    }
+  ]
+}
