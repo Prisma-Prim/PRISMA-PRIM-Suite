@@ -1,0 +1,205 @@
+{
+  "kind": "actual_native_execution_on_fictional_prepared_examples",
+  "issue": 1452,
+  "pullRequest": 1470,
+  "executedSource": "87c6946bc23bae08f98ae43c5fedb8a8be1580eb",
+  "executedTree": "7fea3681def9b8e55049937df00bcd9b362c3981",
+  "priorProof": "81f82a915ff590042406c527599168954ba4542f",
+  "native": {
+    "files": 2,
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0
+  },
+  "cases": [
+    {
+      "owner": 1439,
+      "source": "561ddb22c7bd7f5e9f5c6271e0ee0edba3bfe8d4",
+      "scope": "Case-scoped linked-auditor eligibility independent of name filter and page boundaries"
+    },
+    {
+      "owner": 1467,
+      "source": "d0ce8e7d27f9048358ccd8764d13cf6ab4871f71",
+      "scope": "Clear protected history and source preview on denied reads while preserving the editable draft"
+    }
+  ],
+  "journeys": [
+    {
+      "journey": "certification-team-selection",
+      "startedAt": "2026-11-18T19:50:56.291Z",
+      "finishedAt": "2026-11-18T19:52:33.934Z",
+      "status": "passed",
+      "exitCode": 0,
+      "tests": {
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "journey": "certification-stage-preparation",
+      "startedAt": "2026-11-18T19:52:42.525Z",
+      "finishedAt": "2026-11-18T19:54:42.377Z",
+      "status": "passed",
+      "exitCode": 0,
+      "tests": {
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "journey": "local-audit-pilot",
+      "startedAt": "2026-11-18T19:54:52.037Z",
+      "finishedAt": "2026-11-18T19:57:53.363Z",
+      "status": "passed",
+      "exitCode": 0,
+      "tests": {
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0
+      }
+    }
+  ],
+  "captures": [
+    {
+      "file": "desktop-ro-team-linked-auditor.png",
+      "sha256": "e18db56c4eaf59baf7f7833381520084781d7abcb2fd637882487f745574831a",
+      "locale": "ro",
+      "viewport": "desktop"
+    },
+    {
+      "file": "narrow-ru-team-linked-auditor.png",
+      "sha256": "2ae31fdb21c485ba5574ac2b3f05044357f533d57d22fc776fe9791153c5e1e8",
+      "locale": "ru",
+      "viewport": "narrow"
+    },
+    {
+      "file": "desktop-ro-stage-edited-plan.png",
+      "sha256": "d64790c256e629794a78ff1d9533646a09ec5d6bd47744f97579f1e3d89b746e",
+      "locale": "ro",
+      "viewport": "desktop"
+    },
+    {
+      "file": "desktop-ro-stage-edited-report.png",
+      "sha256": "6369a6f278df8be194f98deae92df8388b63fb535d461af74ce3a3f6deb2d21c",
+      "locale": "ro",
+      "viewport": "desktop"
+    },
+    {
+      "file": "narrow-ru-stage-edited-plan.png",
+      "sha256": "77d5bc5198de0c22642d6e255ff6f3d00da79d808751541d94bb3763f00c90e2",
+      "locale": "ru",
+      "viewport": "narrow"
+    },
+    {
+      "file": "narrow-ru-stage-edited-report.png",
+      "sha256": "b798b26d07f45d5f5c709c39bb2a020aea0e50986d8caada3dea2ad5032626fd",
+      "locale": "ru",
+      "viewport": "narrow"
+    },
+    {
+      "file": "desktop-ro-pilot-guide.png",
+      "sha256": "6a609ca9992f442ef79e07f966bdcd4b51e5e89d9ea1587a76845179d2c32a0b",
+      "locale": "ro",
+      "viewport": "desktop"
+    },
+    {
+      "file": "narrow-ru-pilot-guide.png",
+      "sha256": "dc260f3a4ef3826674287e508422cd236cf6ca212626e2434e5f89588d671d7d",
+      "locale": "ru",
+      "viewport": "narrow"
+    }
+  ],
+  "nativePilotOutcomes": [
+    {
+      "schema": "prisma-prim-combined-audit-outcome/v1",
+      "locale": "ro",
+      "fixture": "fictional",
+      "caseId": "7039c77d-b679-4d76-9d6d-e6a6c92495a5",
+      "runId": "6371eb86-bc04-425f-814a-c5a860b87bf3",
+      "freshRunId": "0d2be4bf-a4ac-4835-bc3f-ec767e1011e6",
+      "exactSource": {
+        "documentId": "1ed0829c-52c4-4a11-ab50-e647745db09c",
+        "documentVersionId": "4bd8cfc4-22f4-45e5-af3e-e7939a677916",
+        "representationId": "034f2e5e-64d8-4761-83e0-49ce26421dd9",
+        "caseId": "7039c77d-b679-4d76-9d6d-e6a6c92495a5",
+        "attachmentId": "5f1a830b-06a6-4184-908d-4dd1df7ae654"
+      },
+      "originalSha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab",
+      "supplementarySha256": "953408e3c0ac6c0754d581edd0416cc676a262bcf31d55258647d34c48c294f2",
+      "registerSha256": "2c1e51a3251b0ac97699add13cc5ec7ffd5bc0e9a5ab4b70c955448864b79dc3",
+      "certificateSha256": "3447c94cee51cbc7f63140462ee1e90158d0257b3b806666b5e4c4c3311c5b6b",
+      "certificateNumber": "QUAL-7039c77d",
+      "status": "certified",
+      "boundaries": [
+        "local-demo identities",
+        "synthetic malware scanner",
+        "lost review receipt"
+      ],
+      "modelCalls": 0,
+      "privatePilotQualified": false,
+      "productionQualified": false
+    },
+    {
+      "schema": "prisma-prim-combined-audit-outcome/v1",
+      "locale": "ru",
+      "fixture": "fictional",
+      "caseId": "fbf95b3a-c9d5-49a8-9203-d6f33fae534c",
+      "runId": "7afd10de-006b-4a96-bab4-09342f7cfe49",
+      "freshRunId": "0de5d1c9-78af-49b8-9d87-b7a758faec07",
+      "exactSource": {
+        "documentId": "c38229b5-1b3d-45a0-9b2a-047dc9a06249",
+        "documentVersionId": "13e5d242-ec7d-4426-9be6-6c45966a8daf",
+        "representationId": "23a6666e-c5b0-49c9-92d2-cb36463f4404",
+        "caseId": "fbf95b3a-c9d5-49a8-9203-d6f33fae534c",
+        "attachmentId": "a112adf4-537c-4fb1-94cd-7b1391e1fcc8"
+      },
+      "originalSha256": "bee090bd09f5c884f9248dfaf103b85f4cc669e54f739cb6b5f0974c43125eab",
+      "supplementarySha256": "aaf7cabf9fa6bfb16ae20756bd1a8fd3a2fc83aec9f0d56cb76afac502182f8a",
+      "registerSha256": "f4f8793c9debd32fd845f61b5dd032e513e39652f1334e63f983e6793fe6254f",
+      "certificateSha256": "ec566208882af8c821622bbddff3ab0a7ecfc258ddfe345b736d7a48923d520d",
+      "certificateNumber": "QUAL-fbf95b3a",
+      "status": "certified",
+      "boundaries": [
+        "local-demo identities",
+        "synthetic malware scanner",
+        "lost review receipt"
+      ],
+      "modelCalls": 0,
+      "privatePilotQualified": false,
+      "productionQualified": false
+    }
+  ],
+  "nativeStageDrafts": [
+    {
+      "dataKind": "fictional",
+      "locale": "ro",
+      "caseId": "6986f980-2945-4755-861f-b671102be893",
+      "run1": "957264b5-e6d4-4644-8719-af8ad10a152a",
+      "run2": "070c2403-dfde-445f-b4e8-915033dcdb01",
+      "sourceId": "ab369df8-38e8-47a0-9de8-211d60d39abc",
+      "sourceVersionId": "a0e1f815-c1e5-4583-96c7-49ad7c01916f",
+      "originalSha256": "e0e7c3d9930246b09d7e6b2f68a0d808a9b0cbe59b48cb1b23ee5db0d7d2f23a",
+      "scope": "Producție de lactate — ajustat explicit de auditor",
+      "summary": "Ручной текст аудитора.\n\nContext citat din surse — date din dosar verificate de o persoană, fără concluzii de audit\nDomeniu: «Producție de lactate — verificat»\nVerificare umană: Ada Ionescu · 2026-11-18T19:54:11.078Z · r1\nFictional bilingual scope source · domeniu-область.docx · v1 · a0e1f815-c1e5-4583-96c7-49ad7c01916f · word/document.xml#paragraph:1\n«Producție de lactate»\nДополнение аудитора после проверки.",
+      "nativeStage2Revision": 17
+    },
+    {
+      "dataKind": "fictional",
+      "locale": "ru",
+      "caseId": "72dfa0f9-7b1d-4221-af28-4db90ca2ac92",
+      "run1": "9f357adf-77e8-480b-8c02-07f2b41e2d82",
+      "run2": "a0644b9f-647f-44cd-a860-f876ded03313",
+      "sourceId": "91687a75-d4eb-44f1-ac02-3c6467204e4e",
+      "sourceVersionId": "8f98b1cf-545f-468f-b1a2-233196d629c4",
+      "originalSha256": "c32446adce45d6d38abfb46fa424d91aead9a00fbcfbde8fe1095aebf0c76812",
+      "scope": "Producție de lactate — ajustat explicit de auditor",
+      "summary": "Ручной текст аудитора.\n\nЦитируемый контекст источников — данные досье, проверенные человеком, без выводов аудита\nОбласть: «Producție de lactate — verificat»\nПроверка человеком: Ada Ionescu · 2026-11-18T19:54:34.603Z · r1\nFictional bilingual scope source · domeniu-область.docx · v1 · 8f98b1cf-545f-468f-b1a2-233196d629c4 · word/document.xml#paragraph:1\n«Producție de lactate»\nДополнение аудитора после проверки.",
+      "nativeStage2Revision": 17
+    }
+  ]
+}
