@@ -1,0 +1,1840 @@
+{
+  "schema": "fictional-local-ocr-comparison/v1",
+  "kind": "actual_inference_on_fictional_prepared_examples",
+  "sourceInputHashes": {
+    "benchmark.py": "c711af4cf2ed38183e286cba6ef0bc3d8b4859970cbf3a27e2594af4d9677151",
+    "fixtures.py": "bb5393b5c4c5917953ba4600f83a1e011bfe84dcc676f70d418b9709ba9ffcff",
+    "metrics.py": "589d41e7ac9e088b14982ed6cd5ee0db5feae58cdc5957723f098b62c08fca13",
+    "models.json": "0a89c9323b71f6ee7113b87b11ebc74dd365079458d91c5f7dcc6ed57630b51c",
+    "layout.py": "2eaa941a0670787363de1f4b649e66012da8f36790da75ad994853ce1bdadb8d",
+    "easy_worker.py": "2baae2d74a4ce78970d603665f9902137a845c449463d42d608a247f933477aa"
+  },
+  "invocation": [
+    "python3",
+    "tools/ocr-benchmark/benchmark.py",
+    "run",
+    "--fixtures",
+    "LOCAL_FICTIONAL_FIXTURE_DIRECTORY",
+    "--models",
+    "PINNED_LOCAL_MODEL_DIRECTORY",
+    "--output",
+    "NEW_PRIVATE_RESULT_DIRECTORY",
+    "--engines",
+    "easyocr",
+    "--repeat",
+    "1"
+  ],
+  "startedAt": "2026-11-18T11:08:08.614037+00:00",
+  "finishedAt": "2026-11-18T11:10:15.701532+00:00",
+  "machine": {
+    "platform": "Linux",
+    "release": "6.18.57",
+    "arch": "x86_64",
+    "logicalCpus": 5,
+    "python": "3.12.14"
+  },
+  "engineVersion": "tesseract 5.5.0",
+  "engineBinarySha256": "74b76a5b994adcc18be362bf64ed5118082b2401d5d9a35242e92fc4c62e2b4b",
+  "models": {
+    "easyocr": {
+      "repository": "https://github.com/JaidedAI/EasyOCR",
+      "tag": "v1.7.2",
+      "licence": "Apache-2.0",
+      "architecture": "CRAFT detection and generation-2 CNN/BiLSTM/CTC recognition",
+      "runtime": {
+        "easyocr": "1.7.2",
+        "torch": "2.9.1+cpu",
+        "torchvision": "0.24.1+cpu",
+        "opencv-python-headless": "5.1.0.95"
+      },
+      "weights": {
+        "craft_mlt_25k.pth": {
+          "sha256": "4a5efbfb48b4081100544e75e1e2b57f8de3d84f213004b14b85fd4b3748db17",
+          "url": "https://github.com/JaidedAI/EasyOCR/releases/download/pre-v1.1.6/craft_mlt_25k.zip"
+        },
+        "cyrillic_g2.pth": {
+          "sha256": "48d0f3b58f28aa64651ab1032cc2d498c4de25135829668e87c14e7a07529f29",
+          "url": "https://github.com/JaidedAI/EasyOCR/releases/download/v1.6.1/cyrillic_g2.zip"
+        },
+        "latin_g2.pth": {
+          "sha256": "aaa95be1c4a9cb3496879bed7c520886ce1164f89e026f0c54488394e74e8c55",
+          "url": "https://github.com/JaidedAI/EasyOCR/releases/download/v1.3/latin_g2.zip"
+        }
+      }
+    }
+  },
+  "fixtureManifestSha256": "b5adf09aeb0f06f9b8e4b0e677712088c74331ecfcfd62588cbc0c8df01a0a65",
+  "structureLabelsSha256": "4abc9fba4d69e85ba14e1be6fb4a7ef82e880b31689a6e046b16c05fb9506f9e",
+  "bounds": {
+    "concurrentProcesses": 1,
+    "threads": 1,
+    "perCaseSeconds": 20,
+    "runSeconds": 180,
+    "childAddressSpaceBytes": {
+      "tesseract": 1073741824,
+      "easyocr": 4294967296
+    },
+    "childFileBytes": 8388608,
+    "sourceBytes": 5242880,
+    "pixels": 8000000
+  },
+  "accounting": {
+    "planned": 10,
+    "completed": 10,
+    "failed": 0,
+    "incomplete": 0
+  },
+  "results": [
+    {
+      "run": 1,
+      "engine": "easyocr",
+      "case": "ro-clean",
+      "language": "ro",
+      "fixtureSha256": "ab91d8375577176b56a68e9a8aa7999ed49c2fcdf953c0057b1ed1a79da7a433",
+      "unsupported": [
+        "diagram_relationships",
+        "stamp_authenticity",
+        "semantic_table_merge_reconstruction"
+      ],
+      "status": "completed",
+      "exitCode": 0,
+      "wallSeconds": 15.11001339700124,
+      "sampledPeakRssBytes": 1092595712,
+      "rssSamplingSeconds": 0.02,
+      "childCpuSeconds": 15.019088,
+      "automaticLayout": {
+        "schema": "automatic-ruled-table-proposals/v1",
+        "tables": [],
+        "preprocessing": {
+          "originalSize": [
+            1100,
+            1400
+          ],
+          "clockwiseDegrees": 0,
+          "originalToProcessed": [
+            1,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "ruleRemoval": true,
+          "orientationPolicy": "ink-axis-clockwise-90-only",
+          "detectorCanvasSize": 960,
+          "detectorMagnification": 1.0,
+          "unsupported": [
+            "180_degree_disambiguation",
+            "unruled_tables",
+            "semantic_headers",
+            "diagram_relationships"
+          ]
+        }
+      },
+      "text": {
+        "expected": 130,
+        "observed": 128,
+        "edits": 3,
+        "cer": 0.023076923076923078
+      },
+      "critical": {
+        "expected": 2,
+        "matched": 2,
+        "missing": 0,
+        "recall": 1.0
+      },
+      "cells": {
+        "expected": 0,
+        "observed": 0,
+        "exact": 0,
+        "missingOrWrong": 0,
+        "accuracy": null,
+        "wordsOutsideLabelledCells": 6,
+        "alignedText": []
+      },
+      "observedText": "Dosar fictiv Știință și producție Organizație: Exemplu Fictiv Cod fiscal: 0012345678901 Data auditului: 18.11.2026 ISO 9001.2015",
+      "words": [
+        {
+          "text": "Dosar fictiv",
+          "box": [
+            47,
+            68,
+            165,
+            33
+          ]
+        },
+        {
+          "text": "Știință și producție",
+          "box": [
+            250,
+            67,
+            272,
+            41
+          ]
+        },
+        {
+          "text": "Organizație: Exemplu Fictiv",
+          "box": [
+            46,
+            142,
+            391,
+            38
+          ]
+        },
+        {
+          "text": "Cod fiscal: 0012345678901",
+          "box": [
+            47,
+            219,
+            389,
+            33
+          ]
+        },
+        {
+          "text": "Data auditului: 18.11.2026",
+          "box": [
+            47,
+            292,
+            383,
+            33
+          ]
+        },
+        {
+          "text": "ISO 9001.2015",
+          "box": [
+            44,
+            368,
+            217,
+            33
+          ]
+        }
+      ],
+      "structure": {
+        "expectedTables": 0,
+        "observedTables": 0,
+        "matchedTables": 0,
+        "missedTables": 0,
+        "extraTables": 0,
+        "expectedCells": 0,
+        "observedCells": 0,
+        "matchedCells": 0,
+        "correctAssignments": 0,
+        "correctMerges": 0,
+        "expectedSpanningHeaders": 0,
+        "correctSpanningHeaders": 0,
+        "exactPlacedText": 0,
+        "missedCells": 0,
+        "extraCells": 0,
+        "wrongAssignments": 0,
+        "wrongMerges": 0
+      },
+      "qualityStatus": "literal_mismatch"
+    },
+    {
+      "run": 1,
+      "engine": "easyocr",
+      "case": "ro-grid-merged",
+      "language": "ro",
+      "fixtureSha256": "280fca185ef43d6a909c6963062e1e2059dce5871632389c94bf6531aaae13e7",
+      "unsupported": [
+        "diagram_relationships",
+        "stamp_authenticity",
+        "semantic_table_merge_reconstruction"
+      ],
+      "status": "completed",
+      "exitCode": 0,
+      "wallSeconds": 13.267964532000406,
+      "sampledPeakRssBytes": 1098993664,
+      "rssSamplingSeconds": 0.02,
+      "childCpuSeconds": 13.256656000000001,
+      "automaticLayout": {
+        "schema": "automatic-ruled-table-proposals/v1",
+        "tables": [
+          {
+            "box": [
+              40,
+              60,
+              1020,
+              270
+            ],
+            "cells": [
+              {
+                "box": [
+                  40,
+                  60,
+                  1020,
+                  90
+                ],
+                "row": 0,
+                "column": 0,
+                "rowSpan": 1,
+                "columnSpan": 2,
+                "text": "Dosar fictiv Știință și producție",
+                "kind": "spanning_header"
+              },
+              {
+                "box": [
+                  40,
+                  150,
+                  510,
+                  90
+                ],
+                "row": 1,
+                "column": 0,
+                "rowSpan": 1,
+                "columnSpan": 1,
+                "text": "Cod fiscal",
+                "kind": "cell"
+              },
+              {
+                "box": [
+                  550,
+                  150,
+                  510,
+                  90
+                ],
+                "row": 1,
+                "column": 1,
+                "rowSpan": 1,
+                "columnSpan": 1,
+                "text": "0012345678901",
+                "kind": "cell"
+              },
+              {
+                "box": [
+                  40,
+                  240,
+                  510,
+                  90
+                ],
+                "row": 2,
+                "column": 0,
+                "rowSpan": 1,
+                "columnSpan": 1,
+                "text": "Data auditului",
+                "kind": "cell"
+              },
+              {
+                "box": [
+                  550,
+                  240,
+                  510,
+                  90
+                ],
+                "row": 2,
+                "column": 1,
+                "rowSpan": 1,
+                "columnSpan": 1,
+                "text": "18.11.2026",
+                "kind": "cell"
+              }
+            ]
+          }
+        ],
+        "preprocessing": {
+          "originalSize": [
+            1100,
+            1400
+          ],
+          "clockwiseDegrees": 0,
+          "originalToProcessed": [
+            1,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "ruleRemoval": true,
+          "orientationPolicy": "ink-axis-clockwise-90-only",
+          "detectorCanvasSize": 960,
+          "detectorMagnification": 1.0,
+          "unsupported": [
+            "180_degree_disambiguation",
+            "unruled_tables",
+            "semantic_headers",
+            "diagram_relationships"
+          ]
+        }
+      },
+      "text": {
+        "expected": 86,
+        "observed": 84,
+        "edits": 2,
+        "cer": 0.023255813953488372
+      },
+      "critical": {
+        "expected": 2,
+        "matched": 2,
+        "missing": 0,
+        "recall": 1.0
+      },
+      "cells": {
+        "expected": 5,
+        "observed": 5,
+        "exact": 4,
+        "missingOrWrong": 1,
+        "accuracy": 0.8,
+        "wordsOutsideLabelledCells": 0,
+        "alignedText": [
+          "Dosar fictiv Știință și producție",
+          "Cod fiscal",
+          "0012345678901",
+          "Data auditului",
+          "18.11.2026"
+        ]
+      },
+      "observedText": "Dosar fictiv Știință și producție Cod fiscal 0012345678901 Data auditului 18.11.2026",
+      "words": [
+        {
+          "text": "Dosar fictiv",
+          "box": [
+            50,
+            82,
+            164,
+            33
+          ]
+        },
+        {
+          "text": "Știință și producție",
+          "box": [
+            250,
+            81,
+            275,
+            42
+          ]
+        },
+        {
+          "text": "Cod fiscal",
+          "box": [
+            47,
+            173,
+            144,
+            33
+          ]
+        },
+        {
+          "text": "0012345678901",
+          "box": [
+            558,
+            173,
+            237,
+            33
+          ]
+        },
+        {
+          "text": "Data auditului",
+          "box": [
+            50,
+            263,
+            205,
+            33
+          ]
+        },
+        {
+          "text": "18.11.2026",
+          "box": [
+            558,
+            263,
+            167,
+            33
+          ]
+        }
+      ],
+      "structure": {
+        "expectedTables": 1,
+        "observedTables": 1,
+        "matchedTables": 1,
+        "missedTables": 0,
+        "extraTables": 0,
+        "expectedCells": 5,
+        "observedCells": 5,
+        "matchedCells": 5,
+        "correctAssignments": 5,
+        "correctMerges": 5,
+        "expectedSpanningHeaders": 1,
+        "correctSpanningHeaders": 1,
+        "exactPlacedText": 4,
+        "missedCells": 0,
+        "extraCells": 0,
+        "wrongAssignments": 0,
+        "wrongMerges": 0
+      },
+      "qualityStatus": "literal_mismatch"
+    },
+    {
+      "run": 1,
+      "engine": "easyocr",
+      "case": "ro-rotated",
+      "language": "ro",
+      "fixtureSha256": "f3c0388ff79f955e5a5c0e2c7935c4a93f0acfc5e7c1aa68222c1456b21e44fe",
+      "unsupported": [
+        "diagram_relationships",
+        "stamp_authenticity",
+        "semantic_table_merge_reconstruction"
+      ],
+      "status": "completed",
+      "exitCode": 0,
+      "wallSeconds": 14.256476672000645,
+      "sampledPeakRssBytes": 1099550720,
+      "rssSamplingSeconds": 0.02,
+      "childCpuSeconds": 14.226434999999999,
+      "automaticLayout": {
+        "schema": "automatic-ruled-table-proposals/v1",
+        "tables": [],
+        "preprocessing": {
+          "originalSize": [
+            1400,
+            1100
+          ],
+          "clockwiseDegrees": 90,
+          "originalToProcessed": [
+            0,
+            -1,
+            1100,
+            1,
+            0,
+            0
+          ],
+          "ruleRemoval": true,
+          "orientationPolicy": "ink-axis-clockwise-90-only",
+          "detectorCanvasSize": 960,
+          "detectorMagnification": 1.0,
+          "unsupported": [
+            "180_degree_disambiguation",
+            "unruled_tables",
+            "semantic_headers",
+            "diagram_relationships"
+          ]
+        }
+      },
+      "text": {
+        "expected": 130,
+        "observed": 128,
+        "edits": 3,
+        "cer": 0.023076923076923078
+      },
+      "critical": {
+        "expected": 2,
+        "matched": 2,
+        "missing": 0,
+        "recall": 1.0
+      },
+      "cells": {
+        "expected": 0,
+        "observed": 0,
+        "exact": 0,
+        "missingOrWrong": 0,
+        "accuracy": null,
+        "wordsOutsideLabelledCells": 6,
+        "alignedText": []
+      },
+      "observedText": "Dosar fictiv Știință și producție Organizație: Exemplu Fictiv Cod fiscal: 0012345678901 Data auditului: 18.11.2026 ISO 9001.2015",
+      "words": [
+        {
+          "text": "Dosar fictiv",
+          "box": [
+            68,
+            888,
+            33,
+            165
+          ]
+        },
+        {
+          "text": "Știință și producție",
+          "box": [
+            67,
+            578,
+            41,
+            272
+          ]
+        },
+        {
+          "text": "Organizație: Exemplu Fictiv",
+          "box": [
+            142,
+            663,
+            38,
+            391
+          ]
+        },
+        {
+          "text": "Cod fiscal: 0012345678901",
+          "box": [
+            219,
+            664,
+            33,
+            389
+          ]
+        },
+        {
+          "text": "Data auditului: 18.11.2026",
+          "box": [
+            292,
+            670,
+            33,
+            383
+          ]
+        },
+        {
+          "text": "ISO 9001.2015",
+          "box": [
+            368,
+            839,
+            33,
+            217
+          ]
+        }
+      ],
+      "structure": {
+        "expectedTables": 0,
+        "observedTables": 0,
+        "matchedTables": 0,
+        "missedTables": 0,
+        "extraTables": 0,
+        "expectedCells": 0,
+        "observedCells": 0,
+        "matchedCells": 0,
+        "correctAssignments": 0,
+        "correctMerges": 0,
+        "expectedSpanningHeaders": 0,
+        "correctSpanningHeaders": 0,
+        "exactPlacedText": 0,
+        "missedCells": 0,
+        "extraCells": 0,
+        "wrongAssignments": 0,
+        "wrongMerges": 0
+      },
+      "qualityStatus": "literal_mismatch"
+    },
+    {
+      "run": 1,
+      "engine": "easyocr",
+      "case": "ro-noisy-low-resolution",
+      "language": "ro",
+      "fixtureSha256": "7fc246a54d9e758efbbb006b7a182173fd6a5eb3ee1038f1db39dfd947a14ea5",
+      "unsupported": [
+        "diagram_relationships",
+        "stamp_authenticity",
+        "semantic_table_merge_reconstruction"
+      ],
+      "status": "completed",
+      "exitCode": 0,
+      "wallSeconds": 6.959100674999718,
+      "sampledPeakRssBytes": 895045632,
+      "rssSamplingSeconds": 0.02,
+      "childCpuSeconds": 6.947983999999998,
+      "automaticLayout": {
+        "schema": "automatic-ruled-table-proposals/v1",
+        "tables": [],
+        "preprocessing": {
+          "originalSize": [
+            385,
+            490
+          ],
+          "clockwiseDegrees": 0,
+          "originalToProcessed": [
+            1,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "ruleRemoval": true,
+          "orientationPolicy": "ink-axis-clockwise-90-only",
+          "detectorCanvasSize": 960,
+          "detectorMagnification": 1.0,
+          "unsupported": [
+            "180_degree_disambiguation",
+            "unruled_tables",
+            "semantic_headers",
+            "diagram_relationships"
+          ]
+        }
+      },
+      "text": {
+        "expected": 130,
+        "observed": 124,
+        "edits": 28,
+        "cer": 0.2153846153846154
+      },
+      "critical": {
+        "expected": 2,
+        "matched": 0,
+        "missing": 2,
+        "recall": 0.0
+      },
+      "cells": {
+        "expected": 0,
+        "observed": 0,
+        "exact": 0,
+        "missingOrWrong": 0,
+        "accuracy": null,
+        "wordsOutsideLabelledCells": 8,
+        "alignedText": []
+      },
+      "observedText": "Dosar fictiv: Stiinta proquctie: Orgahizahie: Exemplu Fictiv Cod fiscal: 00!234557990i Data auditului; 1e!1?026 50 9001-2013",
+      "words": [
+        {
+          "text": "Dosar fictiv:",
+          "box": [
+            17,
+            23,
+            62,
+            16
+          ]
+        },
+        {
+          "text": "Stiinta",
+          "box": [
+            87,
+            25,
+            36,
+            14
+          ]
+        },
+        {
+          "text": "proquctie:",
+          "box": [
+            133,
+            25,
+            52,
+            14
+          ]
+        },
+        {
+          "text": "Orgahizahie: Exemplu Fictiv",
+          "box": [
+            17,
+            51,
+            138,
+            14
+          ]
+        },
+        {
+          "text": "Cod fiscal:",
+          "box": [
+            15,
+            77,
+            56,
+            14
+          ]
+        },
+        {
+          "text": "00!234557990i",
+          "box": [
+            70,
+            72,
+            85,
+            21
+          ]
+        },
+        {
+          "text": "Data auditului; 1e!1?026",
+          "box": [
+            15,
+            101,
+            138,
+            16
+          ]
+        },
+        {
+          "text": "50 9001-2013",
+          "box": [
+            19,
+            129,
+            74,
+            14
+          ]
+        }
+      ],
+      "structure": {
+        "expectedTables": 0,
+        "observedTables": 0,
+        "matchedTables": 0,
+        "missedTables": 0,
+        "extraTables": 0,
+        "expectedCells": 0,
+        "observedCells": 0,
+        "matchedCells": 0,
+        "correctAssignments": 0,
+        "correctMerges": 0,
+        "expectedSpanningHeaders": 0,
+        "correctSpanningHeaders": 0,
+        "exactPlacedText": 0,
+        "missedCells": 0,
+        "extraCells": 0,
+        "wrongAssignments": 0,
+        "wrongMerges": 0
+      },
+      "qualityStatus": "literal_mismatch"
+    },
+    {
+      "run": 1,
+      "engine": "easyocr",
+      "case": "ro-stamp-diagram",
+      "language": "ro",
+      "fixtureSha256": "32d96fb3bd7659d878201c16a50db966700850598afd93c6b301a7f48eb7a473",
+      "unsupported": [
+        "diagram_relationships",
+        "stamp_authenticity",
+        "semantic_table_merge_reconstruction"
+      ],
+      "status": "completed",
+      "exitCode": 0,
+      "wallSeconds": 13.664217171999553,
+      "sampledPeakRssBytes": 1097027584,
+      "rssSamplingSeconds": 0.02,
+      "childCpuSeconds": 13.652581000000001,
+      "automaticLayout": {
+        "schema": "automatic-ruled-table-proposals/v1",
+        "tables": [],
+        "preprocessing": {
+          "originalSize": [
+            1100,
+            1400
+          ],
+          "clockwiseDegrees": 0,
+          "originalToProcessed": [
+            1,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "ruleRemoval": true,
+          "orientationPolicy": "ink-axis-clockwise-90-only",
+          "detectorCanvasSize": 960,
+          "detectorMagnification": 1.0,
+          "unsupported": [
+            "180_degree_disambiguation",
+            "unruled_tables",
+            "semantic_headers",
+            "diagram_relationships"
+          ]
+        }
+      },
+      "text": {
+        "expected": 173,
+        "observed": 167,
+        "edits": 7,
+        "cer": 0.04046242774566474
+      },
+      "critical": {
+        "expected": 2,
+        "matched": 2,
+        "missing": 0,
+        "recall": 1.0
+      },
+      "cells": {
+        "expected": 0,
+        "observed": 0,
+        "exact": 0,
+        "missingOrWrong": 0,
+        "accuracy": null,
+        "wordsOutsideLabelledCells": 10,
+        "alignedText": []
+      },
+      "observedText": "Dosar fictiv Știință și producție Organizație: Exemplu Fictiv Cod fiscal: 0012345678901 Data auditului: 18.11.2026 ISO 9001.2015 COPIE FICTIVĂ Recepție Control Livrare",
+      "words": [
+        {
+          "text": "Dosar fictiv",
+          "box": [
+            47,
+            68,
+            165,
+            33
+          ]
+        },
+        {
+          "text": "Știință și producție",
+          "box": [
+            250,
+            67,
+            272,
+            41
+          ]
+        },
+        {
+          "text": "Organizație: Exemplu Fictiv",
+          "box": [
+            46,
+            142,
+            391,
+            38
+          ]
+        },
+        {
+          "text": "Cod fiscal: 0012345678901",
+          "box": [
+            47,
+            219,
+            389,
+            33
+          ]
+        },
+        {
+          "text": "Data auditului: 18.11.2026",
+          "box": [
+            47,
+            292,
+            383,
+            33
+          ]
+        },
+        {
+          "text": "ISO 9001.2015",
+          "box": [
+            44,
+            368,
+            217,
+            33
+          ]
+        },
+        {
+          "text": "COPIE FICTIVĂ",
+          "box": [
+            56,
+            499,
+            179,
+            33
+          ]
+        },
+        {
+          "text": "Recepție",
+          "box": [
+            47,
+            651,
+            130,
+            33
+          ]
+        },
+        {
+          "text": "Control",
+          "box": [
+            210,
+            651,
+            109,
+            30
+          ]
+        },
+        {
+          "text": "Livrare",
+          "box": [
+            350,
+            648,
+            104,
+            33
+          ]
+        }
+      ],
+      "structure": {
+        "expectedTables": 0,
+        "observedTables": 0,
+        "matchedTables": 0,
+        "missedTables": 0,
+        "extraTables": 0,
+        "expectedCells": 0,
+        "observedCells": 0,
+        "matchedCells": 0,
+        "correctAssignments": 0,
+        "correctMerges": 0,
+        "expectedSpanningHeaders": 0,
+        "correctSpanningHeaders": 0,
+        "exactPlacedText": 0,
+        "missedCells": 0,
+        "extraCells": 0,
+        "wrongAssignments": 0,
+        "wrongMerges": 0
+      },
+      "qualityStatus": "literal_mismatch"
+    },
+    {
+      "run": 1,
+      "engine": "easyocr",
+      "case": "ru-clean",
+      "language": "ru",
+      "fixtureSha256": "a2a2fb860739f5da84519cb007916e0af03a60a34f310e8025af54276ff93933",
+      "unsupported": [
+        "diagram_relationships",
+        "stamp_authenticity",
+        "semantic_table_merge_reconstruction"
+      ],
+      "status": "completed",
+      "exitCode": 0,
+      "wallSeconds": 13.598642078999546,
+      "sampledPeakRssBytes": 1085280256,
+      "rssSamplingSeconds": 0.02,
+      "childCpuSeconds": 13.547756,
+      "automaticLayout": {
+        "schema": "automatic-ruled-table-proposals/v1",
+        "tables": [],
+        "preprocessing": {
+          "originalSize": [
+            1100,
+            1400
+          ],
+          "clockwiseDegrees": 0,
+          "originalToProcessed": [
+            1,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "ruleRemoval": true,
+          "orientationPolicy": "ink-axis-clockwise-90-only",
+          "detectorCanvasSize": 960,
+          "detectorMagnification": 1.0,
+          "unsupported": [
+            "180_degree_disambiguation",
+            "unruled_tables",
+            "semantic_headers",
+            "diagram_relationships"
+          ]
+        }
+      },
+      "text": {
+        "expected": 123,
+        "observed": 121,
+        "edits": 2,
+        "cer": 0.016260162601626018
+      },
+      "critical": {
+        "expected": 2,
+        "matched": 2,
+        "missing": 0,
+        "recall": 1.0
+      },
+      "cells": {
+        "expected": 0,
+        "observed": 0,
+        "exact": 0,
+        "missingOrWrong": 0,
+        "accuracy": null,
+        "wordsOutsideLabelledCells": 6,
+        "alignedText": []
+      },
+      "observedText": "Вымышленное дело производство Организация: ООО Пример Фискальный код: 0012345678901 Дата аудита: 18.11.2026 ISO 9001:2015",
+      "words": [
+        {
+          "text": "Вымышленное дело",
+          "box": [
+            50,
+            73,
+            302,
+            31
+          ]
+        },
+        {
+          "text": "производство",
+          "box": [
+            388,
+            73,
+            211,
+            31
+          ]
+        },
+        {
+          "text": "Организация: ООО Пример",
+          "box": [
+            46,
+            142,
+            409,
+            38
+          ]
+        },
+        {
+          "text": "Фискальный код: 0012345678901",
+          "box": [
+            47,
+            219,
+            500,
+            33
+          ]
+        },
+        {
+          "text": "Дата аудита: 18.11.2026",
+          "box": [
+            46,
+            291,
+            374,
+            41
+          ]
+        },
+        {
+          "text": "ISO 9001:2015",
+          "box": [
+            44,
+            368,
+            217,
+            33
+          ]
+        }
+      ],
+      "structure": {
+        "expectedTables": 0,
+        "observedTables": 0,
+        "matchedTables": 0,
+        "missedTables": 0,
+        "extraTables": 0,
+        "expectedCells": 0,
+        "observedCells": 0,
+        "matchedCells": 0,
+        "correctAssignments": 0,
+        "correctMerges": 0,
+        "expectedSpanningHeaders": 0,
+        "correctSpanningHeaders": 0,
+        "exactPlacedText": 0,
+        "missedCells": 0,
+        "extraCells": 0,
+        "wrongAssignments": 0,
+        "wrongMerges": 0
+      },
+      "qualityStatus": "literal_mismatch"
+    },
+    {
+      "run": 1,
+      "engine": "easyocr",
+      "case": "ru-grid-merged",
+      "language": "ru",
+      "fixtureSha256": "95762b96fc437ceede25709ba07a133959122fd9d437dcf9a247f21b287fdfe8",
+      "unsupported": [
+        "diagram_relationships",
+        "stamp_authenticity",
+        "semantic_table_merge_reconstruction"
+      ],
+      "status": "completed",
+      "exitCode": 0,
+      "wallSeconds": 14.32816799200009,
+      "sampledPeakRssBytes": 1095073792,
+      "rssSamplingSeconds": 0.02,
+      "childCpuSeconds": 14.25236200000001,
+      "automaticLayout": {
+        "schema": "automatic-ruled-table-proposals/v1",
+        "tables": [
+          {
+            "box": [
+              40,
+              60,
+              1020,
+              270
+            ],
+            "cells": [
+              {
+                "box": [
+                  40,
+                  60,
+                  1020,
+                  90
+                ],
+                "row": 0,
+                "column": 0,
+                "rowSpan": 1,
+                "columnSpan": 2,
+                "text": "Вымышленное дело производство",
+                "kind": "spanning_header"
+              },
+              {
+                "box": [
+                  40,
+                  150,
+                  510,
+                  90
+                ],
+                "row": 1,
+                "column": 0,
+                "rowSpan": 1,
+                "columnSpan": 1,
+                "text": "Фискальный код",
+                "kind": "cell"
+              },
+              {
+                "box": [
+                  550,
+                  150,
+                  510,
+                  90
+                ],
+                "row": 1,
+                "column": 1,
+                "rowSpan": 1,
+                "columnSpan": 1,
+                "text": "0012345678901",
+                "kind": "cell"
+              },
+              {
+                "box": [
+                  40,
+                  240,
+                  510,
+                  90
+                ],
+                "row": 2,
+                "column": 0,
+                "rowSpan": 1,
+                "columnSpan": 1,
+                "text": "Дата аудита",
+                "kind": "cell"
+              },
+              {
+                "box": [
+                  550,
+                  240,
+                  510,
+                  90
+                ],
+                "row": 2,
+                "column": 1,
+                "rowSpan": 1,
+                "columnSpan": 1,
+                "text": "18.1l.2026",
+                "kind": "cell"
+              }
+            ]
+          }
+        ],
+        "preprocessing": {
+          "originalSize": [
+            1100,
+            1400
+          ],
+          "clockwiseDegrees": 0,
+          "originalToProcessed": [
+            1,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "ruleRemoval": true,
+          "orientationPolicy": "ink-axis-clockwise-90-only",
+          "detectorCanvasSize": 960,
+          "detectorMagnification": 1.0,
+          "unsupported": [
+            "180_degree_disambiguation",
+            "unruled_tables",
+            "semantic_headers",
+            "diagram_relationships"
+          ]
+        }
+      },
+      "text": {
+        "expected": 83,
+        "observed": 81,
+        "edits": 3,
+        "cer": 0.03614457831325301
+      },
+      "critical": {
+        "expected": 2,
+        "matched": 1,
+        "missing": 1,
+        "recall": 0.5
+      },
+      "cells": {
+        "expected": 5,
+        "observed": 5,
+        "exact": 3,
+        "missingOrWrong": 2,
+        "accuracy": 0.6,
+        "wordsOutsideLabelledCells": 0,
+        "alignedText": [
+          "Вымышленное дело производство",
+          "Фискальный код",
+          "0012345678901",
+          "Дата аудита",
+          "18.1l.2026"
+        ]
+      },
+      "observedText": "Вымышленное дело производство Фискальный код 0012345678901 Дата аудита 18.1l.2026",
+      "words": [
+        {
+          "text": "Вымышленное дело",
+          "box": [
+            49,
+            84,
+            304,
+            38
+          ]
+        },
+        {
+          "text": "производство",
+          "box": [
+            390,
+            83,
+            214,
+            40
+          ]
+        },
+        {
+          "text": "Фискальный код",
+          "box": [
+            46,
+            174,
+            257,
+            36
+          ]
+        },
+        {
+          "text": "0012345678901",
+          "box": [
+            558,
+            173,
+            237,
+            33
+          ]
+        },
+        {
+          "text": "Дата аудита",
+          "box": [
+            49,
+            265,
+            193,
+            38
+          ]
+        },
+        {
+          "text": "18.1l.2026",
+          "box": [
+            558,
+            263,
+            167,
+            33
+          ]
+        }
+      ],
+      "structure": {
+        "expectedTables": 1,
+        "observedTables": 1,
+        "matchedTables": 1,
+        "missedTables": 0,
+        "extraTables": 0,
+        "expectedCells": 5,
+        "observedCells": 5,
+        "matchedCells": 5,
+        "correctAssignments": 5,
+        "correctMerges": 5,
+        "expectedSpanningHeaders": 1,
+        "correctSpanningHeaders": 1,
+        "exactPlacedText": 3,
+        "missedCells": 0,
+        "extraCells": 0,
+        "wrongAssignments": 0,
+        "wrongMerges": 0
+      },
+      "qualityStatus": "literal_mismatch"
+    },
+    {
+      "run": 1,
+      "engine": "easyocr",
+      "case": "ru-rotated",
+      "language": "ru",
+      "fixtureSha256": "5fd65b933c045fe3f413e3fa78b500055ff73a40439e67bf1019176c4f694402",
+      "unsupported": [
+        "diagram_relationships",
+        "stamp_authenticity",
+        "semantic_table_merge_reconstruction"
+      ],
+      "status": "completed",
+      "exitCode": 0,
+      "wallSeconds": 13.637723069999993,
+      "sampledPeakRssBytes": 1094631424,
+      "rssSamplingSeconds": 0.02,
+      "childCpuSeconds": 13.565287999999985,
+      "automaticLayout": {
+        "schema": "automatic-ruled-table-proposals/v1",
+        "tables": [],
+        "preprocessing": {
+          "originalSize": [
+            1400,
+            1100
+          ],
+          "clockwiseDegrees": 90,
+          "originalToProcessed": [
+            0,
+            -1,
+            1100,
+            1,
+            0,
+            0
+          ],
+          "ruleRemoval": true,
+          "orientationPolicy": "ink-axis-clockwise-90-only",
+          "detectorCanvasSize": 960,
+          "detectorMagnification": 1.0,
+          "unsupported": [
+            "180_degree_disambiguation",
+            "unruled_tables",
+            "semantic_headers",
+            "diagram_relationships"
+          ]
+        }
+      },
+      "text": {
+        "expected": 123,
+        "observed": 121,
+        "edits": 2,
+        "cer": 0.016260162601626018
+      },
+      "critical": {
+        "expected": 2,
+        "matched": 2,
+        "missing": 0,
+        "recall": 1.0
+      },
+      "cells": {
+        "expected": 0,
+        "observed": 0,
+        "exact": 0,
+        "missingOrWrong": 0,
+        "accuracy": null,
+        "wordsOutsideLabelledCells": 6,
+        "alignedText": []
+      },
+      "observedText": "Вымышленное дело производство Организация: ООО Пример Фискальный код: 0012345678901 Дата аудита: 18.11.2026 ISO 9001:2015",
+      "words": [
+        {
+          "text": "Вымышленное дело",
+          "box": [
+            73,
+            748,
+            31,
+            302
+          ]
+        },
+        {
+          "text": "производство",
+          "box": [
+            73,
+            501,
+            31,
+            211
+          ]
+        },
+        {
+          "text": "Организация: ООО Пример",
+          "box": [
+            142,
+            645,
+            38,
+            409
+          ]
+        },
+        {
+          "text": "Фискальный код: 0012345678901",
+          "box": [
+            219,
+            553,
+            33,
+            500
+          ]
+        },
+        {
+          "text": "Дата аудита: 18.11.2026",
+          "box": [
+            291,
+            680,
+            41,
+            374
+          ]
+        },
+        {
+          "text": "ISO 9001:2015",
+          "box": [
+            368,
+            839,
+            33,
+            217
+          ]
+        }
+      ],
+      "structure": {
+        "expectedTables": 0,
+        "observedTables": 0,
+        "matchedTables": 0,
+        "missedTables": 0,
+        "extraTables": 0,
+        "expectedCells": 0,
+        "observedCells": 0,
+        "matchedCells": 0,
+        "correctAssignments": 0,
+        "correctMerges": 0,
+        "expectedSpanningHeaders": 0,
+        "correctSpanningHeaders": 0,
+        "exactPlacedText": 0,
+        "missedCells": 0,
+        "extraCells": 0,
+        "wrongAssignments": 0,
+        "wrongMerges": 0
+      },
+      "qualityStatus": "literal_mismatch"
+    },
+    {
+      "run": 1,
+      "engine": "easyocr",
+      "case": "ru-noisy-low-resolution",
+      "language": "ru",
+      "fixtureSha256": "12411b6a606129e6babb83ec93aaa8d145b19dfcf9be177c6069ed6d9b808bb6",
+      "unsupported": [
+        "diagram_relationships",
+        "stamp_authenticity",
+        "semantic_table_merge_reconstruction"
+      ],
+      "status": "completed",
+      "exitCode": 0,
+      "wallSeconds": 8.097489628999028,
+      "sampledPeakRssBytes": 897581056,
+      "rssSamplingSeconds": 0.02,
+      "childCpuSeconds": 8.047575000000016,
+      "automaticLayout": {
+        "schema": "automatic-ruled-table-proposals/v1",
+        "tables": [],
+        "preprocessing": {
+          "originalSize": [
+            385,
+            490
+          ],
+          "clockwiseDegrees": 0,
+          "originalToProcessed": [
+            1,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "ruleRemoval": true,
+          "orientationPolicy": "ink-axis-clockwise-90-only",
+          "detectorCanvasSize": 960,
+          "detectorMagnification": 1.0,
+          "unsupported": [
+            "180_degree_disambiguation",
+            "unruled_tables",
+            "semantic_headers",
+            "diagram_relationships"
+          ]
+        }
+      },
+      "text": {
+        "expected": 123,
+        "observed": 126,
+        "edits": 44,
+        "cer": 0.35772357723577236
+      },
+      "critical": {
+        "expected": 2,
+        "matched": 0,
+        "missing": 2,
+        "recall": 0.0
+      },
+      "cells": {
+        "expected": 0,
+        "observed": 0,
+        "exact": 0,
+        "missingOrWrong": 0,
+        "accuracy": null,
+        "wordsOutsideLabelledCells": 10,
+        "alignedText": []
+      },
+      "observedText": "Выкышленное. дело . прфизводство Организация: Обо Пример : фискальный 0012315679901 Дата 18:11 2026 5O 9001 2013 Аод \" аудита'",
+      "words": [
+        {
+          "text": "Выкышленное. дело .",
+          "box": [
+            17,
+            25,
+            108,
+            14
+          ]
+        },
+        {
+          "text": "прфизводство",
+          "box": [
+            137,
+            25,
+            76,
+            16
+          ]
+        },
+        {
+          "text": "Организация: Обо Пример :",
+          "box": [
+            17,
+            49,
+            146,
+            16
+          ]
+        },
+        {
+          "text": "фискальный",
+          "box": [
+            15,
+            77,
+            68,
+            12
+          ]
+        },
+        {
+          "text": "0012315679901",
+          "box": [
+            109,
+            76,
+            84,
+            14
+          ]
+        },
+        {
+          "text": "Дата",
+          "box": [
+            15,
+            103,
+            30,
+            14
+          ]
+        },
+        {
+          "text": "18:11 2026",
+          "box": [
+            89,
+            103,
+            60,
+            14
+          ]
+        },
+        {
+          "text": "5O 9001 2013",
+          "box": [
+            19,
+            129,
+            74,
+            14
+          ]
+        },
+        {
+          "text": "Аод \"",
+          "box": [
+            82,
+            71,
+            31,
+            23
+          ]
+        },
+        {
+          "text": "аудита'",
+          "box": [
+            43,
+            99,
+            43,
+            21
+          ]
+        }
+      ],
+      "structure": {
+        "expectedTables": 0,
+        "observedTables": 0,
+        "matchedTables": 0,
+        "missedTables": 0,
+        "extraTables": 0,
+        "expectedCells": 0,
+        "observedCells": 0,
+        "matchedCells": 0,
+        "correctAssignments": 0,
+        "correctMerges": 0,
+        "expectedSpanningHeaders": 0,
+        "correctSpanningHeaders": 0,
+        "exactPlacedText": 0,
+        "missedCells": 0,
+        "extraCells": 0,
+        "wrongAssignments": 0,
+        "wrongMerges": 0
+      },
+      "qualityStatus": "literal_mismatch"
+    },
+    {
+      "run": 1,
+      "engine": "easyocr",
+      "case": "ru-stamp-diagram",
+      "language": "ru",
+      "fixtureSha256": "5b0d78b9630de169c0868947ec09cecc6058fcab727dfd4805e514270ff33509",
+      "unsupported": [
+        "diagram_relationships",
+        "stamp_authenticity",
+        "semantic_table_merge_reconstruction"
+      ],
+      "status": "completed",
+      "exitCode": 0,
+      "wallSeconds": 14.11751165699934,
+      "sampledPeakRssBytes": 1098612736,
+      "rssSamplingSeconds": 0.02,
+      "childCpuSeconds": 14.010822999999995,
+      "automaticLayout": {
+        "schema": "automatic-ruled-table-proposals/v1",
+        "tables": [],
+        "preprocessing": {
+          "originalSize": [
+            1100,
+            1400
+          ],
+          "clockwiseDegrees": 0,
+          "originalToProcessed": [
+            1,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "ruleRemoval": true,
+          "orientationPolicy": "ink-axis-clockwise-90-only",
+          "detectorCanvasSize": 960,
+          "detectorMagnification": 1.0,
+          "unsupported": [
+            "180_degree_disambiguation",
+            "unruled_tables",
+            "semantic_headers",
+            "diagram_relationships"
+          ]
+        }
+      },
+      "text": {
+        "expected": 171,
+        "observed": 165,
+        "edits": 6,
+        "cer": 0.03508771929824561
+      },
+      "critical": {
+        "expected": 2,
+        "matched": 2,
+        "missing": 0,
+        "recall": 1.0
+      },
+      "cells": {
+        "expected": 0,
+        "observed": 0,
+        "exact": 0,
+        "missingOrWrong": 0,
+        "accuracy": null,
+        "wordsOutsideLabelledCells": 10,
+        "alignedText": []
+      },
+      "observedText": "Вымышленное дело производство Организация: ООО Пример Фискальный код: 0012345678901 Дата аудита: 18.11.2026 ISO 9001:2015 ВЫМЫШЛЕННАЯ КОПИЯ Приёмка Контроль Отгрузка",
+      "words": [
+        {
+          "text": "Вымышленное дело",
+          "box": [
+            50,
+            73,
+            302,
+            31
+          ]
+        },
+        {
+          "text": "производство",
+          "box": [
+            388,
+            73,
+            211,
+            31
+          ]
+        },
+        {
+          "text": "Организация: ООО Пример",
+          "box": [
+            46,
+            142,
+            409,
+            38
+          ]
+        },
+        {
+          "text": "Фискальный код: 0012345678901",
+          "box": [
+            47,
+            219,
+            500,
+            33
+          ]
+        },
+        {
+          "text": "Дата аудита: 18.11.2026",
+          "box": [
+            46,
+            291,
+            374,
+            41
+          ]
+        },
+        {
+          "text": "ISO 9001:2015",
+          "box": [
+            44,
+            368,
+            217,
+            33
+          ]
+        },
+        {
+          "text": "ВЫМЫШЛЕННАЯ КОПИЯ",
+          "box": [
+            56,
+            502,
+            310,
+            30
+          ]
+        },
+        {
+          "text": "Приёмка",
+          "box": [
+            45,
+            645,
+            139,
+            41
+          ]
+        },
+        {
+          "text": "Контроль",
+          "box": [
+            214,
+            646,
+            151,
+            43
+          ]
+        },
+        {
+          "text": "Отгрузка",
+          "box": [
+            398,
+            649,
+            145,
+            41
+          ]
+        }
+      ],
+      "structure": {
+        "expectedTables": 0,
+        "observedTables": 0,
+        "matchedTables": 0,
+        "missedTables": 0,
+        "extraTables": 0,
+        "expectedCells": 0,
+        "observedCells": 0,
+        "matchedCells": 0,
+        "correctAssignments": 0,
+        "correctMerges": 0,
+        "expectedSpanningHeaders": 0,
+        "correctSpanningHeaders": 0,
+        "exactPlacedText": 0,
+        "missedCells": 0,
+        "extraCells": 0,
+        "wrongAssignments": 0,
+        "wrongMerges": 0
+      },
+      "qualityStatus": "literal_mismatch"
+    }
+  ],
+  "status": "completed"
+}

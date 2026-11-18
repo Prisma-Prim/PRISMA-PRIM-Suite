@@ -1,0 +1,275 @@
+{
+  "kind": "actual_cpu_inference_on_fictional_prepared_pages",
+  "issue": 1455,
+  "codeCommit": "91dc9241e9fa420c07149a8ecf484213478fe987",
+  "admittedInferenceCalls": 60,
+  "admittedCompleted": 60,
+  "admittedFailed": 0,
+  "independentPages": 10,
+  "groups": [
+    {
+      "matrix": 1,
+      "engine": "easyocr",
+      "repetition": 1,
+      "planned": 10,
+      "completed": 10,
+      "criticalMatched": 15,
+      "criticalExpected": 20,
+      "wallSeconds": 117.75571242200022,
+      "sampledPeakRssBytes": 1099878400,
+      "literalCharacterEdits": 100,
+      "expectedCharacters": 1272,
+      "automaticStructure": {
+        "expectedTables": 2,
+        "observedTables": 2,
+        "matchedTables": 2,
+        "missedTables": 0,
+        "extraTables": 0,
+        "expectedCells": 10,
+        "observedCells": 10,
+        "matchedCells": 10,
+        "correctAssignments": 10,
+        "correctMerges": 10,
+        "expectedSpanningHeaders": 2,
+        "correctSpanningHeaders": 2,
+        "exactPlacedText": 7,
+        "missedCells": 0,
+        "extraCells": 0,
+        "wrongAssignments": 0,
+        "wrongMerges": 0
+      }
+    },
+    {
+      "matrix": 2,
+      "engine": "easyocr",
+      "repetition": 1,
+      "planned": 10,
+      "completed": 10,
+      "criticalMatched": 15,
+      "criticalExpected": 20,
+      "wallSeconds": 117.23232737100079,
+      "sampledPeakRssBytes": 1100169216,
+      "literalCharacterEdits": 100,
+      "expectedCharacters": 1272,
+      "automaticStructure": {
+        "expectedTables": 2,
+        "observedTables": 2,
+        "matchedTables": 2,
+        "missedTables": 0,
+        "extraTables": 0,
+        "expectedCells": 10,
+        "observedCells": 10,
+        "matchedCells": 10,
+        "correctAssignments": 10,
+        "correctMerges": 10,
+        "expectedSpanningHeaders": 2,
+        "correctSpanningHeaders": 2,
+        "exactPlacedText": 7,
+        "missedCells": 0,
+        "extraCells": 0,
+        "wrongAssignments": 0,
+        "wrongMerges": 0
+      }
+    },
+    {
+      "matrix": 3,
+      "engine": "best",
+      "repetition": 1,
+      "planned": 10,
+      "completed": 10,
+      "criticalMatched": 10,
+      "criticalExpected": 20,
+      "wallSeconds": 3.266699706999134,
+      "sampledPeakRssBytes": 51724288,
+      "literalCharacterEdits": 473,
+      "expectedCharacters": 1272,
+      "automaticStructure": null
+    },
+    {
+      "matrix": 3,
+      "engine": "best",
+      "repetition": 2,
+      "planned": 10,
+      "completed": 10,
+      "criticalMatched": 10,
+      "criticalExpected": 20,
+      "wallSeconds": 3.0704291930014733,
+      "sampledPeakRssBytes": 52264960,
+      "literalCharacterEdits": 473,
+      "expectedCharacters": 1272,
+      "automaticStructure": null
+    },
+    {
+      "matrix": 3,
+      "engine": "fast",
+      "repetition": 1,
+      "planned": 10,
+      "completed": 10,
+      "criticalMatched": 10,
+      "criticalExpected": 20,
+      "wallSeconds": 2.0616908080010035,
+      "sampledPeakRssBytes": 40996864,
+      "literalCharacterEdits": 507,
+      "expectedCharacters": 1272,
+      "automaticStructure": null
+    },
+    {
+      "matrix": 3,
+      "engine": "fast",
+      "repetition": 2,
+      "planned": 10,
+      "completed": 10,
+      "criticalMatched": 10,
+      "criticalExpected": 20,
+      "wallSeconds": 1.9636049949967855,
+      "sampledPeakRssBytes": 41000960,
+      "literalCharacterEdits": 507,
+      "expectedCharacters": 1272,
+      "automaticStructure": null
+    }
+  ],
+  "captures": [
+    {
+      "file": "contact-sheet.png",
+      "sha256": "c92eb6d187b1eab49a10e8727840043aeb81e1b13fbefc9c655aa2182e2a0502",
+      "inspected": true
+    },
+    {
+      "file": "easyocr-ro-grid-merged.png",
+      "sha256": "257714b3d4687e6e0c9476761bc61ad471c82ca52730d6e7e9157c4fd6801b0a",
+      "inspected": true
+    },
+    {
+      "file": "easyocr-ru-grid-merged.png",
+      "sha256": "bd9780a76fbaa6dcccbbfad5feef65e90f3a570b3fb9f02bacd32f9830bc8271",
+      "inspected": true
+    },
+    {
+      "file": "easyocr-ro-noisy-low-resolution.png",
+      "sha256": "4e0c1f49796f5e05bbfc3df3b8add8a4ad9f89addbaba45234d33a5d51060ed7",
+      "inspected": true
+    },
+    {
+      "file": "easyocr-ru-noisy-low-resolution.png",
+      "sha256": "e6ba67fc820d6e1f993de38455d9e9e5c97c43fd845f62c36ebaed98bcca858b",
+      "inspected": true
+    }
+  ],
+  "earlierCalibrations": [
+    {
+      "file": "earlier-calibrations/ocr-easy-matrix-01.json",
+      "accounting": {
+        "planned": 10,
+        "completed": 10,
+        "failed": 0,
+        "incomplete": 0
+      },
+      "sourceRecipeHashes": {
+        "benchmark.py": "c711af4cf2ed38183e286cba6ef0bc3d8b4859970cbf3a27e2594af4d9677151",
+        "fixtures.py": "bb5393b5c4c5917953ba4600f83a1e011bfe84dcc676f70d418b9709ba9ffcff",
+        "metrics.py": "589d41e7ac9e088b14982ed6cd5ee0db5feae58cdc5957723f098b62c08fca13",
+        "models.json": "0a89c9323b71f6ee7113b87b11ebc74dd365079458d91c5f7dcc6ed57630b51c",
+        "layout.py": "2eaa941a0670787363de1f4b649e66012da8f36790da75ad994853ce1bdadb8d",
+        "easy_worker.py": "cce0a7360b8a146658fe68c0c61dd89dd17af4872e7760e5026f1dac6b52f623"
+      },
+      "qualifyingForCurrentRecipe": false
+    },
+    {
+      "file": "earlier-calibrations/ocr-easy-matrix-02.json",
+      "accounting": {
+        "planned": 10,
+        "completed": 10,
+        "failed": 0,
+        "incomplete": 0
+      },
+      "sourceRecipeHashes": {
+        "benchmark.py": "c711af4cf2ed38183e286cba6ef0bc3d8b4859970cbf3a27e2594af4d9677151",
+        "fixtures.py": "bb5393b5c4c5917953ba4600f83a1e011bfe84dcc676f70d418b9709ba9ffcff",
+        "metrics.py": "589d41e7ac9e088b14982ed6cd5ee0db5feae58cdc5957723f098b62c08fca13",
+        "models.json": "0a89c9323b71f6ee7113b87b11ebc74dd365079458d91c5f7dcc6ed57630b51c",
+        "layout.py": "2eaa941a0670787363de1f4b649e66012da8f36790da75ad994853ce1bdadb8d",
+        "easy_worker.py": "cce0a7360b8a146658fe68c0c61dd89dd17af4872e7760e5026f1dac6b52f623"
+      },
+      "qualifyingForCurrentRecipe": false
+    },
+    {
+      "file": "earlier-calibrations/ocr-tess-matrix.json",
+      "accounting": {
+        "planned": 40,
+        "completed": 40,
+        "failed": 0,
+        "incomplete": 0
+      },
+      "sourceRecipeHashes": {
+        "benchmark.py": "c711af4cf2ed38183e286cba6ef0bc3d8b4859970cbf3a27e2594af4d9677151",
+        "fixtures.py": "bb5393b5c4c5917953ba4600f83a1e011bfe84dcc676f70d418b9709ba9ffcff",
+        "metrics.py": "589d41e7ac9e088b14982ed6cd5ee0db5feae58cdc5957723f098b62c08fca13",
+        "models.json": "0a89c9323b71f6ee7113b87b11ebc74dd365079458d91c5f7dcc6ed57630b51c",
+        "layout.py": "2eaa941a0670787363de1f4b649e66012da8f36790da75ad994853ce1bdadb8d",
+        "easy_worker.py": "cce0a7360b8a146658fe68c0c61dd89dd17af4872e7760e5026f1dac6b52f623"
+      },
+      "qualifyingForCurrentRecipe": false
+    },
+    {
+      "file": "earlier-calibrations/ocr-easy-final-01.json",
+      "accounting": {
+        "planned": 10,
+        "completed": 10,
+        "failed": 0,
+        "incomplete": 0
+      },
+      "sourceRecipeHashes": {
+        "benchmark.py": "c711af4cf2ed38183e286cba6ef0bc3d8b4859970cbf3a27e2594af4d9677151",
+        "fixtures.py": "bb5393b5c4c5917953ba4600f83a1e011bfe84dcc676f70d418b9709ba9ffcff",
+        "metrics.py": "589d41e7ac9e088b14982ed6cd5ee0db5feae58cdc5957723f098b62c08fca13",
+        "models.json": "0a89c9323b71f6ee7113b87b11ebc74dd365079458d91c5f7dcc6ed57630b51c",
+        "layout.py": "2eaa941a0670787363de1f4b649e66012da8f36790da75ad994853ce1bdadb8d",
+        "easy_worker.py": "2baae2d74a4ce78970d603665f9902137a845c449463d42d608a247f933477aa"
+      },
+      "qualifyingForCurrentRecipe": false
+    },
+    {
+      "file": "earlier-calibrations/ocr-easy-final-02.json",
+      "accounting": {
+        "planned": 10,
+        "completed": 10,
+        "failed": 0,
+        "incomplete": 0
+      },
+      "sourceRecipeHashes": {
+        "benchmark.py": "c711af4cf2ed38183e286cba6ef0bc3d8b4859970cbf3a27e2594af4d9677151",
+        "fixtures.py": "bb5393b5c4c5917953ba4600f83a1e011bfe84dcc676f70d418b9709ba9ffcff",
+        "metrics.py": "589d41e7ac9e088b14982ed6cd5ee0db5feae58cdc5957723f098b62c08fca13",
+        "models.json": "0a89c9323b71f6ee7113b87b11ebc74dd365079458d91c5f7dcc6ed57630b51c",
+        "layout.py": "2eaa941a0670787363de1f4b649e66012da8f36790da75ad994853ce1bdadb8d",
+        "easy_worker.py": "2baae2d74a4ce78970d603665f9902137a845c449463d42d608a247f933477aa"
+      },
+      "qualifyingForCurrentRecipe": false
+    },
+    {
+      "file": "earlier-calibrations/ocr-tess-final.json",
+      "accounting": {
+        "planned": 40,
+        "completed": 40,
+        "failed": 0,
+        "incomplete": 0
+      },
+      "sourceRecipeHashes": {
+        "benchmark.py": "c711af4cf2ed38183e286cba6ef0bc3d8b4859970cbf3a27e2594af4d9677151",
+        "fixtures.py": "bb5393b5c4c5917953ba4600f83a1e011bfe84dcc676f70d418b9709ba9ffcff",
+        "metrics.py": "589d41e7ac9e088b14982ed6cd5ee0db5feae58cdc5957723f098b62c08fca13",
+        "models.json": "0a89c9323b71f6ee7113b87b11ebc74dd365079458d91c5f7dcc6ed57630b51c",
+        "layout.py": "2eaa941a0670787363de1f4b649e66012da8f36790da75ad994853ce1bdadb8d",
+        "easy_worker.py": "2baae2d74a4ce78970d603665f9902137a845c449463d42d608a247f933477aa"
+      },
+      "qualifyingForCurrentRecipe": false
+    }
+  ],
+  "limits": [
+    "Prepared examples and repeated work are not independent population samples.",
+    "Automatic geometry/merge matching is separate from exact recognized cell text.",
+    "No unruled-table, semantic-header, diagram-relationship, 180-degree or frontier-parity claim.",
+    "Every EasyOCR page is cold-started; measurements do not predict a persistent service."
+  ],
+  "reviewDisposition": "Both independent review axes found the same structural-label-hash gap; native matrices were correctly bound. A public regression failed before the summary guard, then23Python tests passed. Regenerated summary is JSON-value equivalent to the retained native aggregate."
+}
