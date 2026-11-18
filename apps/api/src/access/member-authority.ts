@@ -40,6 +40,8 @@ import {
   COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
   COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
   COMPANY_OFFER_MODEL_APPROVER_BUNDLE,
+  COMPANY_CERTIFICATION_READER_BUNDLE,
+  COMPANY_CERTIFICATION_AUDITOR_BUNDLE,
   companyRolePermissionsFor,
 } from './company-permissions.js';
 
@@ -64,6 +66,7 @@ export interface MemberAuthority {
   missionPlanReader: boolean;
   missionPlanConfigurator: boolean;
   missionPlanUser: boolean;
+  certificationAuditor: boolean;
 }
 
 /** Identity categories only; live membership and grants are checked below. */
@@ -158,8 +161,16 @@ export async function readMemberAuthority(
     modelApprover = false;
   let missionConfiguration = false,
     missionUser = false;
+  let certificationRead = false,
+    certificationAudit = false;
   for (const assignment of assignments) {
     switch (assignment.bundle) {
+      case COMPANY_CERTIFICATION_READER_BUNDLE:
+        certificationRead = assignment.version === 'v1';
+        break;
+      case COMPANY_CERTIFICATION_AUDITOR_BUNDLE:
+        certificationAudit = assignment.version === 'v1';
+        break;
       case COMPANY_CONTEXT_ACCESS_BUNDLE:
         if (assignment.version === null) context = true;
         break;
@@ -258,6 +269,8 @@ export async function readMemberAuthority(
     internalUserId: parseInternalUserId(member.internalUserId),
     displayLabel: memberDisplayLabel(member.displayName, input.membershipId),
     projectReader: context && client && project,
+    certificationAuditor:
+      context && client && project && certificationRead && certificationAudit,
     commercialIntakeReader: context && intakeRead,
     internalTaskRead: context && internalTaskRead,
     taskRead,

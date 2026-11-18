@@ -184,6 +184,255 @@ function proposedMembers() {
 }
 
 describe('Certification audit team and its approval', () => {
+  it('links an eligible internal auditor on the first team even when that auditor never acted on the Case', async () => {
+    const { server, actor } = serve({ manager: true });
+    const caseId = server.seed({
+      orderReference: 'CERT-FIRST-INTERNAL-AUDITOR',
+      agreement: true,
+    });
+    const auditorId = '14390000-0000-4000-8000-000000000001';
+    server.teamCandidates.push({
+      workspaceMembershipId: auditorId,
+      displayLabel: 'Ion First Auditor',
+    });
+    server.interceptions.push({
+      match: (request) =>
+        request.path === `/api/certification-cases/${caseId}/team-candidates`,
+      respond: () =>
+        Response.json({
+          caseId,
+          items: [
+            {
+              workspaceMembershipId: auditorId,
+              displayLabel: 'Ion First Auditor',
+            },
+          ],
+          nextCursor: null,
+        }),
+    });
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-FIRST-INTERNAL-AUDITOR');
+
+    const linking = within(member(teamForm(), 1)).getByLabelText(
+      'Workspace member',
+    );
+    fireEvent.click(linking);
+    expect(
+      await screen.findByRole('option', {
+        name: 'Ion First Auditor',
+      }),
+    ).toBeVisible();
+    fireEvent.click(linking);
+    const form = teamForm();
+    fillMember(member(form, 1), {
+      name: 'Ion First Auditor',
+      role: 'Team leader',
+      link: 'Ion First Auditor',
+      holdsCategory: true,
+      competence: 'Qualified ISO 22000 lead auditor, category C.',
+    });
+    submitTeam(form);
+    await waitFor(() =>
+      expect(within(region(TEAM)).queryByRole('form')).toBeNull(),
+    );
+    expect(within(region(TEAM)).getByText(/Ion First Auditor/u)).toBeVisible();
+    const proposed = server.requests.find(
+      (request) => request.method === 'POST' && request.path.endsWith('/team'),
+    );
+    expect(proposed?.body).toMatchObject({
+      members: [{ workspaceMembershipId: auditorId }],
+    });
+  });
+
+  it('retires a previously discovered auditor after a fresh search no longer admits them, preserving the literal draft and blocking its stale link', async () => {
+    const { server, actor } = serve({ manager: true });
+    server.seed({ orderReference: 'CERT-CANDIDATE-REVOKED', agreement: true });
+    server.teamCandidates.push({
+      workspaceMembershipId: '14390000-0000-4000-8000-000000000001',
+      displayLabel: 'Ion Revoked Auditor',
+    });
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-CANDIDATE-REVOKED');
+    const linking = within(member(teamForm(), 1)).getByLabelText(
+      'Workspace member',
+    );
+    fireEvent.click(linking);
+    expect(
+      await screen.findByRole('option', { name: 'Ion Revoked Auditor' }),
+    ).toBeVisible();
+    fireEvent.click(linking);
+    fillMember(member(teamForm(), 1), {
+      name: 'Literal selected auditor draft',
+      role: 'Team leader',
+      link: 'Ion Revoked Auditor',
+      holdsCategory: true,
+      competence: 'Qualified auditor, category C.',
+    });
+    // The public search now reflects revoked Company auditor authority.
+    server.teamCandidates.splice(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Find auditors' }));
+    expect(
+      await screen.findByText('No eligible auditor matches this search.'),
+    ).toBeVisible();
+    expect(selectOptionLabels(linking)).not.toContain('Ion Revoked Auditor');
+    expect(within(member(teamForm(), 1)).getByLabelText('Name')).toHaveValue(
+      'Literal selected auditor draft',
+    );
+    submitTeam(teamForm());
+    expect(
+      await within(region(TEAM)).findByText(
+        'A linked Workspace member is no longer active. Change that link or leave it empty.',
+      ),
+    ).toBeVisible();
+    expect(server.mutations()).toEqual([]);
+  });
+
+  it('finds an auditor beyond the first page and searches Cyrillic labels without discarding the team draft', async () => {
+    const { server, actor } = serve({ manager: true });
+    server.seed({ orderReference: 'CERT-PAGED-AUDITORS', agreement: true });
+    for (let index = 1; index <= 26; index++)
+      server.teamCandidates.push({
+        workspaceMembershipId: `14390000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+        displayLabel: index === 26 ? 'Ион Демо' : `Fictional auditor ${index}`,
+      });
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-PAGED-AUDITORS');
+    const form = teamForm();
+    change(
+      within(member(form, 1)).getByLabelText('Name'),
+      'Literal team draft',
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Load more auditors' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Load more auditors' }),
+      ).toBeNull(),
+    );
+    const linking = within(member(form, 1)).getByLabelText('Workspace member');
+    fireEvent.click(linking);
+    expect(
+      await screen.findByRole('option', { name: 'Ион Демо' }),
+    ).toBeVisible();
+    fireEvent.click(linking);
+    change(screen.getByLabelText('Auditor name'), 'ИОН');
+    fireEvent.click(screen.getByRole('button', { name: 'Find auditors' }));
+    await waitFor(() =>
+      expect(
+        server.requests.some(
+          (request) =>
+            request.path.endsWith('/team-candidates') &&
+            new URLSearchParams(request.search).get('search') === 'ИОН',
+        ),
+      ).toBe(true),
+    );
+    expect(within(member(teamForm(), 1)).getByLabelText('Name')).toHaveValue(
+      'Literal team draft',
+    );
+  });
+
+  it('rejects a candidate page for another Case and recovers without clearing the literal team draft', async () => {
+    const { server, actor } = serve({ manager: true });
+    const caseId = server.seed({
+      orderReference: 'CERT-CANDIDATE-RECOVERY',
+      agreement: true,
+    });
+    server.interceptions.push({
+      match: (request) => request.path.endsWith('/team-candidates'),
+      respond: () =>
+        Response.json({
+          caseId: '14390000-0000-4000-8000-000000000099',
+          items: [],
+          nextCursor: null,
+        }),
+    });
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-CANDIDATE-RECOVERY');
+    change(
+      within(member(teamForm(), 1)).getByLabelText('Name'),
+      'Protected Romanian / русский draft',
+    );
+    expect(
+      await screen.findByText(
+        'Auditors could not be loaded. Try the search again.',
+      ),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Find auditors' }));
+    expect(
+      await screen.findByText('No eligible auditor matches this search.'),
+    ).toBeVisible();
+    expect(within(member(teamForm(), 1)).getByLabelText('Name')).toHaveValue(
+      'Protected Romanian / русский draft',
+    );
+    expect(
+      server.requests.filter(
+        (request) =>
+          request.path === `/api/certification-cases/${caseId}/team-candidates`,
+      ),
+    ).toHaveLength(2);
+  });
+
+  it('retires a held candidate read when manager authority is replaced', async () => {
+    let actor = certificationActor({ manager: true });
+    const server = new FakeCertificationServer({ actor: () => actor });
+    const caseId = server.seed({
+      orderReference: 'CERT-CANDIDATE-RETIRED',
+      agreement: true,
+    });
+    const delayed: { release?: (response: Response) => void } = {};
+    const pending = new Promise<Response>((resolve) => {
+      delayed.release = resolve;
+    });
+    server.interceptions.push({
+      match: (request) => request.path.endsWith('/team-candidates'),
+      respond: () => pending,
+    });
+    server.install();
+    const view = renderWorkspace(actor);
+    await openSeededCase('CERT-CANDIDATE-RETIRED');
+    await waitFor(() =>
+      expect(
+        server.requests.some((request) =>
+          request.path.endsWith('/team-candidates'),
+        ),
+      ).toBe(true),
+    );
+    actor = certificationActor({ manager: false });
+    view.rerender(
+      <CertificationWorkspace
+        actor={actor}
+        identity={certificationIdentity}
+        projectId={certificationIds.project}
+      />,
+    );
+    if (!delayed.release) throw new Error('Expected the held response.');
+    delayed.release(
+      Response.json({
+        caseId,
+        items: [
+          {
+            workspaceMembershipId: certificationIds.formerMember,
+            displayLabel: 'Retired private candidate',
+          },
+        ],
+        nextCursor: null,
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('form', { name: 'Propose the team' }),
+      ).toBeNull(),
+    );
+    await openSeededCase('CERT-CANDIDATE-RETIRED');
+    expect(screen.queryByText('Retired private candidate')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Find auditors' })).toBeNull();
+  });
+
   it('shows a reader every team version and decision without any form', async () => {
     const { server, actor } = serve({ manager: false });
     const caseId = server.seed({

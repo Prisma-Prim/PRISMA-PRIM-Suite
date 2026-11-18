@@ -36,6 +36,7 @@ import {
   requireUuid,
 } from '../access/access-command-validation.js';
 import type { CertificationRole } from '../access/certification-captured-grants.js';
+import { CertificationTeamAccessService } from '../access/certification-team-access.service.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
@@ -237,6 +238,7 @@ export class CertificationService {
     private readonly accountability: AccountabilityService,
     private readonly projects: ProjectService,
     private readonly sources: DocumentWorkingEvidenceReferenceService,
+    private readonly teamAccess: CertificationTeamAccessService,
     @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
   ) {}
 
@@ -2602,6 +2604,26 @@ export class CertificationService {
     return this.read(actor, 'reader', (companyId) =>
       this.present(actor, companyId, targetId),
     );
+  }
+
+  /** Only a current programme manager may discover eligible internal auditors. */
+  teamCandidates({
+    actor,
+    caseId,
+    query,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    query: unknown;
+  }) {
+    const targetId = requireUuid(caseId);
+    return this.read(actor, 'programme_manager', async (companyId) => {
+      await this.visibleCase(actor, companyId, targetId);
+      return {
+        caseId: targetId,
+        ...(await this.teamAccess.candidates({ actor, companyId, query })),
+      };
+    });
   }
 
   /** A bounded continuation of a Case register, at the initial read's revision. */
