@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import {
@@ -26,12 +28,10 @@ type Props = {
   ) => Promise<'unauthorized' | 'forbidden' | undefined>;
 };
 export function OfferEstimateSource(props: Props) {
-  const generation = useRef({ identity: props.identity, value: 0 });
-  if (generation.current.identity !== props.identity)
-    generation.current = {
-      identity: props.identity,
-      value: generation.current.value + 1,
-    };
+  const generation = useRequestLifetime(
+    props.identity,
+    'offer-estimate-source',
+  );
   if (
     !profitabilityAuthority(props.actor).read ||
     !props.identity.loaded ||
@@ -41,7 +41,7 @@ export function OfferEstimateSource(props: Props) {
     return null;
   return (
     <SourceOwner
-      key={`${profitabilityContextKey(props.actor)}:${props.opportunityId}:${props.source.estimateVersionId}:${generation.current.value}`}
+      key={`${profitabilityContextKey(props.actor)}:${props.opportunityId}:${props.source.estimateVersionId}:${generation}`}
       {...props}
       companyId={props.actor.activeCompany.id}
     />
@@ -60,12 +60,10 @@ function SourceOwner({
     'idle',
   );
   const [version, setVersion] = useState<EstimateVersion>();
-  const active = useRef<AbortController | undefined>(undefined);
-  useEffect(() => () => active.current?.abort(), []);
+  const reads = useScopedOperationGroup('approved-estimate');
   async function open() {
-    active.current?.abort();
-    const request = new AbortController();
-    active.current = request;
+    const request = reads.beginLatest();
+    if (!request) return;
     setVersion(undefined);
     setState('loading');
     try {
@@ -99,6 +97,8 @@ function SourceOwner({
       setState('idle');
     } catch {
       if (!request.signal.aborted) setState('unavailable');
+    } finally {
+      request.release();
     }
   }
   return (
@@ -117,7 +117,7 @@ function SourceOwner({
           <button
             type="button"
             onClick={() => {
-              active.current?.abort();
+              reads.retire();
               setVersion(undefined);
             }}
           >

@@ -1,5 +1,6 @@
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { useOfferCommandLock } from './use-offer-command-lock';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
@@ -54,8 +55,8 @@ export function OfferClientResponsePanel({
   const [receivedAt, setReceivedAt] = useState('');
   const [reason, setReason] = useState('');
   const attempt = useRef<Attempt | undefined>(undefined);
-  const pending = useRef<AbortController | undefined>(undefined);
-  useEffect(() => () => pending.current?.abort(), []);
+  // The parent keys this owner by identity, consumed authority and exact Offer Version.
+  const writes = useScopedOperationGroup('client-response');
   const locked = state === 'running' || state === 'uncertain';
   useOfferCommandLock(locked, onCommandLockChange);
   const blocked = [
@@ -70,6 +71,7 @@ export function OfferClientResponsePanel({
   async function execute(outcome: OfferClientResponseView['outcome']) {
     if (
       state === 'running' ||
+      writes.isPending() ||
       offer.version.clientResponse ||
       !offer.version.transmission
     )
@@ -94,9 +96,8 @@ export function OfferClientResponsePanel({
       }),
     };
     attempt.current = command;
-    pending.current?.abort();
-    const request = new AbortController();
-    pending.current = request;
+    const request = writes.beginLatest();
+    if (!request) return;
     setState('running');
     try {
       const api = await createAuthenticatedApiClient(identity);
@@ -142,6 +143,8 @@ export function OfferClientResponsePanel({
       } else setState('uncertain');
     } catch {
       if (!request.signal.aborted) setState('uncertain');
+    } finally {
+      request.release();
     }
   }
   if (

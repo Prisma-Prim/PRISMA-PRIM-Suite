@@ -1,5 +1,6 @@
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { useEstimateOfferCopy } from './offer-estimate.copy';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import type { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
@@ -41,15 +42,21 @@ export function OfferVersionHistory({
     nextCursor: null,
   });
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const active = useRef<AbortController | undefined>(undefined);
+  const lists = useScopedOperationGroup('versions');
+  const selections = useScopedOperationGroup('selection');
+  const callbacks = useRef({ reject });
+  useLayoutEffect(() => {
+    callbacks.current = { reject };
+  });
   const base = `/offers/opportunities/${encodeURIComponent(opportunityId)}`;
   async function load(cursor?: string) {
-    active.current?.abort();
-    const request = new AbortController();
-    active.current = request;
+    const request = lists.beginLatest();
+    if (!request) return;
+    const reject = callbacks.current.reject;
     setState('loading');
     try {
       const api = await createAuthenticatedApiClient(identity);
+      if (request.signal.aborted) return;
       const result = await api.request(
         `${base}/versions${cursor ? '?cursor=' + encodeURIComponent(cursor) : ''}`,
         { companyContextId: companyId, signal: request.signal },
@@ -71,20 +78,34 @@ export function OfferVersionHistory({
       setState('ready');
     } catch {
       if (!request.signal.aborted) setState('error');
+    } finally {
+      request.release();
     }
   }
   useEffect(() => {
     void load();
-    return () => active.current?.abort();
-  }, [identity, companyId, opportunityId, offer.id, offer.version.id, reject]);
+    return () => {
+      lists.retire();
+      selections.retire();
+    };
+  }, [
+    identity,
+    companyId,
+    opportunityId,
+    offer.id,
+    offer.version.id,
+    lists,
+    selections,
+  ]);
   async function open(id: string) {
     onNavigate?.();
-    active.current?.abort();
-    const request = new AbortController();
-    active.current = request;
+    const request = selections.beginLatest();
+    if (!request) return;
+    const reject = callbacks.current.reject;
     setState('loading');
     try {
       const api = await createAuthenticatedApiClient(identity);
+      if (request.signal.aborted) return;
       const result = await api.request(
         `${base}/versions/${encodeURIComponent(id)}`,
         { companyContextId: companyId, signal: request.signal },
@@ -103,6 +124,8 @@ export function OfferVersionHistory({
       onSelect(selected);
     } catch {
       if (!request.signal.aborted) setState('error');
+    } finally {
+      request.release();
     }
   }
   function differenceValue(
