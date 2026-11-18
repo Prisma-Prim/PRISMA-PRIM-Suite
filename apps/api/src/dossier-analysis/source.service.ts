@@ -26,7 +26,7 @@ import { DocumentMalwareScanner } from '../documents/document-malware-scanner.js
 import { extractDocumentText } from '../document-text-extraction/index.js';
 import { DossierSourceAccess } from './source-access.js';
 
-type IntakeDocxTarget = Pick<
+type IntakeSourceTarget = Pick<
   Awaited<ReturnType<DossierSourceAccess['direct']>>['document'],
   'title' | 'purpose' | 'workingRevision' | 'projectRevision'
 >;
@@ -42,6 +42,23 @@ export class DossierSourceService {
 
   private write<T>(work: () => Promise<T>) {
     return runClientReferenceTransaction({ database: this.database, work });
+  }
+
+  /** direct() holds the native Document/Version locks until insertion commits. */
+  private requireIntakeTarget(
+    live: Awaited<ReturnType<DossierSourceAccess['direct']>>,
+    expected: IntakeSourceTarget | null,
+  ) {
+    if (
+      expected !== null &&
+      (live.document.type !== 'project-source' ||
+        live.document.title !== expected.title ||
+        live.document.purpose !== expected.purpose ||
+        live.document.workingRevision !== expected.workingRevision ||
+        live.document.projectRevision !== expected.projectRevision ||
+        live.version.status !== 'draft')
+    )
+      throw new ConflictException('The admitted source target changed.');
   }
 
   /** All selected sources must remain visible; never disclose a hidden count. */
@@ -226,16 +243,54 @@ export class DossierSourceService {
     return { project, rows };
   }
 
-  async addPdf(
+  addPdf(
     actor: ActorContext,
     projectIdValue: unknown,
     value: unknown,
     keyValue: string | undefined,
   ) {
-    const projectId = requireUuid(projectIdValue);
-    const command = parseSource(value);
-    const key = requireIdempotencyKey(keyValue);
-    const fingerprint = commandFingerprint(['pdf', projectId, value]);
+    return this.selectPdf({
+      actor,
+      projectId: requireUuid(projectIdValue),
+      command: parseSource(value),
+      key: requireIdempotencyKey(keyValue),
+      fingerprintValue: value,
+      expectedTarget: null,
+    });
+  }
+
+  /** Automatic intake selection must carry its server-admitted target. */
+  addPdfForIntake(input: {
+    actor: ActorContext;
+    projectId: unknown;
+    command: unknown;
+    key: string | undefined;
+    expectedTarget: IntakeSourceTarget;
+  }) {
+    return this.selectPdf({
+      actor: input.actor,
+      projectId: requireUuid(input.projectId),
+      command: parseSource(input.command),
+      key: requireIdempotencyKey(input.key),
+      fingerprintValue: input.command,
+      expectedTarget: input.expectedTarget,
+    });
+  }
+
+  private async selectPdf(input: {
+    actor: ActorContext;
+    projectId: string;
+    command: ReturnType<typeof parseSource>;
+    key: string;
+    fingerprintValue: unknown;
+    expectedTarget: IntakeSourceTarget | null;
+  }) {
+    const { actor, projectId, command, key } = input;
+    const fingerprint = commandFingerprint([
+      'pdf',
+      projectId,
+      input.fingerprintValue,
+    ]);
     return this.write(async () => {
       const live = await this.access.direct(actor, {
         projectId,
@@ -279,6 +334,7 @@ export class DossierSourceService {
           throw new ConflictException('Idempotency-Key was already used.');
         return { id: receipt.targetId };
       }
+      this.requireIntakeTarget(live, input.expectedTarget);
       const current = await this.requireSelected(
         actor,
         projectId,
@@ -405,7 +461,7 @@ export class DossierSourceService {
     command: unknown;
     key: string | undefined;
     bytes: Buffer;
-    expectedTarget: IntakeDocxTarget;
+    expectedTarget: IntakeSourceTarget;
   }) {
     return this.preserveDocx({
       actor: input.actor,
@@ -425,7 +481,7 @@ export class DossierSourceService {
     key: string;
     bytes: Buffer;
     fingerprintValue: unknown;
-    expectedTarget: IntakeDocxTarget | null;
+    expectedTarget: IntakeSourceTarget | null;
   }) {
     const { actor, projectId, command, key, bytes } = input;
     const size = bytes.length;
@@ -491,19 +547,7 @@ export class DossierSourceService {
           throw new ConflictException('Idempotency-Key was already used.');
         return { id: receipt.targetId };
       }
-      // The admitted target is server-owned. direct() retains the native
-      // Document/Version row locks through insertion; a scan is not that fence.
-      const expected = input.expectedTarget;
-      if (
-        expected !== null &&
-        (live.document.type !== 'project-source' ||
-          live.document.title !== expected.title ||
-          live.document.purpose !== expected.purpose ||
-          live.document.workingRevision !== expected.workingRevision ||
-          live.document.projectRevision !== expected.projectRevision ||
-          live.version.status !== 'draft')
-      )
-        throw new ConflictException('The admitted Word target changed.');
+      this.requireIntakeTarget(live, input.expectedTarget);
       const current = await this.requireSelected(
         actor,
         projectId,
