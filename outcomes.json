@@ -1,0 +1,413 @@
+{
+  "schema": "prisma-prim-native-owner-qualification/v1",
+  "classification": "Prepared fictional App/API/PostgreSQL examples; no real Client or production qualification.",
+  "issue": 1462,
+  "qualifiedRun": "1462-sequences-admitted-qualified",
+  "source": {
+    "schema": "prisma-prim-native-owner-source/v1",
+    "base": "eca7e9488ba465d2f370e56e5a37f5611508964d",
+    "head": "84db70650fc8a8820cc193a79f68a59a54210eb1",
+    "files": {
+      ".agents/skills/journey-audit/journey-map.md": "94f1c4877796e28db75098fd15e53965bf6b75be68d14a53d467df28b4263875",
+      ".audit/1462.tsv": "592ef57453cc028af392ec042678645a4ffde3225f2ce7d23cb70dad961b944b",
+      ".github/workflows/nightly-ui-chaos.yml": "0e1a8f5908f3a162ab62f735079e808c96586ea5c6536e67aca5d573a00922fd",
+      "apps/web/e2e/commercial-owner-browser.fixture.ts": "4bd79c29bde2348f5817144e8a2bae29c800d0147eaffe11272658be16b248bd",
+      "apps/web/e2e/commercial-owner-sequence-source.fixture.ts": "23d9565717ef0dec129399448b91a67c6187c3ed46caec1bea77425596656b04",
+      "apps/web/e2e/native-grant-loss.fixture.ts": "92d598eadcfab1b0b4f68616bf1ca8807b6e8cfccde0ef936412168853f9d90e",
+      "apps/web/e2e/offer-owner-action-sequences.acceptance.spec.ts": "c94092fba1a345a6f1ea405566d03b633d854b9f8986e42947665caff1a62f25",
+      "apps/web/e2e/offer-owner-browser-sequences.fixture.ts": "af38fdcd5a38d53f69c0db76c04329a7a06ee88867df19c9270a020febfecd15",
+      "apps/web/e2e/select-option.ts": "322c1f9af8e4587f600ffb586ea3eecd5e0e7b98cfc99326b79442d3e9554473",
+      "apps/web/src/api/use-captured-access-rejection.ts": "a05e4b80e797dd5d1fd7add972fbae9a010f1f3b14d8d0610853f5e9a469a9cb",
+      "apps/web/src/offer-message/OfferMessagePreparation.test.tsx": "c12996fb5941497117c3e5f6426f493162aad3ade117015d3ce9465edf929530",
+      "apps/web/src/offer-message/offer-message-preparation.tsx": "8742fa1ca38adb3a28f5d9c78327e085dcd512b69598505128c5da3e99cfd9e0",
+      "apps/web/src/offer/EstimateOfferPreparation.tsx": "de41fb0843c9c2fbd948fdc2e2611756daecc40283c48df456455b901663186b",
+      "apps/web/src/offer/OfferClientResponsePanel.tsx": "10f0141b7de1424752b159078a11a38b7c35bac094e3e61c1229f3f2eab6735f",
+      "apps/web/src/offer/OfferDecisionPanel.tsx": "a744600a1d4bd50cdec4878e40942ca286a38780351182eded5d36559126cb64",
+      "apps/web/src/offer/OfferEstimateSource.tsx": "d9030f34d97a02cf968c56aa2412c5443e1980b7b3bcf47cc716c8825cc54fbd",
+      "apps/web/src/offer/OfferPanel.tsx": "c20acfa9bec186ce3d866aac498cfa55d099eea0365c56f154587c59cfff8e2c",
+      "apps/web/src/offer/OfferQualityPanel.tsx": "e8750384bf504c8b1a1511b877bbbac932ba503fd8456516a0d99a043a613bfb",
+      "apps/web/src/offer/OfferTransmissionPanel.tsx": "af72a605731179a86f1be7facb00f3d26b12f4528e3f21ca0ea7a7faf3b97b48",
+      "apps/web/src/offer/OfferVersionHistory.tsx": "2ce3fc6b4f55bd85a9ce6e12f62e0e381d4a0bfe682454f08d21093e861bfad7",
+      "eslint-suppressions.json": "6c758edf7689c67f3559af10dce8c014e227d3a6a79a627b38f8c3204d47a8a6",
+      "scripts/browser-sequences.mjs": "151ddeb3dd971f30130d5243a618054de552007c8d25ee85f2051abeaf8116ac",
+      "scripts/browser-sequences.test.mjs": "7d60607ad807d7a8eec221a46984aa19d461e923a9f790773cca65aff12d21c6",
+      "scripts/nightly-ui-chaos-report.mjs": "b0586d6eca15c37ebdf10d6eec5ac9d97b1efa4d907686c0ce8b9614486d1732",
+      "scripts/nightly-ui-chaos-report.test.mjs": "e3d8e0a526298654cc759a17f041529fc19aa5c79989c5993b2cf5ee25165abc",
+      "scripts/verify-journey.test.mjs": "04fa7bc6ad719d658402414f45bc190b1acbf9b1c8799acdcb3731e13f355ef4"
+    }
+  },
+  "defaultExplorationBounds": {
+    "runs": 2,
+    "maxSteps": 10,
+    "milliseconds": 60000
+  },
+  "controlledDefect": {
+    "issue": 1462,
+    "journey": "offer-owner-action-sequences",
+    "seed": "1462001",
+    "replay": "offer-version-owner@desktop~10~0",
+    "budgetMilliseconds": 60000,
+    "file": "apps/web/src/offer/EstimateOfferPreparation.tsx",
+    "restoredSha256": "de41fb0843c9c2fbd948fdc2e2611756daecc40283c48df456455b901663186b",
+    "defectSha256": "594ee0840ae786c4acc49bd60fdd0b23d844ffc242533ec18d1dfc4f6d81e54e",
+    "injected": {
+      "exitCode": 1,
+      "reports": [
+        {
+          "caseId": "offer-version-owner",
+          "width": "desktop",
+          "status": "failed",
+          "path": "0",
+          "replay": "UI_SEQUENCE_REPLAY='offer-version-owner@desktop~10~0' pnpm verify:journey offer-owner-action-sequences --chaos 1462001",
+          "interrupted": false,
+          "durationMilliseconds": 18848
+        }
+      ]
+    },
+    "sourceRestored": true,
+    "restored": {
+      "exitCode": 0,
+      "reports": [
+        {
+          "caseId": "offer-version-owner",
+          "width": "desktop",
+          "status": "passed",
+          "path": "0",
+          "replay": "UI_SEQUENCE_REPLAY='offer-version-owner@desktop~10~0' pnpm verify:journey offer-owner-action-sequences --chaos 1462001",
+          "interrupted": false,
+          "durationMilliseconds": 19698
+        }
+      ]
+    }
+  },
+  "outcomes": [
+    {
+      "run": "1462-defect-injected",
+      "journey": "offer-owner-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1462001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 0,
+            "failed": 1,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "offer-version-owner",
+              "width": "desktop",
+              "seed": 1462001,
+              "steps": 10,
+              "status": "failed",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 18848,
+              "path": "0",
+              "coverage": {
+                "leave-native-offer-company": 3,
+                "return-to-native-offer-company": 2,
+                "locale:ru": 1
+              },
+              "replay": "UI_SEQUENCE_REPLAY='offer-version-owner@desktop~10~0' pnpm verify:journey offer-owner-action-sequences --chaos 1462001"
+            }
+          ],
+          "failures": [
+            {
+              "title": "offer-owner-action-sequences.acceptance.spec.ts \u203a generated Offer owner sequences \u203a explores generated native Offer version owner sequences",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Browser sequences offer-version-owner@desktop: failed. expect(received).toEqual(expected) // deep equality"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1462-defect-restored",
+      "journey": "offer-owner-action-sequences",
+      "status": "passed",
+      "exitCode": 0,
+      "chaosSeed": 1462001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 1,
+            "failed": 0,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "offer-version-owner",
+              "width": "desktop",
+              "seed": 1462001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 19698,
+              "path": "0",
+              "coverage": {
+                "leave-native-offer-company": 3,
+                "return-to-native-offer-company": 2,
+                "locale:ru": 1
+              },
+              "replay": "UI_SEQUENCE_REPLAY='offer-version-owner@desktop~10~0' pnpm verify:journey offer-owner-action-sequences --chaos 1462001"
+            }
+          ],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "run": "1462-sequences-accessible-draft",
+      "journey": "offer-owner-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1462001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 2,
+            "failed": 2,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "offer-version-owner",
+              "width": "desktop",
+              "seed": 1462001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 39146,
+              "path": null,
+              "coverage": {
+                "leave-native-offer-company": 6,
+                "return-to-native-offer-company": 4,
+                "locale:ru": 1,
+                "edit-literal-native-offer": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "offer-version-owner",
+              "width": "narrow",
+              "seed": 1462001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 47444,
+              "path": null,
+              "coverage": {
+                "leave-native-offer-company": 6,
+                "return-to-native-offer-company": 4,
+                "locale:ru": 1,
+                "edit-literal-native-offer": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": [
+            {
+              "title": "offer-owner-action-sequences.acceptance.spec.ts \u203a preserves literal Offer versions, exact retry, stale conflicts and independent source work through Company replacement",
+              "project": "operational-acceptance-desktop",
+              "error": "Test timeout of 450000ms exceeded."
+            },
+            {
+              "title": "offer-owner-action-sequences.acceptance.spec.ts \u203a preserves literal Offer versions, exact retry, stale conflicts and independent source work through Company replacement",
+              "project": "operational-acceptance-narrow",
+              "error": "Error: page.unroute: Target page, context or browser has been closed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1462-sequences-admitted-qualified",
+      "journey": "offer-owner-action-sequences",
+      "status": "passed",
+      "exitCode": 0,
+      "chaosSeed": 1462001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 4,
+            "failed": 0,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "offer-version-owner",
+              "width": "desktop",
+              "seed": 1462001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 40234,
+              "path": null,
+              "coverage": {
+                "leave-native-offer-company": 6,
+                "return-to-native-offer-company": 4,
+                "locale:ru": 1,
+                "edit-literal-native-offer": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "offer-version-owner",
+              "width": "narrow",
+              "seed": 1462001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 47181,
+              "path": null,
+              "coverage": {
+                "leave-native-offer-company": 6,
+                "return-to-native-offer-company": 4,
+                "locale:ru": 1,
+                "edit-literal-native-offer": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "run": "1462-sequences-first",
+      "journey": "offer-owner-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1462001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 2,
+            "failed": 2,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "offer-version-owner",
+              "width": "desktop",
+              "seed": 1462001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 39165,
+              "path": null,
+              "coverage": {
+                "leave-native-offer-company": 6,
+                "return-to-native-offer-company": 4,
+                "locale:ru": 1,
+                "edit-literal-native-offer": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "offer-version-owner",
+              "width": "narrow",
+              "seed": 1462001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 48508,
+              "path": null,
+              "coverage": {
+                "leave-native-offer-company": 6,
+                "return-to-native-offer-company": 4,
+                "locale:ru": 1,
+                "edit-literal-native-offer": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": [
+            {
+              "title": "offer-owner-action-sequences.acceptance.spec.ts \u203a preserves literal Offer versions, exact retry, stale conflicts and independent source work through Company replacement",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Timed out 20000ms waiting for expect(locator).toHaveValue(expected)"
+            },
+            {
+              "title": "offer-owner-action-sequences.acceptance.spec.ts \u203a preserves literal Offer versions, exact retry, stale conflicts and independent source work through Company replacement",
+              "project": "operational-acceptance-narrow",
+              "error": "Error: Timed out 20000ms waiting for expect(locator).toHaveValue(expected)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1462-sequences-isolated-grant",
+      "journey": "offer-owner-action-sequences",
+      "status": "passed",
+      "exitCode": 0,
+      "chaosSeed": 1462001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 4,
+            "failed": 0,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "offer-version-owner",
+              "width": "desktop",
+              "seed": 1462001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 41978,
+              "path": null,
+              "coverage": {
+                "leave-native-offer-company": 6,
+                "return-to-native-offer-company": 4,
+                "locale:ru": 1,
+                "edit-literal-native-offer": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "offer-version-owner",
+              "width": "narrow",
+              "seed": 1462001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 46620,
+              "path": null,
+              "coverage": {
+                "leave-native-offer-company": 6,
+                "return-to-native-offer-company": 4,
+                "locale:ru": 1,
+                "edit-literal-native-offer": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": []
+        }
+      ]
+    }
+  ],
+  "inspection": "Selected RO desktop/RU narrow PNGs inspected. Actual original PDF text inspected when present. Raw traces/logs remain private; full native evidence also retained by PR CI.",
+  "limits": "Finite prepared examples and bounded generated sequences; retained failed/incomplete attempts do not count as complete proof. Exact replay selects one retained case with its original seed/path. No business rule, native grant policy, schema, real data, model/provider call or deployment introduced."
+}
