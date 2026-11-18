@@ -1,0 +1,64 @@
+{
+  "schema": "prisma-prim-combined-audit-source/v1",
+  "issue": 1444,
+  "programme": 1443,
+  "classification": "isolated pre-merge source composition for fictional qualification",
+  "inputs": [
+    {
+      "pullRequest": 1435,
+      "branch": "feat/dossier-analysis-programme",
+      "commit": "e48a4b430e712be124a6e2d9e6d0fe9ac48fcd95"
+    },
+    {
+      "pullRequest": 1436,
+      "branch": "refactor/1433-intake-ownership",
+      "commit": "faca6d8e4c9ee6c92b3d4cc1b61e46ee7b28557e"
+    },
+    {
+      "pullRequest": 1442,
+      "branch": "test/certification-risk-cases-20261117",
+      "commit": "4726e7ad7b76a95005abb7be3febddac44dc44ec"
+    },
+    {
+      "issue": 1439,
+      "pullRequest": 1449,
+      "branch": "fix/1439-initial-auditor-selection",
+      "commit": "3cd33ffa7faff3c869468294607ba15d7f9e1338",
+      "reviewedHandoffComment": 6972959796,
+      "successfulCiRun": 44265177806
+    }
+  ],
+  "composition": {
+    "ref": "verify/1444-pinned-inputs-20261118",
+    "commit": "0fabf2d84ea457f9c33c5abdf81b48b701d9b742",
+    "tree": "98e2da29562989f4fc6eb6b7973b88e913e45b55",
+    "mergeCommits": [
+      "0c756d7543f2445368f079feba9990da25e2cdfe",
+      "5207526f7341e6c4326338a3b582d834347cde89",
+      "0fabf2d84ea457f9c33c5abdf81b48b701d9b742"
+    ],
+    "conflicts": [
+      {
+        "path": "apps/api/src/certification/certification.service.ts",
+        "resolution": "Preserved both additive methods dossierDocumentsWithinTransaction and teamCandidates. TypeScript AST check confirmed each exact method body against its owning immutable input; combined API typecheck passed."
+      },
+      {
+        "path": ".agents/skills/journey-audit/journey-map.md",
+        "resolution": "Retained both Project journey entries for dossier analysis/harness and first-team selection."
+      }
+    ]
+  },
+  "publication": {
+    "qualificationPullRequestBase": "verify/1444-pinned-inputs-20261118",
+    "rewriteInputBranches": false,
+    "mergeToMain": false,
+    "deploy": false
+  },
+  "boundaries": [
+    "Native App/API/PostgreSQL and exact preserved source bytes",
+    "Local demonstration identities and synthetic malware scanner",
+    "Scheduled loss of a native committed review receipt",
+    "No model or paid-provider calls",
+    "No real Client data or private pilot qualification"
+  ]
+}
