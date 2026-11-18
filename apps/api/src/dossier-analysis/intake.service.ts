@@ -75,6 +75,10 @@ export class DossierIntakeService {
       operation: 'advance',
     });
     if (begun.outcome === 'settled') return begun.value;
+    if (begun.outcome === 'refused')
+      throw new ConflictException(
+        'The native target changed. Read the current batch.',
+      );
     const { item, attemptId } = begun;
     try {
       const current = item.progress;
@@ -150,6 +154,10 @@ export class DossierIntakeService {
       operation: 'upload',
     });
     if (begun.outcome === 'settled') return begun.value;
+    if (begun.outcome === 'refused')
+      throw new ConflictException(
+        'The native target changed. Read the current batch.',
+      );
     const { item, attemptId } = begun;
     try {
       if (item.progress.stage !== 'linked')
@@ -164,6 +172,7 @@ export class DossierIntakeService {
           fileName: item.file.fileName,
           key: item.keys.upload,
           bytes,
+          expectedAssociation: { projectId: begun.projectId, revision: 1 },
         });
         if (receipt.action !== 'representation_added')
           throw new ConflictException('The native upload receipt changed.');
