@@ -1113,6 +1113,7 @@ export class FakeCertificationServer {
       const query = new URLSearchParams(request.search);
       const after = query.get('after') ?? '';
       const search = (query.get('search') ?? '').toLocaleLowerCase();
+      const linked = (query.get('linked') ?? '').split(',').filter(Boolean);
       const remaining = this.teamCandidates
         .filter(
           (candidate) =>
@@ -1126,6 +1127,13 @@ export class FakeCertificationServer {
       return Response.json({
         caseId: stored.id,
         items,
+        ...(linked.length
+          ? {
+              draftLinks: this.teamCandidates.filter((item) =>
+                linked.includes(item.workspaceMembershipId),
+              ),
+            }
+          : {}),
         nextCursor:
           remaining.length > 25
             ? (items.at(-1)?.workspaceMembershipId ?? null)

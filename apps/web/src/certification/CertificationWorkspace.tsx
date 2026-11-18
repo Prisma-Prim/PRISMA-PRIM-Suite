@@ -486,12 +486,6 @@ function CertificationRegistry(
   const [list, setList] = useState<View<CaseList>>({ status: 'loading' });
   const [selectedId, setSelectedId] = useState<string>();
   const selected = useRef<string | undefined>(undefined);
-  const teamCandidates = useTeamCandidates({
-    scope: props.scope,
-    caseId: selectedId,
-    enabled: authority.manage,
-    read: query,
-  });
   const [detail, setDetail] = useState<View<CaseView>>();
   const [opening, setOpening] = useState(false);
   const [entities, setEntities] = useState<View<LegalEntityOption[]>>();
@@ -529,6 +523,14 @@ function CertificationRegistry(
   const [agreementFeedback, setAgreementFeedback] = useState<Feedback>(IDLE);
   /** Null until edited: a first team starts with one empty member. */
   const [teamDraft, setTeamDraft] = useState<TeamDraft | null>(null);
+  const teamCandidates = useTeamCandidates({
+    scope: props.scope,
+    caseId: selectedId,
+    enabled: authority.manage,
+    linkedIds:
+      teamDraft?.members.map((member) => member.workspaceMembershipId) ?? [],
+    read: query,
+  });
   /** The user is editing a new team version. */
   const [teamOpen, setTeamOpen] = useState(false);
   const [teamFeedback, setTeamFeedback] = useState<Feedback>(IDLE);
