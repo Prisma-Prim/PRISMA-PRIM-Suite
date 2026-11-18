@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1445-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1445,
+  "pullRequest": 1450,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 2,
+      "P3": 0
+    },
+    "notes": "73 native parser/engine/qualification tests pass; prepared volume matrix and private CLI replay exercised. One correction batch fixes special-file hang and missing measurement provenance; token counts unavailable."
+  }
+}
