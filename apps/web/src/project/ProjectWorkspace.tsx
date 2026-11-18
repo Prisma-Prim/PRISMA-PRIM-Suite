@@ -4,9 +4,9 @@ import { useWorkingEvidenceCopy } from '../working-evidence/working-evidence.cop
 import { CertificationWorkspace } from '../certification/CertificationWorkspace';
 import {
   DossierAnalysisWorkspace,
-  dossierAnalysisAuthority,
   useDossierAnalysisTitle,
 } from '../dossier-analysis/DossierAnalysisWorkspace';
+import { dossierAnalysisAuthority } from '../dossier-analysis/analysis-access';
 import { certificationAuthority } from '../certification/certification-access';
 import { useCertificationCopy } from '../certification/certification.copy';
 import { ProjectPdfBundle } from './ProjectPdfBundle';

@@ -149,6 +149,14 @@ Official references checked 2026-11-17: [Sign in with ChatGPT](https://developer
 
 Operator setup and actual account prerequisites: [subscription harness activation](../agents/dossier-harness-activation.md).
 
+## 26. Controlled application draft preparation
+
+Dan authorized practical draft reuse on 2026-11-18 in [#1452](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1452); [#1453](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1453) delivers its first questionnaire tracer. A live Certification programme manager with current Project and source-read authority can prepare a local editable application draft from the latest human-confirmed or corrected proposals of a current run. The direct mappings are `legalName` → `declaredLegalName`, `address` → `declaredAddress` and `scope` → `requestedScope`. Missing and unsupported facts remain manual, including employee counts, Standard identity, dates, declarations and decisions.
+
+The bounded read-only preparation retains the original proposal, reviewed value, review revision, reviewer and instant, exact Document Version, filename and quoted passage. Rejected, unreviewed, incompatible or malformed values are ineligible. The manager explicitly selects each replacement; nothing is selected or saved automatically. Re-read current Case/source/review authority and versions before local insertion; refuse changed previews or intervening literal edits without overwriting the draft. Cancellation and read failures preserve typed values; scope retirement withholds late responses. Competing proposals allow one selected replacement per target field.
+
+Preparation and local insertion create no canonical fact, certification step, approval or Activity event. The manager may edit inserted values before a separate ordinary native application command, which retains its complete validation, authorization, revision and history rules. Citations remain in the analysis history; this assistance makes no formal source-adoption or professional-approval claim. Broader questionnaire fields and plan/report preparation remain follow-through under #1452.
+
 ## Recoverable native local intake (#1454)
 
 The Project workbench composes [Document Registry §27](release-1-document-registry-prd.md#27-project-working-originals-and-recoverable-intake-1454)
