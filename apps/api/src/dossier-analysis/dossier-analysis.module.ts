@@ -15,6 +15,8 @@ import { DossierSourceAccess } from './source-access.js';
 import { DossierSourceService } from './source.service.js';
 import { DossierSuggestionService } from './suggestion.service.js';
 import { DossierDraftPreparationService } from './draft-preparation.service.js';
+import { DossierIntakeStore } from './intake-store.service.js';
+import { DossierIntakeService } from './intake.service.js';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { DossierDraftPreparationService } from './draft-preparation.service.js';
   ],
   providers: [
     DossierDraftPreparationService,
+    DossierIntakeService,
+    DossierIntakeStore,
     DossierSafeFailureInterceptor,
     DocumentFamilyAccess,
     DossierSourceAccess,
@@ -39,6 +43,8 @@ import { DossierDraftPreparationService } from './draft-preparation.service.js';
   ],
   exports: [
     DossierDraftPreparationService,
+    DossierIntakeService,
+    DossierIntakeStore,
     DossierSafeFailureInterceptor,
     DossierAnalysisService,
     DossierSourceService,

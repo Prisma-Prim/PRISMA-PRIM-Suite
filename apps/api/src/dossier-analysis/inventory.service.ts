@@ -33,8 +33,11 @@ export class DossierInventoryService {
   ) {
     const project = await this.access.project(actor, projectId, write);
     const types: (
-      'questionnaire' | 'mission-deliverable' | 'received-contract'
-    )[] = ['questionnaire'];
+      | 'questionnaire'
+      | 'project-source'
+      | 'mission-deliverable'
+      | 'received-contract'
+    )[] = ['questionnaire', 'project-source'];
     if (
       await this.authorization.hasPermissions(actor, {
         permissions: ['document.mission_deliverable.access'],

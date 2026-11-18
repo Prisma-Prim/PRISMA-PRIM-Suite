@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page, type Locator } from '@playwright/test';
-import { selectOption } from './select-option';
+import { openSelect, selectOption } from './select-option';
 const origin = 'http://127.0.0.1:4174';
 const ada = {
   'x-test-external-provider': 'local-demo',
@@ -295,7 +295,20 @@ test('creates a reference-free mission, preserves exact official/successor PDFs 
     await expect(
       documents.getByRole('button', { name: title, exact: true }),
     ).toHaveCount(0);
-    await expect(documents.getByLabel('Document family')).toHaveCount(0);
+    const families = await openSelect(documents.getByLabel('Document family'));
+    await expect(
+      families.getByRole('option', {
+        name: 'Mission deliverable PDF',
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await expect(
+      families.getByRole('option', {
+        name: 'Project working source',
+        exact: true,
+      }),
+    ).toHaveCount(1);
+    await page.keyboard.press('Escape');
     expect(
       (
         await page.request.get(`${origin}/api/documents/${documentId}`, {

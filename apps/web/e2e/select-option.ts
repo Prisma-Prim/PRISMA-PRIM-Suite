@@ -44,13 +44,13 @@ export async function selectOption(
     return;
   }
   const value = typeof choice === 'string' ? choice : choice.value;
-  const optionCount = await options.count();
-  for (let index = 0; index < optionCount; index += 1) {
-    const option = options.nth(index);
-    if ((await option.getAttribute('data-value')) === value) {
-      await option.click();
-      return;
-    }
+  const values = await options.evaluateAll((elements) =>
+    elements.map((option) => option.getAttribute('data-value')),
+  );
+  const index = values.indexOf(value);
+  if (index >= 0) {
+    await options.nth(index).click();
+    return;
   }
   throw new Error(`Select option value not found: ${value}`);
 }

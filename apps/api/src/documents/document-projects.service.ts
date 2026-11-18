@@ -93,6 +93,7 @@ export class DocumentProjectsService {
               eq(workingDocuments.clientId, project.clientAccountId),
               inArray(workingDocuments.type, [
                 'questionnaire',
+                'project-source',
                 ...(familyAllowed ? ['mission-deliverable' as const] : []),
                 ...(receivedAllowed ? ['received-contract' as const] : []),
               ] satisfies ProjectLinkableDocumentType[]),
