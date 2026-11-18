@@ -6,8 +6,8 @@
   "classification": "prepared fictional examples; native App/API/PostgreSQL",
   "generatedDefaultSeed": 1422001,
   "sourceFiles": {
-    "apps/web/e2e/project-task-action-sequences.acceptance.spec.ts": "40231d3e4596f2270233935ea50b5f4e96f727e1f3a47e5f5f6d594deee1ccfc",
-    "apps/web/e2e/project-task-browser-sequences.fixture.ts": "cdfaa55658df819e08a330fdeee30e5b342bb5a6a510985678e97ebddf6f4099",
+    "apps/web/e2e/project-task-action-sequences.acceptance.spec.ts": "ab3fbae81820eda656e0c2e66ebf0c37700bc503aed0b7a4d200d8fbc0045693",
+    "apps/web/e2e/project-task-browser-sequences.fixture.ts": "490844d3c4716f70c3740b57fea5ef1c22907b1cbfb937b2f08e7ec8acb6c866",
     "apps/web/e2e/project-task-read-holds.fixture.ts": "20dee7b8bcfa543852ab5fd4dd0b108b134b8ec63b8c1e4a59ed3cad3d09cbc6",
     "apps/web/e2e/project-task-sequence-source.fixture.ts": "2e507b720e9cf5b610384cd9da8187ef8410add578ba34458f9e1c80b604e554",
     "apps/web/e2e/document-action-sequences.acceptance.spec.ts": "b90625b1fe37e2372feccb48b8c4a8cc17b534bad187ad27aab6edb45140bc02",
@@ -7007,7 +7007,7 @@
         "scripts/nightly-ui-chaos-report.mjs": "e03df49354b35dc934fd72fa88a127f4929e8f946f9e689a8fed782bd656db0f",
         ".github/workflows/nightly-ui-chaos.yml": "65c541d09ccfc8245843ccdb891bd84b1a89df6a7115c657df8f26b9fe980ee4"
       },
-      "sourceQualification": "reviewed same-Company native access recovery",
+      "sourceQualification": "reviewed same-Company native access recovery; before CI catalogue correction",
       "summary": {
         "schema": "prisma-prim-journey-verification/v1",
         "journey": "project-task-action-sequences",
@@ -7780,7 +7780,7 @@
         "scripts/nightly-ui-chaos-report.mjs": "e03df49354b35dc934fd72fa88a127f4929e8f946f9e689a8fed782bd656db0f",
         ".github/workflows/nightly-ui-chaos.yml": "65c541d09ccfc8245843ccdb891bd84b1a89df6a7115c657df8f26b9fe980ee4"
       },
-      "sourceQualification": "reviewed same-Company native access recovery",
+      "sourceQualification": "reviewed same-Company native access recovery; before CI catalogue correction",
       "summary": {
         "schema": "prisma-prim-journey-verification/v1",
         "journey": "project-task-action-sequences",
@@ -8547,7 +8547,7 @@
         "scripts/nightly-ui-chaos-report.mjs": "e03df49354b35dc934fd72fa88a127f4929e8f946f9e689a8fed782bd656db0f",
         ".github/workflows/nightly-ui-chaos.yml": "65c541d09ccfc8245843ccdb891bd84b1a89df6a7115c657df8f26b9fe980ee4"
       },
-      "sourceQualification": "reviewed same-Company native access recovery",
+      "sourceQualification": "reviewed same-Company native access recovery; before CI catalogue correction",
       "summary": {
         "schema": "prisma-prim-journey-verification/v1",
         "journey": "project-task-action-sequences",
@@ -8738,7 +8738,7 @@
         "scripts/nightly-ui-chaos-report.mjs": "e03df49354b35dc934fd72fa88a127f4929e8f946f9e689a8fed782bd656db0f",
         ".github/workflows/nightly-ui-chaos.yml": "65c541d09ccfc8245843ccdb891bd84b1a89df6a7115c657df8f26b9fe980ee4"
       },
-      "sourceQualification": "reviewed same-Company native access recovery",
+      "sourceQualification": "reviewed same-Company native access recovery; before CI catalogue correction",
       "summary": {
         "schema": "prisma-prim-journey-verification/v1",
         "journey": "project-task-action-sequences",
@@ -8913,6 +8913,3213 @@
           "path": "1447-reviewed-replay-narrow/summary.json",
           "bytes": 2789,
           "sha256": "04c3dfd794d4ccac591de80d0c67134f6faf6258e0bb1eb44d6ac33c6268492f"
+        }
+      ]
+    },
+    {
+      "name": "1447-navigation-final-native",
+      "purpose": "environment launch failure: missing activated Chromium profile; no browser behavior executed",
+      "sourceFileHashes": {
+        "apps/web/e2e/project-task-action-sequences.acceptance.spec.ts": "ab3fbae81820eda656e0c2e66ebf0c37700bc503aed0b7a4d200d8fbc0045693",
+        "apps/web/e2e/project-task-browser-sequences.fixture.ts": "c18d6ac6f4ba520c72d603686c195a2b027294fedde9e390b594bbe4b9f500ec",
+        "apps/web/e2e/project-task-read-holds.fixture.ts": "20dee7b8bcfa543852ab5fd4dd0b108b134b8ec63b8c1e4a59ed3cad3d09cbc6",
+        "apps/web/e2e/project-task-sequence-source.fixture.ts": "2e507b720e9cf5b610384cd9da8187ef8410add578ba34458f9e1c80b604e554",
+        "apps/web/e2e/document-action-sequences.acceptance.spec.ts": "b90625b1fe37e2372feccb48b8c4a8cc17b534bad187ad27aab6edb45140bc02",
+        "scripts/browser-sequences.mjs": "26dabc78bde906bcc0e9c1c3728f9d0a030be0a687a07e398b4c8e3f94bcebc8",
+        "scripts/nightly-ui-chaos-report.mjs": "e03df49354b35dc934fd72fa88a127f4929e8f946f9e689a8fed782bd656db0f",
+        ".github/workflows/nightly-ui-chaos.yml": "65c541d09ccfc8245843ccdb891bd84b1a89df6a7115c657df8f26b9fe980ee4"
+      },
+      "sourceQualification": "CI catalogue correction; ambiguous navigation selector, not final qualifying source",
+      "summary": {
+        "schema": "prisma-prim-journey-verification/v1",
+        "journey": "project-task-action-sequences",
+        "spec": "/workspace/work/batch-20261118/1447/apps/web/e2e/project-task-action-sequences.acceptance.spec.ts",
+        "status": "failed",
+        "exitCode": 1,
+        "repeat": 1,
+        "cpuLoadThreads": 0,
+        "chaosSeed": null,
+        "budgetMinutes": null,
+        "stoppedByBudget": false,
+        "startedAt": "2026-11-18T10:45:52.700Z",
+        "finishedAt": "2026-11-18T10:47:01.812Z",
+        "evidenceDirectory": "/workspace/work/batch-20261118/evidence/1447-navigation-final-native",
+        "summaryFile": "/workspace/work/batch-20261118/evidence/1447-navigation-final-native/summary.json",
+        "builds": [
+          {
+            "command": "pnpm",
+            "args": ["--filter", "@prisma-prim/api", "build"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1447-navigation-final-native/build-1.log"
+          },
+          {
+            "command": "pnpm",
+            "args": ["build", "--mode", "local-demo"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1447-navigation-final-native/build-2.log"
+          }
+        ],
+        "runs": [
+          {
+            "run": 1,
+            "status": "failed",
+            "exitCode": 1,
+            "chaosSeed": null,
+            "replay": null,
+            "tests": {
+              "passed": 0,
+              "failed": 4,
+              "flaky": 0,
+              "skipped": 0
+            },
+            "failures": [
+              {
+                "title": "project-task-action-sequences.acceptance.spec.ts › checks Project Task actions against native literal retry and independent-read recipes",
+                "project": "operational-acceptance-desktop",
+                "error": "Error: browserType.launch: Executable doesn't exist at /tmp/prisma-prim-managed-postgres-NvO2QI/cache/ms-playwright/chromium_headless_shell-1181/chrome-linux/headless_shell"
+              },
+              {
+                "title": "project-task-action-sequences.acceptance.spec.ts › checks Project Task actions against native literal retry and independent-read recipes",
+                "project": "operational-acceptance-narrow",
+                "error": "Error: browserType.launch: Executable doesn't exist at /tmp/prisma-prim-managed-postgres-NvO2QI/cache/ms-playwright/chromium_headless_shell-1181/chrome-linux/headless_shell"
+              },
+              {
+                "title": "project-task-action-sequences.acceptance.spec.ts › generated Project Task sequences › explores generated native Project and Task action sequences",
+                "project": "operational-acceptance-desktop",
+                "error": "Error: browserType.launch: Executable doesn't exist at /tmp/prisma-prim-managed-postgres-NvO2QI/cache/ms-playwright/chromium_headless_shell-1181/chrome-linux/headless_shell"
+              },
+              {
+                "title": "project-task-action-sequences.acceptance.spec.ts › generated Project Task sequences › explores generated native Project and Task action sequences",
+                "project": "operational-acceptance-narrow",
+                "error": "Error: browserType.launch: Executable doesn't exist at /tmp/prisma-prim-managed-postgres-NvO2QI/cache/ms-playwright/chromium_headless_shell-1181/chrome-linux/headless_shell"
+              }
+            ],
+            "message": null,
+            "log": "/workspace/work/batch-20261118/evidence/1447-navigation-final-native/run-1/playwright.log",
+            "report": "/workspace/work/batch-20261118/evidence/1447-navigation-final-native/run-1/report.json",
+            "screenshots": [],
+            "traces": [
+              "/workspace/work/batch-20261118/evidence/1447-navigation-final-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-final-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-final-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-final-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/trace.zip"
+            ],
+            "durationMilliseconds": 13201
+          }
+        ],
+        "message": null
+      },
+      "actionReports": [],
+      "artifacts": [
+        {
+          "path": "1447-navigation-final-native/run-1/report.json",
+          "bytes": 24114,
+          "sha256": "0393f944d1e737573238796f1755210dfbe3e6083d75575ec3a4fe1d5c674e29"
+        },
+        {
+          "path": "1447-navigation-final-native/run-1/results/.last-run.json",
+          "bytes": 243,
+          "sha256": "4a0fa2b6c19c362ff86c8c54a8c806cf608ef3851e15ab63a9cdf6d996214a3c"
+        },
+        {
+          "path": "1447-navigation-final-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/trace.zip",
+          "bytes": 1110,
+          "sha256": "a6fa1a858a737a27ba1d424d298e62a47a6f127024aae2560883daa6515cbbd8"
+        },
+        {
+          "path": "1447-navigation-final-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/trace.zip",
+          "bytes": 1109,
+          "sha256": "f0cbb2eb564282da9376a4d4ebe275749f2847bdca2a71898649af44181f9520"
+        },
+        {
+          "path": "1447-navigation-final-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/trace.zip",
+          "bytes": 1114,
+          "sha256": "b63c2fac9774d144171545cb8daf2b9b19aab0863ce3a4cb94abe9da7b4a6303"
+        },
+        {
+          "path": "1447-navigation-final-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/trace.zip",
+          "bytes": 1112,
+          "sha256": "60af95bfd66c78c38b2a01f82dc7b1c6d189dbcf7a422d1e4561613f37b8078a"
+        },
+        {
+          "path": "1447-navigation-final-native/summary.json",
+          "bytes": 4339,
+          "sha256": "db743d1ff0139255354d7f18e841b030abc8be315c8fa0ec72cab622c3395b17"
+        }
+      ]
+    },
+    {
+      "name": "1447-navigation-replay-desktop",
+      "purpose": "environment launch failure: missing activated Chromium profile; no browser behavior executed",
+      "sourceFileHashes": {
+        "apps/web/e2e/project-task-action-sequences.acceptance.spec.ts": "ab3fbae81820eda656e0c2e66ebf0c37700bc503aed0b7a4d200d8fbc0045693",
+        "apps/web/e2e/project-task-browser-sequences.fixture.ts": "c18d6ac6f4ba520c72d603686c195a2b027294fedde9e390b594bbe4b9f500ec",
+        "apps/web/e2e/project-task-read-holds.fixture.ts": "20dee7b8bcfa543852ab5fd4dd0b108b134b8ec63b8c1e4a59ed3cad3d09cbc6",
+        "apps/web/e2e/project-task-sequence-source.fixture.ts": "2e507b720e9cf5b610384cd9da8187ef8410add578ba34458f9e1c80b604e554",
+        "apps/web/e2e/document-action-sequences.acceptance.spec.ts": "b90625b1fe37e2372feccb48b8c4a8cc17b534bad187ad27aab6edb45140bc02",
+        "scripts/browser-sequences.mjs": "26dabc78bde906bcc0e9c1c3728f9d0a030be0a687a07e398b4c8e3f94bcebc8",
+        "scripts/nightly-ui-chaos-report.mjs": "e03df49354b35dc934fd72fa88a127f4929e8f946f9e689a8fed782bd656db0f",
+        ".github/workflows/nightly-ui-chaos.yml": "65c541d09ccfc8245843ccdb891bd84b1a89df6a7115c657df8f26b9fe980ee4"
+      },
+      "sourceQualification": "CI catalogue correction; ambiguous navigation selector, not final qualifying source",
+      "summary": {
+        "schema": "prisma-prim-journey-verification/v1",
+        "journey": "project-task-action-sequences",
+        "spec": "/workspace/work/batch-20261118/1447/apps/web/e2e/project-task-action-sequences.acceptance.spec.ts",
+        "status": "failed",
+        "exitCode": 1,
+        "repeat": 1,
+        "cpuLoadThreads": 0,
+        "chaosSeed": 1422001,
+        "budgetMinutes": null,
+        "stoppedByBudget": false,
+        "startedAt": "2026-11-18T10:47:11.748Z",
+        "finishedAt": "2026-11-18T10:48:20.151Z",
+        "evidenceDirectory": "/workspace/work/batch-20261118/evidence/1447-navigation-replay-desktop",
+        "summaryFile": "/workspace/work/batch-20261118/evidence/1447-navigation-replay-desktop/summary.json",
+        "builds": [
+          {
+            "command": "pnpm",
+            "args": ["--filter", "@prisma-prim/api", "build"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1447-navigation-replay-desktop/build-1.log"
+          },
+          {
+            "command": "pnpm",
+            "args": ["build", "--mode", "local-demo"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1447-navigation-replay-desktop/build-2.log"
+          }
+        ],
+        "runs": [
+          {
+            "run": 1,
+            "status": "failed",
+            "exitCode": 1,
+            "chaosSeed": 1422001,
+            "replay": "pnpm verify:journey project-task-action-sequences --chaos 1422001",
+            "tests": {
+              "passed": 0,
+              "failed": 1,
+              "flaky": 0,
+              "skipped": 0
+            },
+            "failures": [
+              {
+                "title": "project-task-action-sequences.acceptance.spec.ts › generated Project Task sequences › explores generated native Project and Task action sequences",
+                "project": "operational-acceptance-desktop",
+                "error": "Error: browserType.launch: Executable doesn't exist at /tmp/prisma-prim-managed-postgres-KzAyui/cache/ms-playwright/chromium_headless_shell-1181/chrome-linux/headless_shell"
+              }
+            ],
+            "message": null,
+            "log": "/workspace/work/batch-20261118/evidence/1447-navigation-replay-desktop/run-1/playwright.log",
+            "report": "/workspace/work/batch-20261118/evidence/1447-navigation-replay-desktop/run-1/report.json",
+            "screenshots": [],
+            "traces": [
+              "/workspace/work/batch-20261118/evidence/1447-navigation-replay-desktop/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/trace.zip"
+            ],
+            "durationMilliseconds": 13030
+          }
+        ],
+        "message": null
+      },
+      "actionReports": [],
+      "artifacts": [
+        {
+          "path": "1447-navigation-replay-desktop/run-1/report.json",
+          "bytes": 8691,
+          "sha256": "f0f807c5349737bf4337d900daae1d09e13b0cfc1709b85f37bb2b454b976f27"
+        },
+        {
+          "path": "1447-navigation-replay-desktop/run-1/results/.last-run.json",
+          "bytes": 96,
+          "sha256": "675f842741721a1cfb5b37f1b630a817347d9f0e5a444dcfd087fac2ffc55950"
+        },
+        {
+          "path": "1447-navigation-replay-desktop/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/trace.zip",
+          "bytes": 1111,
+          "sha256": "62e68c25c83cb8f04e58e74be3230e8b2cd5915eeca26e7d2da08437371e3200"
+        },
+        {
+          "path": "1447-navigation-replay-desktop/summary.json",
+          "bytes": 2534,
+          "sha256": "d5f6d8f89d496402a4d0e2a01f55ebabfd091e3e42124aaa90bab1df40a1cc46"
+        }
+      ]
+    },
+    {
+      "name": "1447-navigation-replay-narrow",
+      "purpose": "environment launch failure: missing activated Chromium profile; no browser behavior executed",
+      "sourceFileHashes": {
+        "apps/web/e2e/project-task-action-sequences.acceptance.spec.ts": "ab3fbae81820eda656e0c2e66ebf0c37700bc503aed0b7a4d200d8fbc0045693",
+        "apps/web/e2e/project-task-browser-sequences.fixture.ts": "c18d6ac6f4ba520c72d603686c195a2b027294fedde9e390b594bbe4b9f500ec",
+        "apps/web/e2e/project-task-read-holds.fixture.ts": "20dee7b8bcfa543852ab5fd4dd0b108b134b8ec63b8c1e4a59ed3cad3d09cbc6",
+        "apps/web/e2e/project-task-sequence-source.fixture.ts": "2e507b720e9cf5b610384cd9da8187ef8410add578ba34458f9e1c80b604e554",
+        "apps/web/e2e/document-action-sequences.acceptance.spec.ts": "b90625b1fe37e2372feccb48b8c4a8cc17b534bad187ad27aab6edb45140bc02",
+        "scripts/browser-sequences.mjs": "26dabc78bde906bcc0e9c1c3728f9d0a030be0a687a07e398b4c8e3f94bcebc8",
+        "scripts/nightly-ui-chaos-report.mjs": "e03df49354b35dc934fd72fa88a127f4929e8f946f9e689a8fed782bd656db0f",
+        ".github/workflows/nightly-ui-chaos.yml": "65c541d09ccfc8245843ccdb891bd84b1a89df6a7115c657df8f26b9fe980ee4"
+      },
+      "sourceQualification": "CI catalogue correction; ambiguous navigation selector, not final qualifying source",
+      "summary": {
+        "schema": "prisma-prim-journey-verification/v1",
+        "journey": "project-task-action-sequences",
+        "spec": "/workspace/work/batch-20261118/1447/apps/web/e2e/project-task-action-sequences.acceptance.spec.ts",
+        "status": "failed",
+        "exitCode": 1,
+        "repeat": 1,
+        "cpuLoadThreads": 0,
+        "chaosSeed": 1422001,
+        "budgetMinutes": null,
+        "stoppedByBudget": false,
+        "startedAt": "2026-11-18T10:48:29.925Z",
+        "finishedAt": "2026-11-18T10:49:37.729Z",
+        "evidenceDirectory": "/workspace/work/batch-20261118/evidence/1447-navigation-replay-narrow",
+        "summaryFile": "/workspace/work/batch-20261118/evidence/1447-navigation-replay-narrow/summary.json",
+        "builds": [
+          {
+            "command": "pnpm",
+            "args": ["--filter", "@prisma-prim/api", "build"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1447-navigation-replay-narrow/build-1.log"
+          },
+          {
+            "command": "pnpm",
+            "args": ["build", "--mode", "local-demo"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1447-navigation-replay-narrow/build-2.log"
+          }
+        ],
+        "runs": [
+          {
+            "run": 1,
+            "status": "failed",
+            "exitCode": 1,
+            "chaosSeed": 1422001,
+            "replay": "pnpm verify:journey project-task-action-sequences --chaos 1422001",
+            "tests": {
+              "passed": 0,
+              "failed": 1,
+              "flaky": 0,
+              "skipped": 0
+            },
+            "failures": [
+              {
+                "title": "project-task-action-sequences.acceptance.spec.ts › generated Project Task sequences › explores generated native Project and Task action sequences",
+                "project": "operational-acceptance-narrow",
+                "error": "Error: browserType.launch: Executable doesn't exist at /tmp/prisma-prim-managed-postgres-t5x8Ee/cache/ms-playwright/chromium_headless_shell-1181/chrome-linux/headless_shell"
+              }
+            ],
+            "message": null,
+            "log": "/workspace/work/batch-20261118/evidence/1447-navigation-replay-narrow/run-1/playwright.log",
+            "report": "/workspace/work/batch-20261118/evidence/1447-navigation-replay-narrow/run-1/report.json",
+            "screenshots": [],
+            "traces": [
+              "/workspace/work/batch-20261118/evidence/1447-navigation-replay-narrow/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/trace.zip"
+            ],
+            "durationMilliseconds": 12400
+          }
+        ],
+        "message": null
+      },
+      "actionReports": [],
+      "artifacts": [
+        {
+          "path": "1447-navigation-replay-narrow/run-1/report.json",
+          "bytes": 8683,
+          "sha256": "2a6badb722275783d7d83465067a49eca284dbafe9d7c27f498145e0b6d894f3"
+        },
+        {
+          "path": "1447-navigation-replay-narrow/run-1/results/.last-run.json",
+          "bytes": 96,
+          "sha256": "ffddd571e6eaa6dbe7b6185cf8870248860523c33ad6822baf27caac09f62b37"
+        },
+        {
+          "path": "1447-navigation-replay-narrow/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/trace.zip",
+          "bytes": 1106,
+          "sha256": "4c92a2a2cf6e1e6f86cc626c1eaa5d6c366ee01f8db3326eb5cdaf65e197e91e"
+        },
+        {
+          "path": "1447-navigation-replay-narrow/summary.json",
+          "bytes": 2525,
+          "sha256": "7b97e2c8b37a9b021ac07df5f3264938a12cfbfb4275c29160ec1f7501a712ac"
+        }
+      ]
+    },
+    {
+      "name": "1447-navigation-profile-native",
+      "purpose": "test preparation failure: Overview selector matched both brand and navigation links; no product defect claimed",
+      "sourceFileHashes": {
+        "apps/web/e2e/project-task-action-sequences.acceptance.spec.ts": "ab3fbae81820eda656e0c2e66ebf0c37700bc503aed0b7a4d200d8fbc0045693",
+        "apps/web/e2e/project-task-browser-sequences.fixture.ts": "c18d6ac6f4ba520c72d603686c195a2b027294fedde9e390b594bbe4b9f500ec",
+        "apps/web/e2e/project-task-read-holds.fixture.ts": "20dee7b8bcfa543852ab5fd4dd0b108b134b8ec63b8c1e4a59ed3cad3d09cbc6",
+        "apps/web/e2e/project-task-sequence-source.fixture.ts": "2e507b720e9cf5b610384cd9da8187ef8410add578ba34458f9e1c80b604e554",
+        "apps/web/e2e/document-action-sequences.acceptance.spec.ts": "b90625b1fe37e2372feccb48b8c4a8cc17b534bad187ad27aab6edb45140bc02",
+        "scripts/browser-sequences.mjs": "26dabc78bde906bcc0e9c1c3728f9d0a030be0a687a07e398b4c8e3f94bcebc8",
+        "scripts/nightly-ui-chaos-report.mjs": "e03df49354b35dc934fd72fa88a127f4929e8f946f9e689a8fed782bd656db0f",
+        ".github/workflows/nightly-ui-chaos.yml": "65c541d09ccfc8245843ccdb891bd84b1a89df6a7115c657df8f26b9fe980ee4"
+      },
+      "sourceQualification": "CI catalogue correction; ambiguous navigation selector, not final qualifying source",
+      "summary": {
+        "schema": "prisma-prim-journey-verification/v1",
+        "journey": "project-task-action-sequences",
+        "spec": "/workspace/work/batch-20261118/1447/apps/web/e2e/project-task-action-sequences.acceptance.spec.ts",
+        "status": "failed",
+        "exitCode": 1,
+        "repeat": 1,
+        "cpuLoadThreads": 0,
+        "chaosSeed": null,
+        "budgetMinutes": null,
+        "stoppedByBudget": false,
+        "startedAt": "2026-11-18T11:03:22.765Z",
+        "finishedAt": "2026-11-18T11:05:57.741Z",
+        "evidenceDirectory": "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native",
+        "summaryFile": "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/summary.json",
+        "builds": [
+          {
+            "command": "pnpm",
+            "args": ["--filter", "@prisma-prim/api", "build"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/build-1.log"
+          },
+          {
+            "command": "pnpm",
+            "args": ["build", "--mode", "local-demo"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/build-2.log"
+          }
+        ],
+        "runs": [
+          {
+            "run": 1,
+            "status": "failed",
+            "exitCode": 1,
+            "chaosSeed": null,
+            "replay": null,
+            "tests": {
+              "passed": 0,
+              "failed": 4,
+              "flaky": 0,
+              "skipped": 0
+            },
+            "failures": [
+              {
+                "title": "project-task-action-sequences.acceptance.spec.ts › checks Project Task actions against native literal retry and independent-read recipes",
+                "project": "operational-acceptance-desktop",
+                "error": "Error: locator.click: Error: strict mode violation: locator('nav a[href=\"#overview\"]') resolved to 2 elements:"
+              },
+              {
+                "title": "project-task-action-sequences.acceptance.spec.ts › checks Project Task actions against native literal retry and independent-read recipes",
+                "project": "operational-acceptance-narrow",
+                "error": "Error: locator.click: Error: strict mode violation: locator('nav a[href=\"#overview\"]') resolved to 2 elements:"
+              },
+              {
+                "title": "project-task-action-sequences.acceptance.spec.ts › generated Project Task sequences › explores generated native Project and Task action sequences",
+                "project": "operational-acceptance-desktop",
+                "error": "Error: Browser sequences project-task@desktop: failed. locator.call: Error: strict mode violation: locator('nav a[href=\"#overview\"]') resolved to 2 elements:"
+              },
+              {
+                "title": "project-task-action-sequences.acceptance.spec.ts › generated Project Task sequences › explores generated native Project and Task action sequences",
+                "project": "operational-acceptance-narrow",
+                "error": "Error: Browser sequences project-task@narrow: failed. locator.call: Error: strict mode violation: locator('nav a[href=\"#overview\"]') resolved to 2 elements:"
+              }
+            ],
+            "message": null,
+            "log": "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/run-1/playwright.log",
+            "report": "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/run-1/report.json",
+            "sequences": [
+              {
+                "caseId": "project-task",
+                "width": "desktop",
+                "seed": 1422001,
+                "steps": 10,
+                "status": "failed",
+                "runs": 2,
+                "shrinks": 1,
+                "durationMilliseconds": 31883,
+                "path": "1:0",
+                "coverage": {
+                  "save-task-lost-receipt": 1,
+                  "navigate-and-reopen-exact-project-task": 0
+                },
+                "replay": "UI_SEQUENCE_REPLAY='project-task@desktop~10~1:0' pnpm verify:journey project-task-action-sequences --chaos 1422001"
+              },
+              {
+                "caseId": "project-task",
+                "width": "narrow",
+                "seed": 1422001,
+                "steps": 10,
+                "status": "failed",
+                "runs": 2,
+                "shrinks": 1,
+                "durationMilliseconds": 29213,
+                "path": "1:0",
+                "coverage": {
+                  "save-task-lost-receipt": 1,
+                  "navigate-and-reopen-exact-project-task": 0
+                },
+                "replay": "UI_SEQUENCE_REPLAY='project-task@narrow~10~1:0' pnpm verify:journey project-task-action-sequences --chaos 1422001"
+              }
+            ],
+            "screenshots": [
+              "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/test-failed-1.png",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/test-failed-1.png",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/attachments/original-counterexample-d4f3edd0f0a3e928a1a7598bf8b92f8ec67944e8.png",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/project-task-original-counterexample.png",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/test-failed-1.png",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/attachments/original-counterexample-b1c67b0885d144dca528466f93fafb60e4f1c70b.png",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/project-task-original-counterexample.png",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/test-failed-1.png"
+            ],
+            "traces": [
+              "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/trace.zip"
+            ],
+            "durationMilliseconds": 98788
+          }
+        ],
+        "message": null
+      },
+      "actionReports": [
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/project-task-sequences.json",
+          "report": {
+            "schema": "prisma-prim-browser-sequences/v1",
+            "caseId": "project-task",
+            "journey": "project-task-action-sequences",
+            "width": "desktop",
+            "seed": 1422001,
+            "steps": 10,
+            "status": "failed",
+            "path": "1:0",
+            "replay": "UI_SEQUENCE_REPLAY='project-task@desktop~10~1:0' pnpm verify:journey project-task-action-sequences --chaos 1422001",
+            "runs": 2,
+            "shrinks": 1,
+            "durationMilliseconds": 31883,
+            "interrupted": false,
+            "original": {
+              "trial": {
+                "trial": 2,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 1369972086,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 212653754,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1136444627,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 58360295,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 1933151713,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 1591177661,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1603090577,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "access"
+                    }
+                  },
+                  {
+                    "choice": 1132096270,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1628785751,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "access"
+                    }
+                  },
+                  {
+                    "choice": 93417846,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "token",
+                      "replacement": "project"
+                    },
+                    "outcome": "started"
+                  }
+                ],
+                "model": {
+                  "version": 1,
+                  "nextRevision": 0,
+                  "mode": "draft",
+                  "writes": 0,
+                  "reads": 33,
+                  "locale": "ro"
+                },
+                "status": "failed",
+                "error": "locator.call: Error: strict mode violation: locator('nav a[href=\"#overview\"]') resolved to 2 elements:\n    1) <a href=\"#overview\" class=\"prisme-brand\" aria-label=\"Pagina principală PRISMA-PRIM Suite\">…</a> aka getByRole('link', { name: 'Pagina principală PRISMA-PRIM' })\n    2) <a href=\"#overview\">…</a> aka getByRole('link', { name: 'Prezentare generală' })\n\nCall log:\n\u001b[2m  - waiting for locator('nav a[href=\"#overview\"]')\u001b[22m\n"
+              },
+              "screenshot": "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/project-task-original-counterexample.png",
+              "artifactError": null
+            },
+            "counterexample": [
+              {
+                "initial": "a",
+                "steps": [
+                  {
+                    "choice": 93417846,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  }
+                ]
+              }
+            ],
+            "trials": [
+              {
+                "trial": 1,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 1369640398,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "http",
+                      "replacement": "project"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "save-task-lost-receipt",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "http",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  }
+                ],
+                "model": {
+                  "version": 2,
+                  "nextRevision": 0,
+                  "mode": "ready",
+                  "writes": 2,
+                  "reads": 38,
+                  "locale": "ro"
+                },
+                "status": "passed"
+              },
+              {
+                "trial": 2,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 1369972086,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 212653754,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1136444627,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 58360295,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 1933151713,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 1591177661,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1603090577,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "access"
+                    }
+                  },
+                  {
+                    "choice": 1132096270,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1628785751,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "access"
+                    }
+                  },
+                  {
+                    "choice": 93417846,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "token",
+                      "replacement": "project"
+                    },
+                    "outcome": "started"
+                  }
+                ],
+                "model": {
+                  "version": 1,
+                  "nextRevision": 0,
+                  "mode": "draft",
+                  "writes": 0,
+                  "reads": 33,
+                  "locale": "ro"
+                },
+                "status": "failed",
+                "error": "locator.call: Error: strict mode violation: locator('nav a[href=\"#overview\"]') resolved to 2 elements:\n    1) <a href=\"#overview\" class=\"prisme-brand\" aria-label=\"Pagina principală PRISMA-PRIM Suite\">…</a> aka getByRole('link', { name: 'Pagina principală PRISMA-PRIM' })\n    2) <a href=\"#overview\">…</a> aka getByRole('link', { name: 'Prezentare generală' })\n\nCall log:\n\u001b[2m  - waiting for locator('nav a[href=\"#overview\"]')\u001b[22m\n"
+              },
+              {
+                "trial": 3,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 93417846,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    },
+                    "outcome": "started"
+                  }
+                ],
+                "model": {
+                  "version": 1,
+                  "nextRevision": 0,
+                  "mode": "draft",
+                  "writes": 0,
+                  "reads": 33,
+                  "locale": "ro"
+                },
+                "status": "failed",
+                "error": "locator.call: Error: strict mode violation: locator('nav a[href=\"#overview\"]') resolved to 2 elements:\n    1) <a href=\"#overview\" class=\"prisme-brand\" aria-label=\"Pagina principală PRISMA-PRIM Suite\">…</a> aka getByRole('link', { name: 'Pagina principală PRISMA-PRIM' })\n    2) <a href=\"#overview\">…</a> aka getByRole('link', { name: 'Prezentare generală' })\n\nCall log:\n\u001b[2m  - waiting for locator('nav a[href=\"#overview\"]')\u001b[22m\n"
+              }
+            ],
+            "coverage": {
+              "save-task-lost-receipt": 1,
+              "navigate-and-reopen-exact-project-task": 0
+            }
+          }
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/project-task-sequences.json",
+          "report": {
+            "schema": "prisma-prim-browser-sequences/v1",
+            "caseId": "project-task",
+            "journey": "project-task-action-sequences",
+            "width": "narrow",
+            "seed": 1422001,
+            "steps": 10,
+            "status": "failed",
+            "path": "1:0",
+            "replay": "UI_SEQUENCE_REPLAY='project-task@narrow~10~1:0' pnpm verify:journey project-task-action-sequences --chaos 1422001",
+            "runs": 2,
+            "shrinks": 1,
+            "durationMilliseconds": 29213,
+            "interrupted": false,
+            "original": {
+              "trial": {
+                "trial": 2,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 1369972086,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 212653754,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1136444627,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 58360295,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 1933151713,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 1591177661,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1603090577,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "access"
+                    }
+                  },
+                  {
+                    "choice": 1132096270,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1628785751,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "access"
+                    }
+                  },
+                  {
+                    "choice": 93417846,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "token",
+                      "replacement": "project"
+                    },
+                    "outcome": "started"
+                  }
+                ],
+                "model": {
+                  "version": 1,
+                  "nextRevision": 0,
+                  "mode": "draft",
+                  "writes": 0,
+                  "reads": 33,
+                  "locale": "ru"
+                },
+                "status": "failed",
+                "error": "locator.call: Error: strict mode violation: locator('nav a[href=\"#overview\"]') resolved to 2 elements:\n    1) <a href=\"#overview\" class=\"prisme-brand\" aria-label=\"Главная страница PRISMA-PRIM Suite\">…</a> aka getByRole('link', { name: 'Главная страница PRISMA-PRIM' })\n    2) <a href=\"#overview\">…</a> aka getByRole('link', { name: 'Обзор' })\n\nCall log:\n\u001b[2m  - waiting for locator('nav a[href=\"#overview\"]')\u001b[22m\n"
+              },
+              "screenshot": "/workspace/work/batch-20261118/evidence/1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/project-task-original-counterexample.png",
+              "artifactError": null
+            },
+            "counterexample": [
+              {
+                "initial": "a",
+                "steps": [
+                  {
+                    "choice": 93417846,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  }
+                ]
+              }
+            ],
+            "trials": [
+              {
+                "trial": 1,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 1369640398,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "http",
+                      "replacement": "project"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "save-task-lost-receipt",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "http",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  }
+                ],
+                "model": {
+                  "version": 2,
+                  "nextRevision": 0,
+                  "mode": "ready",
+                  "writes": 2,
+                  "reads": 38,
+                  "locale": "ru"
+                },
+                "status": "passed"
+              },
+              {
+                "trial": 2,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 1369972086,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 212653754,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1136444627,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 58360295,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 1933151713,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 1591177661,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1603090577,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "access"
+                    }
+                  },
+                  {
+                    "choice": 1132096270,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1628785751,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "access"
+                    }
+                  },
+                  {
+                    "choice": 93417846,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "token",
+                      "replacement": "project"
+                    },
+                    "outcome": "started"
+                  }
+                ],
+                "model": {
+                  "version": 1,
+                  "nextRevision": 0,
+                  "mode": "draft",
+                  "writes": 0,
+                  "reads": 33,
+                  "locale": "ru"
+                },
+                "status": "failed",
+                "error": "locator.call: Error: strict mode violation: locator('nav a[href=\"#overview\"]') resolved to 2 elements:\n    1) <a href=\"#overview\" class=\"prisme-brand\" aria-label=\"Главная страница PRISMA-PRIM Suite\">…</a> aka getByRole('link', { name: 'Главная страница PRISMA-PRIM' })\n    2) <a href=\"#overview\">…</a> aka getByRole('link', { name: 'Обзор' })\n\nCall log:\n\u001b[2m  - waiting for locator('nav a[href=\"#overview\"]')\u001b[22m\n"
+              },
+              {
+                "trial": 3,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 93417846,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    },
+                    "outcome": "started"
+                  }
+                ],
+                "model": {
+                  "version": 1,
+                  "nextRevision": 0,
+                  "mode": "draft",
+                  "writes": 0,
+                  "reads": 33,
+                  "locale": "ru"
+                },
+                "status": "failed",
+                "error": "locator.call: Error: strict mode violation: locator('nav a[href=\"#overview\"]') resolved to 2 elements:\n    1) <a href=\"#overview\" class=\"prisme-brand\" aria-label=\"Главная страница PRISMA-PRIM Suite\">…</a> aka getByRole('link', { name: 'Главная страница PRISMA-PRIM' })\n    2) <a href=\"#overview\">…</a> aka getByRole('link', { name: 'Обзор' })\n\nCall log:\n\u001b[2m  - waiting for locator('nav a[href=\"#overview\"]')\u001b[22m\n"
+              }
+            ],
+            "coverage": {
+              "save-task-lost-receipt": 1,
+              "navigate-and-reopen-exact-project-task": 0
+            }
+          }
+        }
+      ],
+      "artifacts": [
+        {
+          "path": "1447-navigation-profile-native/run-1/report.json",
+          "bytes": 87292,
+          "sha256": "16b619593432895ba4da7b9f9d6292863662ba588fc0c9910ee481bf038e92b1"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/.last-run.json",
+          "bytes": 243,
+          "sha256": "4a0fa2b6c19c362ff86c8c54a8c806cf608ef3851e15ab63a9cdf6d996214a3c"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/test-failed-1.png",
+          "bytes": 82257,
+          "sha256": "1ffd25e5088ff662920545191b24e8e569deda2b01ad6334cb83742bf357d706"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/trace.zip",
+          "bytes": 2954432,
+          "sha256": "19cdcabe690dbbfb8ab79c76492ecc5b91a40cfb8e0facb1c1e806ec11e2a21b"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/test-failed-1.png",
+          "bytes": 41619,
+          "sha256": "43c206846c9807c40a3b2b9651b748cc98d5bf81521c1654943255c544e7da5f"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/trace.zip",
+          "bytes": 2193427,
+          "sha256": "72834d7d10be0f255b9ffaf071ec723548aa85cb3520b23272b9ca6043f59577"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/attachments/browser-sequences-e49665c6728e1e6d9750057f876fc90c63d299c3.json",
+          "bytes": 9436,
+          "sha256": "5c9afb5d547aa2bb127adbc01608137b5e0c5789a856a35ab67f18430cd1df8c"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/attachments/original-counterexample-d4f3edd0f0a3e928a1a7598bf8b92f8ec67944e8.png",
+          "bytes": 324238,
+          "sha256": "5930926c16344f5ec8ebb2488742cbd34fdd802887c7eb986c2c72bd6a0b6a2b"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/project-task-original-counterexample.png",
+          "bytes": 324238,
+          "sha256": "5930926c16344f5ec8ebb2488742cbd34fdd802887c7eb986c2c72bd6a0b6a2b"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/project-task-sequences.json",
+          "bytes": 9436,
+          "sha256": "5c9afb5d547aa2bb127adbc01608137b5e0c5789a856a35ab67f18430cd1df8c"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/test-failed-1.png",
+          "bytes": 108207,
+          "sha256": "1670881ca246430bb0f9711738909e8ffa9efcde341e24b114d5a0125a57493d"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/trace.zip",
+          "bytes": 4692042,
+          "sha256": "1e90ec02115fd5f9a2aedadffccf3d8770963b817d7c52e17cf6a7ff9d10321f"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/attachments/browser-sequences-06200fcb7595658b22259300d38e1fc8e616b822.json",
+          "bytes": 9481,
+          "sha256": "2165aa4a807e12df98798e0c267f768b98bf034fa56e6c5af2200764acc0477e"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/attachments/original-counterexample-b1c67b0885d144dca528466f93fafb60e4f1c70b.png",
+          "bytes": 378130,
+          "sha256": "51baef03d120e844d9cf49be888c857e788595c4704695b4c89ed3047794963c"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/project-task-original-counterexample.png",
+          "bytes": 378130,
+          "sha256": "51baef03d120e844d9cf49be888c857e788595c4704695b4c89ed3047794963c"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/project-task-sequences.json",
+          "bytes": 9481,
+          "sha256": "2165aa4a807e12df98798e0c267f768b98bf034fa56e6c5af2200764acc0477e"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/test-failed-1.png",
+          "bytes": 42096,
+          "sha256": "b42ced092a813f8b6054ccce1a5e378e64bca1c62b3cde55d9b7d9dc395fd18e"
+        },
+        {
+          "path": "1447-navigation-profile-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/trace.zip",
+          "bytes": 3827715,
+          "sha256": "f95b65b6a0420d8137a6dc336f46df8bc7499f099950d9f3ee9367c2126558f2"
+        },
+        {
+          "path": "1447-navigation-profile-native/summary.json",
+          "bytes": 7159,
+          "sha256": "608f740a0a8ac39957ccf3ff7d790e604d53f8bb2d2db595eb58979aba888157"
+        }
+      ]
+    },
+    {
+      "name": "1447-navigation-unique-native",
+      "purpose": "both curated recipes pass; both generated cases interrupted by unchanged sixty-second budget, not complete qualification",
+      "sourceFileHashes": {
+        "apps/web/e2e/project-task-action-sequences.acceptance.spec.ts": "ab3fbae81820eda656e0c2e66ebf0c37700bc503aed0b7a4d200d8fbc0045693",
+        "apps/web/e2e/project-task-browser-sequences.fixture.ts": "5b3df09a8f2fe68e30cee9509673c607d949908d49db678be49b06f4ac9a4f93",
+        "apps/web/e2e/project-task-read-holds.fixture.ts": "20dee7b8bcfa543852ab5fd4dd0b108b134b8ec63b8c1e4a59ed3cad3d09cbc6",
+        "apps/web/e2e/project-task-sequence-source.fixture.ts": "2e507b720e9cf5b610384cd9da8187ef8410add578ba34458f9e1c80b604e554",
+        "apps/web/e2e/document-action-sequences.acceptance.spec.ts": "b90625b1fe37e2372feccb48b8c4a8cc17b534bad187ad27aab6edb45140bc02",
+        "scripts/browser-sequences.mjs": "26dabc78bde906bcc0e9c1c3728f9d0a030be0a687a07e398b4c8e3f94bcebc8",
+        "scripts/nightly-ui-chaos-report.mjs": "e03df49354b35dc934fd72fa88a127f4929e8f946f9e689a8fed782bd656db0f",
+        ".github/workflows/nightly-ui-chaos.yml": "65c541d09ccfc8245843ccdb891bd84b1a89df6a7115c657df8f26b9fe980ee4"
+      },
+      "sourceQualification": "registered journey; default assertion backoff before prompt-readiness observation",
+      "summary": {
+        "schema": "prisma-prim-journey-verification/v1",
+        "journey": "project-task-action-sequences",
+        "spec": "/workspace/work/batch-20261118/1447/apps/web/e2e/project-task-action-sequences.acceptance.spec.ts",
+        "status": "failed",
+        "exitCode": 1,
+        "repeat": 1,
+        "cpuLoadThreads": 0,
+        "chaosSeed": null,
+        "budgetMinutes": null,
+        "stoppedByBudget": false,
+        "startedAt": "2026-11-18T11:10:25.044Z",
+        "finishedAt": "2026-11-18T11:14:43.553Z",
+        "evidenceDirectory": "/workspace/work/batch-20261118/evidence/1447-navigation-unique-native",
+        "summaryFile": "/workspace/work/batch-20261118/evidence/1447-navigation-unique-native/summary.json",
+        "builds": [
+          {
+            "command": "pnpm",
+            "args": ["--filter", "@prisma-prim/api", "build"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1447-navigation-unique-native/build-1.log"
+          },
+          {
+            "command": "pnpm",
+            "args": ["build", "--mode", "local-demo"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1447-navigation-unique-native/build-2.log"
+          }
+        ],
+        "runs": [
+          {
+            "run": 1,
+            "status": "failed",
+            "exitCode": 1,
+            "chaosSeed": null,
+            "replay": null,
+            "tests": {
+              "passed": 2,
+              "failed": 2,
+              "flaky": 0,
+              "skipped": 0
+            },
+            "failures": [
+              {
+                "title": "project-task-action-sequences.acceptance.spec.ts › generated Project Task sequences › explores generated native Project and Task action sequences",
+                "project": "operational-acceptance-desktop",
+                "error": "Error: Browser sequences project-task@desktop: interrupted. null. Original action trace: null"
+              },
+              {
+                "title": "project-task-action-sequences.acceptance.spec.ts › generated Project Task sequences › explores generated native Project and Task action sequences",
+                "project": "operational-acceptance-narrow",
+                "error": "Error: Browser sequences project-task@narrow: interrupted. null. Original action trace: null"
+              }
+            ],
+            "message": null,
+            "log": "/workspace/work/batch-20261118/evidence/1447-navigation-unique-native/run-1/playwright.log",
+            "report": "/workspace/work/batch-20261118/evidence/1447-navigation-unique-native/run-1/report.json",
+            "sequences": [
+              {
+                "caseId": "project-task",
+                "width": "desktop",
+                "seed": 1422001,
+                "steps": 10,
+                "status": "interrupted",
+                "runs": 1,
+                "shrinks": 0,
+                "durationMilliseconds": 65943,
+                "path": null,
+                "coverage": {
+                  "save-task-lost-receipt": 1,
+                  "navigate-and-reopen-exact-project-task": 3,
+                  "stale-task-revision-requires-deliberate-reload": 1,
+                  "reload-confirmed-or-conflicted-task-without-writing": 1,
+                  "edit-literal-task-instructions": 2,
+                  "save-task-none": 1,
+                  "isolate-token-task-after-project": 1,
+                  "isolate-token-task-after-company": 1
+                },
+                "replay": null
+              },
+              {
+                "caseId": "project-task",
+                "width": "narrow",
+                "seed": 1422001,
+                "steps": 10,
+                "status": "interrupted",
+                "runs": 1,
+                "shrinks": 0,
+                "durationMilliseconds": 60127,
+                "path": null,
+                "coverage": {
+                  "save-task-lost-receipt": 1,
+                  "navigate-and-reopen-exact-project-task": 3,
+                  "stale-task-revision-requires-deliberate-reload": 1,
+                  "reload-confirmed-or-conflicted-task-without-writing": 1,
+                  "edit-literal-task-instructions": 2,
+                  "save-task-none": 1,
+                  "isolate-token-task-after-project": 1,
+                  "isolate-token-task-after-company": 1
+                },
+                "replay": null
+              }
+            ],
+            "screenshots": [
+              "/workspace/work/batch-20261118/evidence/1447-navigation-unique-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/project-task-native-recipe.png",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-unique-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/test-finished-1.png",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-unique-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/project-task-native-recipe.png",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-unique-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/test-finished-1.png",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-unique-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/test-failed-1.png",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-unique-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/test-failed-1.png"
+            ],
+            "traces": [
+              "/workspace/work/batch-20261118/evidence/1447-navigation-unique-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-unique-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-unique-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1447-navigation-unique-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/trace.zip"
+            ],
+            "durationMilliseconds": 200338
+          }
+        ],
+        "message": null
+      },
+      "actionReports": [
+        {
+          "path": "1447-navigation-unique-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/project-task-sequences.json",
+          "report": {
+            "schema": "prisma-prim-browser-sequences/v1",
+            "caseId": "project-task",
+            "journey": "project-task-action-sequences",
+            "width": "desktop",
+            "seed": 1422001,
+            "steps": 10,
+            "status": "interrupted",
+            "path": null,
+            "replay": null,
+            "runs": 1,
+            "shrinks": 0,
+            "durationMilliseconds": 65943,
+            "interrupted": true,
+            "original": null,
+            "counterexample": null,
+            "trials": [
+              {
+                "trial": 1,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 1369640398,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "http",
+                      "replacement": "project"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "save-task-lost-receipt",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "http",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  }
+                ],
+                "model": {
+                  "version": 2,
+                  "nextRevision": 0,
+                  "mode": "ready",
+                  "writes": 2,
+                  "reads": 38,
+                  "locale": "ro"
+                },
+                "status": "passed"
+              },
+              {
+                "trial": 2,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 1369972086,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 212653754,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1136444627,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 58360295,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 1933151713,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 1591177661,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1603090577,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "access"
+                    }
+                  },
+                  {
+                    "choice": 1132096270,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1628785751,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "access"
+                    }
+                  },
+                  {
+                    "choice": 93417846,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "token",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "stale-task-revision-requires-deliberate-reload",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "reload-confirmed-or-conflicted-task-without-writing",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "company"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "edit-literal-task-instructions",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "company"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "edit-literal-task-instructions",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "save-task-none",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "access"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "isolate-token-task-after-project",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "access"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "isolate-token-task-after-company",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    },
+                    "outcome": "passed"
+                  }
+                ],
+                "model": {
+                  "version": 3,
+                  "nextRevision": 0,
+                  "mode": "ready",
+                  "writes": 2,
+                  "reads": 143,
+                  "locale": "ro"
+                },
+                "status": "passed"
+              }
+            ],
+            "coverage": {
+              "save-task-lost-receipt": 1,
+              "navigate-and-reopen-exact-project-task": 3,
+              "stale-task-revision-requires-deliberate-reload": 1,
+              "reload-confirmed-or-conflicted-task-without-writing": 1,
+              "edit-literal-task-instructions": 2,
+              "save-task-none": 1,
+              "isolate-token-task-after-project": 1,
+              "isolate-token-task-after-company": 1
+            }
+          }
+        },
+        {
+          "path": "1447-navigation-unique-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/project-task-sequences.json",
+          "report": {
+            "schema": "prisma-prim-browser-sequences/v1",
+            "caseId": "project-task",
+            "journey": "project-task-action-sequences",
+            "width": "narrow",
+            "seed": 1422001,
+            "steps": 10,
+            "status": "interrupted",
+            "path": null,
+            "replay": null,
+            "runs": 1,
+            "shrinks": 0,
+            "durationMilliseconds": 60127,
+            "interrupted": true,
+            "original": null,
+            "counterexample": null,
+            "trials": [
+              {
+                "trial": 1,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 1369640398,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "http",
+                      "replacement": "project"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "save-task-lost-receipt",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "http",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  }
+                ],
+                "model": {
+                  "version": 2,
+                  "nextRevision": 0,
+                  "mode": "ready",
+                  "writes": 2,
+                  "reads": 38,
+                  "locale": "ru"
+                },
+                "status": "passed"
+              },
+              {
+                "trial": 2,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 1369972086,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 212653754,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1136444627,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 58360295,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 1933151713,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 1591177661,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1603090577,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "access"
+                    }
+                  },
+                  {
+                    "choice": 1132096270,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1628785751,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "access"
+                    }
+                  },
+                  {
+                    "choice": 93417846,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "token",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "stale-task-revision-requires-deliberate-reload",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "reload-confirmed-or-conflicted-task-without-writing",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "company"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "edit-literal-task-instructions",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "company"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "edit-literal-task-instructions",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "save-task-none",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "access"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "isolate-token-task-after-project",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "access"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "isolate-token-task-after-company",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    },
+                    "outcome": "passed"
+                  }
+                ],
+                "model": {
+                  "version": 3,
+                  "nextRevision": 0,
+                  "mode": "ready",
+                  "writes": 2,
+                  "reads": 143,
+                  "locale": "ru"
+                },
+                "status": "passed"
+              }
+            ],
+            "coverage": {
+              "save-task-lost-receipt": 1,
+              "navigate-and-reopen-exact-project-task": 3,
+              "stale-task-revision-requires-deliberate-reload": 1,
+              "reload-confirmed-or-conflicted-task-without-writing": 1,
+              "edit-literal-task-instructions": 2,
+              "save-task-none": 1,
+              "isolate-token-task-after-project": 1,
+              "isolate-token-task-after-company": 1
+            }
+          }
+        }
+      ],
+      "artifacts": [
+        {
+          "path": "1447-navigation-unique-native/run-1/report.json",
+          "bytes": 96047,
+          "sha256": "c10281eda0eadb67efd8efd33d3a116492f1b021cfc245109eb9933b7f390683"
+        },
+        {
+          "path": "1447-navigation-unique-native/run-1/results/.last-run.json",
+          "bytes": 145,
+          "sha256": "f2b5de42682401af46fc19e319bda7b90f3eb13d280e05cea4bc461dbfcbf45b"
+        },
+        {
+          "path": "1447-navigation-unique-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/project-task-native-recipe.png",
+          "bytes": 412757,
+          "sha256": "fcbee43dc5487aa534cf96ba3a3cf5444a099aacfea5b13fc62c0fb7409a6470"
+        },
+        {
+          "path": "1447-navigation-unique-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/test-finished-1.png",
+          "bytes": 113429,
+          "sha256": "421b96444ea1b12a26769c02e88642f6f86c4c6c98df71d3b888e42b2240856b"
+        },
+        {
+          "path": "1447-navigation-unique-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/trace.zip",
+          "bytes": 10759445,
+          "sha256": "6439b5ec7dba582f138d5b45cafdfe52baa49db38cd7874178831f5336fe799e"
+        },
+        {
+          "path": "1447-navigation-unique-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/project-task-native-recipe.png",
+          "bytes": 427240,
+          "sha256": "f44a22ae60ae0b0e407dde6e2560d8f2bfcd9053005da27b0a3e02b3fa31fca4"
+        },
+        {
+          "path": "1447-navigation-unique-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/test-finished-1.png",
+          "bytes": 42922,
+          "sha256": "f6d0b00dd946a17eef4c7ce14dece8be42028b68fdec07d8ee53d6fcdcf963c0"
+        },
+        {
+          "path": "1447-navigation-unique-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/trace.zip",
+          "bytes": 8713785,
+          "sha256": "ecbf621348c1b9d22fcfb622f0e713f0baa41eb3a64d02b5b4862abeafa96f0d"
+        },
+        {
+          "path": "1447-navigation-unique-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/attachments/browser-sequences-4a7de54fed47db2cc2f8f68013edefe4e7c0ab30.json",
+          "bytes": 6565,
+          "sha256": "3b445fad6fd288e7b57737b18675d0d7e88e39d1037405d30f061283ed834e1a"
+        },
+        {
+          "path": "1447-navigation-unique-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/project-task-sequences.json",
+          "bytes": 6565,
+          "sha256": "3b445fad6fd288e7b57737b18675d0d7e88e39d1037405d30f061283ed834e1a"
+        },
+        {
+          "path": "1447-navigation-unique-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/test-failed-1.png",
+          "bytes": 115427,
+          "sha256": "56f96baea970b130ff0a0c32de077386a4165656ecb657004cb0b512582f6bcf"
+        },
+        {
+          "path": "1447-navigation-unique-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/trace.zip",
+          "bytes": 7744200,
+          "sha256": "aac3b9d8e90090aad5901838978d79dea425d93d81fe2e7840b18d84457fe7fd"
+        },
+        {
+          "path": "1447-navigation-unique-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/attachments/browser-sequences-33969dce535fa695501c98f07191a852474aef08.json",
+          "bytes": 6564,
+          "sha256": "8d8bb794054d5ab9cb804eb757bde92c29e1d6a1f330a190ce27b573aecb6b99"
+        },
+        {
+          "path": "1447-navigation-unique-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/project-task-sequences.json",
+          "bytes": 6564,
+          "sha256": "8d8bb794054d5ab9cb804eb757bde92c29e1d6a1f330a190ce27b573aecb6b99"
+        },
+        {
+          "path": "1447-navigation-unique-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/test-failed-1.png",
+          "bytes": 42868,
+          "sha256": "4ab4e9f47a784d14b1789df717f742b751a1041493fd00a2614bd2c0a34b47d8"
+        },
+        {
+          "path": "1447-navigation-unique-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/trace.zip",
+          "bytes": 6304509,
+          "sha256": "29e48c90260892caa6952672905154f317190d9e58aea97c72c9bf0a46297ac8"
+        },
+        {
+          "path": "1447-navigation-unique-native/summary.json",
+          "bytes": 6141,
+          "sha256": "204ad22a28bc424936f0e995bffe977f55ebfa401511d8bd097ca3cd19586aa3"
+        }
+      ]
+    },
+    {
+      "name": "1447-prompt-readiness-native",
+      "purpose": "final correct-source qualification",
+      "sourceFileHashes": {
+        "apps/web/e2e/project-task-action-sequences.acceptance.spec.ts": "ab3fbae81820eda656e0c2e66ebf0c37700bc503aed0b7a4d200d8fbc0045693",
+        "apps/web/e2e/project-task-browser-sequences.fixture.ts": "490844d3c4716f70c3740b57fea5ef1c22907b1cbfb937b2f08e7ec8acb6c866",
+        "apps/web/e2e/project-task-read-holds.fixture.ts": "20dee7b8bcfa543852ab5fd4dd0b108b134b8ec63b8c1e4a59ed3cad3d09cbc6",
+        "apps/web/e2e/project-task-sequence-source.fixture.ts": "2e507b720e9cf5b610384cd9da8187ef8410add578ba34458f9e1c80b604e554",
+        "apps/web/e2e/document-action-sequences.acceptance.spec.ts": "b90625b1fe37e2372feccb48b8c4a8cc17b534bad187ad27aab6edb45140bc02",
+        "scripts/browser-sequences.mjs": "26dabc78bde906bcc0e9c1c3728f9d0a030be0a687a07e398b4c8e3f94bcebc8",
+        "scripts/nightly-ui-chaos-report.mjs": "e03df49354b35dc934fd72fa88a127f4929e8f946f9e689a8fed782bd656db0f",
+        ".github/workflows/nightly-ui-chaos.yml": "65c541d09ccfc8245843ccdb891bd84b1a89df6a7115c657df8f26b9fe980ee4"
+      },
+      "sourceQualification": "final registered journey with unambiguous navigation and prompt readiness observation",
+      "summary": {
+        "schema": "prisma-prim-journey-verification/v1",
+        "journey": "project-task-action-sequences",
+        "spec": "/workspace/work/batch-20261118/1447/apps/web/e2e/project-task-action-sequences.acceptance.spec.ts",
+        "status": "passed",
+        "exitCode": 0,
+        "repeat": 1,
+        "cpuLoadThreads": 0,
+        "chaosSeed": null,
+        "budgetMinutes": null,
+        "stoppedByBudget": false,
+        "startedAt": "2026-11-18T11:15:29.662Z",
+        "finishedAt": "2026-11-18T11:19:15.803Z",
+        "evidenceDirectory": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-native",
+        "summaryFile": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-native/summary.json",
+        "builds": [
+          {
+            "command": "pnpm",
+            "args": ["--filter", "@prisma-prim/api", "build"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-native/build-1.log"
+          },
+          {
+            "command": "pnpm",
+            "args": ["build", "--mode", "local-demo"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-native/build-2.log"
+          }
+        ],
+        "runs": [
+          {
+            "run": 1,
+            "status": "passed",
+            "exitCode": 0,
+            "chaosSeed": null,
+            "replay": null,
+            "tests": {
+              "passed": 4,
+              "failed": 0,
+              "flaky": 0,
+              "skipped": 0
+            },
+            "failures": [],
+            "message": null,
+            "log": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-native/run-1/playwright.log",
+            "report": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-native/run-1/report.json",
+            "sequences": [
+              {
+                "caseId": "project-task",
+                "width": "desktop",
+                "seed": 1422001,
+                "steps": 10,
+                "status": "passed",
+                "runs": 2,
+                "shrinks": 0,
+                "durationMilliseconds": 56335,
+                "path": null,
+                "coverage": {
+                  "save-task-lost-receipt": 1,
+                  "navigate-and-reopen-exact-project-task": 3,
+                  "stale-task-revision-requires-deliberate-reload": 1,
+                  "reload-confirmed-or-conflicted-task-without-writing": 1,
+                  "edit-literal-task-instructions": 2,
+                  "save-task-none": 1,
+                  "isolate-token-task-after-project": 1,
+                  "isolate-token-task-after-company": 1
+                },
+                "replay": null
+              },
+              {
+                "caseId": "project-task",
+                "width": "narrow",
+                "seed": 1422001,
+                "steps": 10,
+                "status": "passed",
+                "runs": 2,
+                "shrinks": 0,
+                "durationMilliseconds": 50538,
+                "path": null,
+                "coverage": {
+                  "save-task-lost-receipt": 1,
+                  "navigate-and-reopen-exact-project-task": 3,
+                  "stale-task-revision-requires-deliberate-reload": 1,
+                  "reload-confirmed-or-conflicted-task-without-writing": 1,
+                  "edit-literal-task-instructions": 2,
+                  "save-task-none": 1,
+                  "isolate-token-task-after-project": 1,
+                  "isolate-token-task-after-company": 1
+                },
+                "replay": null
+              }
+            ],
+            "screenshots": [
+              "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/project-task-native-recipe.png",
+              "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/test-finished-1.png",
+              "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/project-task-native-recipe.png",
+              "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/test-finished-1.png",
+              "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/test-finished-1.png",
+              "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/test-finished-1.png"
+            ],
+            "traces": [
+              "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/trace.zip",
+              "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/trace.zip"
+            ],
+            "durationMilliseconds": 172305
+          }
+        ],
+        "message": null
+      },
+      "actionReports": [
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/project-task-sequences.json",
+          "report": {
+            "schema": "prisma-prim-browser-sequences/v1",
+            "caseId": "project-task",
+            "journey": "project-task-action-sequences",
+            "width": "desktop",
+            "seed": 1422001,
+            "steps": 10,
+            "status": "passed",
+            "path": null,
+            "replay": null,
+            "runs": 2,
+            "shrinks": 0,
+            "durationMilliseconds": 56335,
+            "interrupted": false,
+            "original": null,
+            "counterexample": null,
+            "trials": [
+              {
+                "trial": 1,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 1369640398,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "http",
+                      "replacement": "project"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "save-task-lost-receipt",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "http",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  }
+                ],
+                "model": {
+                  "version": 2,
+                  "nextRevision": 0,
+                  "mode": "ready",
+                  "writes": 2,
+                  "reads": 38,
+                  "locale": "ro"
+                },
+                "status": "passed"
+              },
+              {
+                "trial": 2,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 1369972086,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 212653754,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1136444627,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 58360295,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 1933151713,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 1591177661,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1603090577,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "access"
+                    }
+                  },
+                  {
+                    "choice": 1132096270,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1628785751,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "access"
+                    }
+                  },
+                  {
+                    "choice": 93417846,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "token",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "stale-task-revision-requires-deliberate-reload",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "reload-confirmed-or-conflicted-task-without-writing",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "company"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "edit-literal-task-instructions",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "company"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "edit-literal-task-instructions",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "save-task-none",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "access"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "isolate-token-task-after-project",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "access"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "isolate-token-task-after-company",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    },
+                    "outcome": "passed"
+                  }
+                ],
+                "model": {
+                  "version": 3,
+                  "nextRevision": 0,
+                  "mode": "ready",
+                  "writes": 2,
+                  "reads": 143,
+                  "locale": "ro"
+                },
+                "status": "passed"
+              }
+            ],
+            "coverage": {
+              "save-task-lost-receipt": 1,
+              "navigate-and-reopen-exact-project-task": 3,
+              "stale-task-revision-requires-deliberate-reload": 1,
+              "reload-confirmed-or-conflicted-task-without-writing": 1,
+              "edit-literal-task-instructions": 2,
+              "save-task-none": 1,
+              "isolate-token-task-after-project": 1,
+              "isolate-token-task-after-company": 1
+            }
+          }
+        },
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/project-task-sequences.json",
+          "report": {
+            "schema": "prisma-prim-browser-sequences/v1",
+            "caseId": "project-task",
+            "journey": "project-task-action-sequences",
+            "width": "narrow",
+            "seed": 1422001,
+            "steps": 10,
+            "status": "passed",
+            "path": null,
+            "replay": null,
+            "runs": 2,
+            "shrinks": 0,
+            "durationMilliseconds": 50538,
+            "interrupted": false,
+            "original": null,
+            "counterexample": null,
+            "trials": [
+              {
+                "trial": 1,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 1369640398,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "http",
+                      "replacement": "project"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "save-task-lost-receipt",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "http",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  }
+                ],
+                "model": {
+                  "version": 2,
+                  "nextRevision": 0,
+                  "mode": "ready",
+                  "writes": 2,
+                  "reads": 38,
+                  "locale": "ru"
+                },
+                "status": "passed"
+              },
+              {
+                "trial": 2,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 1369972086,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 212653754,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1136444627,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 58360295,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 1933151713,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "company"
+                    }
+                  },
+                  {
+                    "choice": 1591177661,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1603090577,
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "access"
+                    }
+                  },
+                  {
+                    "choice": 1132096270,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    }
+                  },
+                  {
+                    "choice": 1628785751,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "access"
+                    }
+                  },
+                  {
+                    "choice": 93417846,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "token",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "stale-task-revision-requires-deliberate-reload",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "reload-confirmed-or-conflicted-task-without-writing",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "company"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "edit-literal-task-instructions",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "company"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "edit-literal-task-instructions",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "save-task-none",
+                    "value": {
+                      "variant": "a",
+                      "locale": "ru",
+                      "stage": "parser",
+                      "replacement": "access"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "isolate-token-task-after-project",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "navigate-and-reopen-exact-project-task",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ru",
+                      "stage": "http",
+                      "replacement": "access"
+                    },
+                    "outcome": "passed"
+                  },
+                  {
+                    "label": "isolate-token-task-after-company",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "token",
+                      "replacement": "company"
+                    },
+                    "outcome": "passed"
+                  }
+                ],
+                "model": {
+                  "version": 3,
+                  "nextRevision": 0,
+                  "mode": "ready",
+                  "writes": 2,
+                  "reads": 143,
+                  "locale": "ru"
+                },
+                "status": "passed"
+              }
+            ],
+            "coverage": {
+              "save-task-lost-receipt": 1,
+              "navigate-and-reopen-exact-project-task": 3,
+              "stale-task-revision-requires-deliberate-reload": 1,
+              "reload-confirmed-or-conflicted-task-without-writing": 1,
+              "edit-literal-task-instructions": 2,
+              "save-task-none": 1,
+              "isolate-token-task-after-project": 1,
+              "isolate-token-task-after-company": 1
+            }
+          }
+        }
+      ],
+      "artifacts": [
+        {
+          "path": "1447-prompt-readiness-native/run-1/report.json",
+          "bytes": 116106,
+          "sha256": "b220ecb19ac44a797ba164ceb2e740e4000333d4966f610422d6a2ab326eb685"
+        },
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/.last-run.json",
+          "bytes": 45,
+          "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+        },
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/project-task-native-recipe.png",
+          "bytes": 416989,
+          "sha256": "084f5fbfb737c0a86b73707f9832d9734da61c056ac41ec28f5e5096809cdf89"
+        },
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/test-finished-1.png",
+          "bytes": 114786,
+          "sha256": "d8cb835c3887ee562e5453215ff6459b9333d4bd1dd6405b747d099a26da2b0f"
+        },
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-desktop/trace.zip",
+          "bytes": 10925178,
+          "sha256": "205b68b10be566e4cc982dab84ae65965d41bc0993c2756ef3ffa43acfbe8c0d"
+        },
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/project-task-native-recipe.png",
+          "bytes": 426907,
+          "sha256": "234d75e67f56386983b1d76d20c5d586b9eaf03bb1cce7761484fd57f4d61a83"
+        },
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/test-finished-1.png",
+          "bytes": 42858,
+          "sha256": "67bc1a5d739dc4386d1153755a26588ddfd7a4c276cd3aeff5a9e7a51545cc7a"
+        },
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/project-task-action-sequen-bd60a-nd-independent-read-recipes-operational-acceptance-narrow/trace.zip",
+          "bytes": 8984210,
+          "sha256": "9d9bb88dc857efe77ab6402cbef49407917830d92a54baefdee639cdda790744"
+        },
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/attachments/browser-sequences-d94b585d63664059cb294ee5c314d30f930a0a41.json",
+          "bytes": 6561,
+          "sha256": "151e9866d178ef5fd02f86f01736766fac09f7625b6cca743b3516bf84cf3e98"
+        },
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/project-task-sequences.json",
+          "bytes": 6561,
+          "sha256": "151e9866d178ef5fd02f86f01736766fac09f7625b6cca743b3516bf84cf3e98"
+        },
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/test-finished-1.png",
+          "bytes": 113873,
+          "sha256": "03786a4a6cab740da216eea45205bbfb5f7ffc3e169616355e7eff8d30c0018c"
+        },
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/trace.zip",
+          "bytes": 7674328,
+          "sha256": "a7afd9823470e68a5419651dceef0fbcbc76e36abf0477c4d3826b2b1d5bcd84"
+        },
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/attachments/browser-sequences-c56028180e9884eb79ae07f7af36382c0e528f3d.json",
+          "bytes": 6560,
+          "sha256": "e12a07088ac2da18d6f5183287167bb1bfd10f5d64c8aa0065ac91f79b9790c9"
+        },
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/project-task-sequences.json",
+          "bytes": 6560,
+          "sha256": "e12a07088ac2da18d6f5183287167bb1bfd10f5d64c8aa0065ac91f79b9790c9"
+        },
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/test-finished-1.png",
+          "bytes": 43298,
+          "sha256": "5bedc096bb60aaba53617ba8985124cc0d7511ffe7405425989f478a7c607498"
+        },
+        {
+          "path": "1447-prompt-readiness-native/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/trace.zip",
+          "bytes": 6142044,
+          "sha256": "745b086d1a2b284eae500768f29a1fdb25872e87949b362f0bc5f811c9152f1a"
+        },
+        {
+          "path": "1447-prompt-readiness-native/summary.json",
+          "bytes": 5389,
+          "sha256": "8093bf3cfa15c662a2c171f79ffb8879232d29df8466695533542be04d5d73a4"
+        }
+      ]
+    },
+    {
+      "name": "1447-prompt-readiness-replay-desktop",
+      "purpose": "final correct-source qualification",
+      "sourceFileHashes": {
+        "apps/web/e2e/project-task-action-sequences.acceptance.spec.ts": "ab3fbae81820eda656e0c2e66ebf0c37700bc503aed0b7a4d200d8fbc0045693",
+        "apps/web/e2e/project-task-browser-sequences.fixture.ts": "490844d3c4716f70c3740b57fea5ef1c22907b1cbfb937b2f08e7ec8acb6c866",
+        "apps/web/e2e/project-task-read-holds.fixture.ts": "20dee7b8bcfa543852ab5fd4dd0b108b134b8ec63b8c1e4a59ed3cad3d09cbc6",
+        "apps/web/e2e/project-task-sequence-source.fixture.ts": "2e507b720e9cf5b610384cd9da8187ef8410add578ba34458f9e1c80b604e554",
+        "apps/web/e2e/document-action-sequences.acceptance.spec.ts": "b90625b1fe37e2372feccb48b8c4a8cc17b534bad187ad27aab6edb45140bc02",
+        "scripts/browser-sequences.mjs": "26dabc78bde906bcc0e9c1c3728f9d0a030be0a687a07e398b4c8e3f94bcebc8",
+        "scripts/nightly-ui-chaos-report.mjs": "e03df49354b35dc934fd72fa88a127f4929e8f946f9e689a8fed782bd656db0f",
+        ".github/workflows/nightly-ui-chaos.yml": "65c541d09ccfc8245843ccdb891bd84b1a89df6a7115c657df8f26b9fe980ee4"
+      },
+      "sourceQualification": "final registered journey with unambiguous navigation and prompt readiness observation",
+      "summary": {
+        "schema": "prisma-prim-journey-verification/v1",
+        "journey": "project-task-action-sequences",
+        "spec": "/workspace/work/batch-20261118/1447/apps/web/e2e/project-task-action-sequences.acceptance.spec.ts",
+        "status": "passed",
+        "exitCode": 0,
+        "repeat": 1,
+        "cpuLoadThreads": 0,
+        "chaosSeed": 1422001,
+        "budgetMinutes": null,
+        "stoppedByBudget": false,
+        "startedAt": "2026-11-18T11:19:27.940Z",
+        "finishedAt": "2026-11-18T11:20:50.003Z",
+        "evidenceDirectory": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-replay-desktop",
+        "summaryFile": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-replay-desktop/summary.json",
+        "builds": [
+          {
+            "command": "pnpm",
+            "args": ["--filter", "@prisma-prim/api", "build"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-replay-desktop/build-1.log"
+          },
+          {
+            "command": "pnpm",
+            "args": ["build", "--mode", "local-demo"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-replay-desktop/build-2.log"
+          }
+        ],
+        "runs": [
+          {
+            "run": 1,
+            "status": "passed",
+            "exitCode": 0,
+            "chaosSeed": 1422001,
+            "replay": "pnpm verify:journey project-task-action-sequences --chaos 1422001",
+            "tests": {
+              "passed": 1,
+              "failed": 0,
+              "flaky": 0,
+              "skipped": 0
+            },
+            "failures": [],
+            "message": null,
+            "log": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-replay-desktop/run-1/playwright.log",
+            "report": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-replay-desktop/run-1/report.json",
+            "sequences": [
+              {
+                "caseId": "project-task",
+                "width": "desktop",
+                "seed": 1422001,
+                "steps": 10,
+                "status": "passed",
+                "runs": 1,
+                "shrinks": 0,
+                "durationMilliseconds": 15415,
+                "path": "0",
+                "coverage": {
+                  "save-task-lost-receipt": 1
+                },
+                "replay": "UI_SEQUENCE_REPLAY='project-task@desktop~10~0' pnpm verify:journey project-task-action-sequences --chaos 1422001"
+              }
+            ],
+            "screenshots": [
+              "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-replay-desktop/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/test-finished-1.png"
+            ],
+            "traces": [
+              "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-replay-desktop/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/trace.zip"
+            ],
+            "durationMilliseconds": 28148
+          }
+        ],
+        "message": null
+      },
+      "actionReports": [
+        {
+          "path": "1447-prompt-readiness-replay-desktop/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/project-task-sequences.json",
+          "report": {
+            "schema": "prisma-prim-browser-sequences/v1",
+            "caseId": "project-task",
+            "journey": "project-task-action-sequences",
+            "width": "desktop",
+            "seed": 1422001,
+            "steps": 10,
+            "status": "passed",
+            "path": "0",
+            "replay": "UI_SEQUENCE_REPLAY='project-task@desktop~10~0' pnpm verify:journey project-task-action-sequences --chaos 1422001",
+            "runs": 1,
+            "shrinks": 0,
+            "durationMilliseconds": 15415,
+            "interrupted": false,
+            "original": null,
+            "counterexample": null,
+            "trials": [
+              {
+                "trial": 1,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 1369640398,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "http",
+                      "replacement": "project"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "save-task-lost-receipt",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "http",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  }
+                ],
+                "model": {
+                  "version": 2,
+                  "nextRevision": 0,
+                  "mode": "ready",
+                  "writes": 2,
+                  "reads": 38,
+                  "locale": "ro"
+                },
+                "status": "passed"
+              }
+            ],
+            "coverage": {
+              "save-task-lost-receipt": 1
+            }
+          }
+        }
+      ],
+      "artifacts": [
+        {
+          "path": "1447-prompt-readiness-replay-desktop/run-1/report.json",
+          "bytes": 14457,
+          "sha256": "6fe6372eeaf3da1a7fe85ac5d2f955abf95ab14da114b614a280ea28e735ecd5"
+        },
+        {
+          "path": "1447-prompt-readiness-replay-desktop/run-1/results/.last-run.json",
+          "bytes": 45,
+          "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+        },
+        {
+          "path": "1447-prompt-readiness-replay-desktop/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/attachments/browser-sequences-9a8190f3387fb9db70116b98f5fa957ec412b511.json",
+          "bytes": 1308,
+          "sha256": "046a34c9135815d09b9ae1caa64004d96ec948bfcebc8503404c9ee41259ac0b"
+        },
+        {
+          "path": "1447-prompt-readiness-replay-desktop/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/project-task-sequences.json",
+          "bytes": 1308,
+          "sha256": "046a34c9135815d09b9ae1caa64004d96ec948bfcebc8503404c9ee41259ac0b"
+        },
+        {
+          "path": "1447-prompt-readiness-replay-desktop/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/test-finished-1.png",
+          "bytes": 85570,
+          "sha256": "12b10fd981588c145268bdd6cbe506bd12d6b719e6ce059834636cd2d0cd05dd"
+        },
+        {
+          "path": "1447-prompt-readiness-replay-desktop/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-desktop/trace.zip",
+          "bytes": 2132588,
+          "sha256": "8e484304078e73fba879a412b5826db174b22fef0a6caeaafe020654baad354c"
+        },
+        {
+          "path": "1447-prompt-readiness-replay-desktop/summary.json",
+          "bytes": 2865,
+          "sha256": "c19ac4cd318dbeac5ae08a4a6af0f417d1630be0229cc99bee604c4f83415a59"
+        }
+      ]
+    },
+    {
+      "name": "1447-prompt-readiness-replay-narrow",
+      "purpose": "final correct-source qualification",
+      "sourceFileHashes": {
+        "apps/web/e2e/project-task-action-sequences.acceptance.spec.ts": "ab3fbae81820eda656e0c2e66ebf0c37700bc503aed0b7a4d200d8fbc0045693",
+        "apps/web/e2e/project-task-browser-sequences.fixture.ts": "490844d3c4716f70c3740b57fea5ef1c22907b1cbfb937b2f08e7ec8acb6c866",
+        "apps/web/e2e/project-task-read-holds.fixture.ts": "20dee7b8bcfa543852ab5fd4dd0b108b134b8ec63b8c1e4a59ed3cad3d09cbc6",
+        "apps/web/e2e/project-task-sequence-source.fixture.ts": "2e507b720e9cf5b610384cd9da8187ef8410add578ba34458f9e1c80b604e554",
+        "apps/web/e2e/document-action-sequences.acceptance.spec.ts": "b90625b1fe37e2372feccb48b8c4a8cc17b534bad187ad27aab6edb45140bc02",
+        "scripts/browser-sequences.mjs": "26dabc78bde906bcc0e9c1c3728f9d0a030be0a687a07e398b4c8e3f94bcebc8",
+        "scripts/nightly-ui-chaos-report.mjs": "e03df49354b35dc934fd72fa88a127f4929e8f946f9e689a8fed782bd656db0f",
+        ".github/workflows/nightly-ui-chaos.yml": "65c541d09ccfc8245843ccdb891bd84b1a89df6a7115c657df8f26b9fe980ee4"
+      },
+      "sourceQualification": "final registered journey with unambiguous navigation and prompt readiness observation",
+      "summary": {
+        "schema": "prisma-prim-journey-verification/v1",
+        "journey": "project-task-action-sequences",
+        "spec": "/workspace/work/batch-20261118/1447/apps/web/e2e/project-task-action-sequences.acceptance.spec.ts",
+        "status": "passed",
+        "exitCode": 0,
+        "repeat": 1,
+        "cpuLoadThreads": 0,
+        "chaosSeed": 1422001,
+        "budgetMinutes": null,
+        "stoppedByBudget": false,
+        "startedAt": "2026-11-18T11:20:59.203Z",
+        "finishedAt": "2026-11-18T11:22:17.381Z",
+        "evidenceDirectory": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-replay-narrow",
+        "summaryFile": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-replay-narrow/summary.json",
+        "builds": [
+          {
+            "command": "pnpm",
+            "args": ["--filter", "@prisma-prim/api", "build"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-replay-narrow/build-1.log"
+          },
+          {
+            "command": "pnpm",
+            "args": ["build", "--mode", "local-demo"],
+            "status": "passed",
+            "exitCode": 0,
+            "log": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-replay-narrow/build-2.log"
+          }
+        ],
+        "runs": [
+          {
+            "run": 1,
+            "status": "passed",
+            "exitCode": 0,
+            "chaosSeed": 1422001,
+            "replay": "pnpm verify:journey project-task-action-sequences --chaos 1422001",
+            "tests": {
+              "passed": 1,
+              "failed": 0,
+              "flaky": 0,
+              "skipped": 0
+            },
+            "failures": [],
+            "message": null,
+            "log": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-replay-narrow/run-1/playwright.log",
+            "report": "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-replay-narrow/run-1/report.json",
+            "sequences": [
+              {
+                "caseId": "project-task",
+                "width": "narrow",
+                "seed": 1422001,
+                "steps": 10,
+                "status": "passed",
+                "runs": 1,
+                "shrinks": 0,
+                "durationMilliseconds": 11202,
+                "path": "0",
+                "coverage": {
+                  "save-task-lost-receipt": 1
+                },
+                "replay": "UI_SEQUENCE_REPLAY='project-task@narrow~10~0' pnpm verify:journey project-task-action-sequences --chaos 1422001"
+              }
+            ],
+            "screenshots": [
+              "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-replay-narrow/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/test-finished-1.png"
+            ],
+            "traces": [
+              "/workspace/work/batch-20261118/evidence/1447-prompt-readiness-replay-narrow/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/trace.zip"
+            ],
+            "durationMilliseconds": 23493
+          }
+        ],
+        "message": null
+      },
+      "actionReports": [
+        {
+          "path": "1447-prompt-readiness-replay-narrow/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/project-task-sequences.json",
+          "report": {
+            "schema": "prisma-prim-browser-sequences/v1",
+            "caseId": "project-task",
+            "journey": "project-task-action-sequences",
+            "width": "narrow",
+            "seed": 1422001,
+            "steps": 10,
+            "status": "passed",
+            "path": "0",
+            "replay": "UI_SEQUENCE_REPLAY='project-task@narrow~10~0' pnpm verify:journey project-task-action-sequences --chaos 1422001",
+            "runs": 1,
+            "shrinks": 0,
+            "durationMilliseconds": 11202,
+            "interrupted": false,
+            "original": null,
+            "counterexample": null,
+            "trials": [
+              {
+                "trial": 1,
+                "initial": "a",
+                "generated": [
+                  {
+                    "choice": 1369640398,
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "http",
+                      "replacement": "project"
+                    }
+                  }
+                ],
+                "actions": [
+                  {
+                    "label": "save-task-lost-receipt",
+                    "value": {
+                      "variant": "b",
+                      "locale": "ro",
+                      "stage": "http",
+                      "replacement": "project"
+                    },
+                    "outcome": "passed"
+                  }
+                ],
+                "model": {
+                  "version": 2,
+                  "nextRevision": 0,
+                  "mode": "ready",
+                  "writes": 2,
+                  "reads": 38,
+                  "locale": "ru"
+                },
+                "status": "passed"
+              }
+            ],
+            "coverage": {
+              "save-task-lost-receipt": 1
+            }
+          }
+        }
+      ],
+      "artifacts": [
+        {
+          "path": "1447-prompt-readiness-replay-narrow/run-1/report.json",
+          "bytes": 14451,
+          "sha256": "185b291c70c91e7c01f14a11b6390a547d3694481a2a970397a4cb40f54ded86"
+        },
+        {
+          "path": "1447-prompt-readiness-replay-narrow/run-1/results/.last-run.json",
+          "bytes": 45,
+          "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+        },
+        {
+          "path": "1447-prompt-readiness-replay-narrow/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/attachments/browser-sequences-b1269d12f8fe903d36b89d5ab774741a8d0ffeb3.json",
+          "bytes": 1306,
+          "sha256": "273466b52bbcd86d8321309b48cb076f01f259fd2bfc19af8292821dced736db"
+        },
+        {
+          "path": "1447-prompt-readiness-replay-narrow/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/project-task-sequences.json",
+          "bytes": 1306,
+          "sha256": "273466b52bbcd86d8321309b48cb076f01f259fd2bfc19af8292821dced736db"
+        },
+        {
+          "path": "1447-prompt-readiness-replay-narrow/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/test-finished-1.png",
+          "bytes": 44581,
+          "sha256": "7fe3a95bfed26c65fd71f67538b27318111d484161b42fd81975d3e335ae18ce"
+        },
+        {
+          "path": "1447-prompt-readiness-replay-narrow/run-1/results/project-task-action-sequen-fc59c-t-and-Task-action-sequences-operational-acceptance-narrow/trace.zip",
+          "bytes": 1552973,
+          "sha256": "21653c2825015502f5c04f7ac47f47cb6b397a297b97caae3dcbffcfbb7e75dd"
+        },
+        {
+          "path": "1447-prompt-readiness-replay-narrow/summary.json",
+          "bytes": 2853,
+          "sha256": "3fc082f65ca55a6440e705462c9ef4d6519d07adefce0960fe4958985754be8c"
         }
       ]
     }

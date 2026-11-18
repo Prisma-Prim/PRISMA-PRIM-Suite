@@ -303,6 +303,7 @@ test('names the journeys that opt into UI chaos and refuses chaos on any other',
     'document-action-sequences',
     'financial-action-sequences',
     'multi-company-home',
+    'project-task-action-sequences',
   ]);
 
   const options = {

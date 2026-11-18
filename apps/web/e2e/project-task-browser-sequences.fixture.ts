@@ -1,6 +1,6 @@
 import * as fc from 'fast-check';
 import { randomUUID } from 'node:crypto';
-import type { Request, Route } from '@playwright/test';
+import type { Locator, Request, Route } from '@playwright/test';
 import type { InterfaceLocale } from '../src/localization/interface-locale';
 import { resolveMessage } from '../src/localization/messages';
 import { projectTaskMessages } from '../src/project/task.copy';
@@ -84,6 +84,13 @@ export const projectTaskSequenceAdapter: BrowserSequenceAdapter<
       page.getByRole('region', { name: nextWord('title'), exact: true });
     const instructions = () =>
       tasks.getByLabel(taskWord('descriptionLabel'), { exact: true });
+    // Observe readiness promptly under bounded transport lag; the usual locator
+    // assertion backoff can add a full second after each sequential read phase.
+    async function expectEnabled(control: Locator) {
+      await expect
+        .poll(() => control.isEnabled(), { intervals: [100] })
+        .toBe(true);
+    }
     const taskPath = `/api/tasks/${source.taskId}`;
     const isTaskRead = (request: Request) =>
       request.method() === 'GET' &&
@@ -98,12 +105,14 @@ export const projectTaskSequenceAdapter: BrowserSequenceAdapter<
       await expect
         .poll(() => taskReadsStarted, {
           timeout: IDLE_DEADLINE_MILLISECONDS,
+          intervals: [100],
           message: 'The command must start a fresh native Task read phase',
         })
         .toBeGreaterThan(after);
       await expect
         .poll(() => taskReads.isIdle(), {
           timeout: IDLE_DEADLINE_MILLISECONDS,
+          intervals: [100],
           message:
             'Native Task listing, detail, history and member reads must settle',
         })
@@ -172,18 +181,26 @@ export const projectTaskSequenceAdapter: BrowserSequenceAdapter<
         { exact: true },
       );
       await selectOption(selector, { value: source.companies[value].id });
-      await expect(selector).toBeEnabled();
+      await expectEnabled(selector);
       await drawer(false);
     }
     async function openProject(title: string) {
-      await page.evaluate(() => {
-        location.hash = 'projects';
-      });
+      if (!(await projects.isVisible())) {
+        await drawer(true);
+        await page.locator('nav ul a[href="#projects"]').click();
+        await drawer(false);
+      }
       await expect(projects).toBeVisible();
       await projects.getByRole('button').filter({ hasText: title }).click();
-      await expect(
-        projects.getByRole('heading', { name: title, exact: true }),
-      ).toBeVisible();
+      await expect
+        .poll(
+          () =>
+            projects
+              .getByRole('heading', { name: title, exact: true })
+              .isVisible(),
+          { intervals: [100] },
+        )
+        .toBe(true);
       await expect(tasks).toBeVisible();
     }
     async function openTask(expectedDescription = description) {
@@ -192,7 +209,7 @@ export const projectTaskSequenceAdapter: BrowserSequenceAdapter<
         .locator('.task-list')
         .getByRole('button', { name: source.taskTitle, exact: true })
         .click();
-      await expect(instructions()).toBeEnabled();
+      await expectEnabled(instructions());
       await expect(instructions()).toHaveValue(expectedDescription);
     }
     async function setLocale(value: 'ro' | 'ru') {
@@ -277,7 +294,7 @@ export const projectTaskSequenceAdapter: BrowserSequenceAdapter<
             : { kind: 'ready' };
       if (fault === 'none') {
         await finishTaskReadPhase(beforeReads);
-        await expect(instructions()).toBeEnabled();
+        await expectEnabled(instructions());
         await expect(instructions()).toHaveValue(description);
       }
       if (fault === 'failed-read') {
@@ -316,7 +333,7 @@ export const projectTaskSequenceAdapter: BrowserSequenceAdapter<
       });
       expect((await reply).status()).toBe(200);
       await finishTaskReadPhase(beforeReads);
-      await expect(instructions()).toBeEnabled();
+      await expectEnabled(instructions());
       await expect(instructions()).toHaveValue(description);
       expect(writes).toHaveLength(before + 1);
       expect(writes[before]).toEqual(original);
@@ -333,7 +350,7 @@ export const projectTaskSequenceAdapter: BrowserSequenceAdapter<
         .getByRole('button', { name: taskWord('reloadDetail'), exact: true })
         .click();
       await finishTaskReadPhase(beforeReads);
-      await expect(instructions()).toBeEnabled();
+      await expectEnabled(instructions());
       await expect(instructions()).toHaveValue(description);
       expect(writes).toHaveLength(before);
       mode = { kind: 'ready' };
@@ -542,12 +559,14 @@ export const projectTaskSequenceAdapter: BrowserSequenceAdapter<
           await expect
             .poll(() => typeof releaseReply, {
               timeout: IDLE_DEADLINE_MILLISECONDS,
+              intervals: [100],
             })
             .toBe('function');
         else
           await expect
             .poll(() => projectTaskReadProof(page, 'read'), {
               timeout: IDLE_DEADLINE_MILLISECONDS,
+              intervals: [100],
             })
             .toMatchObject({ held: true });
         if (replacement === 'access') {
@@ -633,6 +652,7 @@ export const projectTaskSequenceAdapter: BrowserSequenceAdapter<
           await expect
             .poll(() => taskReads.isIdle(), {
               timeout: IDLE_DEADLINE_MILLISECONDS,
+              intervals: [100],
             })
             .toBe(true);
         await expect(title).toHaveValue(independent);
@@ -674,9 +694,9 @@ export const projectTaskSequenceAdapter: BrowserSequenceAdapter<
     async function navigate() {
       const before = writes.length;
       const expected = mode.kind === 'draft' ? mode.text : description;
-      await page.evaluate(() => {
-        location.hash = 'overview';
-      });
+      await drawer(true);
+      await page.locator('nav ul a[href="#overview"]').click();
+      await drawer(false);
       await expect(projects).not.toBeVisible();
       await openTask(expected);
       expect(writes).toHaveLength(before);
@@ -743,7 +763,7 @@ export const projectTaskSequenceAdapter: BrowserSequenceAdapter<
       )
         await expect(instructions()).toHaveValue(mode.text);
       else if (mode.kind === 'ready') {
-        await expect(instructions()).toBeEnabled();
+        await expectEnabled(instructions());
         await expect(instructions()).toHaveValue(description);
       }
       expect(
@@ -818,8 +838,7 @@ export const projectTaskSequenceAdapter: BrowserSequenceAdapter<
         if (mode.kind === 'uncertain') await retry();
         if (mode.kind === 'refresh-error' || mode.kind === 'conflict')
           await recoverRead();
-        await setLocale(preferredLocale);
-        await verify();
+        if (locale !== preferredLocale) await setLocale(preferredLocale);
       },
       async dispose() {
         taskReads.dispose();

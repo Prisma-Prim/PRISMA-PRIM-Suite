@@ -73,6 +73,7 @@ test('checks Project Task actions against native literal retry and independent-r
         });
       }
     await world.settle();
+    await world.verify();
     await expect(page.locator('.project-tasks:visible')).toBeVisible();
     await page.screenshot({
       path: info.outputPath('project-task-native-recipe.png'),

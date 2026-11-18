@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1447-ci-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1447,
+  "pullRequest": 1456,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Bounded correction after CI identified missing journey catalogue/chaos-list registrations. Native Project/Task four cases and two exact replays pass; final default exploration 56.335s/50.538s with unchanged 60s bound. Preparation and interrupted attempts retained with their own source hashes. Usage/time/model traces unavailable, not guessed."
+  }
+}
