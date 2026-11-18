@@ -102,6 +102,14 @@ test('a fictional participant switch reloads the App and preserves exact native 
       redirect: 'manual',
     });
     assert.equal(mutation.status, 405);
+    for (const [locale, instruction] of [
+      ['ro', 'Managerul înregistrează planurile etapelor 1 și 2'],
+      ['ru', 'Менеджер записывает планы этапов 1 и 2'],
+    ]) {
+      const guide = await fetch(`${pilot.origin}/__pilot?lang=${locale}`);
+      assert.equal(guide.status, 200);
+      assert.ok((await guide.text()).includes(instruction));
+    }
   } finally {
     await pilot?.close();
     await new Promise((resolve) => {

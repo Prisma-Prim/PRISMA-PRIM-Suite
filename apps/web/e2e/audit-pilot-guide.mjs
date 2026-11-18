@@ -21,7 +21,7 @@ const copy = {
       'În aplicație, alege compania și proiectul de mai jos. Alege Română sau Русский din selectorul limbii.',
       'În analiza dosarului, adaugă PDF-ul nativ și DOCX-ul de exemplu. Creează analiza, deschide originalele și verifică citările și pagina necitibilă.',
       'Introdu sau inspectează propuneri și confirmă ori corectează deliberat fiecare valoare. Confirmarea analizei nu modifică datele oficiale. În cerere poți previzualiza și alege câmpurile revizuite; salvarea este o acțiune separată și poate cere reverificarea pașilor ulteriori.',
-      'Ca manager, propune echipa. Ca aprobator independent, verifică propunerea. Auditorul își înregistrează planurile, rapoartele și constatările; recomandarea și decizia rămân acte distincte.',
+      'Ca manager, propune echipa. Ca aprobator independent, verifică propunerea. Managerul înregistrează planurile etapelor 1 și 2 la pașii corespunzători. Auditorul își înregistrează rapoartele, constatările și recomandarea; decizia rămâne un act distinct.',
       'După decizia de acordare, descarcă exemplul de certificat de mai jos. Înregistrează PDF-ul prin comenzile native, apoi parcurge proiectul, opinia clientului, aprobarea, emiterea și transmiterea. Descarcă registrul dosarului din aplicație.',
     ],
     certificate:
@@ -52,7 +52,7 @@ const copy = {
       'В приложении выберите указанную ниже компанию и проект. Выберите Română или Русский в переключателе языка.',
       'В анализе досье добавьте исходный PDF и учебный DOCX. Создайте анализ, откройте оригиналы и проверьте цитаты и нечитаемую страницу.',
       'Введите или проверьте предложения и явно подтвердите либо исправьте каждое значение. Подтверждение анализа не меняет официальные данные. В заявке можно просмотреть и выбрать проверенные поля; сохранение — отдельное действие и может потребовать повторной проверки последующих шагов.',
-      'Как менеджер предложите группу. Как независимый утверждающий проверьте предложение. Аудитор отдельно записывает планы, отчёты и выводы; рекомендация и решение остаются отдельными действиями.',
+      'Как менеджер предложите группу. Как независимый утверждающий проверьте предложение. Менеджер записывает планы этапов 1 и 2 на соответствующих шагах. Аудитор записывает отчёты, выводы и рекомендацию; решение остаётся отдельным действием.',
       'После положительного решения скачайте учебный сертификат ниже. Зарегистрируйте PDF штатными командами и пройдите проект, мнение клиента, утверждение, выдачу и передачу. Скачайте реестр досье из приложения.',
     ],
     certificate:
