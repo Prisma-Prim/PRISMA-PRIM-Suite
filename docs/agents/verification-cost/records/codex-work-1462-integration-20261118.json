@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-work-1462-integration-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1462,
+  "pullRequest": 1472,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Combined owner rehearsal exposed redundant absent-job table rows overflowing the existing65536comment bound. Keep explicit harness outcomes and full retained data; four-owner registration/report suite62PASS with63458characters. Original runtime source remains unchanged; usage unavailable."
+  }
+}

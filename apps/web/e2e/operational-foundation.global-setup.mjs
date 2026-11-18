@@ -42,6 +42,13 @@ const commercialReaderIdentity = {
 };
 
 export default async function globalSetup() {
+  return startOperationalAcceptance();
+}
+
+/** The interactive fictional pilot keeps subscription authorization disabled. */
+export async function startOperationalAcceptance({
+  dossierHarnessEnabled = true,
+} = {}) {
   const baseDatabaseUrl = process.env.TEST_DATABASE_URL;
   if (!baseDatabaseUrl)
     throw new Error(
@@ -92,7 +99,7 @@ export default async function globalSetup() {
       planHttp: plan.transport,
       environment: {
         NODE_ENV: 'test',
-        DOSSIER_HARNESS_ENABLED: 'true',
+        DOSSIER_HARNESS_ENABLED: dossierHarnessEnabled ? 'true' : 'false',
         CHATGPT_PLAN_CLIENT_ID: 'fictional-client',
         CHATGPT_PLAN_REDIRECT_URI: 'http://127.0.0.1:4173/chatgpt/callback',
         DOSSIER_HARNESS_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),

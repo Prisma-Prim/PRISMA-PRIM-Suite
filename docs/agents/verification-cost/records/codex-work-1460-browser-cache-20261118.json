@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-work-1460-browser-cache-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1460,
+  "pullRequest": 1468,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Automatic review reproduced default Linux Chromium cache loss. Actual Playwright resolution red-green preserves default/0/absolute/relative locations; CLI/preview/browser5 tests pass. Native public --check also passes with no explicit browser path and existing Chromium exposed as an ordinary XDG cache. Target lint passes. No install, provider or business-authority change. Usage/model/time/price unavailable."
+  }
+}

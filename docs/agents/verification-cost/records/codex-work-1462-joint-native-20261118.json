@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-work-1462-joint-native-20261118",
+  "date": "2026-11-18",
+  "runType": "verify-journey",
+  "issue": 1462,
+  "pullRequest": 1472,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": { "estimatedUsd": "not reported", "priceTable": "2026-11-11" },
+  "outcome": {
+    "result": "pass",
+    "findings": { "P0": 0, "P1": 0, "P2": 0, "P3": 0 },
+    "notes": "Private four-owner rehearsal f838c6ef: all qualified production hashes preserved; root checks, strict E2E types, 63files/1326rendered tests and62registration tests PASS. Joint native Mission4/4 proves newer Request-fenced helper with original1461001/default2x10/60000. Usage unavailable."
+  }
+}
