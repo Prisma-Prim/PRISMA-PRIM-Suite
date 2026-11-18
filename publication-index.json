@@ -1,0 +1,34 @@
+{
+  "schema": "prisma-prim-reviewed-evidence-publication/v1",
+  "pullRequest": 1473,
+  "run": "admitted-qualified-20261118",
+  "source": "211d13cb1810603d283b2d5376b87c92f2eb1250",
+  "base": "320252f661059306d2f6a722352c57e3b17da83a",
+  "integration": "211d13cb1810603d283b2d5376b87c92f2eb1250",
+  "integrationTree": "f2a093ac00a1aea226ecffd16a934b611921e1b6",
+  "classification": "selected reviewed fictional evidence; no real Client data",
+  "selection": "Inspected PNGs, actual downloaded PDFs/DOCX when present and compact native observations. Complete original traces/build logs remain local; fresh complete native evidence is also retained by CI. This selection is not the full original browser artifact.",
+  "publicationBoundary": "Same-repository documented orphan Git fallback; release asset upload unavailable in this harness. Never merge evidence into source. Retain while needed by open review; final compact report and linked evidence14days after merge.",
+  "files": [
+    {
+      "path": "fictional-evidence-211d13cb.tar.gz",
+      "bytes": 156959,
+      "sha256": "4c64d2099eca9ec03bbdb3985891ab66cd73c48f8abfd3599cf93f08f7d4a62a"
+    },
+    {
+      "path": "outcomes.json",
+      "bytes": 13303,
+      "sha256": "ff2799fe0750030203ea9e17056e5e5d4718394f61b5d62990827c740a06ad5a"
+    },
+    {
+      "path": "ro-desktop.png",
+      "bytes": 76016,
+      "sha256": "97091e90fed75f5e21ab814e1ec6da8753e8361fac56e8fe8f29617aa340829f"
+    },
+    {
+      "path": "ru-narrow.png",
+      "bytes": 87398,
+      "sha256": "8bc8d87b294b59ec5c271099f5ac7b932d0b7a6b7ed8cf28e578dc765e8ec1c3"
+    }
+  ]
+}
