@@ -169,51 +169,6 @@
       "count": 1
     }
   },
-  "apps/web/src/offer-message/offer-message-preparation.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/offer/EstimateOfferPreparation.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/offer/OfferClientResponsePanel.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/offer/OfferDecisionPanel.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/offer/OfferEstimateSource.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/offer/OfferPanel.tsx": {
-    "no-restricted-syntax": {
-      "count": 3
-    }
-  },
-  "apps/web/src/offer/OfferQualityPanel.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/offer/OfferTransmissionPanel.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/offer/OfferVersionHistory.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
   "apps/web/src/operational-home/multi-company-summary-contract.ts": {
     "no-restricted-syntax": {
       "count": 2

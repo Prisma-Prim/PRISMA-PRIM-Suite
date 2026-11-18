@@ -161,6 +161,25 @@ const passingMissionResults = summary('mission-result-action-sequences', [
   },
 ]);
 
+const passingOfferOwners = summary('offer-owner-action-sequences', [
+  {
+    status: 'passed',
+    chaosSeed: 1462001,
+    sequences: ['desktop', 'narrow'].map((width) => ({
+      caseId: 'offer-version-owner',
+      width,
+      seed: 1462001,
+      steps: 10,
+      status: 'passed',
+      runs: 2,
+      shrinks: 0,
+      durationMilliseconds: 1000,
+      path: null,
+      coverage: { 'edit-literal-native-offer': 1 },
+    })),
+  },
+]);
+
 function workflowRun({
   id = 501,
   attempt = 1,
@@ -218,6 +237,12 @@ const jobs = [
     started_at: '2026-11-14T02:21:31Z',
     completed_at: '2026-11-14T02:25:31Z',
   },
+  {
+    name: 'chaos (offer-owner-action-sequences)',
+    conclusion: 'success',
+    started_at: '2026-11-14T02:21:31Z',
+    completed_at: '2026-11-14T02:25:31Z',
+  },
   { name: 'report', conclusion: null, started_at: null, completed_at: null },
 ];
 const summaries = () =>
@@ -246,6 +271,10 @@ const summaries = () =>
     [
       'mission-result-action-sequences',
       parseChaosSummary(JSON.stringify(passingMissionResults)),
+    ],
+    [
+      'offer-owner-action-sequences',
+      parseChaosSummary(JSON.stringify(passingOfferOwners)),
     ],
   ]);
 
@@ -371,6 +400,10 @@ test("each journey's downloaded summary is found by journey", async (t) => {
       'nightly-ui-chaos-summary-mission-result-action-sequences',
       JSON.stringify(passingMissionResults),
     ],
+    [
+      'nightly-ui-chaos-summary-offer-owner-action-sequences',
+      JSON.stringify(passingOfferOwners),
+    ],
     ['nightly-ui-chaos-summary-broken', '{'],
   ]) {
     await mkdir(join(directory, folder), { recursive: true });
@@ -404,6 +437,7 @@ test('a night keeps each journey job runtime, runs and failures', () => {
       ['document-action-sequences', 'success', 4, 1, 1, false],
       ['contract-action-sequences', 'success', 4, 1, 1, false],
       ['mission-result-action-sequences', 'success', 4, 1, 1, false],
+      ['offer-owner-action-sequences', 'success', 4, 1, 1, false],
     ],
   );
   assert.equal(weekOf('2026-11-14T02:21:07Z'), '2026-11-09');
@@ -498,7 +532,7 @@ test('a later night and a rerun of the same night update the one comment of the 
   // The multi-company-home job of the later night left no summary.
   assert.ok(
     patch.body.body.includes(
-      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary); 2026-11-15 document-action-sequences (success without a summary); 2026-11-15 contract-action-sequences (success without a summary); 2026-11-15 mission-result-action-sequences (success without a summary).',
+      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary); 2026-11-15 document-action-sequences (success without a summary); 2026-11-15 contract-action-sequences (success without a summary); 2026-11-15 mission-result-action-sequences (success without a summary); 2026-11-15 offer-owner-action-sequences (success without a summary).',
     ),
   );
 
@@ -748,6 +782,7 @@ test('the financial-only repetition week remains bounded within one GitHub comme
               'chaos (document-action-sequences)',
               'chaos (contract-action-sequences)',
               'chaos (mission-result-action-sequences)',
+              'chaos (offer-owner-action-sequences)',
             ].includes(job.name),
         ),
         summaries: new Map([
@@ -758,6 +793,7 @@ test('the financial-only repetition week remains bounded within one GitHub comme
                 'document-action-sequences',
                 'contract-action-sequences',
                 'mission-result-action-sequences',
+                'offer-owner-action-sequences',
               ].includes(journey),
           ),
           [

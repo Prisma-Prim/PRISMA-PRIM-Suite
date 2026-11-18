@@ -47,6 +47,11 @@ export const BROWSER_SEQUENCE_CASES = [
     journey: 'mission-result-action-sequences',
     title: 'explores generated native mission Task-result action sequences',
   },
+  {
+    id: 'offer-version-owner',
+    journey: 'offer-owner-action-sequences',
+    title: 'explores generated native Offer version owner sequences',
+  },
 ];
 
 export function readBrowserSequenceOptions({ journey, environment }) {

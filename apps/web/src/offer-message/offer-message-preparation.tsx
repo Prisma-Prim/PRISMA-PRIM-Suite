@@ -1,10 +1,11 @@
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useCapturedAccessRejection } from '../api/use-captured-access-rejection';
 import './offer-message.css';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { holds } from '../access/company-grants';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import {
   offerMessageReadCapture,
   readOfferMessageObservation,
@@ -47,7 +48,7 @@ type Owner = {
 /** The stable RequestDetail sibling owns an in-memory lifetime, independent of editor keys. */
 export function OfferMessagePreparation(props: Props) {
   const copy = useOfferMessageCopy();
-  const [, redraw] = useState(0);
+  const [owner, setOwner] = useState<Owner | null>(null);
   const company = props.actor.activeCompany;
   const capture = offerMessageReadCapture(props.actor);
   const readable =
@@ -70,38 +71,12 @@ export function OfferMessagePreparation(props: Props) {
     capture,
     readable,
   ]);
-  const completeActor = JSON.stringify(props.actor);
-  const context = useRef<{
-    owner: Owner | null;
-    completeActor: string;
-    actor: ActorContext;
-    identity: BrowserIdentity;
-    observation: number;
-    mounted: boolean;
-  }>({
-    owner: null,
-    completeActor,
-    actor: props.actor,
-    identity: props.identity,
-    observation: 0,
-    mounted: false,
-  });
-  if (
-    context.current.actor !== props.actor ||
-    context.current.completeActor !== completeActor ||
-    context.current.identity !== props.identity
-  ) {
-    context.current.completeActor = completeActor;
-    context.current.actor = props.actor;
-    context.current.identity = props.identity;
-    context.current.observation += 1;
-  }
   const targetKey = props.target
     ? JSON.stringify([props.target.generation, props.target.source])
     : null;
-  if (targetKey === null) context.current.owner = null;
-  else if (context.current.owner?.key !== targetKey && props.target) {
-    context.current.owner = {
+  if (targetKey === null && owner !== null) setOwner(null);
+  else if (targetKey !== null && owner?.key !== targetKey && props.target) {
+    setOwner({
       key: targetKey,
       authority,
       identity: props.identity,
@@ -112,20 +87,23 @@ export function OfferMessagePreparation(props: Props) {
         !readable ||
         props.target.source.workspaceId !== props.actor.workspaceId ||
         props.target.source.companyId !== company?.id,
-    };
-  }
-  const owner = context.current.owner;
-  if (
+    });
+  } else if (
     owner &&
+    !owner.retired &&
     (owner.authority !== authority || owner.identity !== props.identity)
-  )
-    owner.retired = true;
+  ) {
+    setOwner({ ...owner, retired: true });
+  }
+  const committed = useRef(owner);
   useLayoutEffect(() => {
-    context.current.mounted = true;
-    return () => {
-      context.current.mounted = false;
-    };
-  }, []);
+    committed.current = owner;
+  });
+  const reject = useCapturedAccessRejection({
+    ...props,
+    companyContextId: props.target?.source.companyId,
+    scope: JSON.stringify([targetKey, authority]),
+  });
   if (!owner) return null;
   if (owner.retired)
     return (
@@ -133,22 +111,12 @@ export function OfferMessagePreparation(props: Props) {
         {copy('retired')}
       </p>
     );
-  const isCurrent = () =>
-    context.current.mounted &&
-    context.current.owner === owner &&
-    !owner.retired;
-  const recoveryGuard = () => {
-    const observation = context.current.observation;
-    return () =>
-      context.current.mounted &&
-      context.current.owner === owner &&
-      context.current.identity === owner.identity &&
-      context.current.observation === observation;
-  };
+  const isCurrent = () => committed.current === owner && !owner.retired;
   const retire = () => {
     if (!isCurrent()) return;
-    owner.retired = true;
-    redraw((value) => value + 1);
+    setOwner((current) =>
+      current === owner ? { ...current, retired: true } : current,
+    );
   };
   return (
     <Preparation
@@ -156,7 +124,7 @@ export function OfferMessagePreparation(props: Props) {
       {...props}
       owner={owner}
       isCurrent={isCurrent}
-      recoveryGuard={recoveryGuard}
+      reject={reject}
       retire={retire}
     />
   );
@@ -165,13 +133,13 @@ export function OfferMessagePreparation(props: Props) {
 function Preparation({
   owner,
   isCurrent,
-  recoveryGuard,
+  reject,
   retire,
   ...props
 }: Props & {
   owner: Owner;
   isCurrent: () => boolean;
-  recoveryGuard: () => () => boolean;
+  reject: ReturnType<typeof useCapturedAccessRejection>;
   retire: () => void;
 }) {
   const [fields, setFields] = useState<OfferMessageFields>({
@@ -187,7 +155,6 @@ function Preparation({
   const [copyStatus, setCopyStatus] = useState<CopyStatus>({ kind: 'idle' });
   const [pdfStatus, setPdfStatus] = useState<PdfStatus>('idle');
   const runtime = useRef<{
-    mounted: boolean;
     edit: number;
     review: number;
     copy: number;
@@ -198,34 +165,44 @@ function Preparation({
       phase: 'observation' | 'write';
     } | null;
     pendingPdf: boolean;
-    requests: Set<AbortController>;
     urls: Set<string>;
   }>({
-    mounted: false,
     edit: 0,
     review: 0,
     copy: 0,
     pdf: 0,
     pendingCopy: null,
     pendingPdf: false,
-    requests: new Set<AbortController>(),
     urls: new Set<string>(),
   });
   const fieldsRef = useRef(fields);
-  fieldsRef.current = fields;
+  useLayoutEffect(() => {
+    fieldsRef.current = fields;
+  });
   const reviewRef = useRef(review);
-  reviewRef.current = review;
+  useLayoutEffect(() => {
+    reviewRef.current = review;
+  });
   const observationRef = useRef<OfferMessageObservation | null>(null);
-  const live = () => runtime.current.mounted && isCurrent();
+  const observations = useScopedOperationGroup('message-observations');
+  const pdfs = useScopedOperationGroup('message-pdf');
+  const copies = useScopedOperationGroup('message-copy');
+  const protection = useRef({ retired: false });
+  const live = () =>
+    observations.isLive() && !protection.current.retired && isCurrent();
+  function retireComposer() {
+    protection.current.retired = true;
+    observations.retire();
+    pdfs.retire();
+    copies.retire();
+    retire();
+  }
 
   useLayoutEffect(() => {
-    runtime.current.mounted = true;
     const lifetime = runtime.current;
     return () => {
-      lifetime.mounted = false;
       lifetime.copy += 1;
       lifetime.pdf += 1;
-      for (const request of lifetime.requests) request.abort();
       for (const url of lifetime.urls) URL.revokeObjectURL(url);
       lifetime.urls.clear();
     };
@@ -233,9 +210,8 @@ function Preparation({
 
   async function observe(current: () => boolean) {
     if (!live() || !owner.capture) return null;
-    const request = new AbortController();
-    runtime.current.requests.add(request);
-    const recoverable = recoveryGuard();
+    const request = observations.begin();
+    if (!request) return null;
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!live() || request.signal.aborted || !current()) return null;
@@ -249,18 +225,10 @@ function Preparation({
       );
       if (!live() || request.signal.aborted || !current()) return null;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
-        retire();
+        retireComposer();
         // Retirement clears the composer first. Recovery has a distinct complete-
         // Actor observation guard, so this denial can recover without reviving text.
-        await handleAuthenticatedAccessRejection({
-          result,
-          identity: props.identity,
-          companyContextId: owner.source.companyId,
-          onCompanyContextRejected: props.onCompanyContextRejected,
-          onActorRevalidated: props.onActorRevalidated,
-          onWorkspaceAccessRejected: props.onWorkspaceAccessRejected,
-          isCurrent: recoverable,
-        });
+        await reject(result);
         return null;
       }
       if (!current()) return null;
@@ -275,7 +243,7 @@ function Preparation({
         ) &&
         result.value.readCapture !== owner.capture
       ) {
-        retire();
+        retireComposer();
         return null;
       }
       const value =
@@ -311,7 +279,7 @@ function Preparation({
       }
       return null;
     } finally {
-      runtime.current.requests.delete(request);
+      request.release();
     }
   }
 
@@ -366,11 +334,14 @@ function Preparation({
       !validOfferMessageFields(fieldsRef.current)
     )
       return;
+    const operation = copies.beginLatest();
+    if (!operation) return;
     const text = fieldsRef.current[field];
     const serial = ++runtime.current.copy;
     const edit = runtime.current.edit;
     const current = () =>
       live() &&
+      !operation.signal.aborted &&
       runtime.current.copy === serial &&
       runtime.current.edit === edit &&
       reviewRef.current === reviewed;
@@ -397,6 +368,7 @@ function Preparation({
       if (live() && runtime.current.pendingCopy?.serial === serial)
         setCopyStatus({ kind: 'failed', field });
     } finally {
+      operation.release();
       if (runtime.current.pendingCopy?.serial === serial) {
         const writing = runtime.current.pendingCopy.phase === 'write';
         runtime.current.pendingCopy = null;
@@ -409,6 +381,7 @@ function Preparation({
   function stopWaiting() {
     const pending = runtime.current.pendingCopy;
     if (!live() || !pending) return;
+    copies.retire();
     runtime.current.copy += 1;
     runtime.current.pendingCopy = null;
     setCopyStatus({ kind: 'unconfirmed', field: pending.field });
@@ -416,14 +389,14 @@ function Preparation({
 
   async function downloadPdf() {
     if (!live() || runtime.current.pendingPdf) return;
+    const request = pdfs.beginLatest();
+    if (!request) return;
     const serial = ++runtime.current.pdf;
-    const current = () => live() && runtime.current.pdf === serial;
+    const current = () =>
+      live() && !request.signal.aborted && runtime.current.pdf === serial;
     runtime.current.pendingPdf = true;
     setPdfStatus('pending');
     let url: string | undefined;
-    const request = new AbortController();
-    runtime.current.requests.add(request);
-    const recoverable = recoveryGuard();
     try {
       if (!(await observe(current)) || !current()) return;
       const api = await createAuthenticatedApiClient(props.identity);
@@ -435,16 +408,8 @@ function Preparation({
       );
       if (!current()) return;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
-        retire();
-        await handleAuthenticatedAccessRejection({
-          result,
-          identity: props.identity,
-          companyContextId: owner.source.companyId,
-          onCompanyContextRejected: props.onCompanyContextRejected,
-          onActorRevalidated: props.onActorRevalidated,
-          onWorkspaceAccessRejected: props.onWorkspaceAccessRejected,
-          isCurrent: recoverable,
-        });
+        retireComposer();
+        await reject(result);
         return;
       }
       if (result.status !== 'ok' || !(await observe(current)) || !current()) {
@@ -463,7 +428,7 @@ function Preparation({
     } catch {
       if (current()) setPdfStatus('failed');
     } finally {
-      runtime.current.requests.delete(request);
+      request.release();
       if (url) {
         if (runtime.current.urls.delete(url)) URL.revokeObjectURL(url);
       }
