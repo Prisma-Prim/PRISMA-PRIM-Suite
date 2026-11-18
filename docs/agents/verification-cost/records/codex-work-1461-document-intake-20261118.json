@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-work-1461-document-intake-20261118",
+  "date": "2026-11-18",
+  "runType": "verify-journey",
+  "issue": 1461,
+  "pullRequest": 1471,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "After native intake merge ea0bd1d5: actual Mission App/API/PostgreSQL4/4 PASS with original1461001/default2x10/60000. Exact595bytePDF SHA256ed5bbbd62e0a5d77042803266e0c679ceafde1a37d5566ccefe41d803bb8568d preserved across both widths. Catalogue60PASS; inspected RO/RU images. Earlier cancelled CI is not a pass. Usage unavailable."
+  }
+}
