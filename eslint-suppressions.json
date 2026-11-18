@@ -217,16 +217,6 @@
       "count": 4
     }
   },
-  "apps/web/src/profitability-estimate/ProfitabilityDecisionQueue.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/profitability-estimate/ProfitabilityEstimatePanel.tsx": {
-    "no-restricted-syntax": {
-      "count": 3
-    }
-  },
   "apps/web/src/project/ProjectDocuments.tsx": {
     "no-restricted-syntax": {
       "count": 3

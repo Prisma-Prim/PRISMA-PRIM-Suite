@@ -30,6 +30,7 @@ on:
           - mission-result-action-sequences
           - offer-owner-action-sequences
           - pricing-owner-action-sequences
+          - profitability-owner-action-sequences
       seed:
         description: Numeric seed copied from a failure, or random for exploration
         type: string
@@ -51,7 +52,7 @@ jobs:
       # One journey's failure never cancels another journey's night.
       fail-fast: false
       matrix:
-        journey: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.journey != 'all' && format('["{0}"]', inputs.journey) || '["certification-journey","multi-company-home","financial-action-sequences","access-action-sequences","document-action-sequences","contract-action-sequences","mission-result-action-sequences","offer-owner-action-sequences","pricing-owner-action-sequences"]') }}
+        journey: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.journey != 'all' && format('["{0}"]', inputs.journey) || '["certification-journey","multi-company-home","financial-action-sequences","access-action-sequences","document-action-sequences","contract-action-sequences","mission-result-action-sequences","offer-owner-action-sequences","pricing-owner-action-sequences","profitability-owner-action-sequences"]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:

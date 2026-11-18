@@ -1,6 +1,6 @@
 # Fictional local audit pilot
 
-This pilot runs the actual App, native API and a disposable PostgreSQL dossier. All people, source files and professional acts are fictional. It does not qualify real identities, malware scanning, OCR, external subscriptions or a private Client pilot. Nothing is deployed or merged into main under programme #1452.
+This pilot runs the actual App, native API and a disposable PostgreSQL dossier. All people, source files and professional acts are fictional. It does not qualify real identities, malware scanning, OCR, external subscriptions or a private Client pilot. Main integration follows the updated authorization in [programme #1452](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1452). Deployment and real-account/provider/model activation remain outside this pilot.
 
 ## Start and reopen
 
