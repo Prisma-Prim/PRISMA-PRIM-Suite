@@ -377,6 +377,65 @@ describe('Certification audit team and its approval', () => {
     ).toHaveLength(2);
   });
 
+  it('restores the reader registry after a candidate denial closes the selected Case', async () => {
+    const manager = certificationActor({ manager: true });
+    const reader = certificationActor({ manager: false });
+    const server = new FakeCertificationServer({ actor: () => reader });
+    server.seed({
+      orderReference: 'CERT-CANDIDATE-READ-RECOVERY',
+      agreement: true,
+    });
+    const held: { release?: (response: Response) => void } = {};
+    const pending = new Promise<Response>((resolve) => {
+      held.release = resolve;
+    });
+    server.interceptions.push(
+      {
+        match: (request) => request.path.endsWith('/team-candidates'),
+        respond: () => new Response(null, { status: 403 }),
+      },
+      {
+        match: (request) => request.path === '/api/access/current-actor',
+        respond: () => pending,
+      },
+    );
+    server.install();
+    const onActorRevalidated = vi.fn<(actor: ActorContext) => void>();
+    const view = renderWorkspace(manager, { onActorRevalidated });
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'CERT-CANDIDATE-READ-RECOVERY',
+      }),
+    );
+    expect(
+      await screen.findByText(
+        'Certification access is unavailable. Your current authority is being checked.',
+      ),
+    ).toBeVisible();
+    await waitFor(() =>
+      expect(
+        server.requests.some(
+          (request) => request.path === '/api/access/current-actor',
+        ),
+      ).toBe(true),
+    );
+    expect(screen.queryByRole('form', { name: 'Propose the team' })).toBeNull();
+    if (!held.release) throw new Error('Expected the held actor response.');
+    held.release(Response.json(reader));
+    await waitFor(() =>
+      expect(onActorRevalidated).toHaveBeenCalledExactlyOnceWith(reader),
+    );
+    view.rerender(
+      <CertificationWorkspace
+        actor={reader}
+        identity={certificationIdentity}
+        projectId={certificationIds.project}
+      />,
+    );
+    await openSeededCase('CERT-CANDIDATE-READ-RECOVERY');
+    expect(screen.queryByRole('button', { name: 'Find auditors' })).toBeNull();
+  });
+
   it('retires a held candidate read when manager authority is replaced', async () => {
     let actor = certificationActor({ manager: true });
     const server = new FakeCertificationServer({ actor: () => actor });
