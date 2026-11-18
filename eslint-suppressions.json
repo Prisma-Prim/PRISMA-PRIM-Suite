@@ -62,6 +62,24 @@
       "count": 7
     }
   },
+  "apps/api/src/documents/document-invoice-record-source.ts": {
+    "no-restricted-syntax": {
+      "count": 3,
+      "reason": "Existing native Invoice Record source checks pending migration through DocumentFamilyAccess; #1212 explicitly preserves these consumer calls without changing runtime behavior."
+    }
+  },
+  "apps/api/src/documents/document-payment-source.ts": {
+    "no-restricted-syntax": {
+      "count": 2,
+      "reason": "Existing native Payment source checks pending migration through DocumentFamilyAccess; #1212 explicitly preserves these consumer calls without changing runtime behavior."
+    }
+  },
+  "apps/api/src/documents/document-working-evidence-reference.service.ts": {
+    "no-restricted-syntax": {
+      "count": 1,
+      "reason": "Existing native Working Evidence source check pending migration through DocumentFamilyAccess; #1212 explicitly preserves this consumer call without changing runtime behavior."
+    }
+  },
   "apps/web/e2e/company-access-administration.spec.ts": {
     "@typescript-eslint/consistent-type-assertions": {
       "count": 1
@@ -129,26 +147,6 @@
   "apps/web/src/commercial-decision-queue/PendingDecisionQueue.tsx": {
     "no-restricted-syntax": {
       "count": 1
-    }
-  },
-  "apps/web/src/commercial-intake/ClientCommercialOverview.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/commercial-intake/CommercialIntakeWorkspace.tsx": {
-    "no-restricted-syntax": {
-      "count": 13
-    }
-  },
-  "apps/web/src/commercial-intake/RequestClientAssociation.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/commercial-intake/SalesStageSettings.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
     }
   },
   "apps/web/src/commercial-intake/opportunity-outcome.test.ts": {

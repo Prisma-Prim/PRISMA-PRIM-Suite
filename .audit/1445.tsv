@@ -1,0 +1,3 @@
+ts	phase	decision	why	evidence	result
+2026-11-18T08:50:00Z	qualification	Reuse pinned native parser and deterministic engine through an offline bounded batch runner; keep private inputs and parser diagnostics inside a captured worker	Measure actual extraction without expanding production or publishing private material	Issue1445; dossier-analysis-prd sections3,13,16; source e48a4b430e712be124a6e2d9e6d0fe9ac48fcd95	SELECTED
+2026-11-18T08:50:00Z	interruption	Stop new admissions on signal or explicit completion threshold, drain native bounded in-flight extraction and retain cancelled status; restart rereads unchanged hashed originals	Native parser has its own 20s deadline; no false completed run or timeout waiver	Issue1445 criteria2-4	SELECTED

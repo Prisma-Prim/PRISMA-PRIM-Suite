@@ -1,0 +1,1609 @@
+{
+  "schema": "dossier-volume-prepared-evidence/v1",
+  "kind": "actual_measurements_on_fictional_prepared_examples",
+  "authorityInput": "e48a4b430e712be124a6e2d9e6d0fe9ac48fcd95",
+  "versions": {
+    "parser": "native-text.v2",
+    "engine": "dossier-analysis-rules/v2",
+    "node": "v24.19.0"
+  },
+  "machine": {
+    "platform": "linux",
+    "release": "6.18.57",
+    "arch": "x64",
+    "logicalCpus": 5,
+    "cpuModel": "AMD EPYC 9V74 80-Core Processor",
+    "availableParallelism": 4,
+    "totalMemoryBytes": 18882662400
+  },
+  "sourceInputHashes": {
+    "apps/api/src/dossier-volume-qualification/fixtures.ts": "5786642f7618552e0f30d49c4626aa286259a43d02135e914df7a264dccdc880",
+    "apps/api/src/dossier-volume-qualification/index.test.ts": "150d0f871393a983a55631ccb4a274edac2816ebb2a2ab4dc5607786470e088b",
+    "apps/api/src/dossier-volume-qualification/index.ts": "f39a8e38efb3541efefebf71d0cf97288829e2df591ca66a53f2307e45e18950",
+    "apps/api/src/dossier-volume-qualification/main.ts": "aa0765e3e916afae72f96ce8c02342517c3b481c33fe5883544c71a2589abe05",
+    "apps/api/src/dossier-volume-qualification/private-input.ts": "ca07aa8ee64b02a2fe73b30358fd88f03cd7364e883f5e1e56ff40eb20dacf5f",
+    "apps/api/src/document-text-extraction/index.ts": "54c749c6dee8681274f3f7b25c51b21a06bab958687bbe9b636e1b48789e4cb4",
+    "apps/api/src/dossier-analysis-engine/index.ts": "12ec3fdbec9a9cbbe9c01d942025873df88205bb110cfa05df5f47f91271b6c2",
+    "pnpm-lock.yaml": "cd1293bcfb8b7c60b2c756d662f7048a8432b8a0b1884395807c85aff825ff9d"
+  },
+  "fixtures": [
+    {
+      "fixtureId": "spatial-pdf-1",
+      "sourceSha256": "784bdd340d4c64f3d4ed6f43199fd60e466e3451f44bb6e08b66764d16e80bc7",
+      "resultSha256": "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+      "pdfPages": 1
+    },
+    {
+      "fixtureId": "mixed-scan-pdf-1",
+      "sourceSha256": "1f2981c3eeb0ad164047e6b01f36000f0280f153030e6b12a204f017144fa76b",
+      "resultSha256": "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+      "pdfPages": 2
+    },
+    {
+      "fixtureId": "image-only-pdf-1",
+      "sourceSha256": "907ff8ef72a38b3ccce3859eaaa1628bbc0486e5b17310563584e5ad1d1483ca",
+      "resultSha256": "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+      "pdfPages": 1
+    },
+    {
+      "fixtureId": "bilingual-word-1",
+      "sourceSha256": "ff9556fc737f10f4e11135bc7188f6ef59b4881d7aad40266b52c3e2f09ebab7",
+      "resultSha256": "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+      "pdfPages": null
+    },
+    {
+      "fixtureId": "merged-word-1",
+      "sourceSha256": "1045538aea16dec22210c2082fd04889e4137edfdda727287c4ed154c44805f7",
+      "resultSha256": "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+      "pdfPages": null
+    },
+    {
+      "fixtureId": "nested-word-1",
+      "sourceSha256": "54f67d820b0d1e4217a44156ac5ed80e5b1bfe55d512effe2105cc0803fb3bc8",
+      "resultSha256": "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+      "pdfPages": null
+    }
+  ],
+  "runs": [
+    {
+      "id": "small-c1",
+      "mode": "prepared",
+      "status": "completed",
+      "stopReason": null,
+      "startedAt": "2026-11-18T07:48:46.761Z",
+      "finishedAt": "2026-11-18T07:48:47.693Z",
+      "concurrency": 1,
+      "accounting": {
+        "planned": 6,
+        "admitted": 6,
+        "completed": 6,
+        "notAdmitted": 0,
+        "failed": 0,
+        "partial": 3,
+        "unreadable": 1,
+        "sourceBytesPlanned": 20252,
+        "sourceBytesCompleted": 20252
+      },
+      "measurements": {
+        "wallMs": 932.1314890000001,
+        "completedSourcesPerSecond": 6.436860111266984,
+        "baselineRssBytes": 120762368,
+        "rssPeakObservedBytes": 194584576,
+        "processHighWaterRssBytes": 194584576,
+        "rssSamplingIntervalMs": 10
+      },
+      "quality": {
+        "passages": {
+          "expected": 8,
+          "observed": 8,
+          "matched": 8,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "expected": 9,
+          "observed": 9,
+          "matched": 9,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "coverageStateMatches": 6,
+      "nativeResultHashes": [
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a"
+      ],
+      "rawSummarySha256": "315dd66a129160f846dc018b6f3d7870f376d350154578d00053c2eb1b693310",
+      "qualification": "timing_only_before_stage_counters; no speed or throughput conclusion",
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--prepared",
+        "small",
+        "--concurrency",
+        "1"
+      ],
+      "processExit": 0
+    },
+    {
+      "id": "small-c2",
+      "mode": "prepared",
+      "status": "completed",
+      "stopReason": null,
+      "startedAt": "2026-11-18T07:48:48.126Z",
+      "finishedAt": "2026-11-18T07:48:49.000Z",
+      "concurrency": 2,
+      "accounting": {
+        "planned": 6,
+        "admitted": 6,
+        "completed": 6,
+        "notAdmitted": 0,
+        "failed": 0,
+        "partial": 3,
+        "unreadable": 1,
+        "sourceBytesPlanned": 20252,
+        "sourceBytesCompleted": 20252
+      },
+      "measurements": {
+        "wallMs": 874.950008,
+        "completedSourcesPerSecond": 6.857534653568458,
+        "baselineRssBytes": 118726656,
+        "rssPeakObservedBytes": 221560832,
+        "processHighWaterRssBytes": 221589504,
+        "rssSamplingIntervalMs": 10
+      },
+      "quality": {
+        "passages": {
+          "expected": 8,
+          "observed": 8,
+          "matched": 8,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "expected": 9,
+          "observed": 9,
+          "matched": 9,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "coverageStateMatches": 6,
+      "nativeResultHashes": [
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a"
+      ],
+      "rawSummarySha256": "2ba92aaf1e588942b3ae25c04d78c2c8b5dd70adc46b5a46bd5691805b22c1d0",
+      "qualification": "timing_only_before_stage_counters; no speed or throughput conclusion",
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--prepared",
+        "small",
+        "--concurrency",
+        "2"
+      ],
+      "processExit": 0
+    },
+    {
+      "id": "medium-c1",
+      "mode": "prepared",
+      "status": "completed",
+      "stopReason": null,
+      "startedAt": "2026-11-18T07:48:49.424Z",
+      "finishedAt": "2026-11-18T07:48:52.474Z",
+      "concurrency": 1,
+      "accounting": {
+        "planned": 24,
+        "admitted": 24,
+        "completed": 24,
+        "notAdmitted": 0,
+        "failed": 0,
+        "partial": 12,
+        "unreadable": 4,
+        "sourceBytesPlanned": 81008,
+        "sourceBytesCompleted": 81008
+      },
+      "measurements": {
+        "wallMs": 3049.8605030000003,
+        "completedSourcesPerSecond": 7.869212370989545,
+        "baselineRssBytes": 117440512,
+        "rssPeakObservedBytes": 200388608,
+        "processHighWaterRssBytes": 201093120,
+        "rssSamplingIntervalMs": 10
+      },
+      "quality": {
+        "passages": {
+          "expected": 32,
+          "observed": 32,
+          "matched": 32,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "expected": 36,
+          "observed": 36,
+          "matched": 36,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "coverageStateMatches": 24,
+      "nativeResultHashes": [
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a"
+      ],
+      "rawSummarySha256": "6272267146979056b58b28011b635581240bff2f3883e952b5d6a325127571ca",
+      "qualification": "timing_only_before_stage_counters; no speed or throughput conclusion",
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--prepared",
+        "medium",
+        "--concurrency",
+        "1"
+      ],
+      "processExit": 0
+    },
+    {
+      "id": "medium-c2",
+      "mode": "prepared",
+      "status": "completed",
+      "stopReason": null,
+      "startedAt": "2026-11-18T07:48:53.137Z",
+      "finishedAt": "2026-11-18T07:48:54.818Z",
+      "concurrency": 2,
+      "accounting": {
+        "planned": 24,
+        "admitted": 24,
+        "completed": 24,
+        "notAdmitted": 0,
+        "failed": 0,
+        "partial": 12,
+        "unreadable": 4,
+        "sourceBytesPlanned": 81008,
+        "sourceBytesCompleted": 81008
+      },
+      "measurements": {
+        "wallMs": 1680.8685020000003,
+        "completedSourcesPerSecond": 14.27833288055748,
+        "baselineRssBytes": 120770560,
+        "rssPeakObservedBytes": 272580608,
+        "processHighWaterRssBytes": 272711680,
+        "rssSamplingIntervalMs": 10
+      },
+      "quality": {
+        "passages": {
+          "expected": 32,
+          "observed": 32,
+          "matched": 32,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "expected": 36,
+          "observed": 36,
+          "matched": 36,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "coverageStateMatches": 24,
+      "nativeResultHashes": [
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a"
+      ],
+      "rawSummarySha256": "7bd8dbada63d34ef09994409a8bd0da898f1e513f93c93743b0166725344e36c",
+      "qualification": "timing_only_before_stage_counters; no speed or throughput conclusion",
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--prepared",
+        "medium",
+        "--concurrency",
+        "2"
+      ],
+      "processExit": 0
+    },
+    {
+      "id": "large-c1",
+      "mode": "prepared",
+      "status": "completed",
+      "stopReason": null,
+      "startedAt": "2026-11-18T07:48:55.463Z",
+      "finishedAt": "2026-11-18T07:49:02.561Z",
+      "concurrency": 1,
+      "accounting": {
+        "planned": 60,
+        "admitted": 60,
+        "completed": 60,
+        "notAdmitted": 0,
+        "failed": 0,
+        "partial": 30,
+        "unreadable": 10,
+        "sourceBytesPlanned": 202520,
+        "sourceBytesCompleted": 202520
+      },
+      "measurements": {
+        "wallMs": 7097.775235,
+        "completedSourcesPerSecond": 8.453353059721113,
+        "baselineRssBytes": 117211136,
+        "rssPeakObservedBytes": 229482496,
+        "processHighWaterRssBytes": 229765120,
+        "rssSamplingIntervalMs": 10
+      },
+      "quality": {
+        "passages": {
+          "expected": 80,
+          "observed": 80,
+          "matched": 80,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "expected": 90,
+          "observed": 90,
+          "matched": 90,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "coverageStateMatches": 60,
+      "nativeResultHashes": [
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a"
+      ],
+      "rawSummarySha256": "963a9cde779f70a6d8bf9f3886a211b7bd6e615bbafe7178564a016d37364d01",
+      "qualification": "timing_only_before_stage_counters; no speed or throughput conclusion",
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--prepared",
+        "large",
+        "--concurrency",
+        "1"
+      ],
+      "processExit": 0
+    },
+    {
+      "id": "large-c2",
+      "mode": "prepared",
+      "status": "completed",
+      "stopReason": null,
+      "startedAt": "2026-11-18T07:49:03.113Z",
+      "finishedAt": "2026-11-18T07:49:07.028Z",
+      "concurrency": 2,
+      "accounting": {
+        "planned": 60,
+        "admitted": 60,
+        "completed": 60,
+        "notAdmitted": 0,
+        "failed": 0,
+        "partial": 30,
+        "unreadable": 10,
+        "sourceBytesPlanned": 202520,
+        "sourceBytesCompleted": 202520
+      },
+      "measurements": {
+        "wallMs": 3915.502605,
+        "completedSourcesPerSecond": 15.323703251628919,
+        "baselineRssBytes": 118947840,
+        "rssPeakObservedBytes": 281407488,
+        "processHighWaterRssBytes": 281407488,
+        "rssSamplingIntervalMs": 10
+      },
+      "quality": {
+        "passages": {
+          "expected": 80,
+          "observed": 80,
+          "matched": 80,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "expected": 90,
+          "observed": 90,
+          "matched": 90,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "coverageStateMatches": 60,
+      "nativeResultHashes": [
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a"
+      ],
+      "rawSummarySha256": "d4de0cd8a0e4689c50f2ab86d71d47dda454316a595a0bef8c8468f1435c2cfa",
+      "qualification": "timing_only_before_stage_counters; no speed or throughput conclusion",
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--prepared",
+        "large",
+        "--concurrency",
+        "2"
+      ],
+      "processExit": 0
+    },
+    {
+      "id": "interrupted",
+      "mode": "prepared",
+      "status": "interrupted",
+      "stopReason": "completion_threshold",
+      "startedAt": "2026-11-18T07:49:07.450Z",
+      "finishedAt": "2026-11-18T07:49:07.969Z",
+      "concurrency": 2,
+      "accounting": {
+        "planned": 6,
+        "admitted": 2,
+        "completed": 2,
+        "notAdmitted": 4,
+        "failed": 0,
+        "partial": 1,
+        "unreadable": 0,
+        "sourceBytesPlanned": 20252,
+        "sourceBytesCompleted": 16817
+      },
+      "measurements": {
+        "wallMs": 519.178934,
+        "completedSourcesPerSecond": 3.852236423752894,
+        "baselineRssBytes": 118194176,
+        "rssPeakObservedBytes": 218587136,
+        "processHighWaterRssBytes": 219553792,
+        "rssSamplingIntervalMs": 10
+      },
+      "quality": {
+        "passages": {
+          "expected": 2,
+          "observed": 2,
+          "matched": 2,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "expected": 6,
+          "observed": 6,
+          "matched": 6,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "coverageStateMatches": 2,
+      "nativeResultHashes": [
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081"
+      ],
+      "rawSummarySha256": "2dec3ce671d6d187f82aa31e2661c678f64844cae196ceffb1432483278b8f80",
+      "qualification": "timing_only_before_stage_counters; no speed or throughput conclusion",
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--prepared",
+        "small",
+        "--concurrency",
+        "2",
+        "--stop-after",
+        "1"
+      ],
+      "processExit": 3
+    },
+    {
+      "id": "restart",
+      "mode": "prepared",
+      "status": "completed",
+      "stopReason": null,
+      "startedAt": "2026-11-18T07:49:08.396Z",
+      "finishedAt": "2026-11-18T07:49:09.328Z",
+      "concurrency": 1,
+      "accounting": {
+        "planned": 6,
+        "admitted": 6,
+        "completed": 6,
+        "notAdmitted": 0,
+        "failed": 0,
+        "partial": 3,
+        "unreadable": 1,
+        "sourceBytesPlanned": 20252,
+        "sourceBytesCompleted": 20252
+      },
+      "measurements": {
+        "wallMs": 932.070257,
+        "completedSourcesPerSecond": 6.437282978336685,
+        "baselineRssBytes": 118857728,
+        "rssPeakObservedBytes": 203698176,
+        "processHighWaterRssBytes": 205533184,
+        "rssSamplingIntervalMs": 10
+      },
+      "quality": {
+        "passages": {
+          "expected": 8,
+          "observed": 8,
+          "matched": 8,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "expected": 9,
+          "observed": 9,
+          "matched": 9,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "coverageStateMatches": 6,
+      "nativeResultHashes": [
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a"
+      ],
+      "rawSummarySha256": "cade65ec68d1fc6d5374173c869b91470881f630d74ca61add585e808c8fb182",
+      "qualification": "timing_only_before_stage_counters; no speed or throughput conclusion",
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--prepared",
+        "small",
+        "--concurrency",
+        "1"
+      ],
+      "processExit": 0
+    },
+    {
+      "id": "signal-interrupted",
+      "mode": "prepared",
+      "status": "interrupted",
+      "stopReason": "signal",
+      "startedAt": "2026-11-18T07:50:35.731Z",
+      "finishedAt": "2026-11-18T07:50:35.732Z",
+      "concurrency": 2,
+      "accounting": {
+        "planned": 60,
+        "admitted": 0,
+        "completed": 0,
+        "notAdmitted": 60,
+        "failed": 0,
+        "partial": 0,
+        "unreadable": 0,
+        "sourceBytesPlanned": 202520,
+        "sourceBytesCompleted": 0
+      },
+      "measurements": {
+        "wallMs": 0.8986079999999674,
+        "completedSourcesPerSecond": 0,
+        "baselineRssBytes": 121036800,
+        "rssPeakObservedBytes": 121036800,
+        "processHighWaterRssBytes": 121561088,
+        "rssSamplingIntervalMs": 10
+      },
+      "quality": {
+        "passages": {
+          "expected": 0,
+          "observed": 0,
+          "matched": 0,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "expected": 0,
+          "observed": 0,
+          "matched": 0,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "coverageStateMatches": 0,
+      "nativeResultHashes": [],
+      "rawSummarySha256": "438bb37025c8732328946eac0ec6e6bd67a9e8958b82be587d8858bb7478ec92",
+      "qualification": "timing_only_before_stage_counters; no speed or throughput conclusion"
+    },
+    {
+      "id": "private-malformed-sanitized",
+      "mode": "private",
+      "status": "completed",
+      "stopReason": null,
+      "startedAt": "2026-11-18T07:50:36.247Z",
+      "finishedAt": "2026-11-18T07:50:36.841Z",
+      "concurrency": 1,
+      "accounting": {
+        "planned": 1,
+        "admitted": 1,
+        "completed": 1,
+        "notAdmitted": 0,
+        "failed": 1,
+        "partial": 0,
+        "unreadable": 0,
+        "sourceBytesPlanned": 38,
+        "sourceBytesCompleted": 38
+      },
+      "measurements": {
+        "wallMs": 593.85666,
+        "completedSourcesPerSecond": 1.6839080326218787,
+        "baselineRssBytes": 107913216,
+        "rssPeakObservedBytes": 168148992,
+        "processHighWaterRssBytes": 168148992,
+        "rssSamplingIntervalMs": 10
+      },
+      "quality": {
+        "passages": {
+          "expected": 0,
+          "observed": 0,
+          "matched": 0,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "expected": 0,
+          "observed": 0,
+          "matched": 0,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "coverageStateMatches": 0,
+      "nativeResultHashes": [null],
+      "rawSummarySha256": "0b0fc4d2f3932d5e44f1bac7c7c55b5dc61edf0c69cf7458a6cf6858f1deee2c",
+      "qualification": "timing_only_before_stage_counters; no speed or throughput conclusion"
+    }
+  ],
+  "exploratoryMeasurementsBeforeFinalPrivacyProjection": {
+    "note": "Earlier passing matrix was repeated after adding CPU-model metadata and explicit merged-cell issue projection. Rounded stdout times retained; full earlier RSS/output summaries were overwritten locally and are unavailable. No fastest-run selection or saving claim.",
+    "wallMsRounded": {
+      "small-c1": 1264,
+      "small-c2": 901,
+      "medium-c1": 3392,
+      "medium-c2": 1608,
+      "large-c1": 7058,
+      "large-c2": 3813
+    }
+  },
+  "limits": [
+    "One generated example per shape, repeated identically to make equivalent bounded batches; not large or representative real Client documents.",
+    "Native parser plus one-source deterministic analysis; excludes source upload/scanning, database persistence and multi-source comparisons.",
+    "10ms whole-process RSS samples include worker threads; maxRSS is process high-water, not exclusive per-parser memory.",
+    "Existing native extraction limits unchanged. No provider, production worker, business write or workload SLA.",
+    "No owner-started private real corpus; issue1279 remains unqualified."
+  ],
+  "priorSourceInputHashes": {
+    "apps/api/src/dossier-volume-qualification/fixtures.ts": "5786642f7618552e0f30d49c4626aa286259a43d02135e914df7a264dccdc880",
+    "apps/api/src/dossier-volume-qualification/index.test.ts": "6730aaa07e2b5de472a70770958cbae1007a83a0dc14e3b2a9ec2a8e067dc234",
+    "apps/api/src/dossier-volume-qualification/index.ts": "8e95a473fb232b1e2a8591ae1d7ce2d8afa9ec96245e7f15bbe07d3672e27a6f",
+    "apps/api/src/dossier-volume-qualification/main.ts": "aa0765e3e916afae72f96ce8c02342517c3b481c33fe5883544c71a2589abe05",
+    "apps/api/src/dossier-volume-qualification/private-input.ts": "da3e1a55234a5026c466c150a93bf09de5618c7e30357c32d2f9023dc52bed4f",
+    "apps/api/src/document-text-extraction/index.ts": "54c749c6dee8681274f3f7b25c51b21a06bab958687bbe9b636e1b48789e4cb4",
+    "apps/api/src/dossier-analysis-engine/index.ts": "12ec3fdbec9a9cbbe9c01d942025873df88205bb110cfa05df5f47f91271b6c2",
+    "pnpm-lock.yaml": "cd1293bcfb8b7c60b2c756d662f7048a8432b8a0b1884395807c85aff825ff9d"
+  },
+  "reviewedRuns": [
+    {
+      "id": "small-c1",
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--prepared",
+        "small",
+        "--concurrency",
+        "1"
+      ],
+      "processExit": 0,
+      "status": "completed",
+      "stopReason": null,
+      "startedAt": "2026-11-18T07:59:30.933Z",
+      "finishedAt": "2026-11-18T07:59:31.952Z",
+      "concurrency": 1,
+      "accounting": {
+        "planned": 6,
+        "admitted": 6,
+        "completed": 6,
+        "notAdmitted": 0,
+        "failed": 0,
+        "partial": 3,
+        "unreadable": 1,
+        "sourceBytesPlanned": 20252,
+        "sourceBytesCompleted": 20252
+      },
+      "measurements": {
+        "wallMs": 1018.7953689999999,
+        "completedSourcesPerSecond": 5.889308277764659,
+        "baselineRssBytes": 117092352,
+        "rssPeakObservedBytes": 200507392,
+        "processHighWaterRssBytes": 200900608,
+        "rssSamplingIntervalMs": 10,
+        "summedExtractionMs": 1006.442311,
+        "summedAnalysisMs": 10.228624999999965
+      },
+      "quality": {
+        "passages": {
+          "matched": 8,
+          "expected": 8,
+          "observed": 8,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "matched": 9,
+          "expected": 9,
+          "observed": 9,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "nativeResultHashes": [
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a"
+      ],
+      "rawSummarySha256": "5add5dbc0a5a98aa51f55d74f9872a465a637cb0f86714d134a563d0efffb37c",
+      "limiter": {
+        "basis": "measured stage-duration counters",
+        "dominantStage": "native extraction including worker startup and wait",
+        "extractionShareOfSummedStageDuration": 0.9899390996262335,
+        "limit": "At most one/two bounded extraction calls occupy the scheduler slots; CPU versus I/O versus startup bottleneck was not established. Concurrent durations overlap and are not utilization."
+      },
+      "runCount": 1,
+      "spread": {
+        "wallMsMin": 1018.7953689999999,
+        "wallMsMax": 1018.7953689999999,
+        "variance": "not estimable from one fully instrumented invocation"
+      }
+    },
+    {
+      "id": "small-c2",
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--prepared",
+        "small",
+        "--concurrency",
+        "2"
+      ],
+      "processExit": 0,
+      "status": "completed",
+      "stopReason": null,
+      "startedAt": "2026-11-18T07:59:32.430Z",
+      "finishedAt": "2026-11-18T07:59:33.434Z",
+      "concurrency": 2,
+      "accounting": {
+        "planned": 6,
+        "admitted": 6,
+        "completed": 6,
+        "notAdmitted": 0,
+        "failed": 0,
+        "partial": 3,
+        "unreadable": 1,
+        "sourceBytesPlanned": 20252,
+        "sourceBytesCompleted": 20252
+      },
+      "measurements": {
+        "wallMs": 1004.834603,
+        "completedSourcesPerSecond": 5.971131947572869,
+        "baselineRssBytes": 118706176,
+        "rssPeakObservedBytes": 219398144,
+        "processHighWaterRssBytes": 220839936,
+        "rssSamplingIntervalMs": 10,
+        "summedExtractionMs": 1912.130839,
+        "summedAnalysisMs": 12.049935000000005
+      },
+      "quality": {
+        "passages": {
+          "matched": 8,
+          "expected": 8,
+          "observed": 8,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "matched": 9,
+          "expected": 9,
+          "observed": 9,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "nativeResultHashes": [
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a"
+      ],
+      "rawSummarySha256": "1ec03b0dccc66e1d417c3623a8aa34f2465d2a2517478f060159a257198daa87",
+      "limiter": {
+        "basis": "measured stage-duration counters",
+        "dominantStage": "native extraction including worker startup and wait",
+        "extractionShareOfSummedStageDuration": 0.9937376284168195,
+        "limit": "At most one/two bounded extraction calls occupy the scheduler slots; CPU versus I/O versus startup bottleneck was not established. Concurrent durations overlap and are not utilization."
+      },
+      "runCount": 1,
+      "spread": {
+        "wallMsMin": 1004.834603,
+        "wallMsMax": 1004.834603,
+        "variance": "not estimable from one fully instrumented invocation"
+      }
+    },
+    {
+      "id": "medium-c1",
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--prepared",
+        "medium",
+        "--concurrency",
+        "1"
+      ],
+      "processExit": 0,
+      "status": "completed",
+      "stopReason": null,
+      "startedAt": "2026-11-18T07:59:33.906Z",
+      "finishedAt": "2026-11-18T07:59:36.977Z",
+      "concurrency": 1,
+      "accounting": {
+        "planned": 24,
+        "admitted": 24,
+        "completed": 24,
+        "notAdmitted": 0,
+        "failed": 0,
+        "partial": 12,
+        "unreadable": 4,
+        "sourceBytesPlanned": 81008,
+        "sourceBytesCompleted": 81008
+      },
+      "measurements": {
+        "wallMs": 3070.593429,
+        "completedSourcesPerSecond": 7.81607873361993,
+        "baselineRssBytes": 119369728,
+        "rssPeakObservedBytes": 219316224,
+        "processHighWaterRssBytes": 219316224,
+        "rssSamplingIntervalMs": 10,
+        "summedExtractionMs": 3048.8090339999994,
+        "summedAnalysisMs": 17.259753999999816
+      },
+      "quality": {
+        "passages": {
+          "matched": 32,
+          "expected": 32,
+          "observed": 32,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "matched": 36,
+          "expected": 36,
+          "observed": 36,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "nativeResultHashes": [
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a"
+      ],
+      "rawSummarySha256": "351ea34e9844bfe4ea102482320aca2b94d4acc8aecc99b52b333ed6696911d3",
+      "limiter": {
+        "basis": "measured stage-duration counters",
+        "dominantStage": "native extraction including worker startup and wait",
+        "extractionShareOfSummedStageDuration": 0.9943707218613127,
+        "limit": "At most one/two bounded extraction calls occupy the scheduler slots; CPU versus I/O versus startup bottleneck was not established. Concurrent durations overlap and are not utilization."
+      },
+      "runCount": 1,
+      "spread": {
+        "wallMsMin": 3070.593429,
+        "wallMsMax": 3070.593429,
+        "variance": "not estimable from one fully instrumented invocation"
+      }
+    },
+    {
+      "id": "medium-c2",
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--prepared",
+        "medium",
+        "--concurrency",
+        "2"
+      ],
+      "processExit": 0,
+      "status": "completed",
+      "stopReason": null,
+      "startedAt": "2026-11-18T07:59:37.626Z",
+      "finishedAt": "2026-11-18T07:59:39.383Z",
+      "concurrency": 2,
+      "accounting": {
+        "planned": 24,
+        "admitted": 24,
+        "completed": 24,
+        "notAdmitted": 0,
+        "failed": 0,
+        "partial": 12,
+        "unreadable": 4,
+        "sourceBytesPlanned": 81008,
+        "sourceBytesCompleted": 81008
+      },
+      "measurements": {
+        "wallMs": 1757.5705550000002,
+        "completedSourcesPerSecond": 13.655212834400265,
+        "baselineRssBytes": 118603776,
+        "rssPeakObservedBytes": 268111872,
+        "processHighWaterRssBytes": 268242944,
+        "rssSamplingIntervalMs": 10,
+        "summedExtractionMs": 3439.422246,
+        "summedAnalysisMs": 17.63102900000058
+      },
+      "quality": {
+        "passages": {
+          "matched": 32,
+          "expected": 32,
+          "observed": 32,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "matched": 36,
+          "expected": 36,
+          "observed": 36,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "nativeResultHashes": [
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a"
+      ],
+      "rawSummarySha256": "0030a355f8bdb92ab27c76d660c491c49a44b99393ee01039030e85e13607119",
+      "limiter": {
+        "basis": "measured stage-duration counters",
+        "dominantStage": "native extraction including worker startup and wait",
+        "extractionShareOfSummedStageDuration": 0.9948999834259133,
+        "limit": "At most one/two bounded extraction calls occupy the scheduler slots; CPU versus I/O versus startup bottleneck was not established. Concurrent durations overlap and are not utilization."
+      },
+      "runCount": 1,
+      "spread": {
+        "wallMsMin": 1757.5705550000002,
+        "wallMsMax": 1757.5705550000002,
+        "variance": "not estimable from one fully instrumented invocation"
+      }
+    },
+    {
+      "id": "large-c1",
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--prepared",
+        "large",
+        "--concurrency",
+        "1"
+      ],
+      "processExit": 0,
+      "status": "completed",
+      "stopReason": null,
+      "startedAt": "2026-11-18T07:59:39.979Z",
+      "finishedAt": "2026-11-18T07:59:47.284Z",
+      "concurrency": 1,
+      "accounting": {
+        "planned": 60,
+        "admitted": 60,
+        "completed": 60,
+        "notAdmitted": 0,
+        "failed": 0,
+        "partial": 30,
+        "unreadable": 10,
+        "sourceBytesPlanned": 202520,
+        "sourceBytesCompleted": 202520
+      },
+      "measurements": {
+        "wallMs": 7304.653774,
+        "completedSourcesPerSecond": 8.21394166737409,
+        "baselineRssBytes": 119582720,
+        "rssPeakObservedBytes": 236306432,
+        "processHighWaterRssBytes": 238485504,
+        "rssSamplingIntervalMs": 10,
+        "summedExtractionMs": 7272.4356910000015,
+        "summedAnalysisMs": 24.380716999999322
+      },
+      "quality": {
+        "passages": {
+          "matched": 80,
+          "expected": 80,
+          "observed": 80,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "matched": 90,
+          "expected": 90,
+          "observed": 90,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "nativeResultHashes": [
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a"
+      ],
+      "rawSummarySha256": "a0d1e0c982a91bb2a72821a85efac3c857c091aa4d951d112423d034671b4604",
+      "limiter": {
+        "basis": "measured stage-duration counters",
+        "dominantStage": "native extraction including worker startup and wait",
+        "extractionShareOfSummedStageDuration": 0.9966587185922249,
+        "limit": "At most one/two bounded extraction calls occupy the scheduler slots; CPU versus I/O versus startup bottleneck was not established. Concurrent durations overlap and are not utilization."
+      },
+      "runCount": 1,
+      "spread": {
+        "wallMsMin": 7304.653774,
+        "wallMsMax": 7304.653774,
+        "variance": "not estimable from one fully instrumented invocation"
+      }
+    },
+    {
+      "id": "large-c2",
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--prepared",
+        "large",
+        "--concurrency",
+        "2"
+      ],
+      "processExit": 0,
+      "status": "completed",
+      "stopReason": null,
+      "startedAt": "2026-11-18T07:59:47.717Z",
+      "finishedAt": "2026-11-18T07:59:51.487Z",
+      "concurrency": 2,
+      "accounting": {
+        "planned": 60,
+        "admitted": 60,
+        "completed": 60,
+        "notAdmitted": 0,
+        "failed": 0,
+        "partial": 30,
+        "unreadable": 10,
+        "sourceBytesPlanned": 202520,
+        "sourceBytesCompleted": 202520
+      },
+      "measurements": {
+        "wallMs": 3770.175186,
+        "completedSourcesPerSecond": 15.914379847069526,
+        "baselineRssBytes": 120926208,
+        "rssPeakObservedBytes": 268476416,
+        "processHighWaterRssBytes": 268738560,
+        "rssSamplingIntervalMs": 10,
+        "summedExtractionMs": 7502.4380900000015,
+        "summedAnalysisMs": 23.03613700000176
+      },
+      "quality": {
+        "passages": {
+          "matched": 80,
+          "expected": 80,
+          "observed": 80,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "matched": 90,
+          "expected": 90,
+          "observed": 90,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "nativeResultHashes": [
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a",
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a"
+      ],
+      "rawSummarySha256": "1fc996e537ec47deae0e936ac2cd1e929d440ec7836848c10230eaf8ceda3a40",
+      "limiter": {
+        "basis": "measured stage-duration counters",
+        "dominantStage": "native extraction including worker startup and wait",
+        "extractionShareOfSummedStageDuration": 0.9969389122459084,
+        "limit": "At most one/two bounded extraction calls occupy the scheduler slots; CPU versus I/O versus startup bottleneck was not established. Concurrent durations overlap and are not utilization."
+      },
+      "runCount": 1,
+      "spread": {
+        "wallMsMin": 3770.175186,
+        "wallMsMax": 3770.175186,
+        "variance": "not estimable from one fully instrumented invocation"
+      }
+    },
+    {
+      "id": "interrupted",
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--prepared",
+        "small",
+        "--concurrency",
+        "2",
+        "--stop-after",
+        "1"
+      ],
+      "processExit": 3,
+      "status": "interrupted",
+      "stopReason": "completion_threshold",
+      "startedAt": "2026-11-18T07:59:51.910Z",
+      "finishedAt": "2026-11-18T07:59:52.423Z",
+      "concurrency": 2,
+      "accounting": {
+        "planned": 6,
+        "admitted": 2,
+        "completed": 2,
+        "notAdmitted": 4,
+        "failed": 0,
+        "partial": 1,
+        "unreadable": 0,
+        "sourceBytesPlanned": 20252,
+        "sourceBytesCompleted": 16817
+      },
+      "measurements": {
+        "wallMs": 513.2745090000001,
+        "completedSourcesPerSecond": 3.8965504129487165,
+        "baselineRssBytes": 120303616,
+        "rssPeakObservedBytes": 221855744,
+        "processHighWaterRssBytes": 222773248,
+        "rssSamplingIntervalMs": 10,
+        "summedExtractionMs": 1011.326427,
+        "summedAnalysisMs": 9.54823399999998
+      },
+      "quality": {
+        "passages": {
+          "matched": 2,
+          "expected": 2,
+          "observed": 2,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "matched": 6,
+          "expected": 6,
+          "observed": 6,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "nativeResultHashes": [
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081"
+      ],
+      "rawSummarySha256": "b8e35a6ea84aeb493029d00c3c3c13d588aebb54555ae309676f7cb52a374582",
+      "limiter": {
+        "basis": "measured stage-duration counters",
+        "dominantStage": "native extraction including worker startup and wait",
+        "extractionShareOfSummedStageDuration": 0.990647006567244,
+        "limit": "At most one/two bounded extraction calls occupy the scheduler slots; CPU versus I/O versus startup bottleneck was not established. Concurrent durations overlap and are not utilization."
+      },
+      "runCount": 1,
+      "spread": {
+        "wallMsMin": 513.2745090000001,
+        "wallMsMax": 513.2745090000001,
+        "variance": "not estimable from one fully instrumented invocation"
+      }
+    },
+    {
+      "id": "restart",
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--prepared",
+        "small",
+        "--concurrency",
+        "1"
+      ],
+      "processExit": 0,
+      "status": "completed",
+      "stopReason": null,
+      "startedAt": "2026-11-18T07:59:52.858Z",
+      "finishedAt": "2026-11-18T07:59:53.767Z",
+      "concurrency": 1,
+      "accounting": {
+        "planned": 6,
+        "admitted": 6,
+        "completed": 6,
+        "notAdmitted": 0,
+        "failed": 0,
+        "partial": 3,
+        "unreadable": 1,
+        "sourceBytesPlanned": 20252,
+        "sourceBytesCompleted": 20252
+      },
+      "measurements": {
+        "wallMs": 908.790829,
+        "completedSourcesPerSecond": 6.602179300821267,
+        "baselineRssBytes": 120958976,
+        "rssPeakObservedBytes": 192024576,
+        "processHighWaterRssBytes": 195039232,
+        "rssSamplingIntervalMs": 10,
+        "summedExtractionMs": 897.0925390000002,
+        "summedAnalysisMs": 9.557599999999525
+      },
+      "quality": {
+        "passages": {
+          "matched": 8,
+          "expected": 8,
+          "observed": 8,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "candidates": {
+          "matched": 9,
+          "expected": 9,
+          "observed": 9,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "nativeResultHashes": [
+        "e5e8aaf2665b3e6a9a9e818983725b99738d7edcd627428413da89ffbf3fb36c",
+        "3d3a794f94ac41daf70e8d5a5046d39c413dfb17cf4036ef6df96b1cb989a081",
+        "8a58ddad3854fbde64d4489cda067d492f0f343b3b44fbc3b348f7d8c3ca7281",
+        "8611e76fa9db3ae22a589f558cae80e3e1f757d8fe1d1bb2a8ddd4acf369db8d",
+        "6b880fe73e989e50f3d0735e0a1acd1249f50373a4d7a0b08bf1a42d2396082e",
+        "f6a2754f822a6b84068055c3227e94d8b6c2e0659bf7417c21e14b9e5594912a"
+      ],
+      "rawSummarySha256": "8ad78a202f11b2bf1807bfe77df5ad5c1d671886f8e78657e612e672fe7a15c9",
+      "limiter": {
+        "basis": "measured stage-duration counters",
+        "dominantStage": "native extraction including worker startup and wait",
+        "extractionShareOfSummedStageDuration": 0.9894583372473298,
+        "limit": "At most one/two bounded extraction calls occupy the scheduler slots; CPU versus I/O versus startup bottleneck was not established. Concurrent durations overlap and are not utilization."
+      },
+      "runCount": 1,
+      "spread": {
+        "wallMsMin": 908.790829,
+        "wallMsMax": 908.790829,
+        "variance": "not estimable from one fully instrumented invocation"
+      }
+    }
+  ],
+  "privacyCorrection": {
+    "sourceAndManifestFifoCli": {
+      "command": [
+        "node",
+        "apps/api/dist/dossier-volume-qualification/main.js",
+        "--corpus",
+        "FICTIONAL_TEMPORARY_FIFO_CORPUS"
+      ],
+      "sourceExit": 2,
+      "manifestExit": 2,
+      "stdout": {
+        "error": "invalid_input"
+      },
+      "stderrBytes": 0,
+      "processCapSeconds": 5
+    },
+    "regression": "rejects special private source and manifest files without waiting for a FIFO writer"
+  }
+}
