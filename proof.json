@@ -1,0 +1,131 @@
+{
+  "kind": "actual_native_execution_on_fictional_prepared_examples",
+  "issue": 1467,
+  "codeCommit": "d1b61678bc67b327d21e4b57310516332599a7bd",
+  "qualifiedLocalTree": "f846a7fa7979476589a4648abb37d50afc8b673d",
+  "inputCommit": "bd8a7adf8e8a5a70a0e5c802ba65a82276abb9c8",
+  "journey": "certification-stage-preparation",
+  "tests": {
+    "passed": 2,
+    "failed": 0,
+    "flaky": 0,
+    "skipped": 0
+  },
+  "startedAt": "2026-11-18T14:14:56.886Z",
+  "finishedAt": "2026-11-18T14:16:58.587Z",
+  "captures": [
+    {
+      "file": "desktop-ro-plan-edited.png",
+      "sha256": "d64790c256e629794a78ff1d9533646a09ec5d6bd47744f97579f1e3d89b746e",
+      "locale": "ro",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "capture": "Inspected original Playwright pixels; edited forms are viewport captures and reviewed panels are element captures that may be taller. Textareas remain native scrollable fields."
+    },
+    {
+      "file": "desktop-ro-plan-preview.png",
+      "sha256": "1e3a995db132bda46aeb9c756bf35be16496e58d0a432df96b66cbbf7e4f5889",
+      "locale": "ro",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "capture": "Inspected original Playwright pixels; edited forms are viewport captures and reviewed panels are element captures that may be taller. Textareas remain native scrollable fields."
+    },
+    {
+      "file": "desktop-ro-report-preview.png",
+      "sha256": "ab4b05734ba80d0eaa40d190f9b431543b23a0aced757e0de6fa2c17d6be72e4",
+      "locale": "ro",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "capture": "Inspected original Playwright pixels; edited forms are viewport captures and reviewed panels are element captures that may be taller. Textareas remain native scrollable fields."
+    },
+    {
+      "file": "desktop-ro-report-edited.png",
+      "sha256": "ecdccb6a1345df239fe78f155c8e5a9ef7ea6e6835dbadefe8aea66938781c97",
+      "locale": "ro",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "capture": "Inspected original Playwright pixels; edited forms are viewport captures and reviewed panels are element captures that may be taller. Textareas remain native scrollable fields."
+    },
+    {
+      "file": "narrow-ru-plan-edited.png",
+      "sha256": "77d5bc5198de0c22642d6e255ff6f3d00da79d808751541d94bb3763f00c90e2",
+      "locale": "ru",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "capture": "Inspected original Playwright pixels; edited forms are viewport captures and reviewed panels are element captures that may be taller. Textareas remain native scrollable fields."
+    },
+    {
+      "file": "narrow-ru-plan-preview.png",
+      "sha256": "91d9eac4601e381e3cf882ba4a947e354029dff28ea71864385bdf62bfcb5200",
+      "locale": "ru",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "capture": "Inspected original Playwright pixels; edited forms are viewport captures and reviewed panels are element captures that may be taller. Textareas remain native scrollable fields."
+    },
+    {
+      "file": "narrow-ru-report-preview.png",
+      "sha256": "e1ac9ed1b883eb9d5486bb1d8924a855a1a205b9b321023e2881dbefc5e52939",
+      "locale": "ru",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "capture": "Inspected original Playwright pixels; edited forms are viewport captures and reviewed panels are element captures that may be taller. Textareas remain native scrollable fields."
+    },
+    {
+      "file": "narrow-ru-report-edited.png",
+      "sha256": "07e6bd78d0af9b930e0b14793ff7b32adaeb3e82b41325463b7119e3d41452a4",
+      "locale": "ru",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "capture": "Inspected original Playwright pixels; edited forms are viewport captures and reviewed panels are element captures that may be taller. Textareas remain native scrollable fields."
+    }
+  ],
+  "nativeDraftProofs": [
+    {
+      "dataKind": "fictional",
+      "locale": "ro",
+      "caseId": "02372d58-a0fa-4557-9628-5d53c54c81a5",
+      "run1": "1b050b69-72c5-4be0-b4ee-c77b8da4a150",
+      "run2": "083d5e58-ad5f-4421-afad-43ae74f88108",
+      "sourceId": "2fca0999-900b-47a2-8b48-0c398e01fe7c",
+      "sourceVersionId": "1d1afdf9-f3e2-4b4f-ab86-b3c077983e25",
+      "originalSha256": "76b1a9e1980c1254a70df0c3a445b164929a31b96950d3be17c68f109b339620",
+      "scope": "Producție de lactate — ajustat explicit de auditor",
+      "summary": "Ручной текст аудитора.\n\nContext citat din surse — date din dosar verificate de o persoană, fără concluzii de audit\nDomeniu: «Producție de lactate — verificat»\nVerificare umană: Ada Ionescu · 2026-11-18T14:16:29.335Z · r1\nFictional bilingual scope source · domeniu-область.docx · v1 · 1d1afdf9-f3e2-4b4f-ab86-b3c077983e25 · word/document.xml#paragraph:1\n«Producție de lactate»\nДополнение аудитора после проверки.",
+      "nativeStage2Revision": 17
+    },
+    {
+      "dataKind": "fictional",
+      "locale": "ru",
+      "caseId": "dac1d9b0-b865-4b51-8adb-eb2578ea7438",
+      "run1": "0e7e37a6-dfe1-43db-b20d-517f6bd85839",
+      "run2": "a97ebbe9-decf-4d44-8d6e-80e131a1d1f8",
+      "sourceId": "4f8e33db-1fa5-41b2-a031-e290921be92b",
+      "sourceVersionId": "aa237ed0-7626-4f6a-a106-54b550c6dec8",
+      "originalSha256": "e0d117f44aa56f0d52a68ce088a9a30a63ab067ce64cd7158a03fb937c2fa7d3",
+      "scope": "Producție de lactate — ajustat explicit de auditor",
+      "summary": "Ручной текст аудитора.\n\nЦитируемый контекст источников — данные досье, проверенные человеком, без выводов аудита\nОбласть: «Producție de lactate — verificat»\nПроверка человеком: Ada Ionescu · 2026-11-18T14:16:51.330Z · r1\nFictional bilingual scope source · domeniu-область.docx · v1 · aa237ed0-7626-4f6a-a106-54b550c6dec8 · word/document.xml#paragraph:1\n«Producție de lactate»\nДополнение аудитора после проверки.",
+      "nativeStage2Revision": 17
+    }
+  ],
+  "limits": [
+    "Real App/API/PostgreSQL and native source/review/plan/report owners; deterministic external identity/scanning protocols.",
+    "Case source scope was deliberately corrected, inserted, edited and saved by the programme manager. The approved leader appended attributed context and edited before ordinary report Save.",
+    "Stage1 professional conclusion and Stage2 certification-body approval were not inferred. No private corpus, live account/provider, OCR/model call, deployment or main merge."
+  ]
+}

@@ -1,0 +1,188 @@
+{
+  "kind": "retained_qualification_attempts_on_prepared_examples",
+  "attempts": [
+    {
+      "attempt": 1,
+      "status": "not_started",
+      "notes": "Managed PostgreSQL environment was missing; startup refused before building/running tests."
+    },
+    {
+      "attempt": 2,
+      "status": "failed",
+      "startedAt": "2026-11-18T13:55:49.027Z",
+      "finishedAt": "2026-11-18T13:57:47.813Z",
+      "builds": [
+        {
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "status": "passed",
+          "exitCode": 0
+        }
+      ],
+      "tests": [
+        {
+          "passed": 0,
+          "failed": 2,
+          "flaky": 0,
+          "skipped": 0
+        }
+      ],
+      "notes": "Both native flows reached the reviewed candidate; an invented p:1 locator assertion failed against the actual #paragraph:1 locator."
+    },
+    {
+      "attempt": 3,
+      "status": "failed",
+      "startedAt": "2026-11-18T13:59:09.447Z",
+      "finishedAt": "2026-11-18T14:01:45.699Z",
+      "builds": [
+        {
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "status": "passed",
+          "exitCode": 0
+        }
+      ],
+      "tests": [
+        {
+          "passed": 0,
+          "failed": 2,
+          "flaky": 0,
+          "skipped": 0
+        }
+      ],
+      "notes": "Both flows passed native plan Save and context insertion, then the second remaining invented locator assertion failed; exact actual locator was corrected."
+    },
+    {
+      "attempt": 4,
+      "status": "passed",
+      "startedAt": "2026-11-18T14:02:18.400Z",
+      "finishedAt": "2026-11-18T14:04:43.572Z",
+      "builds": [
+        {
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "status": "passed",
+          "exitCode": 0
+        }
+      ],
+      "tests": [
+        {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        }
+      ],
+      "notes": "Both widths passed before the decoder review correction and larger summary field."
+    },
+    {
+      "attempt": 5,
+      "status": "passed",
+      "startedAt": "2026-11-18T14:06:21.192Z",
+      "finishedAt": "2026-11-18T14:08:36.565Z",
+      "builds": [
+        {
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "status": "passed",
+          "exitCode": 0
+        }
+      ],
+      "tests": [
+        {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        }
+      ],
+      "notes": "Both widths passed after the review correction; image inspection rejected a focused skip-link overlay and scrolled summary capture."
+    },
+    {
+      "attempt": 6,
+      "status": "passed",
+      "startedAt": "2026-11-18T14:10:26.978Z",
+      "finishedAt": "2026-11-18T14:12:43.626Z",
+      "builds": [
+        {
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "status": "passed",
+          "exitCode": 0
+        }
+      ],
+      "tests": [
+        {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        }
+      ],
+      "notes": "Both widths passed; inspection still found a fixed offscreen shell skip link in a tall element capture. Report caret positioning preserved exact text."
+    },
+    {
+      "attempt": 7,
+      "status": "passed",
+      "startedAt": "2026-11-18T14:14:56.886Z",
+      "finishedAt": "2026-11-18T14:16:58.587Z",
+      "builds": [
+        {
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "status": "passed",
+          "exitCode": 0
+        }
+      ],
+      "tests": [
+        {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        }
+      ],
+      "notes": "Final two-width pass with ordinary viewport captures for edited forms and original element captures for reviewed-source panels."
+    }
+  ],
+  "focusedChecks": {
+    "nativeRestPostgres": {
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0
+    },
+    "rendered": {
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0
+    },
+    "openapi": {
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    "journeyIndex": {
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "review": {
+    "standardsP2": 1,
+    "specP2": 1,
+    "distinctDefects": 1,
+    "fixed": "Historical proposal strings remain exact; only current insertable values receive insertion compatibility checks."
+  }
+}
