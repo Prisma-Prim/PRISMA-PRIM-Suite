@@ -35,6 +35,7 @@ interface WorkingDocumentBase {
 }
 export type DocumentFamily =
   | 'questionnaire'
+  | 'project-source'
   | 'mission-deliverable'
   | 'received-contract'
   | 'received-audit-source'
@@ -58,6 +59,10 @@ export type WorkingDocument =
         | {
             type: 'mission-deliverable';
             version: WorkingVersion & { representation: null };
+          }
+        | {
+            type: 'project-source';
+            version: { id: string; status: 'draft'; representation: null };
           }
         | {
             type: 'received-audit-source';
@@ -163,6 +168,7 @@ export function readDocument(value: unknown): WorkingDocument {
   const version = record(row.version);
   if (
     (row.type !== 'questionnaire' &&
+      row.type !== 'project-source' &&
       row.type !== 'mission-deliverable' &&
       row.type !== 'received-audit-source' &&
       row.type !== 'received-contract' &&
@@ -210,6 +216,15 @@ export function readDocument(value: unknown): WorkingDocument {
     ...metadata,
     createdAt: instant(row.createdAt),
   };
+  if (row.type === 'project-source') {
+    if (version.status !== 'draft' || version.representation !== null)
+      throw new Error('Invalid working Project source');
+    return {
+      ...base,
+      type: row.type,
+      version: { id: working.id, status: 'draft', representation: null },
+    };
+  }
   if (row.type === 'questionnaire')
     return {
       ...base,

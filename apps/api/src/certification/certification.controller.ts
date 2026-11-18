@@ -56,6 +56,20 @@ export class CertificationController {
   ) {}
 
   @Header('Cache-Control', 'private, no-store')
+  @Get('certification-cases/:caseId/team-candidates')
+  teamCandidates(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Query() query: unknown,
+  ) {
+    return this.certification.teamCandidates({
+      actor: requireActorContext(request),
+      caseId,
+      query,
+    });
+  }
+
+  @Header('Cache-Control', 'private, no-store')
   @Get('certification-procedure-deadlines')
   readDeadlines(@Req() request: ActorContextRequest) {
     return this.procedure.readDeadlines(requireActorContext(request));

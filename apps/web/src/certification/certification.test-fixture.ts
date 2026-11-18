@@ -551,6 +551,11 @@ export const colleague: Actor = {
 export class FakeCertificationServer {
   readonly requests: RecordedRequest[] = [];
   readonly cases = new Map<string, StoredCase>();
+  /** Minimal eligible projection served only by the Case-scoped manager read. */
+  readonly teamCandidates: {
+    workspaceMembershipId: string;
+    displayLabel: string;
+  }[] = [];
   /** Replaces the next matching request's handling once. */
   readonly interceptions: {
     match: (request: RecordedRequest) => boolean;
@@ -1096,6 +1101,45 @@ export class FakeCertificationServer {
         request.path,
       );
     if (content) return this.content(content[1], content[2]);
+    const candidates =
+      /^\/api\/certification-cases\/([^/]+)\/team-candidates$/u.exec(
+        request.path,
+      );
+    if (candidates) {
+      const stored = candidates[1] ? this.cases.get(candidates[1]) : undefined;
+      if (!stored) return new Response(null, { status: 404 });
+      if (!holdsManager(this.actor()))
+        return new Response(null, { status: 403 });
+      const query = new URLSearchParams(request.search);
+      const after = query.get('after') ?? '';
+      const search = (query.get('search') ?? '').toLocaleLowerCase();
+      const linked = (query.get('linked') ?? '').split(',').filter(Boolean);
+      const remaining = this.teamCandidates
+        .filter(
+          (candidate) =>
+            candidate.workspaceMembershipId > after &&
+            candidate.displayLabel.toLocaleLowerCase().includes(search),
+        )
+        .sort((left, right) =>
+          left.workspaceMembershipId.localeCompare(right.workspaceMembershipId),
+        );
+      const items = remaining.slice(0, 25);
+      return Response.json({
+        caseId: stored.id,
+        items,
+        ...(linked.length
+          ? {
+              draftLinks: this.teamCandidates.filter((item) =>
+                linked.includes(item.workspaceMembershipId),
+              ),
+            }
+          : {}),
+        nextCursor:
+          remaining.length > 25
+            ? (items.at(-1)?.workspaceMembershipId ?? null)
+            : null,
+      });
+    }
     const register = /^\/api\/certification-cases\/([^/]+)\/register$/u.exec(
       request.path,
     );
@@ -2220,7 +2264,11 @@ export class FakeCertificationServer {
         (member) =>
           member.workspaceMembershipId !== null &&
           member.workspaceMembershipId !== me.workspaceMembershipId &&
-          member.workspaceMembershipId !== colleague.workspaceMembershipId,
+          member.workspaceMembershipId !== colleague.workspaceMembershipId &&
+          !this.teamCandidates.some(
+            (candidate) =>
+              candidate.workspaceMembershipId === member.workspaceMembershipId,
+          ),
       )
     )
       return refusal(400, 'CERTIFICATION_TEAM_MEMBER_UNKNOWN');

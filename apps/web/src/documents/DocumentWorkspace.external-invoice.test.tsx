@@ -474,7 +474,21 @@ it.each([
   render(view(deterministicBrowserIdentity(), true, malformed));
   await screen.findByRole('button', { name: 'Register working reference' });
   const family = screen.queryByLabelText('Document family');
-  if (family) changeValue(family, 'external-invoice');
+  if (family) {
+    fireEvent.click(family);
+    const option = screen
+      .queryAllByRole('option')
+      .find(
+        (option) => option.getAttribute('data-value') === 'external-invoice',
+      );
+    if (
+      kind === 'non-native financial assignment' ||
+      kind === 'case-insensitive duplicate identity'
+    )
+      expect(option).toBeUndefined();
+    if (option) fireEvent.click(option);
+    else fireEvent.keyDown(family, { key: 'Escape' });
+  }
   await act(async () => {
     await Promise.resolve();
   });

@@ -63,6 +63,7 @@ export type TeamCheck =
         | 'incomplete'
         | 'conflictNote'
         | 'link'
+        | 'unavailableLink'
         | 'leader'
         | 'category'
         | 'analysisRequired'
@@ -183,7 +184,7 @@ export function teamFromDraft(
       member.workspaceMembershipId !== null &&
       !linkable.has(member.workspaceMembershipId)
     )
-      return { status: 'link' };
+      return { status: 'unavailableLink' };
     members.push(member);
   }
   const refusal = teamCompositionRefusal(members);

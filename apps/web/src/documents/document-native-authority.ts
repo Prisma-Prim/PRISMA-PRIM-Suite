@@ -93,10 +93,13 @@ export function documentNativeAuthority(
         ? JSON.stringify([content, 'upload', ...captureOf(uploader)])
         : null,
     designation:
-      mutableFamily && reference && approver
+      family !== 'project-source' && mutableFamily && reference && approver
         ? JSON.stringify([metadata, 'designation', ...captureOf(approver)])
         : null,
-    successor: manage ? JSON.stringify([metadata, 'successor']) : null,
+    successor:
+      family !== 'project-source' && manage
+        ? JSON.stringify([metadata, 'successor'])
+        : null,
     recovery: JSON.stringify(actor),
   };
 }

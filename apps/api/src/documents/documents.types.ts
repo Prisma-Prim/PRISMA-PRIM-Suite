@@ -60,6 +60,10 @@ export type WorkingDocument =
             version: WorkingVersionIdentity & { representation: null };
           }
         | {
+            type: 'project-source';
+            version: { id: string; status: 'draft'; representation: null };
+          }
+        | {
             type: 'received-audit-source';
             version: WorkingVersionIdentity & { representation: null };
           }
@@ -122,7 +126,6 @@ export interface DocumentCorrectionHistoryEntry {
     url?: DocumentFieldChange;
   };
 }
-
 export interface DocumentCorrectionHistoryPage {
   /** Newest revision first. */
   corrections: DocumentCorrectionHistoryEntry[];
