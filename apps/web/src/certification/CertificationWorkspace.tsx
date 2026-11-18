@@ -169,6 +169,9 @@ import {
 import { DurationForm } from './CertificationDurationForm';
 import { DurationView } from './CertificationDurationViews';
 import { ApplicationForm, ReviewForm } from './CertificationForms';
+import { dossierAnalysisAuthority } from '../dossier-analysis/analysis-access';
+import { CertificationDraftPreparation } from './CertificationDraftPreparation';
+import { unchangedDraft } from './draft-preparation-response';
 import { invalidField, blank, wrongText } from './certification-fields';
 import {
   Stage1ReportForm,
@@ -3327,36 +3330,76 @@ function CertificationRegistry(
         </button>
       );
     return (
-      <ApplicationForm
-        idPrefix={`${prefix}-application`}
-        draft={applicationDraft}
-        correcting={application !== null}
-        disabled={busy}
-        submitting={applicationFeedback.status === 'saving'}
-        submitBlocked={blockedUntilReload(applicationFeedback)}
-        feedbackId={describedFeedback('application', applicationFeedback)}
-        onChange={(draft) => {
-          setApplicationDraft(draft);
-          setApplicationOpen(true);
-          if (applicationFeedback.status === 'saved')
-            setApplicationFeedback(IDLE);
-          else if (
-            applicationFeedback.status === 'refused' &&
-            !applicationFeedback.reload
-          )
-            setApplicationFeedback(IDLE);
-        }}
-        onSubmit={submitApplication}
-        onCancel={
-          application
-            ? () => {
-                setApplicationDraft(emptyApplicationDraft());
-                setApplicationOpen(false);
+      <>
+        {dossierAnalysisAuthority(actor) && (
+          <CertificationDraftPreparation
+            key={JSON.stringify([
+              props.scope,
+              actor,
+              current.id,
+              current.revision,
+            ])}
+            scope={JSON.stringify([
+              props.scope,
+              actor,
+              current.id,
+              current.revision,
+            ])}
+            projectId={projectId}
+            caseId={current.id}
+            revision={current.revision}
+            draft={applicationDraft}
+            disabled={busy || blockedUntilReload(applicationFeedback)}
+            read={(owner, signal, path) =>
+              query(owner, signal, path, undefined, 'documents')
+            }
+            onApply={({ values, expected }) => {
+              setApplicationDraft((currentDraft) =>
+                unchangedDraft(currentDraft, expected)
+                  ? { ...currentDraft, ...values }
+                  : currentDraft,
+              );
+              setApplicationOpen(true);
+              if (
+                applicationFeedback.status === 'saved' ||
+                (applicationFeedback.status === 'refused' &&
+                  !applicationFeedback.reload)
+              )
                 setApplicationFeedback(IDLE);
-              }
-            : undefined
-        }
-      />
+            }}
+          />
+        )}
+        <ApplicationForm
+          idPrefix={`${prefix}-application`}
+          draft={applicationDraft}
+          correcting={application !== null}
+          disabled={busy}
+          submitting={applicationFeedback.status === 'saving'}
+          submitBlocked={blockedUntilReload(applicationFeedback)}
+          feedbackId={describedFeedback('application', applicationFeedback)}
+          onChange={(draft) => {
+            setApplicationDraft(draft);
+            setApplicationOpen(true);
+            if (applicationFeedback.status === 'saved')
+              setApplicationFeedback(IDLE);
+            else if (
+              applicationFeedback.status === 'refused' &&
+              !applicationFeedback.reload
+            )
+              setApplicationFeedback(IDLE);
+          }}
+          onSubmit={submitApplication}
+          onCancel={
+            application
+              ? () => {
+                  setApplicationDraft(emptyApplicationDraft());
+                  setApplicationOpen(false);
+                  setApplicationFeedback(IDLE);
+                }
+              : undefined
+          }
+        />
+      </>
     );
   }
 
