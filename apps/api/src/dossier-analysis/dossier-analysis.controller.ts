@@ -24,6 +24,7 @@ import { DossierAnalysisService } from './dossier-analysis.service.js';
 import { DossierRunService } from './run.service.js';
 import { DossierSourceService } from './source.service.js';
 import { DossierSuggestionService } from './suggestion.service.js';
+import { DossierDraftPreparationService } from './draft-preparation.service.js';
 
 @Controller('projects/:projectId/dossier-analysis')
 @UseGuards(ActorContextAdapter)
@@ -34,6 +35,7 @@ export class DossierAnalysisController {
     private readonly sources: DossierSourceService,
     private readonly runs: DossierRunService,
     private readonly suggestions: DossierSuggestionService,
+    private readonly drafts: DossierDraftPreparationService,
   ) {}
   @Get()
   @Header('Cache-Control', 'private, no-store')
@@ -134,6 +136,21 @@ export class DossierAnalysisController {
     @Param('runId') runId: string,
   ) {
     return this.workspace.detail(requireActorContext(req), projectId, runId);
+  }
+  @Get('runs/:runId/certification-draft')
+  @Header('Cache-Control', 'private, no-store')
+  prepareDraft(
+    @Req() req: ActorContextRequest,
+    @Param('projectId') projectId: string,
+    @Param('runId') runId: string,
+    @Query() query: unknown,
+  ) {
+    return this.drafts.prepare({
+      actor: requireActorContext(req),
+      projectId,
+      runId,
+      query,
+    });
   }
   @Get('runs/:runId/search')
   @Header('Cache-Control', 'private, no-store')
