@@ -14,6 +14,8 @@ import { DossierRunService } from './run.service.js';
 import { DossierSourceAccess } from './source-access.js';
 import { DossierSourceService } from './source.service.js';
 import { DossierSuggestionService } from './suggestion.service.js';
+import { DossierIntakeStore } from './intake-store.service.js';
+import { DossierIntakeService } from './intake.service.js';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { DossierSuggestionService } from './suggestion.service.js';
     ProjectModule,
   ],
   providers: [
+    DossierIntakeService,
+    DossierIntakeStore,
     DossierSafeFailureInterceptor,
     DocumentFamilyAccess,
     DossierSourceAccess,
@@ -36,6 +40,8 @@ import { DossierSuggestionService } from './suggestion.service.js';
     DossierAnalysisService,
   ],
   exports: [
+    DossierIntakeService,
+    DossierIntakeStore,
     DossierSafeFailureInterceptor,
     DossierAnalysisService,
     DossierSourceService,

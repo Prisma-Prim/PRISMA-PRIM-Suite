@@ -148,3 +148,18 @@ H6. Format/lint/types, relevant native tests, independent Standards/Spec review,
 Official references checked 2026-11-17: [Sign in with ChatGPT](https://developers.openai.com/siwc/quickstart), [hosted website flow](https://developers.openai.com/siwc/website), [plan scopes and registration](https://developers.openai.com/siwc/token-sharing-open-source/sign-in), [runtime limits](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations), and [credential lifecycle](https://developers.openai.com/siwc/token-sharing-open-source/profiles-and-sessions). Actual hosted-client entitlement/configuration must match its provisioned contract; the open dynamic-registration loopback flow is not repurposed as hosted approval.
 
 Operator setup and actual account prerequisites: [subscription harness activation](../agents/dossier-harness-activation.md).
+
+## Recoverable native local intake (#1454)
+
+The Project workbench composes [Document Registry §27](release-1-document-registry-prd.md#27-project-working-originals-and-recoverable-intake-1454)
+for multi-file PDF/DOCX intake. A Project Working Source preserves an incoming
+original as a draft. Dossier Analysis owns supplementary Word originals and
+explicit source selection; native Documents retain registration, Project
+associations, PDF storage, scans and receipts.
+
+The human admits reviewed ownership, metadata and language, then starts a foreground
+batch. Pause/reopen/resume retains every invalid, duplicate, failed, incomplete,
+skipped and completed item. Failed reads and later item failures retain confirmed
+receipts. Reopening verifies exact reselected bytes and current native authority
+and target revisions. Preservation does not establish readable text, interpreted
+diagrams, OCR quality or validated audit facts.

@@ -17,6 +17,7 @@ const workspaceSources = import.meta.glob('./DocumentWorkspace.tsx', {
 
 const ALL_FAMILIES = [
   'questionnaire',
+  'project-source',
   'mission-deliverable',
   'received-contract',
   'received-audit-source',
@@ -29,6 +30,7 @@ describe('Documents screen family registry', () => {
   it('has one entry for every workspace family, in selector order', () => {
     expect(WORKSPACE_FAMILIES).toEqual([
       'questionnaire',
+      'project-source',
       'received-audit-source',
       'mission-deliverable',
       'external-invoice',
@@ -48,6 +50,7 @@ describe('Documents screen family registry', () => {
 
   it('refuses at type level a registry missing a family', () => {
     const withoutQuestionnaire = {
+      'project-source': DOCUMENT_FAMILY_SCREENS['project-source'],
       'received-audit-source': DOCUMENT_FAMILY_SCREENS['received-audit-source'],
       'mission-deliverable': DOCUMENT_FAMILY_SCREENS['mission-deliverable'],
       'external-invoice': DOCUMENT_FAMILY_SCREENS['external-invoice'],
@@ -62,7 +65,10 @@ describe('Documents screen family registry', () => {
 
   it('shows the Project association for the families the API links', () => {
     expectTypeOf<FamiliesWith<'projectLinkable'>>().toEqualTypeOf<
-      'questionnaire' | 'mission-deliverable' | 'received-contract'
+      | 'questionnaire'
+      | 'project-source'
+      | 'mission-deliverable'
+      | 'received-contract'
     >();
     expectTypeOf<
       FamiliesWith<'financial'>

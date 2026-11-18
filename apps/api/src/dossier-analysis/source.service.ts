@@ -382,7 +382,55 @@ export class DossierSourceService {
     } finally {
       clearTimeout(timer);
     }
-    const bytes = Buffer.concat(parts);
+    return this.preserveDocx({
+      actor,
+      projectId,
+      command,
+      key,
+      bytes: Buffer.concat(parts),
+      fingerprintValue: value,
+    });
+  }
+
+  /** Exact admitted originals; validation/scanning/receipts remain owned here. */
+  addDocxBytes(input: {
+    actor: ActorContext;
+    projectId: unknown;
+    command: unknown;
+    key: string | undefined;
+    bytes: Buffer;
+  }) {
+    return this.preserveDocx({
+      actor: input.actor,
+      projectId: requireUuid(input.projectId),
+      command: parseDocxSource(input.command),
+      key: requireIdempotencyKey(input.key),
+      bytes: input.bytes,
+      fingerprintValue: input.command,
+    });
+  }
+
+  private async preserveDocx(input: {
+    actor: ActorContext;
+    projectId: string;
+    command: ReturnType<typeof parseDocxSource>;
+    key: string;
+    bytes: Buffer;
+    fingerprintValue: unknown;
+  }) {
+    const { actor, projectId, command, key, bytes } = input;
+    const size = bytes.length;
+    if (size > 5242880) throw new PayloadTooLargeException();
+    const target = {
+      projectId,
+      documentId: command.documentId,
+      versionId: command.documentVersionId,
+      representationId: null,
+      caseId: command.caseId,
+      attachmentId: command.attachmentId,
+      write: true,
+    };
+    await this.write(() => this.access.direct(actor, target));
     if (
       bytes.length < 4 ||
       !bytes.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]))
@@ -393,7 +441,13 @@ export class DossierSourceService {
     if (extraction.state === 'failed')
       throw new BadRequestException('The DOCX cannot be read.');
     const sha256 = createHash('sha256').update(bytes).digest('hex');
-    const fingerprint = commandFingerprint(['docx', projectId, value, sha256]);
+    // Keep the existing HTTP receipt identity, including its original wire shape.
+    const fingerprint = commandFingerprint([
+      'docx',
+      projectId,
+      input.fingerprintValue,
+      sha256,
+    ]);
     return this.write(async () => {
       const live = await this.access.direct(actor, target);
       const lockKey = JSON.stringify([

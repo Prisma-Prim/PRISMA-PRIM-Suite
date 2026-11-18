@@ -22,6 +22,8 @@ import {
 import { DossierSafeFailureInterceptor } from './safe-failure.interceptor.js';
 import { DossierAnalysisService } from './dossier-analysis.service.js';
 import { DossierRunService } from './run.service.js';
+import { DossierIntakeStore } from './intake-store.service.js';
+import { DossierIntakeService } from './intake.service.js';
 import { DossierSourceService } from './source.service.js';
 import { DossierSuggestionService } from './suggestion.service.js';
 
@@ -33,12 +35,104 @@ export class DossierAnalysisController {
     private readonly workspace: DossierAnalysisService,
     private readonly sources: DossierSourceService,
     private readonly runs: DossierRunService,
+    private readonly intake: DossierIntakeStore,
+    private readonly intakeProcessor: DossierIntakeService,
     private readonly suggestions: DossierSuggestionService,
   ) {}
+  @Get('intake-batches')
+  @Header('Cache-Control', 'private, no-store')
+  intakeList(
+    @Req() req: ActorContextRequest,
+    @Param('projectId') projectId: string,
+    @Query() query: unknown,
+  ) {
+    return this.intake.list(requireActorContext(req), projectId, query);
+  }
+  @Post('intake-batches')
+  intakeCreate(
+    @Req() req: ActorContextRequest,
+    @Param('projectId') projectId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.intake.create(requireActorContext(req), projectId, body, key);
+  }
+  @Get('intake-batches/:batchId')
+  @Header('Cache-Control', 'private, no-store')
+  intakeDetail(
+    @Req() req: ActorContextRequest,
+    @Param('projectId') projectId: string,
+    @Param('batchId') batchId: string,
+  ) {
+    return this.intake.detail(requireActorContext(req), projectId, batchId);
+  }
+  @Post('intake-batches/:batchId/state')
+  intakeState(
+    @Req() req: ActorContextRequest,
+    @Param('projectId') projectId: string,
+    @Param('batchId') batchId: string,
+    @Body() body: unknown,
+  ) {
+    return this.intake.phase(
+      requireActorContext(req),
+      projectId,
+      batchId,
+      body,
+    );
+  }
   @Get()
   @Header('Cache-Control', 'private, no-store')
   list(@Req() req: ActorContextRequest, @Param('projectId') projectId: string) {
     return this.workspace.workspace(requireActorContext(req), projectId);
+  }
+  @Post('intake-batches/:batchId/items/:itemId/advance')
+  intakeAdvance(
+    @Req() req: ActorContextRequest,
+    @Param('projectId') projectId: string,
+    @Param('batchId') batchId: string,
+    @Param('itemId') itemId: string,
+    @Body() command: unknown,
+  ) {
+    return this.intakeProcessor.advance({
+      actor: requireActorContext(req),
+      projectId,
+      batchId,
+      itemId,
+      command,
+    });
+  }
+  @Post('intake-batches/:batchId/items/:itemId/content')
+  intakeContent(
+    @Req() req: ActorContextRequest & IncomingMessage,
+    @Param('projectId') projectId: string,
+    @Param('batchId') batchId: string,
+    @Param('itemId') itemId: string,
+    @Query() query: unknown,
+  ) {
+    return this.intakeProcessor.upload({
+      actor: requireActorContext(req),
+      projectId,
+      batchId,
+      itemId,
+      query,
+      request: req,
+    });
+  }
+  @Post('intake-batches/:batchId/items/:itemId/skip')
+  intakeSkip(
+    @Req() req: ActorContextRequest,
+    @Param('projectId') projectId: string,
+    @Param('batchId') batchId: string,
+    @Param('itemId') itemId: string,
+    @Body() command: unknown,
+  ) {
+    return this.intake.skip({
+      actor: requireActorContext(req),
+      projectId,
+      batchId,
+      itemId,
+      command,
+    });
   }
   @Get('inventory')
   @Header('Cache-Control', 'private, no-store')

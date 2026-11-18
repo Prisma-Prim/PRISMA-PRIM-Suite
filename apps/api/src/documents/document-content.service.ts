@@ -95,6 +95,31 @@ export class DocumentContentService {
     });
   }
 
+  /** Validated in-memory originals from an authenticated native orchestrator. */
+  async uploadBytes(
+    actor: ActorContext,
+    input: {
+      documentId: string;
+      versionId: string;
+      expectedRevision: number;
+      fileName: string;
+      key: string;
+      bytes: Buffer;
+    },
+  ) {
+    const query = uploadQuery({
+      expectedRevision: String(input.expectedRevision),
+      fileName: input.fileName,
+    });
+    return this.versions.uploadContent(actor, {
+      documentId: requireUuid(input.documentId),
+      versionId: requireUuid(input.versionId),
+      expectedRevision: query.expectedRevision,
+      idempotencyKey: requireIdempotencyKey(input.key),
+      pdf: validatedPdf(input.bytes, query.fileName),
+    });
+  }
+
   async history(
     actor: ActorContext,
     input: { documentId: unknown; versionId: unknown; query: unknown },
@@ -293,7 +318,13 @@ async function readPdf(
   } finally {
     clearTimeout(timer);
   }
-  const bytes = Buffer.concat(chunks);
+  return validatedPdf(Buffer.concat(chunks), fileName);
+}
+
+function validatedPdf(bytes: Buffer, fileName: string): ValidatedDocumentPdf {
+  const size = bytes.length;
+  if (size > MAXIMUM_DOCUMENT_PDF_BYTES)
+    throw new PayloadTooLargeException('The Document PDF exceeds 5 MiB.');
   if (
     !/^%PDF-(?:1\.[0-7]|2\.0)\r?\n/u.test(
       bytes.subarray(0, 12).toString('ascii'),
