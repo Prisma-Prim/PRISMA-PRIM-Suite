@@ -16,6 +16,6 @@ This bundle covers #1439 only. It does not qualify private documents, real subsc
 
 ## Complete CI and limits
 
-The API report totals5909 passed and one existing real-ClamAV integration test skipped; the Web report has5827 passed. All tests cited for #1439 execute and pass, including6 native candidate guards,4 team guards,8 closing independence guards,23 rendered team tests,29 runner tests and2 new native browser variants. These are prepared software checks, not real-document accuracy measurements. The skipped scanner test does not qualify a real ClamAV deployment.
+The API report totals5909 passed and one existing real-ClamAV integration test skipped; the Web report has5827 passed. All tests cited for #1439 execute and pass, including6 native candidate guards,4 team guards,8 closing/decision tests,23 rendered team tests,29 runner tests and2 new native browser variants. These are prepared software checks, not real-document accuracy measurements. The skipped scanner test does not qualify a real ClamAV deployment.
 
 The superseded code-only CI44262837623 was cancelled after the cost-only commit replaced its head. Completed CI1 failed as described above. Completed CI2 is https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/44265177806 ; required quality job134690976631 succeeds. No raw tokens, signed URLs, diagnostics or uninspected screenshot archive are published.
