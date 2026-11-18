@@ -4,6 +4,10 @@ import {
 } from './CertificationRelease';
 import './certification.css';
 import {
+  TeamCandidateSearch,
+  useTeamCandidates,
+} from './CertificationTeamCandidates';
+import {
   useEffect,
   useId,
   useMemo,
@@ -475,6 +479,12 @@ function CertificationRegistry(
   const [list, setList] = useState<View<CaseList>>({ status: 'loading' });
   const [selectedId, setSelectedId] = useState<string>();
   const selected = useRef<string | undefined>(undefined);
+  const teamCandidates = useTeamCandidates({
+    scope: props.scope,
+    caseId: selectedId,
+    enabled: authority.manage,
+    read: query,
+  });
   const [detail, setDetail] = useState<View<CaseView>>();
   const [opening, setOpening] = useState(false);
   const [entities, setEntities] = useState<View<LegalEntityOption[]>>();
@@ -2042,8 +2052,8 @@ function CertificationRegistry(
   }
 
   /**
-   * The links a team member may carry: the people the Case names, and any
-   * link the latest team keeps so that a new version can preserve it.
+   * The links a team member may carry: Case people, eligible Company auditors
+   * discovered by Access, and links retained by the latest recorded team.
    */
   function linkOptions(view: CaseView): { value: string; label: string }[] {
     const people = casePeople(view).map((person) => ({
@@ -2052,6 +2062,16 @@ function CertificationRegistry(
         ? formatMessage(copy('teamMemberYou'), { name: person.displayName })
         : person.displayName,
     }));
+    const named = new Set(people.map((option) => option.value));
+    for (const candidate of teamCandidates.options) {
+      if (!named.has(candidate.workspaceMembershipId)) {
+        people.push({
+          value: candidate.workspaceMembershipId,
+          label: candidate.displayLabel,
+        });
+        named.add(candidate.workspaceMembershipId);
+      }
+    }
     const known = new Set(people.map((option) => option.value));
     const kept = (view.caseDetail.team?.value.members ?? []).flatMap(
       (member) =>
@@ -3565,36 +3585,43 @@ function CertificationRegistry(
         </>
       );
     return (
-      <TeamForm
-        idPrefix={`${prefix}-team`}
-        draft={teamDraft ?? teamDraftFor(null)}
-        correcting={proposed !== null}
-        linkOptions={linkOptions(view)}
-        documents={view.register.items}
-        consultant={declaredConsultant(current)}
-        disabled={busy}
-        submitting={teamFeedback.status === 'saving'}
-        submitBlocked={blockedUntilReload(teamFeedback)}
-        feedbackId={describedFeedback('team', teamFeedback)}
-        onChange={(draft) => {
-          setTeamDraft(draft);
-          setTeamOpen(true);
-          if (
-            teamFeedback.status === 'saved' ||
-            (teamFeedback.status === 'refused' && !teamFeedback.reload)
-          )
-            setTeamFeedback(IDLE);
-        }}
-        onSubmit={submitTeam}
-        onCancel={
-          proposed
-            ? () => {
-                resetTeamDraft();
-                setTeamFeedback(IDLE);
-              }
-            : undefined
-        }
-      />
+      <>
+        <TeamCandidateSearch
+          key={current.id}
+          candidates={teamCandidates}
+          disabled={busy}
+        />
+        <TeamForm
+          idPrefix={`${prefix}-team`}
+          draft={teamDraft ?? teamDraftFor(null)}
+          correcting={proposed !== null}
+          linkOptions={linkOptions(view)}
+          documents={view.register.items}
+          consultant={declaredConsultant(current)}
+          disabled={busy}
+          submitting={teamFeedback.status === 'saving'}
+          submitBlocked={blockedUntilReload(teamFeedback)}
+          feedbackId={describedFeedback('team', teamFeedback)}
+          onChange={(draft) => {
+            setTeamDraft(draft);
+            setTeamOpen(true);
+            if (
+              teamFeedback.status === 'saved' ||
+              (teamFeedback.status === 'refused' && !teamFeedback.reload)
+            )
+              setTeamFeedback(IDLE);
+          }}
+          onSubmit={submitTeam}
+          onCancel={
+            proposed
+              ? () => {
+                  resetTeamDraft();
+                  setTeamFeedback(IDLE);
+                }
+              : undefined
+          }
+        />
+      </>
     );
   }
 
@@ -4945,6 +4972,8 @@ function teamMessage(
       return 'teamConflictNoteRequired';
     case 'link':
       return 'teamLinkInvalid';
+    case 'unavailableLink':
+      return 'teamMemberUnknown';
     case 'leader':
       return 'teamLeaderRule';
     case 'category':
