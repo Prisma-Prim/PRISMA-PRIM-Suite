@@ -245,6 +245,73 @@ describe('Certification audit team and its approval', () => {
     });
   });
 
+  it('keeps the first eligible auditor linked when a different name search finds the next member', async () => {
+    const { server, actor } = serve({ manager: true });
+    server.seed({
+      orderReference: 'CERT-TWO-AUDITOR-SEARCHES',
+      agreement: true,
+    });
+    const alice = {
+      workspaceMembershipId: '14390000-0000-4000-8000-000000000001',
+      displayLabel: 'Alice Prepared Auditor',
+    };
+    const bob = {
+      workspaceMembershipId: '14390000-0000-4000-8000-000000000002',
+      displayLabel: 'Bob Prepared Auditor',
+    };
+    server.teamCandidates.push(alice, bob);
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-TWO-AUDITOR-SEARCHES');
+    const form = teamForm(),
+      name = screen.getByLabelText('Auditor name');
+    const first = within(member(form, 1)).getByLabelText('Workspace member');
+    function search(term: string) {
+      change(name, term);
+      fireEvent.click(screen.getByRole('button', { name: 'Find auditors' }));
+    }
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Find auditors' }),
+      ).toBeEnabled(),
+    );
+    search('Alice');
+    await waitFor(() =>
+      expect(selectOptionLabels(first)).toContain(alice.displayLabel),
+    );
+    fillMember(member(form, 1), {
+      name: 'First literal auditor',
+      role: 'Team leader',
+      link: alice.displayLabel,
+      holdsCategory: true,
+      competence: 'ISO 22000 category C.',
+    });
+    fireEvent.click(within(form).getByRole('button', { name: 'Add a member' }));
+    const second = within(member(form, 2)).getByLabelText('Workspace member');
+    search('Bob');
+    await waitFor(() =>
+      expect(selectOptionLabels(second)).toContain(bob.displayLabel),
+    );
+    fillMember(member(form, 2), {
+      name: 'Second literal auditor',
+      role: 'Auditor',
+      link: bob.displayLabel,
+      competence: 'ISO 22000 auditor.',
+    });
+    submitTeam(form);
+    await waitFor(() =>
+      expect(
+        server.mutations().find((request) => request.path.endsWith('/team'))
+          ?.body,
+      ).toMatchObject({
+        members: [
+          { workspaceMembershipId: alice.workspaceMembershipId },
+          { workspaceMembershipId: bob.workspaceMembershipId },
+        ],
+      }),
+    );
+  });
+
   it('retires a previously discovered auditor after a fresh search no longer admits them, preserving the literal draft and blocking its stale link', async () => {
     const { server, actor } = serve({ manager: true });
     server.seed({ orderReference: 'CERT-CANDIDATE-REVOKED', agreement: true });
@@ -286,6 +353,50 @@ describe('Certification audit team and its approval', () => {
         'A linked Workspace member is no longer active. Change that link or leave it empty.',
       ),
     ).toBeVisible();
+    expect(server.mutations()).toEqual([]);
+  });
+
+  it('retires a revoked draft link even while appending another candidate page', async () => {
+    const { server, actor } = serve({ manager: true });
+    server.seed({
+      orderReference: 'CERT-PAGED-REVOKED-AUDITOR',
+      agreement: true,
+    });
+    for (let index = 1; index <= 26; index++)
+      server.teamCandidates.push({
+        workspaceMembershipId: `14390000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+        displayLabel: `Fictional auditor ${index}`,
+      });
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-PAGED-REVOKED-AUDITOR');
+    const form = teamForm();
+    const more = await screen.findByRole('button', {
+      name: 'Load more auditors',
+    });
+    fillMember(member(form, 1), {
+      name: 'Keep this draft',
+      role: 'Team leader',
+      link: 'Fictional auditor 1',
+      holdsCategory: true,
+      competence: 'ISO 22000 auditor.',
+    });
+    const linking = within(member(form, 1)).getByLabelText('Workspace member');
+    server.teamCandidates.shift();
+    fireEvent.click(more);
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Load more auditors' }),
+      ).toBeNull(),
+    );
+    expect(selectOptionLabels(linking)).not.toContain('Fictional auditor 1');
+    expect(within(member(form, 1)).getByLabelText('Name')).toHaveValue(
+      'Keep this draft',
+    );
+    submitTeam(form);
+    await within(region(TEAM)).findByText(
+      'A linked Workspace member is no longer active. Change that link or leave it empty.',
+    );
     expect(server.mutations()).toEqual([]);
   });
 
