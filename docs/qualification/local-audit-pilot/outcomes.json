@@ -1,0 +1,90 @@
+{
+  "schema": "prisma-prim-local-audit-pilot-qualification/v1",
+  "classification": "prepared fictional examples; no real-world audit qualification",
+  "nativePilot": {
+    "journey": "local-audit-pilot",
+    "status": "passed",
+    "exitCode": 0,
+    "startedAt": "2026-11-18T13:25:12.359Z",
+    "finishedAt": "2026-11-18T13:28:04.905Z",
+    "tests": {
+      "passed": 2,
+      "failed": 0,
+      "flaky": 0,
+      "skipped": 0
+    }
+  },
+  "originalCombinedRegression": {
+    "journey": "combined-audit-qualification",
+    "status": "passed",
+    "exitCode": 0,
+    "startedAt": "2026-11-18T13:16:22.947Z",
+    "finishedAt": "2026-11-18T13:19:11.408Z",
+    "tests": {
+      "passed": 2,
+      "failed": 0,
+      "flaky": 0,
+      "skipped": 0
+    }
+  },
+  "nativeLifecycle": {
+    "schema": "prisma-prim-audit-pilot-lifecycle-evidence/v1",
+    "status": "passed",
+    "command": ["node", "scripts/audit-pilot.mjs"],
+    "signal": "SIGINT",
+    "ready": {
+      "schema": "prisma-prim-local-audit-pilot/v1",
+      "status": "ready",
+      "classification": "fictional local demonstration; not real-pilot qualification",
+      "guideUrl": "http://127.0.0.1:4173/__pilot",
+      "manifestUrl": "http://127.0.0.1:4173/__pilot/manifest",
+      "caseId": "891ece0b-ee5e-4c22-acec-a2fec2eb729c"
+    },
+    "exitCode": 130,
+    "ownedPortsClosed": [4173, 4174]
+  },
+  "inspection": "RO/RU guide, native reviewed analysis, Certificate release and reopened Case inspected; issued PDF text inspected. Published selection excludes raw traces.",
+  "earlierOutcomes": [
+    {
+      "run": "native-app-check-red",
+      "status": "failed",
+      "reason": "test startup used an empty API prefix; fixed to /api and actual Chromium readiness passed"
+    },
+    {
+      "run": "provider-refusal-red",
+      "status": "failed",
+      "reason": "default synthetic provider fixture was enabled; interactive pilot now explicitly disables it; native connect503 and Chromium check pass"
+    },
+    {
+      "run": "pilot-native-first",
+      "status": "passed",
+      "tests": 2,
+      "limitation": "earlier source before provider configuration flag and fresh-context reopen assertion"
+    },
+    {
+      "run": "pilot-browser-reopen-direct-invocation",
+      "status": "incomplete",
+      "reason": "missing managed TEST_DATABASE_URL; corrected invocation used existing managed runner"
+    },
+    {
+      "run": "interactive-pty-interruption",
+      "status": "incomplete",
+      "reason": "PTY harness interrupted its wrapper without forwarding the terminal signal; SIGINT subsequently sent to the exact owned launcher cleaned its resources; fresh direct-process native lifecycle test passed with130"
+    },
+    {
+      "run": "final-scripts-with-live-pilot",
+      "status": "failed",
+      "reason": "occupied-port fixture could not bind because the interactive proof was running; rerun after cleanup passes"
+    },
+    {
+      "run": "preview-host-refusal-fetch",
+      "status": "incomplete",
+      "reason": "Node fetch did not transmit the overridden Host; direct node:http Host request proves403; no preview production change required"
+    }
+  ],
+  "limits": [
+    "No main merge or deployment under1452",
+    "No real account, provider/model call, scanner/OCR qualification or private1279 pilot",
+    "Input1457 draft-preparation semantics are qualified by its native API tests and inputCI; this pilot does not claim every possible draft-preparation UI act"
+  ]
+}

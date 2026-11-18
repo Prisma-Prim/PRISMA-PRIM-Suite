@@ -1,0 +1,12 @@
+{
+  "schema": "prisma-prim-local-audit-pilot-inputs/v1",
+  "classification": "fictional local pilot; no real Client or account qualification",
+  "base": "6f278b8fe7ebfdd4658ea4d783564b74de78e632",
+  "inputs": {
+    "combinedQualification1458": "8b5303b7e62cab9c374ccdfa8b71a15a26c4f83a",
+    "controlledDraftPreparation1457": "ba7634306e456852376a289d35ae7b184ecf3033"
+  },
+  "inputCi": [44292369089, 44291134310],
+  "conflicts": "Keep both Projects journey catalogue entries; executable inputs merge without conflicting hunks.",
+  "production": "No main merge or deployment. Synthetic identity/scanner/provider boundaries remain explicit. Native grants, validation, immutable bytes and decisions remain authoritative."
+}
