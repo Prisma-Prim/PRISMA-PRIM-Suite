@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1454-catalog-export-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1454,
+  "pullRequest": 1466,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 1
+    },
+    "notes": "CI44315140343 web5857pass1fail identified unexported Project source catalog; local15catalog and9intake tests now pass after bounded export. Runtime copy unchanged; full required CI remains pending. Tokens/model/time/price not reported."
+  }
+}
