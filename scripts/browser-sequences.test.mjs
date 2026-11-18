@@ -281,3 +281,36 @@ test('selects the native mission result replay only in its registered journey', 
     /Unknown sequence case/u,
   );
 });
+
+test('selects the native pricing replay only in its registered journey', () => {
+  const command = browserSequenceReplayCommand({
+    caseId: 'pricing-snapshot-owner',
+    width: 'narrow',
+    seed: 1463001,
+    steps: 10,
+    path: '0:1',
+  });
+  assert.equal(
+    command,
+    "UI_SEQUENCE_REPLAY='pricing-snapshot-owner@narrow~10~0:1' pnpm verify:journey pricing-owner-action-sequences --chaos 1463001",
+  );
+  const environment = {
+    UI_CHAOS_SEED: '1463001',
+    UI_SEQUENCE_REPLAY: 'pricing-snapshot-owner@narrow~10~0:1',
+  };
+  assert.equal(
+    readBrowserSequenceOptions({
+      journey: 'pricing-owner-action-sequences',
+      environment,
+    }).replay.caseId,
+    'pricing-snapshot-owner',
+  );
+  assert.throws(
+    () =>
+      readBrowserSequenceOptions({
+        journey: 'financial-action-sequences',
+        environment,
+      }),
+    /Unknown sequence case/u,
+  );
+});

@@ -1,8 +1,17 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useCapturedAccessRejection } from '../api/use-captured-access-rejection';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { holds } from '../access/company-grants';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { holds, grantOf } from '../access/company-grants';
 import { selectedWorkspaceId } from '../access/workspace-selection';
 import {
   useInterfaceLocale,
@@ -18,7 +27,9 @@ const maximumCalculationLines = 20;
 const calculationTimeoutMs = 15_000;
 
 type Currency = 'MDL' | 'EUR' | 'RON' | 'USD';
-type HttpResult = { status: number; body: unknown } | { status: 'network' };
+type HttpResult = (
+  { status: number; body: unknown } | { status: 'network' }
+) & { recover?: ReturnType<typeof useCapturedAccessRejection> };
 
 type Offering = {
   id: string;
@@ -146,6 +157,21 @@ export function PricingSnapshotPanel({
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      actor.active,
+      actor.workspaceId,
+      actor.internalUserId,
+      actor.workspaceMembershipId,
+      actor.activeCompany?.id,
+      identity.loaded,
+      identity.signedIn,
+      grantOf(actor.activeCompany, 'company_pricing_user') ?? null,
+      opportunityId,
+      grantOf(actor.activeCompany, 'company_pricing_adjustment') ?? null,
+    ]),
+  );
   const copy = usePricingSnapshotCopy();
   const { locale } = useInterfaceLocale();
   const [view, setView] = useState<ViewState>({ kind: 'loading' });
@@ -157,10 +183,10 @@ export function PricingSnapshotPanel({
   const [unresolved, setUnresolved] = useState<CalculationAttempt>();
   const [olderPending, setOlderPending] = useState(false);
   const [olderError, setOlderError] = useState(false);
-  const loadRequest = useRef<AbortController | undefined>(undefined);
-  const commandRequest = useRef<AbortController | undefined>(undefined);
-  const olderRequest = useRef<AbortController | undefined>(undefined);
-  const detailRequest = useRef<AbortController | undefined>(undefined);
+  const loadRequest = useScopedOperationGroup(`${lifetime}:loadRequest`);
+  const commandRequest = useScopedOperationGroup(`${lifetime}:commandRequest`);
+  const olderRequest = useScopedOperationGroup(`${lifetime}:olderRequest`);
+  const detailRequest = useScopedOperationGroup(`${lifetime}:detailRequest`);
   const fieldId = useId();
   const companyId = actor.activeCompany?.id;
   const mayRead = holds(
@@ -178,12 +204,19 @@ export function PricingSnapshotPanel({
     'company_pricing_adjustment',
     'commercial.pricing.adjustment.apply',
   );
-  const rejectCompany = useRef(onCompanyContextRejected);
-  const acceptActor = useRef(onActorRevalidated);
-  const rejectWorkspace = useRef(onWorkspaceAccessRejected);
-  rejectCompany.current = onCompanyContextRejected;
-  acceptActor.current = onActorRevalidated;
-  rejectWorkspace.current = onWorkspaceAccessRejected;
+  const capturedAccess = useCapturedAccessRejection({
+    actor,
+    identity,
+    companyContextId: actor.activeCompany?.id,
+    scope: String(lifetime),
+    onCompanyContextRejected,
+    onActorRevalidated,
+    onWorkspaceAccessRejected,
+  });
+  const rejection = useRef(capturedAccess);
+  useLayoutEffect(() => {
+    rejection.current = capturedAccess;
+  });
 
   const request = useCallback(
     async ({
@@ -200,10 +233,13 @@ export function PricingSnapshotPanel({
       idempotencyKey?: string;
     }): Promise<HttpResult> => {
       if (!companyId) return { status: 403, body: undefined };
+      const recover = rejection.current;
       try {
         const token = identity.requestHeaders
           ? null
           : await identity.getToken();
+        if (signal.aborted)
+          throw new DOMException('Retired request', 'AbortError');
         const workspaceId = selectedWorkspaceId();
         const response = await fetch(
           `${import.meta.env.VITE_API_URL ?? '/api'}${path}`,
@@ -222,57 +258,54 @@ export function PricingSnapshotPanel({
             signal,
           },
         );
+        if (signal.aborted)
+          throw new DOMException('Retired request', 'AbortError');
         let responseBody: unknown;
         try {
           responseBody = await response.json();
         } catch {
           responseBody = undefined;
         }
-        return { status: response.status, body: responseBody };
+        if (signal.aborted)
+          throw new DOMException('Retired request', 'AbortError');
+        return { status: response.status, body: responseBody, recover };
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === 'AbortError')
           throw error;
         return { status: 'network' };
       }
     },
-    [companyId, identity],
+    [companyId, identity, lifetime],
   );
 
   const handleAccess = useCallback(
     async (result: HttpResult, signal: AbortSignal): Promise<boolean> => {
+      if (signal.aborted) return true;
       if (result.status === 401) {
-        await identity.rejectSession();
+        await result.recover?.({ status: 'unauthorized' }, signal);
         return true;
       }
       if (result.status !== 403) return false;
-      await handleAuthenticatedAccessRejection({
-        result: { status: 'forbidden' },
-        identity,
-        companyContextId: companyId,
-        onCompanyContextRejected: (id) => rejectCompany.current(id),
-        onActorRevalidated: (value) => acceptActor.current(value),
-        onWorkspaceAccessRejected: () => rejectWorkspace.current(),
-        signal,
-      });
+      await result.recover?.({ status: 'forbidden' }, signal);
       return true;
     },
-    [companyId, identity],
+    [companyId, identity, lifetime],
   );
 
   const load = useCallback(
     async (preserveDrafts = false) => {
-      commandRequest.current?.abort();
-      commandRequest.current = undefined;
+      commandRequest.retire();
+
       setPending(false);
-      olderRequest.current?.abort();
-      olderRequest.current = undefined;
+      olderRequest.retire();
+
       setOlderPending(false);
       setOlderError(false);
-      detailRequest.current?.abort();
-      detailRequest.current = undefined;
-      loadRequest.current?.abort();
-      const controller = new AbortController();
-      loadRequest.current = controller;
+      detailRequest.retire();
+
+      loadRequest.retire();
+      const controller = loadRequest.beginLatest();
+      if (!controller) return;
       setView({ kind: 'loading' });
       setDetail({ kind: 'closed' });
       setFeedback(undefined);
@@ -376,7 +409,7 @@ export function PricingSnapshotPanel({
         if (!(error instanceof DOMException && error.name === 'AbortError'))
           setView({ kind: 'error' });
       } finally {
-        if (loadRequest.current === controller) loadRequest.current = undefined;
+        controller.release();
       }
     },
     [companyId, handleAccess, mayCalculate, mayRead, opportunityId, request],
@@ -385,10 +418,10 @@ export function PricingSnapshotPanel({
   useEffect(() => {
     void load();
     return () => {
-      loadRequest.current?.abort();
-      commandRequest.current?.abort();
-      olderRequest.current?.abort();
-      detailRequest.current?.abort();
+      loadRequest.retire();
+      commandRequest.retire();
+      olderRequest.retire();
+      detailRequest.retire();
     };
   }, [load]);
 
@@ -406,13 +439,14 @@ export function PricingSnapshotPanel({
       setFeedback('invalid');
       return;
     }
-    commandRequest.current?.abort();
-    const controller = new AbortController();
-    commandRequest.current = controller;
+    if (commandRequest.isPending()) return;
+    const controller = commandRequest.beginLatest();
+    if (!controller) return;
     setPending(true);
     setFeedback(undefined);
     setFieldFeedback(undefined);
     let timeoutId: number | undefined;
+    let timedOut = false;
     try {
       const response = request({
         path: snapshotBasePath(opportunityId),
@@ -435,18 +469,13 @@ export function PricingSnapshotPanel({
       });
       const outcome = await Promise.race([response, timeout]);
       if (outcome.kind === 'timeout') {
-        if (controller.signal.aborted || commandRequest.current !== controller)
-          return;
-        controller.abort();
+        if (controller.signal.aborted) return;
+        timedOut = true;
+        controller.retire();
         setUnresolved(nextAttempt);
         return;
       }
-      if (
-        outcome.kind === 'aborted' ||
-        controller.signal.aborted ||
-        commandRequest.current !== controller
-      )
-        return;
+      if (outcome.kind === 'aborted' || controller.signal.aborted) return;
       const { result } = outcome;
       if (result.status === 'network' || result.status >= 500) {
         setUnresolved(nextAttempt);
@@ -490,29 +519,27 @@ export function PricingSnapshotPanel({
       if (nextFieldFeedback) setFieldFeedback(nextFieldFeedback);
       else setFeedback(feedbackFor(result));
     } finally {
+      controller.release();
       if (timeoutId !== undefined) window.clearTimeout(timeoutId);
-      if (commandRequest.current === controller) {
-        commandRequest.current = undefined;
+      if (!controller.signal.aborted || timedOut) {
         setPending(false);
       }
     }
   }
 
   async function reopen(snapshotId: string): Promise<void> {
-    detailRequest.current?.abort();
-    const controller = new AbortController();
-    detailRequest.current = controller;
+    detailRequest.retire();
+    const controller = detailRequest.beginLatest();
+    if (!controller) return;
     setDetail({ kind: 'loading', snapshotId });
     try {
       const result = await request({
         path: `${snapshotBasePath(opportunityId)}/${encodeURIComponent(snapshotId)}`,
         signal: controller.signal,
       });
-      if (controller.signal.aborted || detailRequest.current !== controller)
-        return;
+      if (controller.signal.aborted) return;
       const accessRejected = await handleAccess(result, controller.signal);
-      if (controller.signal.aborted || detailRequest.current !== controller)
-        return;
+      if (controller.signal.aborted) return;
       if (accessRejected) {
         setDetail({ kind: 'closed' });
         setView({ kind: 'denied' });
@@ -523,19 +550,18 @@ export function PricingSnapshotPanel({
       }
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === 'AbortError') return;
-      if (!controller.signal.aborted && detailRequest.current === controller)
+      if (!controller.signal.aborted)
         setDetail({ kind: 'unavailable', snapshotId });
     } finally {
-      if (detailRequest.current === controller)
-        detailRequest.current = undefined;
+      controller.release();
     }
   }
 
   async function loadOlder(): Promise<void> {
     if (view.kind !== 'ready' || !view.nextCursor || olderPending) return;
-    olderRequest.current?.abort();
-    const controller = new AbortController();
-    olderRequest.current = controller;
+    olderRequest.retire();
+    const controller = olderRequest.beginLatest();
+    if (!controller) return;
     setOlderPending(true);
     setOlderError(false);
     try {
@@ -543,11 +569,9 @@ export function PricingSnapshotPanel({
         path: `${snapshotBasePath(opportunityId)}?limit=${pageSize}&cursor=${encodeURIComponent(view.nextCursor)}`,
         signal: controller.signal,
       });
-      if (controller.signal.aborted || olderRequest.current !== controller)
-        return;
+      if (controller.signal.aborted) return;
       const accessRejected = await handleAccess(result, controller.signal);
-      if (controller.signal.aborted || olderRequest.current !== controller)
-        return;
+      if (controller.signal.aborted) return;
       if (accessRejected) {
         setView({ kind: 'denied' });
       } else if (result.status === 200 && isSnapshotPage(result.body)) {
@@ -569,13 +593,12 @@ export function PricingSnapshotPanel({
     } catch (error: unknown) {
       if (
         !(error instanceof DOMException && error.name === 'AbortError') &&
-        !controller.signal.aborted &&
-        olderRequest.current === controller
+        !controller.signal.aborted
       )
         setOlderError(true);
     } finally {
-      if (olderRequest.current === controller) {
-        olderRequest.current = undefined;
+      controller.release();
+      if (!controller.signal.aborted) {
         setOlderPending(false);
       }
     }
