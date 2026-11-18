@@ -470,6 +470,102 @@ describe.skipIf(!databaseUrl)(
       });
     });
 
+    it.each(['unlink', 'unlink-relink', 'move'])(
+      'refuses a PDF whose admitted Project association changes during scanning: %s',
+      async (change) => {
+        const pdf = await PDFDocument.create();
+        pdf.addPage().drawText(`Fictional PDF association fence ${change}`);
+        const bytes = Buffer.from(await pdf.save({ useObjectStreams: false }));
+        let batch = await createdBatch([
+          file(bytes, `association-${change}.pdf`),
+        ]);
+        batch = await step(await step(await action(batch, 'start'), 0), 0);
+        const target = record(record(records(batch.items)[0]?.progress).target);
+        const documentPath = `/documents/${text(target.documentId)}`;
+        const nextProjectId =
+          change === 'move'
+            ? text(
+                (
+                  await fixture.created(
+                    await fixture.call(CERTIFICATION_OWNER, '/projects', {
+                      method: 'POST',
+                      body: {
+                        title: 'Another fictional intake Project',
+                        clientAccountId: await projectClient(),
+                      },
+                    }),
+                  )
+                ).id,
+              )
+            : fixture.projectId;
+        const barrier = fixture.holdNextScan();
+        const pending = raw(batch, 0, bytes);
+        try {
+          await Promise.race([
+            barrier.reached,
+            pending.then(() => {
+              throw new Error('PDF upload missed the scanner barrier.');
+            }),
+          ]);
+          const unlinked = await fixture.call(
+            CERTIFICATION_OWNER,
+            `${documentPath}/project-association`,
+            {
+              method: 'POST',
+              body: {
+                action: 'unlink',
+                projectId: fixture.projectId,
+                expectedRevision: 1,
+              },
+            },
+          );
+          expect(unlinked.status, await unlinked.clone().text()).toBe(201);
+          if (change !== 'unlink') {
+            const linked = await fixture.call(
+              CERTIFICATION_OWNER,
+              `${documentPath}/project-association`,
+              {
+                method: 'POST',
+                body: {
+                  action: 'link',
+                  projectId: nextProjectId,
+                  expectedRevision: 2,
+                },
+              },
+            );
+            expect(linked.status, await linked.clone().text()).toBe(201);
+          }
+        } finally {
+          barrier.release();
+        }
+        const response = await pending;
+        expect(response.status, await response.clone().text()).toBe(409);
+        const history = record(
+          await (
+            await fixture.call(
+              CERTIFICATION_OWNER,
+              `${documentPath}/versions/${text(target.versionId)}/content/history`,
+            )
+          ).json(),
+        );
+        expect(records(history.uploads)).toEqual([]);
+        expect(
+          record(
+            await (
+              await fixture.call(CERTIFICATION_OWNER, documentPath)
+            ).json(),
+          ).workingRevision,
+        ).toBe(1);
+        batch = await reopened(batch);
+        expect(records(batch.items)[0]).toMatchObject({
+          progress: { stage: 'linked', target },
+          lastAttempt: { outcome: 'failed', code: 'stale_target' },
+        });
+        batch = await step(batch, 0, 'skip');
+        expect(batch.phase).toBe('completed');
+      },
+    );
+
     it.each(['metadata', 'PDF', 'Project association'])(
       'refuses a new Word source when native %s changes during scanning, retaining the prior checkpoint',
       async (change) => {
@@ -625,6 +721,61 @@ describe.skipIf(!databaseUrl)(
       );
     });
 
+    it.each(['advance', 'upload'])(
+      'records a stale target refusal before %s so the unfinished item can be deliberately skipped',
+      async (operation) => {
+        const bytes = literalDocx(
+          `Адрес: отказ до ${operation} без потери прогресса`,
+        );
+        let batch = await step(
+          await action(
+            await createdBatch([file(bytes, `stale-${operation}.docx`, 'ru')]),
+            'start',
+          ),
+          0,
+        );
+        if (operation === 'upload') batch = await step(batch, 0);
+        const priorProgress = record(records(batch.items)[0]?.progress);
+        const target = record(priorProgress.target);
+        const path = `/documents/${text(target.documentId)}`;
+        const edited = await fixture.call(CERTIFICATION_OWNER, path, {
+          method: 'PATCH',
+          body: {
+            expectedRevision: 1,
+            title: `Human correction before ${operation}`,
+            purpose: 'Native metadata changed independently',
+          },
+        });
+        expect(edited.status, await edited.clone().text()).toBe(200);
+        const afterEdit = await fixture.call(CERTIFICATION_OWNER, path);
+        expect(afterEdit.status).toBe(200);
+        const nativeAfterEdit = record(await afterEdit.json());
+        const response =
+          operation === 'upload'
+            ? await raw(batch, 0, bytes)
+            : await fixture.call(
+                CERTIFICATION_OWNER,
+                `${batchPath(batch)}/items/${text(records(batch.items)[0]?.id)}/advance`,
+                { method: 'POST', body: { expectedRevision: batch.revision } },
+              );
+        expect(response.status).toBe(409);
+        batch = await reopened(batch);
+        expect(records(batch.items)[0]).toMatchObject({
+          progress: priorProgress,
+          failureCount: 1,
+          lastAttempt: { outcome: 'failed', code: 'stale_target' },
+        });
+        batch = await step(batch, 0, 'skip');
+        expect(batch.phase).toBe('completed');
+        expect(record(records(batch.items)[0]?.progress).retained).toEqual(
+          priorProgress,
+        );
+        expect(
+          await (await fixture.call(CERTIFICATION_OWNER, path)).json(),
+        ).toEqual(nativeAfterEdit);
+      },
+    );
+
     it('rejects changed originals and changed native Document metadata while retaining the exact prior checkpoint', async () => {
       const bytes = literalDocx(
         'Адрес: Учебная 1454, проверка точного оригинала',
@@ -660,7 +811,14 @@ describe.skipIf(!databaseUrl)(
       expect(changed.status, await changed.clone().text()).toBe(200);
       const stale = await raw(batch, 0, bytes);
       expect(stale.status).toBe(409);
-      expect(await reopened(batch)).toEqual(batch);
+      const refused = await reopened(batch);
+      expect(record(records(refused.items)[0]?.progress)).toEqual(
+        record(records(batch.items)[0]?.progress),
+      );
+      expect(records(refused.items)[0]).toMatchObject({
+        failureCount: 2,
+        lastAttempt: { outcome: 'failed', code: 'stale_target' },
+      });
       const noSource = record(
         await (
           await fixture.call(

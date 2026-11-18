@@ -183,6 +183,114 @@ it('retains a failed item on refresh failure and requires exact reselected bytes
   expect(localStorage.getItem('original-ru.docx')).toBeNull();
 });
 
+it('refreshes a committed stale-target refusal after409 and lets the person leave that exact checkpoint aside', async () => {
+  vi.stubGlobal('crypto', webcrypto);
+  const prepared = batch();
+  const item = prepared.items[0];
+  if (!item) throw new Error('Missing fictional item');
+  const fresh = {
+    ...prepared,
+    items: [
+      {
+        ...item,
+        failureCount: 0,
+        lastAttempt: {
+          outcome: 'complete',
+          id: item.lastAttempt.id,
+          at: item.lastAttempt.at,
+        },
+      },
+    ],
+  };
+  const refused = {
+    ...fresh,
+    revision: 6,
+    phase: 'active',
+    items: [
+      {
+        ...item,
+        attempts: 4,
+        lastAttempt: {
+          outcome: 'failed',
+          id: '00000000-0000-4000-8000-000000000154',
+          at: item.lastAttempt.at,
+          code: 'stale_target',
+        },
+      },
+    ],
+  };
+  const completed = {
+    ...refused,
+    revision: 7,
+    phase: 'completed',
+    items: [
+      {
+        ...refused.items[0],
+        progress: {
+          stage: 'skipped',
+          reason: 'failed',
+          duplicateOf: null,
+          retained: item.progress,
+        },
+      },
+    ],
+  };
+  let state: unknown = fresh;
+  const posts: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(path);
+      if (init?.method === 'POST') {
+        posts.push(url);
+        if (url.endsWith('/state'))
+          state = { ...fresh, revision: 5, phase: 'active' };
+        else if (url.includes('/content?')) {
+          state = refused;
+          return Response.json(
+            { message: 'The native target changed.' },
+            { status: 409 },
+          );
+        } else if (url.endsWith('/skip')) state = completed;
+        else throw new Error('Unexpected native command');
+        return Response.json(state);
+      }
+      return Response.json(
+        url.endsWith('/intake-batches')
+          ? { items: [state], nextBefore: null }
+          : url.endsWith(batchId)
+            ? state
+            : project(),
+      );
+    }),
+  );
+  render(<DossierIntakePanel {...props} />);
+  fireEvent.click(await screen.findByRole('button', { name: /Reopen batch/ }));
+  expect(
+    screen.queryByRole('button', { name: 'Leave this item aside' }),
+  ).not.toBeInTheDocument();
+  fireEvent.change(await screen.findByLabelText('Reselect original'), {
+    target: { files: [selectedFile()] },
+  });
+  await screen.findByText('Exact original verified in this page.');
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Start / resume intake' }),
+  );
+  const skip = await screen.findByRole('button', {
+    name: 'Leave this item aside',
+  });
+  await waitFor(() => expect(skip).toBeEnabled());
+  expect(
+    screen.getByText(/Project or Document changed; review required/),
+  ).toBeVisible();
+  fireEvent.click(skip);
+  expect(
+    await screen.findByText('Left aside; earlier preserved originals remain'),
+  ).toBeVisible();
+  expect(posts.filter((url) => url.includes('/content?'))).toHaveLength(1);
+  expect(posts.filter((url) => url.endsWith('/skip'))).toHaveLength(1);
+});
+
 it('keeps progress reads independent of an in-flight original upload and rejects older snapshots', async () => {
   vi.stubGlobal('crypto', webcrypto);
   let state = batch();

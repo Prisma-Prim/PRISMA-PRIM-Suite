@@ -227,13 +227,36 @@ export class DossierIntakeStore {
           ))
       )
         throw new ConflictException('This file needs a different next action.');
-      await this.targetWithinTransaction(
-        input.actor,
-        context,
-        item,
-        !(input.operation === 'upload' && item.file.kind === 'pdf'),
-      );
       const attemptId = randomUUID();
+      try {
+        await this.targetWithinTransaction(
+          input.actor,
+          context,
+          item,
+          !(input.operation === 'upload' && item.file.kind === 'pdf'),
+        );
+      } catch (error) {
+        if (!(error instanceof ConflictException)) throw error;
+        const refused: typeof item = {
+          ...item,
+          attempts: item.attempts + 1,
+          failureCount: Math.min(100, item.failureCount + 1),
+          lastAttempt: {
+            outcome: 'failed',
+            id: attemptId,
+            at: new Date().toISOString(),
+            code: 'stale_target',
+          },
+        };
+        await this.save(context.row, {
+          ...context.manifest,
+          items: context.manifest.items.map((i) =>
+            i.id === item.id ? refused : i,
+          ),
+        });
+        // Return the refusal so this checkpoint commits before the HTTP409.
+        return { outcome: 'refused' } satisfies { outcome: 'refused' };
+      }
       const next = {
         ...item,
         attempts: item.attempts + 1,

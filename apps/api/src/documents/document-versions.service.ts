@@ -497,6 +497,7 @@ export class DocumentVersionsService {
       expectedRevision: number;
       idempotencyKey: string;
       pdf: ValidatedDocumentPdf;
+      expectedAssociation: { projectId: string; revision: number } | null;
     },
   ): Promise<DocumentVersionReceipt> {
     const command: VersionCommandIdentity = {
@@ -555,6 +556,14 @@ export class DocumentVersionsService {
       authorize: async () =>
         (await this.authorizePdfUpload(actor, command)).companyId,
       apply: async (scope, document) => {
+        const expected = input.expectedAssociation;
+        if (
+          expected !== null &&
+          (document.type !== 'project-source' ||
+            document.projectId !== expected.projectId ||
+            document.projectRevision !== expected.revision)
+        )
+          throw new ConflictException('The admitted PDF association changed.');
         const draft = await this.requirePdfDraft(scope, input.versionId);
         const representationId = await this.pdfs.insert({
           scope,
