@@ -1,0 +1,47 @@
+{
+  "issue": 1439,
+  "source": "2c152046545d8b5b09b7cb6a93776735fef37aae",
+  "preparedFictionalData": true,
+  "screenshots": [
+    {
+      "path": "desktop/auditor-cannot-approve-own-team-ro.png",
+      "sha256": "4bb28ef06e7c7a1fabd8bd9a8a672d85be34a24aa57614b88927f7bd20ad6963",
+      "bytes": 102059
+    },
+    {
+      "path": "desktop/first-team-authorized-different-auditor-ro.png",
+      "sha256": "fb9fa48302e8b69d39cc7d2c995e7019b51a0991289da709b8e2f1b97c2e9364",
+      "bytes": 91627
+    },
+    {
+      "path": "desktop/selected-auditor-stage-report-confirmed-ro.png",
+      "sha256": "8bdd9aadbea3404ea1744dcd49f88b80b5421951606d5299914c03fd25345dff",
+      "bytes": 118815
+    },
+    {
+      "path": "desktop/test-finished-1.png",
+      "sha256": "8bdd9aadbea3404ea1744dcd49f88b80b5421951606d5299914c03fd25345dff",
+      "bytes": 118815
+    },
+    {
+      "path": "narrow/auditor-cannot-approve-own-team-ru.png",
+      "sha256": "d0838e69c5a69a7365bc46d68589505196012c55c03e462038506a06fe1bc770",
+      "bytes": 51680
+    },
+    {
+      "path": "narrow/first-team-authorized-different-auditor-ru.png",
+      "sha256": "98084be17f6871fe0935c79c038e30d01d02ee2852e3cecf10b943f1ed22fa6f",
+      "bytes": 61819
+    },
+    {
+      "path": "narrow/selected-auditor-stage-report-confirmed-ru.png",
+      "sha256": "e21ad353b7e11d2efa1c651de49f153f177473fc445d3eed36ee66c76ffe8fe1",
+      "bytes": 53887
+    },
+    {
+      "path": "narrow/test-finished-1.png",
+      "sha256": "e21ad353b7e11d2efa1c651de49f153f177473fc445d3eed36ee66c76ffe8fe1",
+      "bytes": 53887
+    }
+  ]
+}
