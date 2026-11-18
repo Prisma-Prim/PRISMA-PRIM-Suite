@@ -1,0 +1,39 @@
+{
+  "schema": "prisma-prim-reviewed-evidence-publication/v1",
+  "pullRequest": 1471,
+  "run": "reviewed-final-20261118",
+  "source": "3c85601b4c5aeaf3aa3b6efb82e572eee33e9f14",
+  "base": "eca7e9488ba465d2f370e56e5a37f5611508964d",
+  "integration": "3c85601b4c5aeaf3aa3b6efb82e572eee33e9f14",
+  "integrationTree": "11d538068d4b28ab1cc588d5c1fc7436d6182207",
+  "classification": "selected reviewed fictional evidence; no real Client data",
+  "selection": "Inspected PNGs, actual downloaded PDFs/DOCX when present and compact native observations. Complete original traces/build logs remain local; fresh complete native evidence is also retained by CI. This selection is not the full original browser artifact.",
+  "publicationBoundary": "Same-repository documented orphan Git fallback; release asset upload unavailable in this harness. Never merge evidence into source. Retain while needed by open review; final compact report and linked evidence14days after merge.",
+  "files": [
+    {
+      "path": "fictional-evidence-3c85601b.tar.gz",
+      "bytes": 208528,
+      "sha256": "e60d967acc6422a40a0b02626a46e09776604d0aa004f76f308e8d8b8514b95a"
+    },
+    {
+      "path": "exact-frozen-mission-original.pdf",
+      "bytes": 595,
+      "sha256": "ed5bbbd62e0a5d77042803266e0c679ceafde1a37d5566ccefe41d803bb8568d"
+    },
+    {
+      "path": "outcomes.json",
+      "bytes": 59118,
+      "sha256": "7ba49a1c83053ca5dde0a2176f0f76065c8a5f4bfe0e098a8db68ddc323f140a"
+    },
+    {
+      "path": "ro-desktop.png",
+      "bytes": 103401,
+      "sha256": "cfd55f0165800d0ffd4f62aea2707dfe0d3e7522b9bb1848e70b6bf55272a101"
+    },
+    {
+      "path": "ru-narrow.png",
+      "bytes": 117305,
+      "sha256": "88620054fb73155f51ec0ddf0516298160143ee9c200688ee6b513a028c1f451"
+    }
+  ]
+}

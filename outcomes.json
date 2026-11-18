@@ -1,0 +1,1523 @@
+{
+  "schema": "prisma-prim-native-owner-qualification/v1",
+  "classification": "Prepared fictional App/API/PostgreSQL examples; no real Client or production qualification.",
+  "issue": 1461,
+  "qualifiedRun": "1461-sequences-reviewed-final",
+  "source": {
+    "schema": "prisma-prim-native-owner-source/v1",
+    "base": "eca7e9488ba465d2f370e56e5a37f5611508964d",
+    "head": "f35a6c7f4222b8b7117407229744a72966c00b8c",
+    "files": {
+      ".agents/skills/journey-audit/journey-map.md": "2b40286778d3e14c4192a5341f598110688c734a4f045d0aefd34dc67e6cb2dd",
+      ".audit/1461.tsv": "0acaf004db90098ea0c3a789d4eabc4d4349edcce40353151ac4ccc68de1e0b7",
+      ".github/workflows/nightly-ui-chaos.yml": "de151812407d620484e1d87b4239278555adb0e08f06a1c929c7a7902475473f",
+      "apps/web/e2e/financial-held-read.fixture.ts": "41772197357df6247060c8d9107810a1620d4c767bed74ce979290e628baabc6",
+      "apps/web/e2e/mission-result-action-sequences.acceptance.spec.ts": "35d83693bfde55c03b5cd2d7acbeaeb86a2e4a33c28921232d4b1336abcc6026",
+      "apps/web/e2e/mission-result-browser-sequences.fixture.ts": "5b25928601a6392caa26bd95d70d375514e9e8837f5267461cc347c9c09d8631",
+      "apps/web/e2e/mission-result-sequence-source.fixture.ts": "6a039d802e02080f554af9aa9c7ac10553b5adbcf55d19d35d0185a4b6072d61",
+      "apps/web/e2e/native-grant-loss.fixture.ts": "1cacff9d73e1c27e8f33a0dc9537a62c2bf4dada3ecc1960240e81dfb2b749c5",
+      "apps/web/e2e/native-read-holds.fixture.ts": "2c858c42a020cfb922458f71058fbef83d4df1231e4361d71fb9cdc2857ed9e2",
+      "apps/web/e2e/select-option.ts": "322c1f9af8e4587f600ffb586ea3eecd5e0e7b98cfc99326b79442d3e9554473",
+      "apps/web/src/mission-plan/MissionPlanCurrentWork.recovery.test.tsx": "649015b24a9731936c04fb862e523cad9459cb3cb018471e292f393a3115228d",
+      "apps/web/src/mission-plan/MissionPlanCurrentWork.tsx": "f02807f61f66aa2c1e6f3bfed8025d778884b2a2d5b6b01d899e79d0049616f4",
+      "apps/web/src/mission-plan/MissionPlanWorkspace.test.tsx": "dd52041f2c1a6930120c477baf6111eba0642bcc78d9c38976d10a5b3c2f41f6",
+      "apps/web/src/mission-plan/use-mission-plan-io.ts": "292d55e200341def484395dde2abd81a2eb1088e9d7c1d7ef2a4db7eb35a0aba",
+      "apps/web/src/project/ClientMissionOverview.tsx": "e1af7c7a05670a1eaace482c9d993bb46b568436b82235afbf1353eb89ecc44e",
+      "apps/web/src/project/ClientMissionTasks.tsx": "c02aa03b26106896d64096cda6005684f2004bf2de1bd14af5842cb8454bb8af",
+      "apps/web/src/project/MissionApplicability.tsx": "ead34a147b90ad4336d333af8ecbf54679cc342d22eab52f3c1d09c86c921a35",
+      "apps/web/src/project/MissionReadiness.test.tsx": "015faa1285470cf4dab6b3d610319620f8110d561ad6b444555401997b82ce91",
+      "apps/web/src/project/MissionReadiness.tsx": "a1e68e015c798e370c6602688532edd7d157297ddea875485d295707e63e3e54",
+      "apps/web/src/project/MissionResultReview.test.tsx": "59ccc72898d4843a390b0b1af52b0070b9de38c7cdf4f07e87c9db58863eec3f",
+      "apps/web/src/project/MissionResultReview.tsx": "2b153113e421ea0fceaaf10c62f185ecd8936907ee9f9c1637aa9465ce58e1ab",
+      "apps/web/src/project/MissionResultReviewForm.tsx": "ef56164d88d6448558bd1631f323c0602e15c814a62e8eb695eb04e4d454a3ea",
+      "apps/web/src/project/TaskResults.test.tsx": "9508e06d35109d12060fa627727c1a827643cecb6e20de8b8f27b56651289130",
+      "apps/web/src/project/TaskResults.tsx": "77c246b4e9188c123cbb3e51e1b09d71091bd1b0b5fc78225215193b2648d84d",
+      "apps/web/src/project/use-applicability-history.ts": "459771f89f8431508717cadc6e33a304c9a9a8e9998157610286c9b5c2b34f29",
+      "apps/web/src/project/use-client-mission-rejection.ts": "fbe516cac56c81d3cbd2c239d4bb9a2ca7291f83b0583d89ea8706676d7fd152",
+      "eslint-suppressions.json": "05174428985b83a8ad1e0b1f67c876446d30250abc22cfc2c27d8b72963c955e",
+      "scripts/browser-sequences.mjs": "149293b9a29c58004516daac3b3743764de4c4eda03dc5c2de62e4b8fb667792",
+      "scripts/browser-sequences.test.mjs": "23b3fa1ce1ee87f9fcd17489f7ff2300be5e2f80b79131f0341650032d971430",
+      "scripts/nightly-ui-chaos-report.mjs": "6aa590ede07bfbebc21de1c57e3d091e393fca3e9a555593b481c9a40aee3ee7",
+      "scripts/nightly-ui-chaos-report.test.mjs": "23d135ea3d4fd08c1cdae121190a08eee61d87226a3233e115f9a9de7d63aa15",
+      "scripts/verify-journey.test.mjs": "8f754b9c7c8f9dcd8864c0fc79070d19a50f22f068e7c85b114dea4d007e716e"
+    }
+  },
+  "defaultExplorationBounds": {
+    "runs": 2,
+    "maxSteps": 10,
+    "milliseconds": 60000
+  },
+  "controlledDefect": {
+    "issue": 1461,
+    "journey": "mission-result-action-sequences",
+    "seed": "1461001",
+    "replay": "mission-task-result@desktop~10~0",
+    "budgetMilliseconds": 60000,
+    "file": "apps/web/src/project/TaskResults.tsx",
+    "restoredSha256": "77c246b4e9188c123cbb3e51e1b09d71091bd1b0b5fc78225215193b2648d84d",
+    "defectSha256": "14c3c494c05705723cf94216d456e2553f222118373d77b5f9def9a689ab7ab4",
+    "injected": {
+      "exitCode": 1,
+      "reports": [
+        {
+          "caseId": "mission-task-result",
+          "width": "desktop",
+          "status": "failed",
+          "path": "0",
+          "replay": "UI_SEQUENCE_REPLAY='mission-task-result@desktop~10~0' pnpm verify:journey mission-result-action-sequences --chaos 1461001",
+          "interrupted": false,
+          "durationMilliseconds": 41762
+        }
+      ]
+    },
+    "sourceRestored": true,
+    "restored": {
+      "exitCode": 0,
+      "reports": [
+        {
+          "caseId": "mission-task-result",
+          "width": "desktop",
+          "status": "passed",
+          "path": "0",
+          "replay": "UI_SEQUENCE_REPLAY='mission-task-result@desktop~10~0' pnpm verify:journey mission-result-action-sequences --chaos 1461001",
+          "interrupted": false,
+          "durationMilliseconds": 23129
+        }
+      ]
+    }
+  },
+  "outcomes": [
+    {
+      "run": "1461-applicability-confirmed-admission",
+      "journey": "mission-applicability",
+      "status": "passed",
+      "exitCode": 0,
+      "chaosSeed": null,
+      "runs": [
+        {
+          "tests": {
+            "passed": 16,
+            "failed": 0,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "run": "1461-defect-injected",
+      "journey": "mission-result-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 0,
+            "failed": 1,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "failed",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 41762,
+              "path": "0",
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 1,
+                "held-read:return": 1,
+                "held-read:release": 1,
+                "save-result:none": 0
+              },
+              "replay": "UI_SEQUENCE_REPLAY='mission-task-result@desktop~10~0' pnpm verify:journey mission-result-action-sequences --chaos 1461001"
+            }
+          ],
+          "failures": [
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Browser sequences mission-task-result@desktop: failed. Timed out 20000ms waiting for expect(locator).toBeVisible()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1461-defect-restored",
+      "journey": "mission-result-action-sequences",
+      "status": "passed",
+      "exitCode": 0,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 1,
+            "failed": 0,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 23129,
+              "path": "0",
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1
+              },
+              "replay": "UI_SEQUENCE_REPLAY='mission-task-result@desktop~10~0' pnpm verify:journey mission-result-action-sequences --chaos 1461001"
+            }
+          ],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "run": "1461-mission-applicability",
+      "journey": "mission-applicability",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": null,
+      "runs": [
+        {
+          "tests": {
+            "passed": 8,
+            "failed": 8,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [],
+          "failures": [
+            {
+              "title": "mission-applicability.acceptance.spec.ts \u203a completes attributable applicability proposal/correction/decision/restore in en with independent native work",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Timed out 5000ms waiting for expect(locator).toBeVisible()"
+            },
+            {
+              "title": "mission-applicability.acceptance.spec.ts \u203a completes attributable applicability proposal/correction/decision/restore in ro with independent native work",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Timed out 5000ms waiting for expect(locator).toBeVisible()"
+            },
+            {
+              "title": "mission-applicability.acceptance.spec.ts \u203a completes attributable applicability proposal/correction/decision/restore in fr with independent native work",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Timed out 5000ms waiting for expect(locator).toBeVisible()"
+            },
+            {
+              "title": "mission-applicability.acceptance.spec.ts \u203a completes attributable applicability proposal/correction/decision/restore in ru with independent native work",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Timed out 5000ms waiting for expect(locator).toBeVisible()"
+            },
+            {
+              "title": "mission-applicability.acceptance.spec.ts \u203a completes attributable applicability proposal/correction/decision/restore in en with independent native work",
+              "project": "operational-acceptance-narrow",
+              "error": "Error: Timed out 5000ms waiting for expect(locator).toBeVisible()"
+            },
+            {
+              "title": "mission-applicability.acceptance.spec.ts \u203a completes attributable applicability proposal/correction/decision/restore in ro with independent native work",
+              "project": "operational-acceptance-narrow",
+              "error": "Error: Timed out 5000ms waiting for expect(locator).toBeVisible()"
+            },
+            {
+              "title": "mission-applicability.acceptance.spec.ts \u203a completes attributable applicability proposal/correction/decision/restore in fr with independent native work",
+              "project": "operational-acceptance-narrow",
+              "error": "Error: Timed out 5000ms waiting for expect(locator).toBeVisible()"
+            },
+            {
+              "title": "mission-applicability.acceptance.spec.ts \u203a completes attributable applicability proposal/correction/decision/restore in ru with independent native work",
+              "project": "operational-acceptance-narrow",
+              "error": "Error: Timed out 5000ms waiting for expect(locator).toBeVisible()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1461-mission-current-work",
+      "journey": "mission-current-work",
+      "status": "passed",
+      "exitCode": 0,
+      "chaosSeed": null,
+      "runs": [
+        {
+          "tests": {
+            "passed": 2,
+            "failed": 0,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "run": "1461-mission-plan",
+      "journey": "mission-plan",
+      "status": "passed",
+      "exitCode": 0,
+      "chaosSeed": null,
+      "runs": [
+        {
+          "tests": {
+            "passed": 2,
+            "failed": 0,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "run": "1461-sequences-command-admission",
+      "journey": "mission-result-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 2,
+            "failed": 2,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "interrupted",
+              "runs": 0,
+              "shrinks": 0,
+              "durationMilliseconds": 65957,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "mission-task-result",
+              "width": "narrow",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "interrupted",
+              "runs": 0,
+              "shrinks": 0,
+              "durationMilliseconds": 67429,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 1,
+                "retire-http-through-company-aba": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": [
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Browser sequences mission-task-result@desktop: interrupted. null. Original action trace: null"
+            },
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-narrow",
+              "error": "Error: Browser sequences mission-task-result@narrow: interrupted. null. Original action trace: null"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1461-sequences-draft",
+      "journey": "mission-result-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 2,
+            "failed": 2,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "interrupted",
+              "runs": 0,
+              "shrinks": 0,
+              "durationMilliseconds": 72128,
+              "path": null,
+              "coverage": {
+                "native-stale-task-result-intention": 1,
+                "recover-result-from-native-read": 1,
+                "retire-native-denial-before-company-recovery": 2,
+                "locale:ru": 1,
+                "prepare-literal-mission-result": 2,
+                "save-result:none": 1,
+                "write-result-during-independent-project-read": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "mission-task-result",
+              "width": "narrow",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "interrupted",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 68029,
+              "path": null,
+              "coverage": {
+                "native-stale-task-result-intention": 1,
+                "recover-result-from-native-read": 1,
+                "retire-native-denial-before-company-recovery": 2,
+                "locale:ru": 1,
+                "prepare-literal-mission-result": 2,
+                "save-result:none": 1,
+                "write-result-during-independent-project-read": 1,
+                "download-exact-mission-original": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": [
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Browser sequences mission-task-result@desktop: interrupted. null. Original action trace: null"
+            },
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-narrow",
+              "error": "Error: Browser sequences mission-task-result@narrow: interrupted. null. Original action trace: null"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1461-sequences-final-scope",
+      "journey": "mission-result-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 3,
+            "failed": 1,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "interrupted",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 64828,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 1,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "mission-task-result",
+              "width": "narrow",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 52941,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 2,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": [
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Browser sequences mission-task-result@desktop: interrupted. null. Original action trace: null"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1461-sequences-first",
+      "journey": "mission-result-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 0,
+            "failed": 4,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "failed",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 63754,
+              "path": "0",
+              "coverage": {
+                "native-stale-task-result-intention": 1,
+                "recover-result-from-native-read": 1,
+                "retire-native-denial-before-company-recovery": 0,
+                "retire-http-through-company-aba": 1
+              },
+              "replay": "UI_SEQUENCE_REPLAY='mission-task-result@desktop~10~0' pnpm verify:journey mission-result-action-sequences --chaos 1461001"
+            },
+            {
+              "caseId": "mission-task-result",
+              "width": "narrow",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "failed",
+              "runs": 1,
+              "shrinks": 1,
+              "durationMilliseconds": 67541,
+              "path": "0:1",
+              "coverage": {
+                "native-stale-task-result-intention": 1,
+                "recover-result-from-native-read": 1,
+                "retire-native-denial-before-company-recovery": 0,
+                "retire-http-through-company-aba": 1
+              },
+              "replay": "UI_SEQUENCE_REPLAY='mission-task-result@narrow~10~0:1' pnpm verify:journey mission-result-action-sequences --chaos 1461001"
+            }
+          ],
+          "failures": [
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a preserves native mission result retry, originals and independent work across every retired read stage",
+              "project": "operational-acceptance-desktop",
+              "error": "TimeoutError: locator.call: Timeout 20000ms exceeded."
+            },
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a preserves native mission result retry, originals and independent work across every retired read stage",
+              "project": "operational-acceptance-narrow",
+              "error": "TimeoutError: locator.call: Timeout 20000ms exceeded."
+            },
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Browser sequences mission-task-result@desktop: failed. expect(received).toBe(expected) // Object.is equality"
+            },
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-narrow",
+              "error": "Error: Browser sequences mission-task-result@narrow: failed. expect(received).toBe(expected) // Object.is equality"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1461-sequences-independent-results",
+      "journey": "mission-result-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 3,
+            "failed": 1,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "interrupted",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 62602,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 1,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "select-native-result-project": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "mission-task-result",
+              "width": "narrow",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 49958,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 1,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "select-native-result-project": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": [
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Browser sequences mission-task-result@desktop: interrupted. null. Original action trace: null"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1461-sequences-isolated-grant",
+      "journey": "mission-result-action-sequences",
+      "status": "passed",
+      "exitCode": 0,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 4,
+            "failed": 0,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 48277,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 1,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "select-native-result-project": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "mission-task-result",
+              "width": "narrow",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 40011,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 1,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "select-native-result-project": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "run": "1461-sequences-native-fixture",
+      "journey": "mission-result-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 2,
+            "failed": 2,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "interrupted",
+              "runs": 0,
+              "shrinks": 0,
+              "durationMilliseconds": 71955,
+              "path": null,
+              "coverage": {
+                "native-stale-task-result-intention": 1,
+                "recover-result-from-native-read": 1,
+                "retire-native-denial-before-company-recovery": 2,
+                "locale:ru": 1,
+                "prepare-literal-mission-result": 2,
+                "save-result:none": 1,
+                "write-result-during-independent-project-read": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "mission-task-result",
+              "width": "narrow",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "interrupted",
+              "runs": 0,
+              "shrinks": 0,
+              "durationMilliseconds": 64447,
+              "path": null,
+              "coverage": {
+                "native-stale-task-result-intention": 1,
+                "recover-result-from-native-read": 1,
+                "retire-native-denial-before-company-recovery": 2,
+                "locale:ru": 1,
+                "prepare-literal-mission-result": 2,
+                "save-result:none": 1,
+                "write-result-during-independent-project-read": 1,
+                "download-exact-mission-original": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": [
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Browser sequences mission-task-result@desktop: interrupted. null. Original action trace: null"
+            },
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-narrow",
+              "error": "Error: Browser sequences mission-task-result@narrow: interrupted. null. Original action trace: null"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1461-sequences-native-navigation",
+      "journey": "mission-result-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 3,
+            "failed": 1,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "interrupted",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 61964,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 1,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "select-native-result-project": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "mission-task-result",
+              "width": "narrow",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 51709,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 1,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "select-native-result-project": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": [
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Browser sequences mission-task-result@desktop: interrupted. null. Original action trace: null"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1461-sequences-native-preference",
+      "journey": "mission-result-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 1,
+            "failed": 3,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "interrupted",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 70014,
+              "path": null,
+              "coverage": {
+                "native-stale-task-result-intention": 1,
+                "recover-result-from-native-read": 1,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "prepare-literal-mission-result": 2,
+                "save-result:none": 1,
+                "write-result-during-independent-project-read": 1,
+                "download-exact-mission-original": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "mission-task-result",
+              "width": "narrow",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "failed",
+              "runs": 1,
+              "shrinks": 1,
+              "durationMilliseconds": 64671,
+              "path": "0:0",
+              "coverage": {},
+              "replay": "UI_SEQUENCE_REPLAY='mission-task-result@narrow~10~0:0' pnpm verify:journey mission-result-action-sequences --chaos 1461001"
+            }
+          ],
+          "failures": [
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a preserves native mission result retry, originals and independent work across every retired read stage",
+              "project": "operational-acceptance-narrow",
+              "error": "Error: Timed out 20000ms waiting for expect(locator).toHaveAttribute(expected)"
+            },
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Browser sequences mission-task-result@desktop: interrupted. null. Original action trace: null"
+            },
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-narrow",
+              "error": "Error: Browser sequences mission-task-result@narrow: failed. Timed out 20000ms waiting for expect(locator).toHaveAttribute(expected)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1461-sequences-observed-task-version",
+      "journey": "mission-result-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 3,
+            "failed": 1,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "interrupted",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 64791,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 1,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "mission-task-result",
+              "width": "narrow",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 55184,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 2,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": [
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Browser sequences mission-task-result@desktop: interrupted. null. Original action trace: null"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1461-sequences-primitive-actions",
+      "journey": "mission-result-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 3,
+            "failed": 1,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "interrupted",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 72342,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 1,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "mission-task-result",
+              "width": "narrow",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 52914,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 2,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": [
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Browser sequences mission-task-result@desktop: interrupted. null. Original action trace: null"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1461-sequences-primitive-scope-returns",
+      "journey": "mission-result-action-sequences",
+      "status": "passed",
+      "exitCode": 0,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 4,
+            "failed": 0,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 51241,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 1,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "select-native-result-project": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "mission-task-result",
+              "width": "narrow",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 43272,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 1,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "select-native-result-project": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "run": "1461-sequences-readiness",
+      "journey": "mission-result-action-sequences",
+      "status": "interrupted",
+      "exitCode": 3,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 0,
+            "failed": 0,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "interrupted",
+              "runs": 0,
+              "shrinks": 0,
+              "durationMilliseconds": 83584,
+              "path": null,
+              "coverage": {
+                "native-stale-task-result-intention": 1,
+                "recover-result-from-native-read": 1,
+                "retire-native-denial-before-company-recovery": 2,
+                "locale:ru": 1,
+                "prepare-literal-mission-result": 2,
+                "save-result:none": 1,
+                "write-result-during-independent-project-read": 0
+              },
+              "replay": null
+            }
+          ],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "run": "1461-sequences-reviewed-final",
+      "journey": "mission-result-action-sequences",
+      "status": "passed",
+      "exitCode": 0,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 4,
+            "failed": 0,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 49319,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 1,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "select-native-result-project": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "mission-task-result",
+              "width": "narrow",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 40940,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 1,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "select-native-result-project": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": []
+        }
+      ]
+    },
+    {
+      "run": "1461-sequences-runtime-grants",
+      "journey": "mission-result-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 3,
+            "failed": 1,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "interrupted",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 62231,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 1,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "select-native-result-project": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "mission-task-result",
+              "width": "narrow",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "passed",
+              "runs": 2,
+              "shrinks": 0,
+              "durationMilliseconds": 50625,
+              "path": null,
+              "coverage": {
+                "prepare-literal-mission-result": 2,
+                "retire-token-through-task-aba": 1,
+                "held-read:replace": 2,
+                "held-read:return": 2,
+                "held-read:release": 1,
+                "save-result:none": 1,
+                "retire-http-through-access-aba": 1,
+                "native-result-history": 3,
+                "locale:ro": 1,
+                "download-exact-mission-original": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "select-native-result-project": 1
+              },
+              "replay": null
+            }
+          ],
+          "failures": [
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Browser sequences mission-task-result@desktop: interrupted. null. Original action trace: null"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1461-sequences-staged-actions",
+      "journey": "mission-result-action-sequences",
+      "status": "failed",
+      "exitCode": 1,
+      "chaosSeed": 1461001,
+      "runs": [
+        {
+          "tests": {
+            "passed": 2,
+            "failed": 2,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [
+            {
+              "caseId": "mission-task-result",
+              "width": "desktop",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "interrupted",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 74579,
+              "path": null,
+              "coverage": {
+                "native-stale-task-result-intention": 1,
+                "recover-result-from-native-read": 1,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "prepare-literal-mission-result": 2,
+                "save-result:none": 1,
+                "write-result-during-independent-project-read": 1,
+                "download-exact-mission-original": 1
+              },
+              "replay": null
+            },
+            {
+              "caseId": "mission-task-result",
+              "width": "narrow",
+              "seed": 1461001,
+              "steps": 10,
+              "status": "interrupted",
+              "runs": 1,
+              "shrinks": 0,
+              "durationMilliseconds": 79173,
+              "path": null,
+              "coverage": {
+                "native-stale-task-result-intention": 2,
+                "recover-result-from-native-read": 2,
+                "hold-native-denial-before-company-recovery": 1,
+                "replace-company-and-deliver-held-denial": 1,
+                "recover-native-source-company": 1,
+                "prepare-literal-mission-result": 2,
+                "save-result:none": 1,
+                "write-result-during-independent-project-read": 1,
+                "download-exact-mission-original": 1,
+                "native-result-history": 2,
+                "locale:ro": 2
+              },
+              "replay": null
+            }
+          ],
+          "failures": [
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-desktop",
+              "error": "Error: Browser sequences mission-task-result@desktop: interrupted. null. Original action trace: null"
+            },
+            {
+              "title": "mission-result-action-sequences.acceptance.spec.ts \u203a generated mission result sequences \u203a explores generated native mission Task-result action sequences",
+              "project": "operational-acceptance-narrow",
+              "error": "Error: Browser sequences mission-task-result@narrow: interrupted. null. Original action trace: {\"trial\":{\"trial\":2,\"initial\":\"recorded\",\"generated\":[{\"choice\":1991413774,\"value\":{\"variant\":\"a\",\"locale\":\"ru\",\"stage\":\"parser\",\"replacement\":\"c"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "1461-task-results",
+      "journey": "task-results",
+      "status": "passed",
+      "exitCode": 0,
+      "chaosSeed": null,
+      "runs": [
+        {
+          "tests": {
+            "passed": 4,
+            "failed": 0,
+            "flaky": 0,
+            "skipped": 0
+          },
+          "sequences": [],
+          "failures": []
+        }
+      ]
+    }
+  ],
+  "inspection": "Selected RO desktop/RU narrow PNGs inspected. Actual original PDF text inspected when present. Raw traces/logs remain private; full native evidence also retained by PR CI.",
+  "limits": "Finite prepared examples and bounded generated sequences; retained failed/incomplete attempts do not count as complete proof. Exact replay selects one retained case with its original seed/path. No business rule, native grant policy, schema, real data, model/provider call or deployment introduced."
+}
