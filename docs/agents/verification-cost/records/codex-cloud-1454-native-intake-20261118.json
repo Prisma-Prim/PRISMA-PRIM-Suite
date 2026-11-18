@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1454-native-intake-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1454,
+  "pullRequest": 1466,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-18T11:18:45.040Z",
+    "end": "2026-11-18T13:16:29.000Z",
+    "durationSeconds": 7064
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 6,
+      "P3": 1
+    },
+    "notes": "Local proof passed; required CI pending.3 independent P2 fixes, plus cross-batch duplication,NULL CHECK acceptance,competing skips(P2) and stale history(P3). Native631 pass/4 timeout/1 real-ClamAV skip;4 focused serial replays pass. Final native10/Web20/schema19 and RO/RU2 pass. Wall overlaps other work; model/tokens/price unavailable."
+  }
+}
