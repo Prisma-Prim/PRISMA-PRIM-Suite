@@ -1,0 +1,33 @@
+{
+  "source": "3cd33ffa7faff3c869468294607ba15d7f9e1338",
+  "workflowRun": 44265177806,
+  "artifactId": 14413156047,
+  "archiveSha256": "f066a626d816517ad73a9676f7bb8bbca6428f4f9b704098322ea7d33319fea9",
+  "screenshots": [
+    {
+      "path": "ci/narrow/auditor-cannot-approve-own-team-ru.png",
+      "sha256": "334af74d9caa9fc7930e8b543dcfeb9ea4586b5a7ebf9893e212a55c988b39b1",
+      "bytes": 59280,
+      "visuallyInspected": true
+    },
+    {
+      "path": "ci/narrow/first-team-authorized-different-auditor-ru.png",
+      "sha256": "e56011655ec074be0453581e4dc94b2f12646768ba6752549addf8bff871441b",
+      "bytes": 66074,
+      "visuallyInspected": true
+    },
+    {
+      "path": "ci/narrow/selected-auditor-stage-report-confirmed-ru.png",
+      "sha256": "00d92cff3c945c8579c26efa38a9e7f17f63af952707a88f1e7bf15da279d908",
+      "bytes": 60114,
+      "visuallyInspected": true
+    },
+    {
+      "path": "ci/narrow/test-finished-1.png",
+      "sha256": "00d92cff3c945c8579c26efa38a9e7f17f63af952707a88f1e7bf15da279d908",
+      "bytes": 60114,
+      "visuallyInspected": true
+    }
+  ],
+  "localBothWidthManifest": "final-manifest.json"
+}

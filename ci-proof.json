@@ -1,0 +1,572 @@
+{
+  "source": "3cd33ffa7faff3c869468294607ba15d7f9e1338",
+  "workflowRun": 44265177806,
+  "preparedFictionalFixtures": true,
+  "ciComplete": true,
+  "selectedProofs": {
+    "apps/api/src/certification/certification-team-candidates.rest.test.ts": [
+      {
+        "title": "Certification first-team auditor candidates discovers a previously uninvolved authorized auditor without exposing a staff directory or changing the Case",
+        "status": "passed"
+      },
+      {
+        "title": "Certification first-team auditor candidates requires current manager authority and gives concealed and absent Cases identical denials across Company and Workspace selections",
+        "status": "passed"
+      },
+      {
+        "title": "Certification first-team auditor candidates removes revoked auditors and missing Project prerequisites and refuses the manager after its grant is revoked",
+        "status": "passed"
+      },
+      {
+        "title": "Certification first-team auditor candidates pages more than twenty-five eligible auditors without duplicates and treats search text literally",
+        "status": "passed"
+      },
+      {
+        "title": "Certification first-team auditor candidates keeps candidate reads available when an independent Actor profile refresh commits during live authority revalidation",
+        "status": "passed"
+      },
+      {
+        "title": "Certification first-team auditor candidates conceals a suspended membership from candidate searches without exposing an exclusion reason",
+        "status": "passed"
+      }
+    ],
+    "apps/api/src/certification/certification-team.rest.test.ts": [
+      {
+        "title": "Certification Case audit team proposes a team, lets an approver outside it return and then approve a new version",
+        "status": "passed"
+      },
+      {
+        "title": "Certification Case audit team refuses compositions without one leader or without the category, and first-format boolean declarations",
+        "status": "passed"
+      },
+      {
+        "title": "Certification Case audit team refuses a later team version that links a member who decided on an earlier one",
+        "status": "passed"
+      },
+      {
+        "title": "Certification Case audit team refuses an approver on the team, a declared conflict and a programme manager without the approver role",
+        "status": "passed"
+      }
+    ],
+    "apps/api/src/certification/certification-decision.rest.test.ts": [
+      {
+        "title": "Certification Case decision and Certificate refuses a granting decision without recorded Certificate data",
+        "status": "passed"
+      },
+      {
+        "title": "Certification Case decision and Certificate decides and records the Certificate with its computed validity",
+        "status": "passed"
+      },
+      {
+        "title": "Certification Case decision and Certificate keeps every team member, past ones included, apart from the review and the decision",
+        "status": "passed"
+      },
+      {
+        "title": "Certification Case decision and Certificate keeps the Stage 2 report approval made on behalf of the certification body",
+        "status": "passed"
+      },
+      {
+        "title": "Certification Case decision and Certificate keeps the Stage report approver on behalf of the certification body off the audit team and out of the future",
+        "status": "passed"
+      },
+      {
+        "title": "Certification Case decision and Certificate refuses a dossier review on behalf of the certification body dated after the latest business date",
+        "status": "passed"
+      },
+      {
+        "title": "Certification Case decision and Certificate corrects the decided texts with a reason and keeps the decided outcome",
+        "status": "passed"
+      },
+      {
+        "title": "Certification Case decision and Certificate refuses a decision with unmet preconditions, against the recommendation or by a team member",
+        "status": "passed"
+      }
+    ],
+    "apps/web/src/certification/CertificationWorkspace.team.test.tsx": [
+      {
+        "title": "Certification audit team and its approval links an eligible internal auditor on the first team even when that auditor never acted on the Case",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval retires a previously discovered auditor after a fresh search no longer admits them, preserving the literal draft and blocking its stale link",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval finds an auditor beyond the first page and searches Cyrillic labels without discarding the team draft",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval rejects a candidate page for another Case and recovers without clearing the literal team draft",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval retires a held candidate read when manager authority is replaced",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval shows a reader every team version and decision without any form",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval mirrors the composition rules before proposing the first team",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval explains the team refusal 400 CERTIFICATION_TEAM_LEADER in plain language",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval explains the team refusal 400 CERTIFICATION_TEAM_CATEGORY in plain language",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval explains the team refusal 400 CERTIFICATION_TEAM_CONFLICT_NOTE in plain language",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval explains the team refusal 400 CERTIFICATION_TEAM_MEMBER_UNKNOWN in plain language",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval explains the team refusal 409 CERTIFICATION_AGREEMENT_MISSING in plain language",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval explains the team refusal 409 CERTIFICATION_CORRECTION_REASON in plain language",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval explains the team refusal 409 CERTIFICATION_INDEPENDENCE in plain language",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval proposes a new version with its reason after a return",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval lets an approver outside the team approve it, then shows the Stage 1 plan next",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval returns the team with a reason",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval explains why an approver linked to any team version cannot decide",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval shows the server independence refusal in plain language until a reload",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval refuses to approve a team with a declared conflict, before and at the server",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval keeps the team draft through a stale refusal and saves it after a reload",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval refuses a decision on an outdated team version until the Case is reloaded",
+        "status": "passed"
+      },
+      {
+        "title": "Certification audit team and its approval retires the Case and rechecks authority when the approver grant is refused",
+        "status": "passed"
+      }
+    ],
+    "scripts/verify-journey.test.mjs": [
+      {
+        "title": "parses one journey with single-run defaults",
+        "status": "passed"
+      },
+      {
+        "title": "parses every flag in its separate and inline forms",
+        "status": "passed"
+      },
+      {
+        "title": "refuses missing, extra and malformed arguments as usage errors",
+        "status": "passed"
+      },
+      {
+        "title": "names each acceptance spec as one journey",
+        "status": "passed"
+      },
+      {
+        "title": "selects exactly one spec file, never a suffix-sharing neighbour",
+        "status": "passed"
+      },
+      {
+        "title": "plans the shared acceptance prebuild once and one fresh run per repetition",
+        "status": "passed"
+      },
+      {
+        "title": "the public journey runner rejects source-tree evidence output before any build",
+        "status": "passed"
+      },
+      {
+        "title": "refuses an unknown journey and names the known ones",
+        "status": "passed"
+      },
+      {
+        "title": "names the journeys that opt into UI chaos and refuses chaos on any other",
+        "status": "passed"
+      },
+      {
+        "title": "wraps the canonical acceptance config with full evidence and a preview-only server",
+        "status": "passed"
+      },
+      {
+        "title": "passes every repetition under load and returns its evidence paths",
+        "status": "passed"
+      },
+      {
+        "title": "stops at the first failed repetition and names the failing test",
+        "status": "passed"
+      },
+      {
+        "title": "hands each chaos repetition its own seed and replay command, never a stale one",
+        "status": "passed"
+      },
+      {
+        "title": "a time budget never starts a repetition it expects to overrun",
+        "status": "passed"
+      },
+      {
+        "title": "reports a failed prebuild as an environment error without running the journey",
+        "status": "passed"
+      },
+      {
+        "title": "separates a run that could not start from a journey failure",
+        "status": "passed"
+      },
+      {
+        "title": "command line: an unknown journey is a usage error that lists the journeys",
+        "status": "passed"
+      },
+      {
+        "title": "command line: a bad flag is a usage error",
+        "status": "passed"
+      },
+      {
+        "title": "command line: chaos on a journey without the chaos fixture is a usage error",
+        "status": "passed"
+      },
+      {
+        "title": "command line: --list prints one journey name per line",
+        "status": "passed"
+      },
+      {
+        "title": "command line: refuses to build without a local test database",
+        "status": "passed"
+      },
+      {
+        "title": "refuses an unknown generated case before requiring or touching a test database",
+        "status": "passed"
+      },
+      {
+        "title": "requires the original explicit seed and one repetition for an exact generated replay",
+        "status": "passed"
+      },
+      {
+        "title": "cannot report a generated journey passed when only its hand example ran",
+        "status": "passed"
+      },
+      {
+        "title": "retains measured coverage from every real generated adapter and viewport",
+        "status": "passed"
+      },
+      {
+        "title": "Access proof requires its own generated case on both screens, independently of financial proof",
+        "status": "passed"
+      },
+      {
+        "title": "an exact generated replay runs only its selected test and screen",
+        "status": "passed"
+      },
+      {
+        "title": "Document proof requires every implemented native case and screen independently of Access and financial evidence",
+        "status": "passed"
+      },
+      {
+        "title": "Contract proof requires its own generated case on both screens and preserves an isolated exact replay",
+        "status": "passed"
+      }
+    ],
+    "apps/web/e2e/certification-team-selection.acceptance.spec.ts": [
+      {
+        "title": "links a previously uninvolved internal auditor through the first team and independent approval, then records that auditor\u2019s Stage work",
+        "project": "operational-acceptance-desktop",
+        "status": "passed",
+        "durationMilliseconds": 9795,
+        "screenshots": [
+          "acceptance/certification-team-selecti-6bc07-s-that-auditor\u2019s-Stage-work-operational-acceptance-desktop/test-finished-1.png"
+        ]
+      },
+      {
+        "title": "links a previously uninvolved internal auditor through the first team and independent approval, then records that auditor\u2019s Stage work",
+        "project": "operational-acceptance-narrow",
+        "status": "passed",
+        "durationMilliseconds": 14367,
+        "screenshots": [
+          "acceptance/certification-team-selecti-6bc07-s-that-auditor\u2019s-Stage-work-operational-acceptance-narrow/test-finished-1.png"
+        ]
+      }
+    ]
+  },
+  "downloadedReportTotals": {
+    "acceptance-1.json": {
+      "startTime": "2026-11-18T08:23:25.076Z",
+      "duration": 1698122.954,
+      "expected": 127,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "acceptance-2.json": {
+      "startTime": "2026-11-18T08:24:51.945Z",
+      "duration": 2202449.168,
+      "expected": 127,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "api-0.json": {
+      "numTotalTests": 2215,
+      "numPassedTests": 2214,
+      "numFailedTests": 0,
+      "numPendingTests": 1
+    },
+    "api-1.json": {
+      "numTotalTests": 1675,
+      "numPassedTests": 1675,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    },
+    "api-2.json": {
+      "numTotalTests": 1916,
+      "numPassedTests": 1916,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    },
+    "api-3.json": {
+      "numTotalTests": 104,
+      "numPassedTests": 104,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    },
+    "scripts.json": {
+      "passed": 1245,
+      "skipped": 1
+    },
+    "web_unit.json": {
+      "numTotalTests": 5827,
+      "numPassedTests": 5827,
+      "numFailedTests": 0,
+      "numPendingTests": 0
+    }
+  },
+  "unexecutedTests": [
+    {
+      "file": "apps/api/src/documents/document-malware-scanner.integration.test.ts",
+      "title": "Questionnaire scanner against disposable real ClamAV proves clean synthetic PDF bytes and rejects the standard EICAR test bytes",
+      "status": "skipped"
+    }
+  ],
+  "workflow": {
+    "conclusion": "success",
+    "head_sha": "3cd33ffa7faff3c869468294607ba15d7f9e1338",
+    "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/44265177806",
+    "id": 44265177806,
+    "run_started_at": "2026-11-18T08:13:42Z",
+    "status": "completed",
+    "updated_at": "2026-11-18T09:03:00Z"
+  },
+  "jobs": [
+    {
+      "id": 134667812452,
+      "name": "scope",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134667812811,
+      "name": "worktree_windows",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134667812976,
+      "name": "checks",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134667981964,
+      "name": "postgres_image",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134672094148,
+      "name": "browser (2)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134672094188,
+      "name": "flaky_guard (acceptance operational-acceptance-narrow)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134672094205,
+      "name": "flaky_guard (web)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134672094218,
+      "name": "browser (3)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134672094230,
+      "name": "api (1/3)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134672094231,
+      "name": "flaky_guard (api)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134672094235,
+      "name": "api (serial)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134672094237,
+      "name": "web_unit",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134672094238,
+      "name": "build",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134672094246,
+      "name": "browser (1)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134672094251,
+      "name": "acceptance (1)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134672094266,
+      "name": "flaky_guard (acceptance operational-acceptance-desktop)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134672094320,
+      "name": "acceptance (2)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134672094352,
+      "name": "packaging",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134672094385,
+      "name": "api (3/3)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134672094416,
+      "name": "api (2/3)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 134690976631,
+      "name": "quality",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "artifactProvenance": [
+    {
+      "id": 14412041144,
+      "name": "ci-test-results-api-2-44265177806",
+      "sha256": "dd6ba5928d79e349eb261b8479a595b0aa632154f13d43d3da35fea0d0b445d0",
+      "head": "3cd33ffa7faff3c869468294607ba15d7f9e1338"
+    },
+    {
+      "id": 14411242212,
+      "name": "ci-test-results-api-1-44265177806",
+      "sha256": "314395e388a64607382e63c49d1cc74aa103dcae13e3ae3ebfac4c4bec0720b3",
+      "head": "3cd33ffa7faff3c869468294607ba15d7f9e1338"
+    },
+    {
+      "id": 14410922050,
+      "name": "ci-test-results-api-0-44265177806",
+      "sha256": "da3c5855fd6c7dd3823218f39c04ee1df396c797764cb8118f1d0bf9866ce579",
+      "head": "3cd33ffa7faff3c869468294607ba15d7f9e1338"
+    },
+    {
+      "id": 14410801284,
+      "name": "ci-test-results-api-3-44265177806",
+      "sha256": "1777d889ef0f9a8e3d5bc92887efb011cb88d3986acb31183942565c8ae5e80d",
+      "head": "3cd33ffa7faff3c869468294607ba15d7f9e1338"
+    },
+    {
+      "id": 14410258761,
+      "name": "ci-test-results-web_unit-44265177806",
+      "sha256": "f3ef372d5826ea34296a4347587bcebe41b47e765ef35c0d78afff7ef7c32d0c",
+      "head": "3cd33ffa7faff3c869468294607ba15d7f9e1338"
+    },
+    {
+      "id": 14410127644,
+      "name": "ci-test-results-scripts-44265177806",
+      "sha256": "0893ade87eb0049493f13ffbc08e4a59a208088ec24c35d3abaed138ecbcf154",
+      "head": "3cd33ffa7faff3c869468294607ba15d7f9e1338"
+    },
+    {
+      "id": 14411868450,
+      "name": "ci-test-results-acceptance-1-44265177806",
+      "sha256": "0a2fe9e9435de85d50864abbc533e6bc20138623a2a47a6b989bdd11f9a604ec",
+      "head": "3cd33ffa7faff3c869468294607ba15d7f9e1338"
+    },
+    {
+      "id": 14413136035,
+      "name": "ci-test-results-acceptance-2-44265177806",
+      "sha256": "1c9d9a454ca40b793bc9d6c06b2cb003b9174b636e3215d0b1bbee13f6bebed2",
+      "head": "3cd33ffa7faff3c869468294607ba15d7f9e1338"
+    }
+  ],
+  "scopeNotes": [
+    "All cited proof files executed and passed in this CI run.",
+    "The existing real-ClamAV integration test was skipped; it is not proof for #1439.",
+    "Prepared fictional fixtures and test identity admission do not qualify real Client documents, production Clerk sign-in or a private pilot.",
+    "The new browser regression seeds through agreement using public API, then drives first team, independent approval, plan and auditor report through UI controls.",
+    "The existing canonical journey seeds through recommendation using public API, then exercises UI corrections, closing and register downloads.",
+    "Local run05 screenshots from the same source were inspected at both widths; CI narrow screenshots were additionally inspected."
+  ]
+}
