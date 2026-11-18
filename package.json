@@ -16,6 +16,7 @@
     "verify:docs": "pnpm format:check && pnpm test:scripts && pnpm --filter @prisma-prim/api exec vitest run src/demonstration",
     "verify:journey": "node scripts/verify-journey.mjs",
     "postgres:managed": "node scripts/managed-postgres.mjs",
+    "pilot:audit": "node scripts/audit-pilot.mjs",
     "build": "pnpm --recursive build",
     "dev": "pnpm --parallel --filter @prisma-prim/api --filter @prisma-prim/web dev",
     "format": "prettier --write .",

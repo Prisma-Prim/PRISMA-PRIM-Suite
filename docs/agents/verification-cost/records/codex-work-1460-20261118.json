@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-work-1460-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1460,
+  "pullRequest": 1468,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Prepared fictional pilot: root format/lint/types, strict E2E types, CLI/preview4, production-build1, composed native API10, full pilot2/2 and original combined2/2 pass; actual native SIGINT130 removes owned resources. Independent Standards0, Spec1 P2 guide role corrected with public HTTP red-green; reviewed native rerun pending when cost recorded. No real pilot/provider/scanner/OCR qualification; token/model/time telemetry unavailable, not estimated."
+  }
+}
