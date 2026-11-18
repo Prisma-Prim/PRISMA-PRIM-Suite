@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1467-history-visibility-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1467,
+  "pullRequest": 1469,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Both 403 and 404 history continuation regressions reproduced exposed source citations. The shared denial path now clears source history and preview while preserving ordinary native edits. All 21 rendered Stage and application prefill tests, types, lint and changed-file formatting pass. Required integration CI remains pending. Usage and elapsed time are unreported."
+  }
+}

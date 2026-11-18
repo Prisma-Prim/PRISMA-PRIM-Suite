@@ -139,7 +139,7 @@ const CONFIRMED = {
 export async function prepareCertificationJourney(
   request: APIRequestContext,
   suffix: string,
-  options: { stopAfter: 'agreement' | 'recommendation' } = {
+  options: { stopAfter: 'agreement' | 'team' | 'recommendation' } = {
     stopAfter: 'recommendation',
   },
 ) {
@@ -453,6 +453,8 @@ export async function prepareCertificationJourney(
     decision: 'approved',
     independenceAttested: true,
   });
+
+  if (options.stopAfter === 'team') return preparedJourney();
 
   // Stage 1: planned, one area of concern, reported "ready".
   await step(

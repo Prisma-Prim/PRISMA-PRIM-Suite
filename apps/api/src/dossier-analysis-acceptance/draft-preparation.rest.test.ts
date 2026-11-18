@@ -3,6 +3,7 @@ import { strToU8, zipSync } from 'fflate';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   CERTIFICATION_OWNER,
+  CERTIFICATION_AUDITOR,
   CERTIFICATION_READER,
   applicationFacts,
   openCertificationFixture,
@@ -33,9 +34,15 @@ describe.skipIf(!databaseUrl)(
       await fixture?.close();
     });
 
-    async function sourceCase() {
-      const caseId = await fixture.caseWithApplication();
-      const attachmentId = await fixture.attach(caseId, 'evidence', 2);
+    async function sourceCase(
+      approved = false,
+      prepare?: (caseId: string) => Promise<number>,
+    ) {
+      const caseId = approved
+        ? await fixture.approvedTeamCase()
+        : await fixture.caseWithApplication();
+      const revision = prepare ? await prepare(caseId) : approved ? 8 : 2;
+      const attachmentId = await fixture.attach(caseId, 'evidence', revision);
       const response = await fixture.call(
         CERTIFICATION_OWNER,
         `/certification-cases/${caseId}/documents`,
@@ -167,7 +174,14 @@ describe.skipIf(!databaseUrl)(
           ),
         );
       }
-      return { caseId, prefix, runId, documentVersionId, suggestions };
+      return {
+        caseId,
+        prefix,
+        runId,
+        documentVersionId,
+        suggestions,
+        revision: revision + 1,
+      };
     }
 
     it('offers only the latest confirmed and corrected literal values with citations, without changing the native Case', async () => {
@@ -315,6 +329,211 @@ describe.skipIf(!databaseUrl)(
       expect(JSON.stringify(historical.suggestions)).toContain(
         'ул. Учебная 14',
       );
+    });
+
+    it('prepares only reviewed scope for a native eligible Stage plan without writing a Case event', async () => {
+      const c = await sourceCase(true);
+      const scope = c.suggestions.find(
+        (s) => record(s.proposal).field === 'scope',
+      );
+      if (!scope) throw new Error('Expected reviewed scope');
+      await fixture.created(
+        await fixture.call(
+          CERTIFICATION_OWNER,
+          `${c.prefix}/suggestions/${text(scope.id)}/reviews`,
+          {
+            method: 'POST',
+            body: {
+              expectedRevision: 1,
+              decision: 'correct',
+              replacementValue: 'Producție de lactate — verificat',
+            },
+          },
+        ),
+      );
+      const events = await fixture.eventCount(c.caseId);
+      const path = `${c.prefix}/runs/${c.runId}/certification-stage-draft?caseId=${c.caseId}&expectedRevision=9&step=stage_1_plan`;
+      const reply = await fixture.call(CERTIFICATION_OWNER, path);
+      expect(reply.status, await reply.clone().text()).toBe(200);
+      expect(record(await reply.json())).toMatchObject({
+        format: 'CERTIFICATION_STAGE_DRAFT/1',
+        target: {
+          caseId: c.caseId,
+          projectId: fixture.projectId,
+          revision: 9,
+          step: 'stage_1_plan',
+        },
+        candidates: [
+          {
+            field: 'scope',
+            value: 'Producție de lactate — verificat',
+            reviewRevision: 2,
+            citations: [{ documentVersionId: c.documentVersionId }],
+          },
+        ],
+      });
+      expect(await fixture.eventCount(c.caseId)).toBe(events);
+      expect(
+        (
+          await fixture.call(
+            CERTIFICATION_OWNER,
+            path.replace(`caseId=${c.caseId}`, `caseId=${randomUUID()}`),
+          )
+        ).status,
+      ).toBe(404);
+      const notReady = await fixture.call(
+        CERTIFICATION_OWNER,
+        path.replace('step=stage_1_plan', 'step=stage_2_plan'),
+      );
+      expect(notReady.status).toBe(409);
+      const noPlan = await fixture.call(
+        CERTIFICATION_OWNER,
+        path.replace('step=stage_1_plan', 'step=stage_1_report'),
+      );
+      expect(noPlan.status).toBe(403);
+    });
+
+    it('requires both the native approved leader and source authority for cited report context, then leaves ordinary report Save authoritative', async () => {
+      let reportAttachmentId = '';
+      const c = await sourceCase(true, async (caseId) => {
+        const base = `/certification-cases/${caseId}`;
+        const plan = (attachment: string, stage2 = false) => ({
+          startDate: stage2 ? '2026-11-20' : '2026-11-10',
+          endDate: stage2 ? '2026-11-20' : '2026-11-10',
+          onSiteDays: stage2 ? '1.5' : '1',
+          remoteDays: '0',
+          objectives: 'Human audit objectives',
+          scope: 'Human plan scope',
+          planAttachmentId: attachment,
+          sentToClientOn: null,
+          deviationNote: null,
+        });
+        const p1 = await fixture.attach(caseId, 'plan', 8);
+        await fixture.created(
+          await fixture.call(
+            CERTIFICATION_OWNER,
+            `${base}/stages/stage-1/plan`,
+            { method: 'POST', body: { expectedRevision: 9, ...plan(p1) } },
+          ),
+        );
+        const r1 = await fixture.attach(caseId, 'report', 10);
+        await fixture.created(
+          await fixture.call(
+            CERTIFICATION_AUDITOR,
+            `${base}/stages/stage-1/report`,
+            {
+              method: 'POST',
+              body: {
+                expectedRevision: 11,
+                reportDate: '2026-11-10',
+                documentReviewCompleted: true,
+                conclusion: 'ready',
+                conclusionNote: 'Professional readiness judgment',
+                reportAttachmentId: r1,
+              },
+            },
+          ),
+        );
+        const p2 = await fixture.attach(caseId, 'plan', 12);
+        await fixture.created(
+          await fixture.call(
+            CERTIFICATION_OWNER,
+            `${base}/stages/stage-2/plan`,
+            {
+              method: 'POST',
+              body: { expectedRevision: 13, ...plan(p2, true) },
+            },
+          ),
+        );
+        reportAttachmentId = await fixture.attach(caseId, 'report', 14);
+        return 15;
+      });
+      const path = `${c.prefix}/runs/${c.runId}/certification-stage-draft?caseId=${c.caseId}&expectedRevision=${c.revision}&step=stage_2_report`;
+      expect((await fixture.call(CERTIFICATION_OWNER, path)).status).toBe(403);
+      await fixture.grant(
+        CERTIFICATION_OWNER,
+        '/company-certification-auditor-assignments',
+      );
+      const notLeader = await fixture.call(CERTIFICATION_OWNER, path);
+      expect(notLeader.status).toBe(409);
+      expect(record(await notLeader.json()).code).toBe(
+        'CERTIFICATION_NOT_TEAM_LEADER',
+      );
+      expect((await fixture.call(CERTIFICATION_AUDITOR, path)).status).toBe(
+        403,
+      );
+      for (const role of [
+        'document-registrar',
+        'received-audit-source-access',
+        'document-content-reader',
+      ])
+        await fixture.grant(
+          CERTIFICATION_AUDITOR,
+          `/company-${role}-assignments`,
+        );
+      const before = await fixture.eventCount(c.caseId);
+      const preview = await fixture.call(CERTIFICATION_AUDITOR, path);
+      expect(preview.status, await preview.clone().text()).toBe(200);
+      const values = rows(record(await preview.json()).candidates);
+      expect(values.map((v) => v.field).sort()).toEqual([
+        'address',
+        'legalName',
+      ]);
+      expect(values.find((value) => value.field === 'address')).toMatchObject({
+        value: 'ул. Учебная 14, адрес подтверждён человеком',
+        reviewRevision: 1,
+        citations: [{ documentVersionId: c.documentVersionId }],
+      });
+      expect(await fixture.eventCount(c.caseId)).toBe(before);
+      const reference = await fixture.call(
+        CERTIFICATION_AUDITOR,
+        path.replace('step=stage_2_report', 'step=stage_1_report'),
+      );
+      expect(reference.status).toBe(200);
+      const summary =
+        'Ручной текст аудитора. Цитируемый контекст: «Firma Fictivă SRL».';
+      const saved = await fixture.created(
+        await fixture.call(
+          CERTIFICATION_AUDITOR,
+          `/certification-cases/${c.caseId}/stages/stage-2/report`,
+          {
+            method: 'POST',
+            body: {
+              expectedRevision: c.revision,
+              reportDate: '2026-11-20',
+              summary,
+              reportAttachmentId,
+              participantListAttachmentId: null,
+              annexAttachmentId: null,
+            },
+          },
+        ),
+      );
+      expect(
+        rows(saved.stages).find((v) => v.step === 'stage_2_report'),
+      ).toMatchObject({ value: { summary, certificationBodyApproval: null } });
+      expect(
+        rows(saved.stages).find((v) => v.step === 'stage_1_report'),
+      ).toMatchObject({
+        value: { conclusionNote: 'Professional readiness judgment' },
+      });
+      expect(await fixture.eventCount(c.caseId)).toBe(before + 1);
+      expect((await fixture.call(CERTIFICATION_AUDITOR, path)).status).toBe(
+        409,
+      );
+      for (const bad of [
+        'stage_3_report',
+        'stage_2_report&unsafe=true',
+        'stage_2_report&step=stage_1_plan',
+      ])
+        expect(
+          (
+            await fixture.call(
+              CERTIFICATION_AUDITOR,
+              path.replace('step=stage_2_report', `step=${bad}`),
+            )
+          ).status,
+        ).toBe(400);
     });
 
     it('removes a formerly confirmed proposal after a later human rejection instead of returning cached eligibility', async () => {

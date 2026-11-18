@@ -344,6 +344,7 @@ export function Stage2ReportForm(props: Stage2ReportFormProps) {
       <label htmlFor={id('summary')}>{copy('stageSummary')}</label>
       <textarea
         id={id('summary')}
+        rows={12}
         value={draft.summary}
         maxLength={STAGE_LIMITS.summary}
         disabled={props.disabled}

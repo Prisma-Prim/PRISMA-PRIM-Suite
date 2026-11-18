@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1467-order-independent-proof-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1467,
+  "pullRequest": 1469,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": 189
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 1
+    },
+    "notes": "CI44323233284 API repeat guard found an assertion assuming unspecified candidate order. Exact field identities/cardinality and reviewed value/citations now remain asserted independently of order. Existing ci-repeat-tests harness passes6tests x3 fresh runs=18 passes;189s is that guard only. Unsupported Vitest repeat flag refused before tests; retained privately. No runtime change; required CI retry pending. Tokens/model/price not reported."
+  }
+}

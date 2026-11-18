@@ -3,6 +3,170 @@ info:
   title: PRISMA-PRIM Suite API
   version: 0.1.0
 paths:
+  /api/projects/{projectId}/dossier-analysis/runs/{runId}/certification-draft:
+    {
+      'get':
+        {
+          'operationId': 'prepareCertificationApplicationDraft',
+          'summary': 'Prepare reviewed application literals',
+          'tags': ['Dossier Analysis'],
+          'description': 'Current actor context owns Company authority. Native Certification qualifies target Case revision, open/undecided state and programme manager or approved team leader. Ordinary separate Save retains full validation. No model call. Reject extra/repeated query parameters.',
+          'parameters':
+            [
+              { '$ref': '#/components/parameters/RequiredCompanyContextId' },
+              {
+                'in': 'path',
+                'name': 'projectId',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+              {
+                'in': 'path',
+                'name': 'runId',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+              {
+                'in': 'query',
+                'name': 'caseId',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+              {
+                'in': 'query',
+                'name': 'expectedRevision',
+                'required': true,
+                'schema':
+                  { 'type': 'integer', 'minimum': 1, 'maximum': 2147483646 },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Read-only current human-reviewed proposals. No Case write, approval or Activity event. Stage plans offer only scope; reports expose quoted working context, never professional conclusions.',
+                  'headers':
+                    {
+                      'Cache-Control':
+                        { 'schema': { 'const': 'private, no-store' } },
+                    },
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierCertificationDraft',
+                            },
+                        },
+                    },
+                },
+              '400':
+                { 'description': 'Malformed, repeated or unsupported query.' },
+              '401': { 'description': 'No verified principal.' },
+              '403':
+                {
+                  'description': 'Missing current native step or document source authority.',
+                },
+              '404':
+                {
+                  'description': 'Missing and concealed Company, Project, Case or source target.',
+                },
+              '409':
+                { 'description': 'Stale Case/run or ineligible native step.' },
+            },
+        },
+    }
+  /api/projects/{projectId}/dossier-analysis/runs/{runId}/certification-stage-draft:
+    {
+      'get':
+        {
+          'operationId': 'prepareCertificationStageDraft',
+          'summary': 'Prepare reviewed audit scope or attributed report references',
+          'tags': ['Dossier Analysis'],
+          'description': 'Current actor context owns Company authority. Native Certification qualifies target Case revision, open/undecided state and programme manager or approved team leader. Ordinary separate Save retains full validation. No model call. Reject extra/repeated query parameters.',
+          'parameters':
+            [
+              { '$ref': '#/components/parameters/RequiredCompanyContextId' },
+              {
+                'in': 'path',
+                'name': 'projectId',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+              {
+                'in': 'path',
+                'name': 'runId',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+              {
+                'in': 'query',
+                'name': 'caseId',
+                'required': true,
+                'schema': { 'type': 'string', 'format': 'uuid' },
+              },
+              {
+                'in': 'query',
+                'name': 'expectedRevision',
+                'required': true,
+                'schema':
+                  { 'type': 'integer', 'minimum': 1, 'maximum': 2147483646 },
+              },
+              {
+                'in': 'query',
+                'name': 'step',
+                'required': true,
+                'schema':
+                  {
+                    'type': 'string',
+                    'enum':
+                      [
+                        'stage_1_plan',
+                        'stage_2_plan',
+                        'stage_1_report',
+                        'stage_2_report',
+                      ],
+                  },
+              },
+            ],
+          'responses':
+            {
+              '200':
+                {
+                  'description': 'Read-only current human-reviewed proposals. No Case write, approval or Activity event. Stage plans offer only scope; reports expose quoted working context, never professional conclusions.',
+                  'headers':
+                    {
+                      'Cache-Control':
+                        { 'schema': { 'const': 'private, no-store' } },
+                    },
+                  'content':
+                    {
+                      'application/json':
+                        {
+                          'schema':
+                            {
+                              '$ref': '#/components/schemas/DossierCertificationStageDraft',
+                            },
+                        },
+                    },
+                },
+              '400':
+                { 'description': 'Malformed, repeated or unsupported query.' },
+              '401': { 'description': 'No verified principal.' },
+              '403':
+                {
+                  'description': 'Missing current native step or document source authority.',
+                },
+              '404':
+                {
+                  'description': 'Missing and concealed Company, Project, Case or source target.',
+                },
+              '409':
+                { 'description': 'Stale Case/run or ineligible native step.' },
+            },
+        },
+    }
   /api/projects/{projectId}/dossier-analysis/intake-batches:
     get:
       operationId: listDossierIntakeBatches
@@ -10163,6 +10327,325 @@ components:
               - $ref: '#/components/schemas/ProjectClosedConflict'
               - $ref: '#/components/schemas/GenericConflict'
   schemas:
+    DossierCertificationDraft:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties':
+          {
+            'format': { 'const': 'CERTIFICATION_APPLICATION_DRAFT/1' },
+            'target':
+              {
+                'type': 'object',
+                'additionalProperties': false,
+                'properties':
+                  {
+                    'caseId': { 'type': 'string', 'format': 'uuid' },
+                    'projectId': { 'type': 'string', 'format': 'uuid' },
+                    'revision':
+                      {
+                        'type': 'integer',
+                        'minimum': 1,
+                        'maximum': 2147483646,
+                      },
+                  },
+                'required': ['caseId', 'projectId', 'revision'],
+              },
+            'run':
+              {
+                'type': 'object',
+                'additionalProperties': false,
+                'properties':
+                  {
+                    'id': { 'type': 'string', 'format': 'uuid' },
+                    'snapshotHash':
+                      { 'type': 'string', 'pattern': '^[a-f0-9]{64}$' },
+                  },
+                'required': ['id', 'snapshotHash'],
+              },
+            'candidates':
+              {
+                'type': 'array',
+                'maxItems': 100,
+                'items':
+                  {
+                    'type': 'object',
+                    'additionalProperties': false,
+                    'properties':
+                      {
+                        'field':
+                          {
+                            'enum':
+                              [
+                                'declaredLegalName',
+                                'declaredAddress',
+                                'requestedScope',
+                              ],
+                          },
+                        'value':
+                          {
+                            'type': 'string',
+                            'minLength': 1,
+                            'maxLength': 2000,
+                          },
+                        'proposalValue':
+                          {
+                            'type': 'string',
+                            'minLength': 1,
+                            'maxLength': 2000,
+                          },
+                        'suggestionId': { 'type': 'string', 'format': 'uuid' },
+                        'reviewRevision':
+                          {
+                            'type': 'integer',
+                            'minimum': 1,
+                            'maximum': 2147483646,
+                          },
+                        'reviewer':
+                          {
+                            'type': 'string',
+                            'minLength': 1,
+                            'maxLength': 500,
+                          },
+                        'reviewedAt':
+                          { 'type': 'string', 'format': 'date-time' },
+                        'citations':
+                          {
+                            'type': 'array',
+                            'minItems': 1,
+                            'maxItems': 20,
+                            'items':
+                              {
+                                'type': 'object',
+                                'additionalProperties': false,
+                                'properties':
+                                  {
+                                    'sourceId':
+                                      { 'type': 'string', 'format': 'uuid' },
+                                    'documentVersionId':
+                                      { 'type': 'string', 'format': 'uuid' },
+                                    'locator': { 'type': 'string' },
+                                    'start':
+                                      { 'type': 'integer', 'minimum': 0 },
+                                    'end': { 'type': 'integer', 'minimum': 1 },
+                                    'quote': { 'type': 'string' },
+                                    'passageSha256':
+                                      {
+                                        'type': 'string',
+                                        'pattern': '^[a-f0-9]{64}$',
+                                      },
+                                    'documentTitle':
+                                      { 'type': 'string', 'maxLength': 1000 },
+                                    'fileName':
+                                      { 'type': 'string', 'maxLength': 255 },
+                                    'versionNumber':
+                                      {
+                                        'type': 'integer',
+                                        'minimum': 1,
+                                        'maximum': 2147483646,
+                                      },
+                                  },
+                                'required':
+                                  [
+                                    'sourceId',
+                                    'documentVersionId',
+                                    'locator',
+                                    'start',
+                                    'end',
+                                    'quote',
+                                    'passageSha256',
+                                    'documentTitle',
+                                    'fileName',
+                                    'versionNumber',
+                                  ],
+                              },
+                          },
+                      },
+                    'required':
+                      [
+                        'field',
+                        'value',
+                        'proposalValue',
+                        'suggestionId',
+                        'reviewRevision',
+                        'reviewer',
+                        'reviewedAt',
+                        'citations',
+                      ],
+                  },
+              },
+          },
+        'required': ['format', 'target', 'run', 'candidates'],
+      }
+    DossierCertificationStageDraft:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties':
+          {
+            'format': { 'const': 'CERTIFICATION_STAGE_DRAFT/1' },
+            'target':
+              {
+                'type': 'object',
+                'additionalProperties': false,
+                'properties':
+                  {
+                    'caseId': { 'type': 'string', 'format': 'uuid' },
+                    'projectId': { 'type': 'string', 'format': 'uuid' },
+                    'revision':
+                      {
+                        'type': 'integer',
+                        'minimum': 1,
+                        'maximum': 2147483646,
+                      },
+                    'step':
+                      {
+                        'enum':
+                          [
+                            'stage_1_plan',
+                            'stage_2_plan',
+                            'stage_1_report',
+                            'stage_2_report',
+                          ],
+                      },
+                  },
+                'required': ['caseId', 'projectId', 'revision', 'step'],
+              },
+            'run':
+              {
+                'type': 'object',
+                'additionalProperties': false,
+                'properties':
+                  {
+                    'id': { 'type': 'string', 'format': 'uuid' },
+                    'snapshotHash':
+                      { 'type': 'string', 'pattern': '^[a-f0-9]{64}$' },
+                  },
+                'required': ['id', 'snapshotHash'],
+              },
+            'candidates':
+              {
+                'type': 'array',
+                'maxItems': 100,
+                'items':
+                  {
+                    'type': 'object',
+                    'additionalProperties': false,
+                    'properties':
+                      {
+                        'field':
+                          {
+                            'enum':
+                              [
+                                'legalName',
+                                'taxId',
+                                'address',
+                                'standard',
+                                'auditType',
+                                'auditDate',
+                                'decisionDate',
+                                'validFrom',
+                                'validUntil',
+                                'auditorDays',
+                                'reference',
+                                'scope',
+                              ],
+                          },
+                        'value':
+                          {
+                            'type': 'string',
+                            'minLength': 1,
+                            'maxLength': 2000,
+                          },
+                        'proposalValue':
+                          {
+                            'type': 'string',
+                            'minLength': 1,
+                            'maxLength': 2000,
+                          },
+                        'suggestionId': { 'type': 'string', 'format': 'uuid' },
+                        'reviewRevision':
+                          {
+                            'type': 'integer',
+                            'minimum': 1,
+                            'maximum': 2147483646,
+                          },
+                        'reviewer':
+                          {
+                            'type': 'string',
+                            'minLength': 1,
+                            'maxLength': 500,
+                          },
+                        'reviewedAt':
+                          { 'type': 'string', 'format': 'date-time' },
+                        'citations':
+                          {
+                            'type': 'array',
+                            'minItems': 1,
+                            'maxItems': 20,
+                            'items':
+                              {
+                                'type': 'object',
+                                'additionalProperties': false,
+                                'properties':
+                                  {
+                                    'sourceId':
+                                      { 'type': 'string', 'format': 'uuid' },
+                                    'documentVersionId':
+                                      { 'type': 'string', 'format': 'uuid' },
+                                    'locator': { 'type': 'string' },
+                                    'start':
+                                      { 'type': 'integer', 'minimum': 0 },
+                                    'end': { 'type': 'integer', 'minimum': 1 },
+                                    'quote': { 'type': 'string' },
+                                    'passageSha256':
+                                      {
+                                        'type': 'string',
+                                        'pattern': '^[a-f0-9]{64}$',
+                                      },
+                                    'documentTitle':
+                                      { 'type': 'string', 'maxLength': 1000 },
+                                    'fileName':
+                                      { 'type': 'string', 'maxLength': 255 },
+                                    'versionNumber':
+                                      {
+                                        'type': 'integer',
+                                        'minimum': 1,
+                                        'maximum': 2147483646,
+                                      },
+                                  },
+                                'required':
+                                  [
+                                    'sourceId',
+                                    'documentVersionId',
+                                    'locator',
+                                    'start',
+                                    'end',
+                                    'quote',
+                                    'passageSha256',
+                                    'documentTitle',
+                                    'fileName',
+                                    'versionNumber',
+                                  ],
+                              },
+                          },
+                      },
+                    'required':
+                      [
+                        'field',
+                        'value',
+                        'proposalValue',
+                        'suggestionId',
+                        'reviewRevision',
+                        'reviewer',
+                        'reviewedAt',
+                        'citations',
+                      ],
+                  },
+              },
+          },
+        'required': ['format', 'target', 'run', 'candidates'],
+      }
     RegisterProjectSourceDocumentInput:
       type: object
       additionalProperties: false

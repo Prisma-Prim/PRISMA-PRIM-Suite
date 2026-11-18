@@ -171,7 +171,10 @@ import { DurationView } from './CertificationDurationViews';
 import { ApplicationForm, ReviewForm } from './CertificationForms';
 import { dossierAnalysisAuthority } from '../dossier-analysis/analysis-access';
 import { CertificationDraftPreparation } from './CertificationDraftPreparation';
-import { unchangedDraft } from './draft-preparation-response';
+import {
+  unchangedDraft,
+  type StageDraftStep,
+} from './draft-preparation-response';
 import { invalidField, blank, wrongText } from './certification-fields';
 import {
   Stage1ReportForm,
@@ -4058,6 +4061,40 @@ function CertificationRegistry(
     return <p>{copy('stageReportMissing')}</p>;
   }
 
+  function stagePreparation(
+    current: CaseDetail,
+    step: StageDraftStep,
+    draft: string,
+    onApply: (input: { value: string; expected: string }) => void,
+    disabled: boolean,
+  ) {
+    if (!dossierAnalysisAuthority(actor)) return null;
+    const ownerScope = JSON.stringify([
+      props.scope,
+      actor,
+      current.id,
+      current.revision,
+      step,
+    ]);
+    return (
+      <CertificationDraftPreparation
+        key={ownerScope}
+        kind="stage"
+        step={step}
+        scope={ownerScope}
+        caseId={current.id}
+        projectId={projectId}
+        revision={current.revision}
+        draft={draft}
+        disabled={disabled}
+        read={(owner, signal, path) =>
+          query(owner, signal, path, undefined, 'documents')
+        }
+        onApply={onApply}
+      />
+    );
+  }
+
   /**
    * The plan form for a programme manager, the entry to a new version, or
    * the plain reason the Stage cannot be planned yet.
@@ -4098,35 +4135,53 @@ function CertificationRegistry(
         <p className="certification-blocked">{copy('stageNoPlanDocument')}</p>
       );
     return (
-      <StagePlanForm
-        idPrefix={`${prefix}-${stage}-plan`}
-        stage={stage}
-        draft={draft ?? stagePlanDraftFor(null)}
-        correcting={recorded !== null}
-        confirmedOnSite={confirmedOnSite(duration.value.confirmed, stage)}
-        attachments={attachments}
-        disabled={busy}
-        submitting={feedback.status === 'saving'}
-        submitBlocked={blockedUntilReload(feedback)}
-        feedbackId={describedFeedback(kind, feedback)}
-        onChange={(next) => {
-          setPlanDraft(stage, next);
-          if (
-            feedback.status === 'saved' ||
-            (feedback.status === 'refused' && !feedback.reload)
-          )
-            feedbackSetter(kind)(IDLE);
-        }}
-        onSubmit={(event) => submitStagePlan(stage, event)}
-        onCancel={
-          recorded
-            ? () => {
-                resetStageDraft(kind);
-                feedbackSetter(kind)(IDLE);
-              }
-            : undefined
-        }
-      />
+      <>
+        {stagePreparation(
+          current,
+          `${stage}_plan`,
+          (draft ?? stagePlanDraftFor(null)).scope,
+          ({ value, expected }) => {
+            const setter =
+              stage === 'stage_1' ? setStage1PlanDraft : setStage2PlanDraft;
+            setter((held) => {
+              const actual = held ?? stagePlanDraftFor(null);
+              return actual.scope === expected
+                ? { ...actual, scope: value }
+                : held;
+            });
+          },
+          busy || blockedUntilReload(feedback),
+        )}
+        <StagePlanForm
+          idPrefix={`${prefix}-${stage}-plan`}
+          stage={stage}
+          draft={draft ?? stagePlanDraftFor(null)}
+          correcting={recorded !== null}
+          confirmedOnSite={confirmedOnSite(duration.value.confirmed, stage)}
+          attachments={attachments}
+          disabled={busy}
+          submitting={feedback.status === 'saving'}
+          submitBlocked={blockedUntilReload(feedback)}
+          feedbackId={describedFeedback(kind, feedback)}
+          onChange={(next) => {
+            setPlanDraft(stage, next);
+            if (
+              feedback.status === 'saved' ||
+              (feedback.status === 'refused' && !feedback.reload)
+            )
+              feedbackSetter(kind)(IDLE);
+          }}
+          onSubmit={(event) => submitStagePlan(stage, event)}
+          onCancel={
+            recorded
+              ? () => {
+                  resetStageDraft(kind);
+                  feedbackSetter(kind)(IDLE);
+                }
+              : undefined
+          }
+        />
+      </>
     );
   }
 
@@ -4221,25 +4276,46 @@ function CertificationRegistry(
       )
         feedbackSetter(kind)(IDLE);
     };
-    return stage === 'stage_1' ? (
-      <Stage1ReportForm
-        {...shared}
-        draft={stage1ReportDraft ?? stage1ReportDraftFor(null)}
-        onChange={(next) => {
-          setStage1ReportDraft(next);
-          edited();
-        }}
-      />
-    ) : (
-      <Stage2ReportForm
-        {...shared}
-        draft={stage2ReportDraft ?? stage2ReportDraftFor(null)}
-        annexes={slotAttachments(view.register.items, 'annex')}
-        onChange={(next) => {
-          setStage2ReportDraft(next);
-          edited();
-        }}
-      />
+    return (
+      <>
+        {stagePreparation(
+          current,
+          `${stage}_report`,
+          stage === 'stage_1'
+            ? ''
+            : (stage2ReportDraft ?? stage2ReportDraftFor(null)).summary,
+          ({ value, expected }) => {
+            if (stage === 'stage_2')
+              setStage2ReportDraft((held) => {
+                const actual = held ?? stage2ReportDraftFor(null);
+                return actual.summary === expected
+                  ? { ...actual, summary: value }
+                  : held;
+              });
+          },
+          busy || blockedUntilReload(feedback),
+        )}
+        {stage === 'stage_1' ? (
+          <Stage1ReportForm
+            {...shared}
+            draft={stage1ReportDraft ?? stage1ReportDraftFor(null)}
+            onChange={(next) => {
+              setStage1ReportDraft(next);
+              edited();
+            }}
+          />
+        ) : (
+          <Stage2ReportForm
+            {...shared}
+            draft={stage2ReportDraft ?? stage2ReportDraftFor(null)}
+            annexes={slotAttachments(view.register.items, 'annex')}
+            onChange={(next) => {
+              setStage2ReportDraft(next);
+              edited();
+            }}
+          />
+        )}
+      </>
     );
   }
 
