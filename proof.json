@@ -1,0 +1,77 @@
+{
+  "issue": 1461,
+  "pullRequest": 1471,
+  "source": "c77d0d2799a30178896e567400c070c5cf7ba864",
+  "base": "ea0bd1d563838132f3c3f80a777328ec48ad9f6c",
+  "seed": 1461001,
+  "startedAt": "2026-11-18T20:31:30.284Z",
+  "finishedAt": "2026-11-18T20:37:13.532Z",
+  "tests": {
+    "passed": 4,
+    "failed": 0,
+    "flaky": 0,
+    "skipped": 0
+  },
+  "coverage": [
+    {
+      "width": "desktop",
+      "caseId": "mission-task-result",
+      "seed": 1461001,
+      "steps": 10,
+      "runs": 2,
+      "coverage": {
+        "prepare-literal-mission-result": 2,
+        "retire-token-through-task-aba": 1,
+        "held-read:replace": 2,
+        "held-read:return": 2,
+        "held-read:release": 1,
+        "save-result:none": 1,
+        "retire-http-through-access-aba": 1,
+        "native-result-history": 3,
+        "locale:ro": 1,
+        "download-exact-mission-original": 2,
+        "hold-native-denial-before-company-recovery": 1,
+        "replace-company-and-deliver-held-denial": 1,
+        "recover-native-source-company": 1,
+        "select-native-result-project": 1
+      }
+    },
+    {
+      "width": "narrow",
+      "caseId": "mission-task-result",
+      "seed": 1461001,
+      "steps": 10,
+      "runs": 2,
+      "coverage": {
+        "prepare-literal-mission-result": 2,
+        "retire-token-through-task-aba": 1,
+        "held-read:replace": 2,
+        "held-read:return": 2,
+        "held-read:release": 1,
+        "save-result:none": 1,
+        "retire-http-through-access-aba": 1,
+        "native-result-history": 3,
+        "locale:ro": 1,
+        "download-exact-mission-original": 2,
+        "hold-native-denial-before-company-recovery": 1,
+        "replace-company-and-deliver-held-denial": 1,
+        "recover-native-source-company": 1,
+        "select-native-result-project": 1
+      }
+    }
+  ],
+  "captures": [
+    {
+      "file": "desktop-ro-mission-result-history.png",
+      "locale": "ro",
+      "viewport": "desktop",
+      "sha256": "18e54eae9170d47a737c1b569b878bc5b8ba0628d8f3fab038220baba7fd5a4b"
+    },
+    {
+      "file": "narrow-ru-mission-result-history.png",
+      "locale": "ru",
+      "viewport": "narrow",
+      "sha256": "16c583306d78c2ae11eca0946b98ff837cac9c147252104b816125fab5847154"
+    }
+  ]
+}
