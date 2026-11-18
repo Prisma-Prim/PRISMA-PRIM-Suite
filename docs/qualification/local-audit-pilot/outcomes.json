@@ -1,14 +1,14 @@
 {
   "schema": "prisma-prim-complete-audit-pilot-qualification/v1",
   "classification": "actual native execution on prepared fictional examples; no real-world audit qualification",
-  "inputBase": "4a540437ca9c0bc439c11e4c406c9a9e1464e903",
+  "inputBase": "9fe29e2fcf4114edfe03595a00a9db41e037a11d",
   "promotionRule": "Every pinned input and this compatibility PR require successful required CI; local proof alone is not the CI gate.",
   "nativePilot": {
     "journey": "local-audit-pilot",
     "status": "passed",
     "exitCode": 0,
-    "startedAt": "2026-11-18T15:02:56.233Z",
-    "finishedAt": "2026-11-18T15:05:55.401Z",
+    "startedAt": "2026-11-18T15:47:10.999Z",
+    "finishedAt": "2026-11-18T15:50:07.535Z",
     "tests": {
       "passed": 2,
       "failed": 0,
@@ -20,8 +20,8 @@
     "journey": "document-intake",
     "status": "passed",
     "exitCode": 0,
-    "startedAt": "2026-11-18T15:13:19.779Z",
-    "finishedAt": "2026-11-18T15:14:57.032Z",
+    "startedAt": "2026-11-18T15:42:41.228Z",
+    "finishedAt": "2026-11-18T15:44:54.614Z",
     "tests": {
       "passed": 2,
       "failed": 0,
@@ -33,8 +33,8 @@
     "journey": "certification-stage-preparation",
     "status": "passed",
     "exitCode": 0,
-    "startedAt": "2026-11-18T15:15:07.789Z",
-    "finishedAt": "2026-11-18T15:17:13.597Z",
+    "startedAt": "2026-11-18T15:45:04.098Z",
+    "finishedAt": "2026-11-18T15:47:01.995Z",
     "tests": {
       "passed": 2,
       "failed": 0,
@@ -48,7 +48,8 @@
     "exitCode": 0,
     "nativeCaseReady": true,
     "ownedPortsClosed": [4173, 4174],
-    "limits": "Bounded startup/readiness check; the prior guided-pilot input separately proves interactive SIGINT lifecycle."
+    "limits": "Bounded startup/readiness check; the prior guided-pilot input separately proves interactive SIGINT lifecycle.",
+    "scope": "Retained launcher readiness/cleanup proof before the bounded Word preservation correction. Launcher and pilot personas were not changed by that correction."
   },
   "nativeCompatibility": {
     "suite": "apps/api/src/dossier-analysis-acceptance/pilot-draft-compatibility.rest.test.ts",
@@ -112,5 +113,99 @@
     "No real account, provider/model call, scanner/OCR qualification or private1279 pilot",
     "No OCR/product wiring or automated professional conclusion. Native permissions, current versions and separate human Save remain authoritative.",
     "The three current browser journeys overlap in preparation and are not a claim of every possible audit or document case."
-  ]
+  ],
+  "supersededCompositionProof": {
+    "inputBase": "4a540437ca9c0bc439c11e4c406c9a9e1464e903",
+    "nativePilot": {
+      "journey": "local-audit-pilot",
+      "status": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-11-18T15:02:56.233Z",
+      "finishedAt": "2026-11-18T15:05:55.401Z",
+      "tests": {
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0
+      }
+    },
+    "recoverableIntake": {
+      "journey": "document-intake",
+      "status": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-11-18T15:13:19.779Z",
+      "finishedAt": "2026-11-18T15:14:57.032Z",
+      "tests": {
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0
+      }
+    },
+    "reviewedStageDrafts": {
+      "journey": "certification-stage-preparation",
+      "status": "passed",
+      "exitCode": 0,
+      "startedAt": "2026-11-18T15:15:07.789Z",
+      "finishedAt": "2026-11-18T15:17:13.597Z",
+      "tests": {
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0
+      }
+    },
+    "finalReplayBeforeCorrection": {
+      "startedAt": "2026-11-18T15:20:36.384Z",
+      "finishedAt": "2026-11-18T15:23:54.158Z",
+      "passed": 2
+    },
+    "sourceCommit": "80f9054c935d19240eb63d2d3a6d8a52ce57a115",
+    "publicEvidence": "043862b0785dafded2442de5dc71d800c9b53229",
+    "limitation": "These passing journeys preceded a separately demonstrated Word preservation race. Their original evidence is retained; it does not prove the later transaction correction."
+  },
+  "sourceCorrection": {
+    "inputCommit": "74e5b42b4eea74407c15114d79cb7c01cd86d13c",
+    "productCommit": "74567f0787f4896c80e2cbe2235108c538925179",
+    "review": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/1466#discussion_r4615218054",
+    "defect": "Word target could change after preflight while scanning; access alone did not prove the admitted metadata and revisions stayed current.",
+    "baseline": {
+      "source": "092dcecb04a1af4f9a18b22c233c1369bc50d557",
+      "nativeRacesFailed": 3,
+      "intentionallyFiltered": 11,
+      "actual": "metadata correction, competing PDF upload and Project unlink/relink each returned201 instead of409"
+    },
+    "correction": "Server-owned expected metadata, working revision and association revision are checked under native Document/Version transaction locks before a new source insert, after exact receipt recovery.",
+    "sourceNativeChecks": {
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "composition": "14 intake tests and1 original native regression"
+    },
+    "composedChecks": {
+      "nativeIntake": 14,
+      "nativeStage": 6,
+      "nativeCompatibility": 1,
+      "failed": 0,
+      "skipped": 0,
+      "note": "Separate public REST/PostgreSQL runs; no overlapping source checks are summed."
+    },
+    "confirmationReview": {
+      "standards": 0,
+      "spec": 0
+    },
+    "lostWordAcknowledgement": "A real failed database checkpoint returns503 after source preservation; exact retry recovers1 selected source and byte-identical original."
+  },
+  "review": {
+    "compatibilityDiff": {
+      "source": "80f9054c935d19240eb63d2d3a6d8a52ce57a115",
+      "standards": 0,
+      "spec": 0
+    },
+    "correctedInputDiff": {
+      "source": "74567f0787f4896c80e2cbe2235108c538925179",
+      "standards": 0,
+      "spec": 0
+    }
+  }
 }
