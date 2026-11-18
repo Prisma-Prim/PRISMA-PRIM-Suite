@@ -164,6 +164,25 @@ const passingProfitabilityOwners = summary(
   ],
 );
 
+const passingPricingOwners = summary('pricing-owner-action-sequences', [
+  {
+    status: 'passed',
+    chaosSeed: 1463001,
+    sequences: ['desktop', 'narrow'].map((width) => ({
+      caseId: 'pricing-snapshot-owner',
+      width,
+      seed: 1463001,
+      steps: 10,
+      status: 'passed',
+      runs: 2,
+      shrinks: 0,
+      durationMilliseconds: 1000,
+      path: null,
+      coverage: { 'edit-literal-priced-quantity': 1 },
+    })),
+  },
+]);
+
 function workflowRun({
   id = 501,
   attempt = 1,
@@ -221,6 +240,12 @@ const jobs = [
     started_at: '2026-11-14T02:21:31Z',
     completed_at: '2026-11-14T02:25:31Z',
   },
+  {
+    name: 'chaos (pricing-owner-action-sequences)',
+    conclusion: 'success',
+    started_at: '2026-11-14T02:21:31Z',
+    completed_at: '2026-11-14T02:25:31Z',
+  },
   { name: 'report', conclusion: null, started_at: null, completed_at: null },
 ];
 const summaries = () =>
@@ -249,6 +274,10 @@ const summaries = () =>
     [
       'profitability-owner-action-sequences',
       parseChaosSummary(JSON.stringify(passingProfitabilityOwners)),
+    ],
+    [
+      'pricing-owner-action-sequences',
+      parseChaosSummary(JSON.stringify(passingPricingOwners)),
     ],
   ]);
 
@@ -374,6 +403,10 @@ test("each journey's downloaded summary is found by journey", async (t) => {
       'nightly-ui-chaos-summary-profitability-owner-action-sequences',
       JSON.stringify(passingProfitabilityOwners),
     ],
+    [
+      'nightly-ui-chaos-summary-pricing-owner-action-sequences',
+      JSON.stringify(passingPricingOwners),
+    ],
     ['nightly-ui-chaos-summary-broken', '{'],
   ]) {
     await mkdir(join(directory, folder), { recursive: true });
@@ -407,6 +440,7 @@ test('a night keeps each journey job runtime, runs and failures', () => {
       ['document-action-sequences', 'success', 4, 1, 1, false],
       ['contract-action-sequences', 'success', 4, 1, 1, false],
       ['profitability-owner-action-sequences', 'success', 4, 1, 1, false],
+      ['pricing-owner-action-sequences', 'success', 4, 1, 1, false],
     ],
   );
   assert.equal(weekOf('2026-11-14T02:21:07Z'), '2026-11-09');
@@ -501,7 +535,7 @@ test('a later night and a rerun of the same night update the one comment of the 
   // The multi-company-home job of the later night left no summary.
   assert.ok(
     patch.body.body.includes(
-      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary); 2026-11-15 document-action-sequences (success without a summary); 2026-11-15 contract-action-sequences (success without a summary); 2026-11-15 profitability-owner-action-sequences (success without a summary).',
+      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary); 2026-11-15 document-action-sequences (success without a summary); 2026-11-15 contract-action-sequences (success without a summary); 2026-11-15 profitability-owner-action-sequences (success without a summary); 2026-11-15 pricing-owner-action-sequences (success without a summary).',
     ),
   );
 
@@ -751,6 +785,7 @@ test('the financial-only repetition week remains bounded within one GitHub comme
               'chaos (document-action-sequences)',
               'chaos (contract-action-sequences)',
               'chaos (profitability-owner-action-sequences)',
+              'chaos (pricing-owner-action-sequences)',
             ].includes(job.name),
         ),
         summaries: new Map([
@@ -761,6 +796,7 @@ test('the financial-only repetition week remains bounded within one GitHub comme
                 'document-action-sequences',
                 'contract-action-sequences',
                 'profitability-owner-action-sequences',
+                'pricing-owner-action-sequences',
               ].includes(journey),
           ),
           [

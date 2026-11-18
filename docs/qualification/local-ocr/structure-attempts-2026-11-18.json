@@ -1,0 +1,406 @@
+{
+  "schema": "fictional-local-ocr-prior-attempts/v1",
+  "qualifying": false,
+  "attempts": [
+    {
+      "kind": "actual_nonqualifying_bounded_inference",
+      "detectorCanvasSize": 2560,
+      "report": {
+        "schema": "fictional-local-ocr-comparison/v1",
+        "kind": "actual_inference_on_fictional_prepared_examples",
+        "sourceInputHashes": {
+          "benchmark.py": "c711af4cf2ed38183e286cba6ef0bc3d8b4859970cbf3a27e2594af4d9677151",
+          "fixtures.py": "bb5393b5c4c5917953ba4600f83a1e011bfe84dcc676f70d418b9709ba9ffcff",
+          "metrics.py": "589d41e7ac9e088b14982ed6cd5ee0db5feae58cdc5957723f098b62c08fca13",
+          "models.json": "0a89c9323b71f6ee7113b87b11ebc74dd365079458d91c5f7dcc6ed57630b51c",
+          "layout.py": "2eaa941a0670787363de1f4b649e66012da8f36790da75ad994853ce1bdadb8d",
+          "easy_worker.py": "b05b510bf94295f0d7227edb6753a1763bcf08b69a6c79b66a85ddc2ff48eda8"
+        },
+        "invocation": [
+          "python3",
+          "tools/ocr-benchmark/benchmark.py",
+          "run",
+          "--fixtures",
+          "LOCAL_FICTIONAL_FIXTURE_DIRECTORY",
+          "--models",
+          "PINNED_LOCAL_MODEL_DIRECTORY",
+          "--output",
+          "NEW_PRIVATE_RESULT_DIRECTORY",
+          "--engines",
+          "easyocr",
+          "--repeat",
+          "1",
+          "--cases",
+          "ru-clean"
+        ],
+        "startedAt": "2026-11-18T10:54:42.948243+00:00",
+        "finishedAt": "2026-11-18T10:55:03.088511+00:00",
+        "machine": {
+          "platform": "Linux",
+          "release": "6.18.57",
+          "arch": "x86_64",
+          "logicalCpus": 5,
+          "python": "3.12.14"
+        },
+        "engineVersion": "tesseract 5.5.0",
+        "engineBinarySha256": "74b76a5b994adcc18be362bf64ed5118082b2401d5d9a35242e92fc4c62e2b4b",
+        "models": {
+          "easyocr": {
+            "repository": "https://github.com/JaidedAI/EasyOCR",
+            "tag": "v1.7.2",
+            "licence": "Apache-2.0",
+            "architecture": "CRAFT detection and generation-2 CNN/BiLSTM/CTC recognition",
+            "runtime": {
+              "easyocr": "1.7.2",
+              "torch": "2.9.1+cpu",
+              "torchvision": "0.24.1+cpu",
+              "opencv-python-headless": "5.1.0.95"
+            },
+            "weights": {
+              "craft_mlt_25k.pth": {
+                "sha256": "4a5efbfb48b4081100544e75e1e2b57f8de3d84f213004b14b85fd4b3748db17",
+                "url": "https://github.com/JaidedAI/EasyOCR/releases/download/pre-v1.1.6/craft_mlt_25k.zip"
+              },
+              "cyrillic_g2.pth": {
+                "sha256": "48d0f3b58f28aa64651ab1032cc2d498c4de25135829668e87c14e7a07529f29",
+                "url": "https://github.com/JaidedAI/EasyOCR/releases/download/v1.6.1/cyrillic_g2.zip"
+              },
+              "latin_g2.pth": {
+                "sha256": "aaa95be1c4a9cb3496879bed7c520886ce1164f89e026f0c54488394e74e8c55",
+                "url": "https://github.com/JaidedAI/EasyOCR/releases/download/v1.3/latin_g2.zip"
+              }
+            }
+          }
+        },
+        "fixtureManifestSha256": "b5adf09aeb0f06f9b8e4b0e677712088c74331ecfcfd62588cbc0c8df01a0a65",
+        "structureLabelsSha256": "4abc9fba4d69e85ba14e1be6fb4a7ef82e880b31689a6e046b16c05fb9506f9e",
+        "bounds": {
+          "concurrentProcesses": 1,
+          "threads": 1,
+          "perCaseSeconds": 20,
+          "runSeconds": 180,
+          "childAddressSpaceBytes": {
+            "tesseract": 1073741824,
+            "easyocr": 4294967296
+          },
+          "childFileBytes": 8388608,
+          "sourceBytes": 5242880,
+          "pixels": 8000000
+        },
+        "accounting": {
+          "planned": 1,
+          "completed": 0,
+          "failed": 0,
+          "incomplete": 1
+        },
+        "results": [
+          {
+            "run": 1,
+            "engine": "easyocr",
+            "case": "ru-clean",
+            "language": "ru",
+            "fixtureSha256": "a2a2fb860739f5da84519cb007916e0af03a60a34f310e8025af54276ff93933",
+            "unsupported": [
+              "diagram_relationships",
+              "stamp_authenticity",
+              "semantic_table_merge_reconstruction"
+            ],
+            "status": "timeout",
+            "exitCode": -9,
+            "wallSeconds": 20.108538295999097,
+            "sampledPeakRssBytes": 1755643904,
+            "rssSamplingSeconds": 0.02,
+            "childCpuSeconds": 19.551757000000002,
+            "error": "inference_incomplete"
+          }
+        ],
+        "status": "partial"
+      }
+    },
+    {
+      "kind": "actual_nonqualifying_bounded_inference",
+      "detectorCanvasSize": 1280,
+      "report": {
+        "schema": "fictional-local-ocr-comparison/v1",
+        "kind": "actual_inference_on_fictional_prepared_examples",
+        "sourceInputHashes": {
+          "benchmark.py": "c711af4cf2ed38183e286cba6ef0bc3d8b4859970cbf3a27e2594af4d9677151",
+          "fixtures.py": "bb5393b5c4c5917953ba4600f83a1e011bfe84dcc676f70d418b9709ba9ffcff",
+          "metrics.py": "589d41e7ac9e088b14982ed6cd5ee0db5feae58cdc5957723f098b62c08fca13",
+          "models.json": "0a89c9323b71f6ee7113b87b11ebc74dd365079458d91c5f7dcc6ed57630b51c",
+          "layout.py": "2eaa941a0670787363de1f4b649e66012da8f36790da75ad994853ce1bdadb8d",
+          "easy_worker.py": "00f0a3f8f726a3cc054349e996adfd3b3307cf974f77ce70eb92cc542c991c20"
+        },
+        "invocation": [
+          "python3",
+          "tools/ocr-benchmark/benchmark.py",
+          "run",
+          "--fixtures",
+          "LOCAL_FICTIONAL_FIXTURE_DIRECTORY",
+          "--models",
+          "PINNED_LOCAL_MODEL_DIRECTORY",
+          "--output",
+          "NEW_PRIVATE_RESULT_DIRECTORY",
+          "--engines",
+          "easyocr",
+          "--repeat",
+          "1",
+          "--cases",
+          "ru-clean"
+        ],
+        "startedAt": "2026-11-18T10:56:13.961634+00:00",
+        "finishedAt": "2026-11-18T10:56:34.058000+00:00",
+        "machine": {
+          "platform": "Linux",
+          "release": "6.18.57",
+          "arch": "x86_64",
+          "logicalCpus": 5,
+          "python": "3.12.14"
+        },
+        "engineVersion": "tesseract 5.5.0",
+        "engineBinarySha256": "74b76a5b994adcc18be362bf64ed5118082b2401d5d9a35242e92fc4c62e2b4b",
+        "models": {
+          "easyocr": {
+            "repository": "https://github.com/JaidedAI/EasyOCR",
+            "tag": "v1.7.2",
+            "licence": "Apache-2.0",
+            "architecture": "CRAFT detection and generation-2 CNN/BiLSTM/CTC recognition",
+            "runtime": {
+              "easyocr": "1.7.2",
+              "torch": "2.9.1+cpu",
+              "torchvision": "0.24.1+cpu",
+              "opencv-python-headless": "5.1.0.95"
+            },
+            "weights": {
+              "craft_mlt_25k.pth": {
+                "sha256": "4a5efbfb48b4081100544e75e1e2b57f8de3d84f213004b14b85fd4b3748db17",
+                "url": "https://github.com/JaidedAI/EasyOCR/releases/download/pre-v1.1.6/craft_mlt_25k.zip"
+              },
+              "cyrillic_g2.pth": {
+                "sha256": "48d0f3b58f28aa64651ab1032cc2d498c4de25135829668e87c14e7a07529f29",
+                "url": "https://github.com/JaidedAI/EasyOCR/releases/download/v1.6.1/cyrillic_g2.zip"
+              },
+              "latin_g2.pth": {
+                "sha256": "aaa95be1c4a9cb3496879bed7c520886ce1164f89e026f0c54488394e74e8c55",
+                "url": "https://github.com/JaidedAI/EasyOCR/releases/download/v1.3/latin_g2.zip"
+              }
+            }
+          }
+        },
+        "fixtureManifestSha256": "b5adf09aeb0f06f9b8e4b0e677712088c74331ecfcfd62588cbc0c8df01a0a65",
+        "structureLabelsSha256": "4abc9fba4d69e85ba14e1be6fb4a7ef82e880b31689a6e046b16c05fb9506f9e",
+        "bounds": {
+          "concurrentProcesses": 1,
+          "threads": 1,
+          "perCaseSeconds": 20,
+          "runSeconds": 180,
+          "childAddressSpaceBytes": {
+            "tesseract": 1073741824,
+            "easyocr": 4294967296
+          },
+          "childFileBytes": 8388608,
+          "sourceBytes": 5242880,
+          "pixels": 8000000
+        },
+        "accounting": {
+          "planned": 1,
+          "completed": 0,
+          "failed": 0,
+          "incomplete": 1
+        },
+        "results": [
+          {
+            "run": 1,
+            "engine": "easyocr",
+            "case": "ru-clean",
+            "language": "ru",
+            "fixtureSha256": "a2a2fb860739f5da84519cb007916e0af03a60a34f310e8025af54276ff93933",
+            "unsupported": [
+              "diagram_relationships",
+              "stamp_authenticity",
+              "semantic_table_merge_reconstruction"
+            ],
+            "status": "timeout",
+            "exitCode": -9,
+            "wallSeconds": 20.082430036000005,
+            "sampledPeakRssBytes": 1562267648,
+            "rssSamplingSeconds": 0.02,
+            "childCpuSeconds": 19.987831,
+            "error": "inference_incomplete"
+          }
+        ],
+        "status": "partial"
+      }
+    },
+    {
+      "kind": "actual_current_missing_model_boundary_probe",
+      "qualifying": false,
+      "report": {
+        "schema": "fictional-local-ocr-comparison/v1",
+        "kind": "actual_inference_on_fictional_prepared_examples",
+        "sourceInputHashes": {
+          "benchmark.py": "c711af4cf2ed38183e286cba6ef0bc3d8b4859970cbf3a27e2594af4d9677151",
+          "fixtures.py": "bb5393b5c4c5917953ba4600f83a1e011bfe84dcc676f70d418b9709ba9ffcff",
+          "metrics.py": "589d41e7ac9e088b14982ed6cd5ee0db5feae58cdc5957723f098b62c08fca13",
+          "models.json": "ddd5b030341aa59c92f07220882c3088c4fb228401fdf3acc11c65a9f2230f8b",
+          "layout.py": "2eaa941a0670787363de1f4b649e66012da8f36790da75ad994853ce1bdadb8d",
+          "easy_worker.py": "2baae2d74a4ce78970d603665f9902137a845c449463d42d608a247f933477aa"
+        },
+        "invocation": [
+          "python3",
+          "tools/ocr-benchmark/benchmark.py",
+          "run",
+          "--fixtures",
+          "LOCAL_FICTIONAL_FIXTURE_DIRECTORY",
+          "--models",
+          "PINNED_LOCAL_MODEL_DIRECTORY",
+          "--output",
+          "NEW_PRIVATE_RESULT_DIRECTORY",
+          "--engines",
+          "easyocr",
+          "--repeat",
+          "1",
+          "--cases",
+          "ro-clean,ru-clean"
+        ],
+        "startedAt": "2026-11-18T11:20:36.390614+00:00",
+        "finishedAt": "2026-11-18T11:20:36.390900+00:00",
+        "machine": {
+          "platform": "Linux",
+          "release": "6.18.57",
+          "arch": "x86_64",
+          "logicalCpus": 5,
+          "python": "3.12.14"
+        },
+        "engineVersion": "tesseract 5.5.0",
+        "engineBinarySha256": "74b76a5b994adcc18be362bf64ed5118082b2401d5d9a35242e92fc4c62e2b4b",
+        "models": {
+          "easyocr": {
+            "repository": "https://github.com/JaidedAI/EasyOCR",
+            "tag": "v1.7.2",
+            "licence": "Apache-2.0",
+            "architecture": "CRAFT detection and generation-2 CNN/BiLSTM/CTC recognition",
+            "runtime": {
+              "easyocr": "1.7.2",
+              "torch": "2.9.1+cpu",
+              "torchvision": "0.24.1+cpu",
+              "opencv-python-headless": "5.1.0.95"
+            },
+            "weights": {
+              "craft_mlt_25k.pth": {
+                "sha256": "4a5efbfb48b4081100544e75e1e2b57f8de3d84f213004b14b85fd4b3748db17",
+                "url": "https://github.com/JaidedAI/EasyOCR/releases/download/pre-v1.1.6/craft_mlt_25k.zip"
+              },
+              "cyrillic_g2.pth": {
+                "sha256": "48d0f3b58f28aa64651ab1032cc2d498c4de25135829668e87c14e7a07529f29",
+                "url": "https://github.com/JaidedAI/EasyOCR/releases/download/v1.6.1/cyrillic_g2.zip"
+              },
+              "latin_g2.pth": {
+                "sha256": "aaa95be1c4a9cb3496879bed7c520886ce1164f89e026f0c54488394e74e8c55",
+                "url": "https://github.com/JaidedAI/EasyOCR/releases/download/v1.3/latin_g2.zip"
+              }
+            }
+          }
+        },
+        "fixtureManifestSha256": "b5adf09aeb0f06f9b8e4b0e677712088c74331ecfcfd62588cbc0c8df01a0a65",
+        "structureLabelsSha256": "4abc9fba4d69e85ba14e1be6fb4a7ef82e880b31689a6e046b16c05fb9506f9e",
+        "bounds": {
+          "concurrentProcesses": 1,
+          "threads": 1,
+          "perCaseSeconds": 20,
+          "runSeconds": 180,
+          "childAddressSpaceBytes": {
+            "tesseract": 1073741824,
+            "easyocr": 4294967296
+          },
+          "childFileBytes": 8388608,
+          "sourceBytes": 5242880,
+          "pixels": 8000000
+        },
+        "accounting": {
+          "planned": 2,
+          "completed": 0,
+          "failed": 2,
+          "incomplete": 0
+        },
+        "results": [
+          {
+            "run": 1,
+            "engine": "easyocr",
+            "case": "ro-clean",
+            "language": "ro",
+            "fixtureSha256": "ab91d8375577176b56a68e9a8aa7999ed49c2fcdf953c0057b1ed1a79da7a433",
+            "unsupported": [
+              "diagram_relationships",
+              "stamp_authenticity",
+              "semantic_table_merge_reconstruction"
+            ],
+            "status": "failed",
+            "error": "configuration_unavailable"
+          },
+          {
+            "run": 1,
+            "engine": "easyocr",
+            "case": "ru-clean",
+            "language": "ru",
+            "fixtureSha256": "a2a2fb860739f5da84519cb007916e0af03a60a34f310e8025af54276ff93933",
+            "unsupported": [
+              "diagram_relationships",
+              "stamp_authenticity",
+              "semantic_table_merge_reconstruction"
+            ],
+            "status": "failed",
+            "error": "configuration_unavailable"
+          }
+        ],
+        "status": "partial"
+      }
+    }
+  ],
+  "directProbe": {
+    "kind": "actual_nonqualifying_resource_probe",
+    "engine": "easyocr",
+    "canvasSize": 1280,
+    "exitCode": 0,
+    "wallSeconds": 22.856431091999184,
+    "maxRssKiB": 1524684,
+    "qualificationDeadlineSeconds": 20
+  },
+  "setupAndManualFailures": [
+    {
+      "engine": "rapidocr",
+      "version": "3.10.0",
+      "onnxruntime": "1.24.2",
+      "result": "packages_installed",
+      "inference": "not_executed",
+      "modelscopeModelDownloadHttpStatus": 403,
+      "huggingFaceRepositoryAccessHttpStatus": 403
+    },
+    {
+      "engine": "easyocr",
+      "result": "read_only_default_user_network_directory",
+      "correction": "explicit_private_user_network_directory"
+    },
+    {
+      "engine": "easyocr",
+      "result": "archive_size_refused_at_64_MiB",
+      "correction": "bounded_official_model_setup_at_100_MiB_archive_and_128_MiB_weight"
+    },
+    {
+      "engine": "easyocr",
+      "kind": "actual_manual_fictional_crop_rotation_failure",
+      "rotationInfo": [90, 180, 270],
+      "expectedDate": "18.11.2026",
+      "observedDateRegionText": "1",
+      "correction": "admitted_configuration_has_no_crop_rotation_search"
+    },
+    {
+      "engine": "easyocr",
+      "kind": "actual_header_order_regression",
+      "case": "ro-grid-merged",
+      "observedHeaderBefore": "Știință și producție Dosar fictiv",
+      "observedHeaderAfter": "Dosar fictiv Știință și producție",
+      "correction": "preserve_OCR_reading_order_through_shared_cell_alignment"
+    }
+  ]
+}

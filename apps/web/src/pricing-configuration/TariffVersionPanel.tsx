@@ -1,15 +1,18 @@
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useCapturedAccessRejection } from '../api/use-captured-access-rejection';
 import {
   useCallback,
   useEffect,
   useId,
   useRef,
+  useLayoutEffect,
   useState,
   type FormEvent,
 } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { holds } from '../access/company-grants';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { holds, grantOf } from '../access/company-grants';
 import { selectedWorkspaceId } from '../access/workspace-selection';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
@@ -168,7 +171,9 @@ type Feedback =
 
 type PublicationOutcome = Feedback | { kind: 'uncertain' };
 
-type HttpResult = { status: number; body: unknown } | { status: 'network' };
+type HttpResult = (
+  { status: number; body: unknown } | { status: 'network' }
+) & { recover?: ReturnType<typeof useCapturedAccessRejection> };
 
 const offeringsPath = '/commercial-catalogue/offerings';
 const listPageSize = 25;
@@ -205,6 +210,20 @@ export function TariffVersionPanel({
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      actor.active,
+      actor.workspaceId,
+      actor.internalUserId,
+      actor.workspaceMembershipId,
+      actor.activeCompany?.id,
+      identity.loaded,
+      identity.signedIn,
+      grantOf(actor.activeCompany, 'company_pricing_configuration') ?? null,
+      grantOf(actor.activeCompany, 'company_pricing_user') ?? null,
+    ]),
+  );
   const copy = useTariffVersionCopy();
   const [denied, setDenied] = useState(false);
   const [offerings, setOfferings] = useState<OfferingsState>({
@@ -219,16 +238,26 @@ export function TariffVersionPanel({
   // explicit retry is sent, unchanged, and no other publication replaces it.
   const [unresolved, setUnresolved] = useState<Publication>();
   const fieldId = useId();
-  const offeringsRequest = useRef<AbortController | undefined>(undefined);
-  const loadRequest = useRef<AbortController | undefined>(undefined);
-  const olderRequest = useRef<AbortController | undefined>(undefined);
-  const commandRequest = useRef<AbortController | undefined>(undefined);
-  const rejectCompany = useRef(onCompanyContextRejected);
-  const acceptActor = useRef(onActorRevalidated);
-  const rejectWorkspace = useRef(onWorkspaceAccessRejected);
-  rejectCompany.current = onCompanyContextRejected;
-  acceptActor.current = onActorRevalidated;
-  rejectWorkspace.current = onWorkspaceAccessRejected;
+  const offeringsRequest = useScopedOperationGroup(
+    `${lifetime}:offeringsRequest`,
+  );
+  const loadRequest = useScopedOperationGroup(`${lifetime}:loadRequest`);
+  const olderRequest = useScopedOperationGroup(`${lifetime}:olderRequest`);
+  const commandRequest = useScopedOperationGroup(`${lifetime}:commandRequest`);
+  const capturedAccess = useCapturedAccessRejection({
+    actor,
+    identity,
+    companyContextId: actor.activeCompany?.id,
+    scope: String(lifetime),
+    onCompanyContextRejected,
+    onActorRevalidated,
+    onWorkspaceAccessRejected,
+  });
+  const rejection = useRef(capturedAccess);
+  useLayoutEffect(() => {
+    rejection.current = capturedAccess;
+  });
+
   const companyId = actor.activeCompany?.id;
   const companyName = actor.activeCompany?.displayName ?? actor.workspaceName;
   const canPublish = holds(
@@ -254,10 +283,13 @@ export function TariffVersionPanel({
       body?: string;
       idempotencyKey?: string;
     }): Promise<HttpResult> => {
+      const recover = rejection.current;
       try {
         const token = identity.requestHeaders
           ? null
           : await identity.getToken();
+        if (signal.aborted)
+          throw new DOMException('Retired request', 'AbortError');
         const workspaceId = selectedWorkspaceId();
         const response = await fetch(
           `${import.meta.env.VITE_API_URL ?? '/api'}${path}`,
@@ -276,28 +308,32 @@ export function TariffVersionPanel({
             signal,
           },
         );
+        if (signal.aborted)
+          throw new DOMException('Retired request', 'AbortError');
         let responseBody: unknown;
         try {
           responseBody = await response.json();
         } catch {
           responseBody = undefined;
         }
-        return { status: response.status, body: responseBody };
+        if (signal.aborted)
+          throw new DOMException('Retired request', 'AbortError');
+        return { status: response.status, body: responseBody, recover };
       } catch (error: unknown) {
         if (error instanceof DOMException && error.name === 'AbortError')
           throw error;
         return { status: 'network' };
       }
     },
-    [identity],
+    [identity, lifetime],
   );
 
   const abortAll = useCallback(() => {
-    offeringsRequest.current?.abort();
-    loadRequest.current?.abort();
-    olderRequest.current?.abort();
-    commandRequest.current?.abort();
-  }, []);
+    offeringsRequest.retire();
+    loadRequest.retire();
+    olderRequest.retire();
+    commandRequest.retire();
+  }, [offeringsRequest, loadRequest, olderRequest, commandRequest]);
 
   const handleAccess = useCallback(
     async (
@@ -307,22 +343,12 @@ export function TariffVersionPanel({
     ): Promise<boolean> => {
       if (signal.aborted) return true;
       if (result.status === 401) {
-        await identity.rejectSession();
+        await result.recover?.({ status: 'unauthorized' }, signal);
         return true;
       }
       if (result.status !== 403) return false;
       try {
-        await handleAuthenticatedAccessRejection({
-          result: { status: 'forbidden' },
-          identity,
-          companyContextId,
-          onCompanyContextRejected: (rejectedCompanyId) =>
-            rejectCompany.current(rejectedCompanyId),
-          onActorRevalidated: (revalidatedActor) =>
-            acceptActor.current(revalidatedActor),
-          onWorkspaceAccessRejected: () => rejectWorkspace.current(),
-          signal,
-        });
+        await result.recover?.({ status: 'forbidden' }, signal);
       } finally {
         if (!signal.aborted) {
           // A refusal drops everything this screen held, including an
@@ -344,9 +370,9 @@ export function TariffVersionPanel({
 
   const loadOfferings = useCallback(
     async (companyContextId: string, cursor?: string): Promise<void> => {
-      offeringsRequest.current?.abort();
-      const controller = new AbortController();
-      offeringsRequest.current = controller;
+      offeringsRequest.retire();
+      const controller = offeringsRequest.beginLatest();
+      if (!controller) return;
       if (cursor === undefined) setOfferings({ kind: 'loading' });
       else
         setOfferings((current) =>
@@ -394,6 +420,8 @@ export function TariffVersionPanel({
                 ? { ...current, morePage: 'error' }
                 : current,
           );
+      } finally {
+        controller.release();
       }
     },
     [handleAccess, request],
@@ -486,10 +514,10 @@ export function TariffVersionPanel({
       companyContextId: string,
       selectedOfferingId: string,
     ): Promise<void> => {
-      loadRequest.current?.abort();
-      olderRequest.current?.abort();
-      const controller = new AbortController();
-      loadRequest.current = controller;
+      loadRequest.retire();
+      olderRequest.retire();
+      const controller = loadRequest.beginLatest();
+      if (!controller) return;
       setView({ kind: 'loading' });
       try {
         for (let pass = 1; pass <= loadPasses; pass += 1) {
@@ -525,6 +553,8 @@ export function TariffVersionPanel({
         setView({ kind: 'changing' });
       } catch {
         if (!controller.signal.aborted) setView({ kind: 'error' });
+      } finally {
+        controller.release();
       }
     },
     [readTariffs],
@@ -561,9 +591,9 @@ export function TariffVersionPanel({
   // late replies are ignored.
   function chooseOffering(nextOfferingId: string): void {
     if (!companyId || nextOfferingId === (offeringId ?? '')) return;
-    loadRequest.current?.abort();
-    olderRequest.current?.abort();
-    commandRequest.current?.abort();
+    loadRequest.retire();
+    olderRequest.retire();
+    commandRequest.retire();
     setUnresolved(undefined);
     setDraft(emptyDraft);
     setFeedback(undefined);
@@ -579,9 +609,9 @@ export function TariffVersionPanel({
 
   async function loadOlder(cursor: string): Promise<void> {
     if (!companyId || !offeringId) return;
-    olderRequest.current?.abort();
-    const controller = new AbortController();
-    olderRequest.current = controller;
+    olderRequest.retire();
+    const controller = olderRequest.beginLatest();
+    if (!controller) return;
     const selectedOfferingId = offeringId;
     setView((current) =>
       current.kind === 'ready' ? { ...current, olderPage: 'loading' } : current,
@@ -620,6 +650,8 @@ export function TariffVersionPanel({
             ? { ...current, olderPage: 'error' }
             : current,
         );
+    } finally {
+      controller.release();
     }
   }
 
@@ -657,9 +689,9 @@ export function TariffVersionPanel({
 
   async function send(publication: Publication): Promise<void> {
     if (!companyId) return;
-    commandRequest.current?.abort();
-    const controller = new AbortController();
-    commandRequest.current = controller;
+    if (commandRequest.isPending()) return;
+    const controller = commandRequest.beginLatest();
+    if (!controller) return;
     setPending(true);
     setFeedback(undefined);
     try {
@@ -688,6 +720,7 @@ export function TariffVersionPanel({
     } catch {
       if (!controller.signal.aborted) setUnresolved(publication);
     } finally {
+      controller.release();
       if (!controller.signal.aborted) setPending(false);
     }
   }
