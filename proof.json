@@ -1,0 +1,116 @@
+{
+  "kind": "actual_native_execution_on_fictional_prepared_examples",
+  "issue": 1454,
+  "codeCommit": "dbffb9c3c79518563f1a72704b9df93afea6681b",
+  "qualifiedTree": "393abb837eed6482fcc0441d152069e264afceac",
+  "journey": "document-intake",
+  "tests": {
+    "passed": 2,
+    "failed": 0,
+    "flaky": 0,
+    "skipped": 0
+  },
+  "startedAt": "2026-11-18T13:08:00.957Z",
+  "finishedAt": "2026-11-18T13:09:37.675Z",
+  "captures": [
+    {
+      "file": "desktop-ro-paused.png",
+      "sha256": "6ecb87eaf206d40abf622de0068f485bfcc18fd3017a9e989393d79a67e10eec",
+      "locale": "ro",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "capture": "Inspected original Playwright Locator.screenshot pixels; element may be taller than viewport."
+    },
+    {
+      "file": "desktop-ro-completed.png",
+      "sha256": "bc57d47c1e7205929eaf8e035619fe20797e3091d83254573a8b7e99818cce0b",
+      "locale": "ro",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "capture": "Inspected original Playwright Locator.screenshot pixels; element may be taller than viewport."
+    },
+    {
+      "file": "narrow-ru-paused.png",
+      "sha256": "8775fd0669be0338b280d9a15319bbcb96413d3073512819684cb974b455ab96",
+      "locale": "ru",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "capture": "Inspected original Playwright Locator.screenshot pixels; element may be taller than viewport."
+    },
+    {
+      "file": "narrow-ru-completed.png",
+      "sha256": "2893959b3df99b6d26d6e9a020a3139e534195e8151fa342e22d5d889c1c8531",
+      "locale": "ru",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "capture": "Inspected original Playwright Locator.screenshot pixels; element may be taller than viewport."
+    }
+  ],
+  "nativeOriginalProofs": [
+    {
+      "locale": "ro",
+      "batchId": "0e68b8dc-615d-4cd5-babb-0aae0191eaf2",
+      "admittedItems": 6,
+      "completedOriginals": [
+        {
+          "fileName": "audit-ru.pdf",
+          "sha256": "75c7b231b4a6abfa0b2a3744a9dc6a5692cf224503df1d251c341245bc31ba56",
+          "documentId": "72babf75-750a-4616-8a90-bb975ab34e3d",
+          "sourceId": "74f86266-6fdc-4bf0-96a3-0b1ea0dc98db"
+        },
+        {
+          "fileName": "tabel-ro.docx",
+          "sha256": "a518d1ed7cbba492a936002743b244be2941e501f3ec00fdff09dd753978c635",
+          "documentId": "4b2e3f65-8df6-4ad4-9112-9a58187c7970",
+          "sourceId": "19a1fa5d-464c-4421-b6a2-2456a6d8d2c5"
+        },
+        {
+          "fileName": "resume-ru-ro.docx",
+          "sha256": "5c92b0f8e808eb6b2ff1a17092d01a993f4bf6972ab068a27e15d3229213dfeb",
+          "documentId": "505247a1-62f0-4193-bf73-5d8c8a88997b",
+          "sourceId": "845ee544-3cf1-4e3e-8480-3e7fb5abfeff"
+        }
+      ],
+      "syntheticTransportInterruption": true
+    },
+    {
+      "locale": "ru",
+      "batchId": "4bb8fdab-ff0f-4a85-bfb0-b61860893f92",
+      "admittedItems": 6,
+      "completedOriginals": [
+        {
+          "fileName": "audit-ru.pdf",
+          "sha256": "9d61d2ff8096939004f6ba7f31d0d6d19815bc567c8dc8819ba169ff82462625",
+          "documentId": "2542d602-52f3-42ab-9b23-d6919b125d59",
+          "sourceId": "7da4c73f-fd07-4243-9cea-aef1750c3f5b"
+        },
+        {
+          "fileName": "tabel-ro.docx",
+          "sha256": "a2fd17e252b5cfbf411920f4dd9318c9d2e73d22a5814d8a4582147cdb6bfb84",
+          "documentId": "65ad4c83-2b5a-429c-817b-36c6456bcc85",
+          "sourceId": "87c77480-0e68-4ebb-84a1-1c5367a8d874"
+        },
+        {
+          "fileName": "resume-ru-ro.docx",
+          "sha256": "2ff01c6ac6fdbbeb54a2bd80e3fec8ee98131fe64311c68a3d164c8a61c355c7",
+          "documentId": "3a1130b7-6217-4363-8ee1-583ac3b3acb1",
+          "sourceId": "bef10bc1-5a63-4d3d-96f0-94ba4286a37e"
+        }
+      ],
+      "syntheticTransportInterruption": true
+    }
+  ],
+  "qualificationBoundaries": [
+    "Real App/API/PostgreSQL and native mutation owners; deterministic identity and scanner protocol fixtures.",
+    "Per-file browser I/O failure, actual native unreadable DOCX, cross-batch duplicates and lost acknowledgement are separate tested cases.",
+    "No live identity/scanner, private corpus, OCR inference, paid API, main merge or deployment qualification."
+  ]
+}

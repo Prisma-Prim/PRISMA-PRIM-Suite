@@ -1,0 +1,180 @@
+{
+  "kind": "retained_qualification_attempts_on_prepared_examples",
+  "attempts": [
+    {
+      "attempt": 1,
+      "status": "error",
+      "startedAt": "2026-11-18T12:24:10.230Z",
+      "finishedAt": "2026-11-18T12:25:05.359Z",
+      "builds": [
+        {
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "status": "failed",
+          "exitCode": 2
+        }
+      ],
+      "tests": [],
+      "notes": "Build refused duplicate copy entries; corrected before execution."
+    },
+    {
+      "attempt": 2,
+      "status": "failed",
+      "startedAt": "2026-11-18T12:25:46.527Z",
+      "finishedAt": "2026-11-18T12:27:27.976Z",
+      "builds": [
+        {
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "status": "passed",
+          "exitCode": 0
+        }
+      ],
+      "tests": [
+        {
+          "passed": 0,
+          "failed": 2,
+          "flaky": 0,
+          "skipped": 0
+        }
+      ],
+      "notes": "Both widths exposed concurrent skip revision conflicts; foreground skip now waits for its checkpoint."
+    },
+    {
+      "attempt": 3,
+      "status": "failed",
+      "startedAt": "2026-11-18T12:29:54.121Z",
+      "finishedAt": "2026-11-18T12:32:41.501Z",
+      "builds": [
+        {
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "status": "passed",
+          "exitCode": 0
+        }
+      ],
+      "tests": [
+        {
+          "passed": 1,
+          "failed": 1,
+          "flaky": 0,
+          "skipped": 0
+        }
+      ],
+      "notes": "Russian narrow passed; Romanian desktop hit the old 5-second whole-loop wait during parallel affected suites. The journey now gives foreground completion a bounded 30 seconds; runtime upload/parser budgets were not changed."
+    },
+    {
+      "attempt": 4,
+      "status": "passed",
+      "startedAt": "2026-11-18T12:49:03.264Z",
+      "finishedAt": "2026-11-18T12:50:58.086Z",
+      "builds": [
+        {
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "status": "passed",
+          "exitCode": 0
+        }
+      ],
+      "tests": [
+        {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        }
+      ],
+      "notes": "Both widths passed before the independent review corrections."
+    },
+    {
+      "attempt": 5,
+      "status": "passed",
+      "startedAt": "2026-11-18T12:59:11.184Z",
+      "finishedAt": "2026-11-18T13:00:54.417Z",
+      "builds": [
+        {
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "status": "passed",
+          "exitCode": 0
+        }
+      ],
+      "tests": [
+        {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        }
+      ],
+      "notes": "Both widths passed after all three review corrections; image inspection found a stale history label and focused shell overlay."
+    },
+    {
+      "attempt": 6,
+      "status": "passed",
+      "startedAt": "2026-11-18T13:08:00.957Z",
+      "finishedAt": "2026-11-18T13:09:37.675Z",
+      "builds": [
+        {
+          "status": "passed",
+          "exitCode": 0
+        },
+        {
+          "status": "passed",
+          "exitCode": 0
+        }
+      ],
+      "tests": [
+        {
+          "passed": 2,
+          "failed": 0,
+          "flaky": 0,
+          "skipped": 0
+        }
+      ],
+      "notes": "Final two-width pass after confirmed history revision retention and ordinary heading focus before original capture."
+    }
+  ],
+  "otherChecks": {
+    "nativeFocused": {
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    "renderedFocused": {
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0
+    },
+    "openapi": {
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0
+    },
+    "affectedNativeInitial": {
+      "passed": 631,
+      "failedDueToTimeout": 4,
+      "skippedRealClamAVIntegration": 1
+    },
+    "affectedNativeTimeoutReplay": {
+      "passed": 4,
+      "failed": 0,
+      "intentionallyFiltered": 68
+    },
+    "affectedWebInitial": {
+      "passed": 399,
+      "failed": 2
+    },
+    "affectedWebCorrection": "The new generic family chooser made two old negative fixtures select a deliberately unavailable family. Corrected fixtures exercise available options and assert the native-invalid options remain absent; all11 focused invoice tests passed."
+  }
+}
