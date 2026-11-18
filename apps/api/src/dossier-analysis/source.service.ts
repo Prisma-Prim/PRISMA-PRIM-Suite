@@ -26,6 +26,11 @@ import { DocumentMalwareScanner } from '../documents/document-malware-scanner.js
 import { extractDocumentText } from '../document-text-extraction/index.js';
 import { DossierSourceAccess } from './source-access.js';
 
+type IntakeDocxTarget = Pick<
+  Awaited<ReturnType<DossierSourceAccess['direct']>>['document'],
+  'title' | 'purpose' | 'workingRevision' | 'projectRevision'
+>;
+
 /** Native PDF selection, with scoped transaction and replay receipt. */
 @Injectable()
 export class DossierSourceService {
@@ -389,6 +394,7 @@ export class DossierSourceService {
       key,
       bytes: Buffer.concat(parts),
       fingerprintValue: value,
+      expectedTarget: null,
     });
   }
 
@@ -399,6 +405,7 @@ export class DossierSourceService {
     command: unknown;
     key: string | undefined;
     bytes: Buffer;
+    expectedTarget: IntakeDocxTarget;
   }) {
     return this.preserveDocx({
       actor: input.actor,
@@ -407,6 +414,7 @@ export class DossierSourceService {
       key: requireIdempotencyKey(input.key),
       bytes: input.bytes,
       fingerprintValue: input.command,
+      expectedTarget: input.expectedTarget,
     });
   }
 
@@ -417,6 +425,7 @@ export class DossierSourceService {
     key: string;
     bytes: Buffer;
     fingerprintValue: unknown;
+    expectedTarget: IntakeDocxTarget | null;
   }) {
     const { actor, projectId, command, key, bytes } = input;
     const size = bytes.length;
@@ -482,6 +491,19 @@ export class DossierSourceService {
           throw new ConflictException('Idempotency-Key was already used.');
         return { id: receipt.targetId };
       }
+      // The admitted target is server-owned. direct() retains the native
+      // Document/Version row locks through insertion; a scan is not that fence.
+      const expected = input.expectedTarget;
+      if (
+        expected !== null &&
+        (live.document.type !== 'project-source' ||
+          live.document.title !== expected.title ||
+          live.document.purpose !== expected.purpose ||
+          live.document.workingRevision !== expected.workingRevision ||
+          live.document.projectRevision !== expected.projectRevision ||
+          live.version.status !== 'draft')
+      )
+        throw new ConflictException('The admitted Word target changed.');
       const current = await this.requireSelected(
         actor,
         projectId,

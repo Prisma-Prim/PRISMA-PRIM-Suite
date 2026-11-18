@@ -184,6 +184,12 @@ export class DossierIntakeService {
           },
           key: item.keys.upload,
           bytes,
+          expectedTarget: {
+            title: item.file.title,
+            purpose: item.file.purpose,
+            workingRevision: 1,
+            projectRevision: 1,
+          },
         });
         progress = {
           stage: 'source_stored',
