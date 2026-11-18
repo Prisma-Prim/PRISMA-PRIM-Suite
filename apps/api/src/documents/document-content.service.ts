@@ -92,6 +92,7 @@ export class DocumentContentService {
       expectedRevision,
       idempotencyKey,
       pdf,
+      expectedAssociation: null,
     });
   }
 
@@ -105,6 +106,11 @@ export class DocumentContentService {
       fileName: string;
       key: string;
       bytes: Buffer;
+      expectedAssociation: NonNullable<
+        Parameters<
+          DocumentVersionsService['uploadContent']
+        >[1]['expectedAssociation']
+      >;
     },
   ) {
     const query = uploadQuery({
@@ -117,6 +123,7 @@ export class DocumentContentService {
       expectedRevision: query.expectedRevision,
       idempotencyKey: requireIdempotencyKey(input.key),
       pdf: validatedPdf(input.bytes, query.fileName),
+      expectedAssociation: input.expectedAssociation,
     });
   }
 
