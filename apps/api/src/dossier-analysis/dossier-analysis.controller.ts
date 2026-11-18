@@ -152,6 +152,21 @@ export class DossierAnalysisController {
       query,
     });
   }
+  @Get('runs/:runId/certification-stage-draft')
+  @Header('Cache-Control', 'private, no-store')
+  prepareStageDraft(
+    @Req() req: ActorContextRequest,
+    @Param('projectId') projectId: string,
+    @Param('runId') runId: string,
+    @Query() query: unknown,
+  ) {
+    return this.drafts.prepareStage({
+      actor: requireActorContext(req),
+      projectId,
+      runId,
+      query,
+    });
+  }
   @Get('runs/:runId/search')
   @Header('Cache-Control', 'private, no-store')
   search(

@@ -359,4 +359,25 @@ describe('Controlled application draft preparation', () => {
     );
     expect(server.mutations()).toEqual([]);
   });
+  it('retains a multiline superseded proposal while inserting its valid human-confirmed application value', async () => {
+    const { form, server } = await prepared((value) => {
+      const row = value.candidates[0];
+      if (!row) throw new Error('Expected candidate');
+      row.proposalValue = ' Original\nname ';
+      return Response.json(value);
+    });
+    const original = screen.getByText('Original proposal: Original name');
+    expect(original).toBeVisible();
+    expect(original.textContent).toBe('Original proposal:  Original\nname ');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Insert selected values into draft' }),
+    );
+    await screen.findByText(
+      'Selected values inserted. Check and edit the draft before saving.',
+    );
+    expect(within(form).getByLabelText('Declared legal name')).toHaveValue(
+      quote,
+    );
+    expect(server.mutations()).toEqual([]);
+  });
 });

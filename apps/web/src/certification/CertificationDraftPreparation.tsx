@@ -4,6 +4,7 @@ import {
   useScopedOperation,
   type ScopedOperation,
 } from '../api/use-scoped-operation';
+import { useAnalysisTerms } from '../dossier-analysis/analysis-copy';
 import { historyPage } from '../dossier-analysis/analysis-response';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { formatMessage } from '../localization/messages';
@@ -12,6 +13,9 @@ import { useCertificationCopy } from './certification.copy';
 import { useDraftPreparationCopy } from './draft-preparation.copy';
 import {
   draftPreparation,
+  stageDraftPreparation,
+  PREPARABLE_FIELDS,
+  type StageDraftStep,
   unchangedDraft,
   type DraftPreparation,
   type PreparableDraft,
@@ -19,32 +23,53 @@ import {
 
 type Selection =
   | { status: 'empty' }
-  | { status: 'ready'; value: DraftPreparation; chosen: string[] };
+  | {
+      status: 'ready';
+      value: DraftPreparation | ReturnType<typeof stageDraftPreparation>;
+      chosen: string[];
+    };
 type Work =
   | { status: 'idle' | 'reading' | 'applying' | 'applied' }
-  | { status: 'error'; reason: 'failed' | 'changed' | 'draftChanged' };
+  | { status: 'confirming'; value: string }
+  | {
+      status: 'error';
+      reason: 'failed' | 'changed' | 'draftChanged' | 'tooLong';
+    };
 
 /** A local draft assistant; its read owner cannot cancel ordinary Case commands. */
-export function CertificationDraftPreparation(props: {
+type PreparationProps = {
   scope: string;
   caseId: string;
   projectId: string;
   revision: number;
-  draft: PreparableDraft;
   disabled: boolean;
   read: (
     owner: ScopedOperation,
     signal: AbortSignal,
     path: string,
   ) => Promise<ApiResult<unknown>>;
-  onApply: (input: {
-    values: Partial<PreparableDraft>;
-    expected: Partial<PreparableDraft>;
-  }) => void;
-}) {
+} & (
+  | {
+      kind?: 'application';
+      draft: PreparableDraft;
+      onApply: (input: {
+        values: Partial<PreparableDraft>;
+        expected: Partial<PreparableDraft>;
+      }) => void;
+    }
+  | {
+      kind: 'stage';
+      step: StageDraftStep;
+      draft: string;
+      onApply: (input: { value: string; expected: string }) => void;
+    }
+);
+
+export function CertificationDraftPreparation(props: PreparationProps) {
   const copy = useDraftPreparationCopy(),
     label = useCertificationCopy();
   const { formatDateTime } = useInterfaceLocale();
+  const term = useAnalysisTerms();
   const id = useId();
   const owner = useScopedOperation(props.scope);
   const latest = useRef(props);
@@ -61,7 +86,36 @@ export function CertificationDraftPreparation(props: {
   const [selection, setSelection] = useState<Selection>({ status: 'empty' });
   const [work, setWork] = useState<Work>({ status: 'idle' });
   const base = `/projects/${encodeURIComponent(props.projectId)}/dossier-analysis`;
-  const pending = work.status === 'reading' || work.status === 'applying';
+  const pending =
+    work.status === 'reading' ||
+    work.status === 'applying' ||
+    work.status === 'confirming';
+  const referenceOnly =
+    props.kind === 'stage' && props.step === 'stage_1_report';
+  function fieldLabel(field: string) {
+    const native = PREPARABLE_FIELDS.find((f) => f === field);
+    return props.kind === 'stage'
+      ? term(field)
+      : native
+        ? label(native)
+        : field;
+  }
+  function currentValue(field: string) {
+    const native = PREPARABLE_FIELDS.find((f) => f === field);
+    return props.kind === 'stage'
+      ? props.draft
+      : native
+        ? props.draft[native]
+        : '';
+  }
+  useLayoutEffect(() => {
+    if (work.status === 'confirming')
+      setWork(
+        props.kind === 'stage' && props.draft === work.value
+          ? { status: 'applied' }
+          : { status: 'error', reason: 'draftChanged' },
+      );
+  }, [work, props]);
 
   async function loadHistory(after?: string) {
     const signal = owner.begin();
@@ -105,21 +159,48 @@ export function CertificationDraftPreparation(props: {
         : [];
     if (apply && rows.length === 0) return;
     const expected: Partial<PreparableDraft> = {};
-    for (const row of rows) expected[row.field] = props.draft[row.field];
+    if (props.kind !== 'stage')
+      for (const row of rows) {
+        const field = PREPARABLE_FIELDS.find((f) => f === row.field);
+        if (field) expected[field] = props.draft[field];
+      }
+    const stageDraft = props.kind === 'stage' ? props.draft : null;
     setWork({ status: apply ? 'applying' : 'reading' });
     try {
       const query = new URLSearchParams({
         caseId: props.caseId,
         expectedRevision: String(props.revision),
       });
+      if (props.kind === 'stage') query.set('step', props.step);
       const reply = await props.read(
         owner,
         signal,
-        `${base}/runs/${encodeURIComponent(runId)}/certification-draft?${query}`,
+        `${base}/runs/${encodeURIComponent(runId)}/${props.kind === 'stage' ? 'certification-stage-draft' : 'certification-draft'}?${query}`,
       );
       if (signal.aborted) return;
-      if (reply.status !== 'ok') throw new Error('Unavailable preparation.');
-      const value = draftPreparation(reply.value, { ...props, runId });
+      if (reply.status !== 'ok') {
+        if (
+          reply.status === 'forbidden' ||
+          reply.status === 'notFound' ||
+          reply.status === 'unauthorized'
+        ) {
+          setSelection({ status: 'empty' });
+          setHistory({ runs: [], runsNextCursor: null });
+          setRunId('');
+          seen.current.clear();
+        }
+        throw new Error('Unavailable preparation.');
+      }
+      const value = (() => {
+        try {
+          return props.kind === 'stage'
+            ? stageDraftPreparation(reply.value, { ...props, runId })
+            : draftPreparation(reply.value, { ...props, runId });
+        } catch (error) {
+          setSelection({ status: 'empty' });
+          throw error;
+        }
+      })();
       if (apply) {
         if (
           viewed.status !== 'ready' ||
@@ -129,18 +210,54 @@ export function CertificationDraftPreparation(props: {
           setWork({ status: 'error', reason: 'changed' });
           return;
         }
+        const current = latest.current;
         if (
-          latest.current.disabled ||
-          !unchangedDraft(latest.current.draft, expected)
+          current.disabled ||
+          (current.kind === 'stage'
+            ? current.draft !== stageDraft
+            : !unchangedDraft(current.draft, expected))
         ) {
           setWork({ status: 'error', reason: 'draftChanged' });
           return;
         }
-        const values: Partial<PreparableDraft> = {};
-        for (const row of rows) values[row.field] = row.value;
-        latest.current.onApply({ values, expected });
-        setSelection({ status: 'ready', value, chosen: [] });
-        setWork({ status: 'applied' });
+        if (current.kind === 'stage') {
+          if (referenceOnly || stageDraft === null) return;
+          const next =
+            current.step === 'stage_2_report'
+              ? [
+                  stageDraft,
+                  copy('contextHeading') +
+                    '\n' +
+                    rows
+                      .map(
+                        (row) =>
+                          `${fieldLabel(row.field)}: «${row.value}»\n${copy('reviewed')}: ${row.reviewer} · ${row.reviewedAt} · r${row.reviewRevision}\n${row.citations.map((c) => `${c.documentTitle} · ${c.fileName} · v${c.versionNumber} · ${c.documentVersionId} · ${c.locator}\n«${c.quote}»`).join('\n')}`,
+                      )
+                      .join('\n\n'),
+                ]
+                  .filter(Boolean)
+                  .join('\n\n')
+              : rows[0]?.value;
+          if (
+            !next ||
+            next.length > (current.step === 'stage_2_report' ? 4000 : 2000)
+          ) {
+            setWork({ status: 'error', reason: 'tooLong' });
+            return;
+          }
+          current.onApply({ value: next, expected: stageDraft });
+          setSelection({ status: 'ready', value, chosen: [] });
+          setWork({ status: 'confirming', value: next });
+        } else {
+          const values: Partial<PreparableDraft> = {};
+          for (const row of rows) {
+            const field = PREPARABLE_FIELDS.find((f) => f === row.field);
+            if (field) values[field] = row.value;
+          }
+          current.onApply({ values, expected });
+          setSelection({ status: 'ready', value, chosen: [] });
+          setWork({ status: 'applied' });
+        }
       } else {
         setSelection({ status: 'ready', value, chosen: [] });
         setWork({ status: 'idle' });
@@ -170,7 +287,17 @@ export function CertificationDraftPreparation(props: {
         disabled={props.disabled || pending}
       >
         <legend>{copy('open')}</legend>
-        <p>{copy('help')}</p>
+        <p>
+          {copy(
+            props.kind !== 'stage'
+              ? 'help'
+              : referenceOnly
+                ? 'referenceHelp'
+                : props.step === 'stage_2_report'
+                  ? 'contextHelp'
+                  : 'scopeHelp',
+          )}
+        </p>
         <label htmlFor={id}>{copy('run')}</label>
         <Select
           id={id}
@@ -219,37 +346,41 @@ export function CertificationDraftPreparation(props: {
                 key={candidate.suggestionId}
               >
                 <label className="certification-choice">
-                  <input
-                    type="checkbox"
-                    checked={selection.chosen.includes(candidate.suggestionId)}
-                    aria-label={formatMessage(copy('choose'), {
-                      field: label(candidate.field),
-                      value: candidate.value,
-                    })}
-                    onChange={(event) =>
-                      setSelection({
-                        ...selection,
-                        chosen: event.target.checked
-                          ? [
-                              ...selection.chosen.filter((id) =>
-                                selection.value.candidates.some(
-                                  (other) =>
-                                    other.suggestionId === id &&
-                                    other.field !== candidate.field,
+                  {!referenceOnly && (
+                    <input
+                      type="checkbox"
+                      checked={selection.chosen.includes(
+                        candidate.suggestionId,
+                      )}
+                      aria-label={formatMessage(copy('choose'), {
+                        field: fieldLabel(candidate.field),
+                        value: candidate.value,
+                      })}
+                      onChange={(event) =>
+                        setSelection({
+                          ...selection,
+                          chosen: event.target.checked
+                            ? [
+                                ...selection.chosen.filter((id) =>
+                                  selection.value.candidates.some(
+                                    (other) =>
+                                      other.suggestionId === id &&
+                                      other.field !== candidate.field,
+                                  ),
                                 ),
+                                candidate.suggestionId,
+                              ]
+                            : selection.chosen.filter(
+                                (id) => id !== candidate.suggestionId,
                               ),
-                              candidate.suggestionId,
-                            ]
-                          : selection.chosen.filter(
-                              (id) => id !== candidate.suggestionId,
-                            ),
-                      })
-                    }
-                  />
-                  {label(candidate.field)}: {candidate.value}
+                        })
+                      }
+                    />
+                  )}
+                  {fieldLabel(candidate.field)}: {candidate.value}
                 </label>
                 <p>
-                  {copy('current')}: {props.draft[candidate.field] || '—'}
+                  {copy('current')}: {currentValue(candidate.field) || '—'}
                 </p>
                 {candidate.proposalValue !== candidate.value && (
                   <p>
@@ -274,22 +405,24 @@ export function CertificationDraftPreparation(props: {
                 ))}
               </div>
             ))}
-            <button
-              type="button"
-              disabled={
-                selection.chosen.length === 0 ||
-                new Set(
-                  selection.value.candidates
-                    .filter((c) => selection.chosen.includes(c.suggestionId))
-                    .map((c) => c.field),
-                ).size !== selection.chosen.length
-              }
-              onClick={() => {
-                void readPreview(true);
-              }}
-            >
-              {copy('apply')}
-            </button>
+            {!referenceOnly && (
+              <button
+                type="button"
+                disabled={
+                  selection.chosen.length === 0 ||
+                  new Set(
+                    selection.value.candidates
+                      .filter((c) => selection.chosen.includes(c.suggestionId))
+                      .map((c) => c.field),
+                  ).size !== selection.chosen.length
+                }
+                onClick={() => {
+                  void readPreview(true);
+                }}
+              >
+                {copy('apply')}
+              </button>
+            )}
           </>
         )}
       </fieldset>
