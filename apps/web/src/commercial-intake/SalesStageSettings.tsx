@@ -1,10 +1,14 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type FormEvent,
 } from 'react';
+import type { BrowserIdentity } from '../access-composition';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import {
   useSalesStageCopy,
   type SalesStageMessageKey,
@@ -54,6 +58,8 @@ type CreateRetry = { label: string; expectedRevision: number; key: string };
  * reader sees the list read-only.
  */
 export function SalesStageSettings({
+  identity,
+  authority,
   companyId,
   canConfigure,
   request,
@@ -61,6 +67,8 @@ export function SalesStageSettings({
   onBack,
   onConfigured,
 }: {
+  identity: BrowserIdentity;
+  authority: { read: string; configure: string };
   companyId: string;
   canConfigure: boolean;
   request: CommercialIntakeRequest;
@@ -74,60 +82,90 @@ export function SalesStageSettings({
   const [create, setCreate] = useState<CreateState>('idle');
   const [feedback, setFeedback] = useState('');
   const [labelError, setLabelError] = useState('');
-  const listRequest = useRef<AbortController | undefined>(undefined);
-  const createRequest = useRef<AbortController | undefined>(undefined);
+  const readLifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      companyId,
+      authority.read,
+      identity.loaded,
+      identity.signedIn,
+    ]),
+  );
+  const createLifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      companyId,
+      authority.configure,
+      canConfigure,
+      identity.loaded,
+      identity.signedIn,
+    ]),
+  );
+  const lists = useScopedOperationGroup(String(readLifetime));
+  const creates = useScopedOperationGroup(String(createLifetime));
+  const callbacks = useRef({ request, handleAccess, onConfigured });
+  useLayoutEffect(() => {
+    callbacks.current = { request, handleAccess, onConfigured };
+  });
   const retry = useRef<CreateRetry | undefined>(undefined);
 
   const loadList = useCallback(async (): Promise<void> => {
-    listRequest.current?.abort();
-    const controller = new AbortController();
-    listRequest.current = controller;
+    const operation = lists.beginLatest();
+    if (!operation) return;
+    const captured = callbacks.current;
     setList({ kind: 'loading' });
     try {
-      const result = await request({
+      const result = await captured.request({
         path: '/sales-stages',
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
       });
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       if (
-        (await handleAccess(result, companyId, controller.signal, 'intake')) !==
-        'ok'
+        (await captured.handleAccess(
+          result,
+          companyId,
+          operation.signal,
+          'intake',
+        )) !== 'ok'
       )
         return;
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       setList(
         result.status === 200 && isSalesStageList(result.body)
           ? { kind: 'ready', list: result.body }
           : { kind: 'error' },
       );
     } catch {
-      if (!controller.signal.aborted) setList({ kind: 'error' });
+      if (!operation.signal.aborted) setList({ kind: 'error' });
+    } finally {
+      operation.release();
     }
-  }, [companyId, handleAccess, request]);
+  }, [companyId, lists]);
 
   useEffect(() => {
     void loadList();
-    return () => {
-      listRequest.current?.abort();
-      createRequest.current?.abort();
-    };
-  }, [loadList]);
+    return lists.retire;
+  }, [loadList, lists]);
 
   // Losing the configuration bundle keeps the read-only list but retires the
   // draft and any pending command, so a later regrant cannot replay it.
   useEffect(() => {
-    if (canConfigure) return;
-    createRequest.current?.abort();
+    creates.retire();
     retry.current = undefined;
     setLabel('');
     setLabelError('');
     setCreate('idle');
-  }, [canConfigure]);
+  }, [createLifetime, creates]);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (list.kind !== 'ready' || create === 'saving' || create === 'conflict')
+    if (
+      list.kind !== 'ready' ||
+      create === 'saving' ||
+      create === 'conflict' ||
+      creates.isPending()
+    )
       return;
     // An uncertain create resends exactly its label, revision and key; the
     // field stays disabled meanwhile, so the shown label is that label.
@@ -140,29 +178,29 @@ export function SalesStageSettings({
     const expectedRevision = preserved?.expectedRevision ?? list.list.revision;
     const key = preserved?.key ?? crypto.randomUUID();
     retry.current = { label: draft, expectedRevision, key };
-    createRequest.current?.abort();
-    const controller = new AbortController();
-    createRequest.current = controller;
+    const operation = creates.beginLatest();
+    if (!operation) return;
+    const captured = callbacks.current;
     setCreate('saving');
     setFeedback('');
     setLabelError('');
     try {
-      const result = await request({
+      const result = await captured.request({
         path: '/sales-stages',
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
         method: 'POST',
         body: JSON.stringify({ expectedRevision, label: draft }),
         idempotencyKey: key,
       });
-      if (controller.signal.aborted) return;
-      const access = await handleAccess(
+      if (operation.signal.aborted) return;
+      const access = await captured.handleAccess(
         result,
         companyId,
-        controller.signal,
+        operation.signal,
         'sales-stage-configuration',
       );
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       if (access === 'retained') {
         // Configuration authority was lost while the list stays readable.
         retry.current = undefined;
@@ -206,16 +244,23 @@ export function SalesStageSettings({
         setLabel('');
         setCreate('idle');
         setFeedback(stageCopy('salesStageCreated'));
-        await onConfigured();
+        operation.release();
+        try {
+          await callbacks.current.onConfigured();
+        } catch {
+          // Activity refresh cannot unconfirm the committed configuration.
+        }
         return;
       }
       setCreate('uncertain');
       setFeedback(stageCopy('salesStageUncertain'));
     } catch {
-      if (!controller.signal.aborted) {
+      if (!operation.signal.aborted) {
         setCreate('uncertain');
         setFeedback(stageCopy('salesStageUncertain'));
       }
+    } finally {
+      operation.release();
     }
   }
 

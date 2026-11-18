@@ -1222,11 +1222,17 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
       it(`never compares a list read started before the change (${order})`, async () => {
         const stale = deferred();
         const current = deferred();
-        stubRoutes({
+        const api = stubRoutes({
           [`GET ${listPath}`]: [stale.responder, current.responder],
         });
         const view = renderNavigation({ clientRestriction: firstDossier });
+        await waitFor(() =>
+          expect(api.calls('GET ' + listPath)).toHaveLength(1),
+        );
         view.update({ clientIdentityRevision: 1 });
+        await waitFor(() =>
+          expect(api.calls('GET ' + listPath)).toHaveLength(2),
+        );
 
         if (order === 'stale first') {
           await stale.settle({ items: dossierRows() });
@@ -1865,7 +1871,13 @@ describe('Commercial Intake projection boundary preserves unrelated work', () =>
     await screen.findByText(copy.nextActionUncertain);
     view.selectActor(clientAuthority(false));
     await screen.findByText(copy.clientAssociationHidden);
+    await waitFor(() =>
+      expect(api.calls('GET ' + detailPath('request-first'))).toHaveLength(2),
+    );
     view.update({ clientIdentityRevision: 1 });
+    await waitFor(() =>
+      expect(api.calls('GET ' + detailPath('request-first'))).toHaveLength(3),
+    );
     view.selectActor(clientAuthority(true));
     await screen.findByText('Fresh authorized Client');
     expect(screen.getByLabelText(copy.nextAction)).toHaveValue(

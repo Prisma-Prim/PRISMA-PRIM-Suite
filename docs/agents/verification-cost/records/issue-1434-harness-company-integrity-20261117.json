@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "issue-1434-harness-company-integrity-20261117",
+  "date": "2026-11-17",
+  "runType": "pull-request-proof",
+  "issue": 1434,
+  "pullRequest": 1435,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-17T09:53:49.000Z",
+    "end": "2026-11-17T10:01:43.000Z",
+    "durationSeconds": 474
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Second CI found missing composite Company FK on harness connections. Schema guard and actual cross-Workspace PostgreSQL insert reproduced it. Added reviewed generated0122 FK;367 tests including six native cases pass, as do API types, affected lint and migration drift. Usage/price unavailable."
+  }
+}

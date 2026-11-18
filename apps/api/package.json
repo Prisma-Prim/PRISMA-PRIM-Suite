@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nest build",
+    "evaluate:dossier": "pnpm build && node dist/dossier-analysis-engine/evaluate.main.js",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "demo:seed": "node dist/demonstration/demonstration-seed.main.js",
@@ -16,7 +17,8 @@
     "test:company:postgres": "REQUIRE_COMPANY_POSTGRES=true vitest run --no-file-parallelism src/company/company.rest.test.ts src/company/company-idempotency.rest.test.ts",
     "test:client:postgres": "REQUIRE_CLIENT_POSTGRES=true vitest run --no-file-parallelism src/client/client.rest.test.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "qualify:dossier-volume": "pnpm build && node dist/dossier-volume-qualification/main.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1157.0",
@@ -29,11 +31,14 @@
     "@pdf-lib/fontkit": "1.1.1",
     "drizzle-orm": "0.45.2",
     "fflate": "0.8.3",
+    "jose": "6.2.14",
     "parse5": "8.0.1",
     "pdf-lib": "1.17.1",
+    "pdfjs-dist": "6.4.299",
     "pg": "8.22.0",
     "reflect-metadata": "0.2.2",
-    "rxjs": "7.8.2"
+    "rxjs": "7.8.2",
+    "saxes": "6.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "11.0.24",
@@ -42,7 +47,6 @@
     "@types/pg": "8.20.0",
     "drizzle-kit": "0.31.10",
     "fast-check": "4.10.2",
-    "pdfjs-dist": "6.4.299",
     "typescript": "5.9.3",
     "vitest": "4.1.10"
   }

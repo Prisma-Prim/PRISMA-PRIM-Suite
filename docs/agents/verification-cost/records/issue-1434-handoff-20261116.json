@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "issue-1434-handoff-20261116",
+  "date": "2026-11-16",
+  "runType": "pull-request-proof",
+  "issue": 1434,
+  "pullRequest": "not reported",
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-16T17:19:52.000Z",
+    "end": "2026-11-16T17:23:25.000Z",
+    "durationSeconds": 213
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "fail",
+    "findings": {
+      "P0": 0,
+      "P1": 2,
+      "P2": 5,
+      "P3": 0
+    },
+    "notes": "Partial final proof interrupted at user request for Codex Cloud handoff. Format, lint and API/web types passed. Full API interrupted; Web/build/browser/final pagination PG remain. Earlier native 2/2 passed. Seven review findings fixed. No full gate pass claimed."
+  }
+}

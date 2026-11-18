@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1433-initial-proof-20261116",
+  "date": "2026-11-16",
+  "runType": "pull-request-proof",
+  "issue": 1433,
+  "pullRequest": 1436,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-16T15:51:24.000Z",
+    "end": "2026-11-16T19:36:37.000Z",
+    "durationSeconds": 13513
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 9,
+      "P3": 0
+    },
+    "notes": "Initial local and PR CI proof plus screenshot inspection. 9 grouped correctness findings; 14 red-green regressions, including 2 migration regressions, and 5 positive controls. Includes driver failures, default-budget failures, clean baseline, supplementary existing nightly profile, interrupted local full-web run and CI waiting. Final CI: 5841 web and 252 acceptance tests passed; native Contract default60s completed both widths. Usage and price unavailable."
+  }
+}

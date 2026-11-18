@@ -25,6 +25,58 @@ const okAccess: CommercialIntakeAccessHandler = async () => 'ok';
 afterEach(() => vi.restoreAllMocks());
 
 describe('RequestClientAssociation', () => {
+  it('admits one exact association when the form is submitted twice before pending state commits', async () => {
+    const replies: ((
+      value: Awaited<ReturnType<CommercialIntakeRequest>>,
+    ) => void)[] = [];
+    const request = vi.fn<CommercialIntakeRequest>(async ({ method }) =>
+      method === 'POST'
+        ? new Promise((resolve) => replies.push(resolve))
+        : { status: 200, body: [client] },
+    );
+    const onAssociated = vi.fn(async () => true);
+    renderAssociation({ request, onAssociated });
+    await searchAndChooseClient();
+    const form = screen
+      .getByRole('button', { name: copy.confirmClientAssociation })
+      .closest('form');
+    if (!form) throw new Error('Expected the public association form.');
+    act(() => {
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true }),
+      );
+      form.dispatchEvent(
+        new Event('submit', { bubbles: true, cancelable: true }),
+      );
+    });
+    const commands = request.mock.calls
+      .map(([input]) => input)
+      .filter((input) => input.method === 'POST');
+    expect(commands).toHaveLength(1);
+    expect(commands[0]?.signal.aborted).toBe(false);
+    expect(commands[0]?.body).toBe(
+      JSON.stringify({ expectedVersion: 1, clientAccountId: client.id }),
+    );
+    await act(async () =>
+      replies[0]?.({
+        status: 200,
+        body: {
+          receipt: {
+            requestId: 'request-1',
+            version: 2,
+            outcome: 'associated',
+          },
+          request: { id: 'request-1', companyId: 'company-1', version: 2 },
+        },
+      }),
+    );
+    await screen.findByText(copy.clientAssociationSuccess);
+    expect(onAssociated).toHaveBeenCalledExactlyOnceWith(
+      { id: 'request-1', companyId: 'company-1', version: 2 },
+      0,
+    );
+  });
+
   it('searches an accessible Client and publishes a successful association', async () => {
     vi.spyOn(crypto, 'randomUUID').mockReturnValue(
       '22222222-2222-4222-8222-222222222222',

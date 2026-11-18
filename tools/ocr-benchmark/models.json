@@ -1,0 +1,19 @@
+{
+  "engineVersion": "tesseract 5.5.0",
+  "configurations": {
+    "fast": {
+      "repository": "https://github.com/tesseract-ocr/tessdata_fast",
+      "commit": "87416418657359cb625c412a48b6e1d6d41c29bd",
+      "licence": "Apache-2.0",
+      "ron": "9adfde6b51ba4b97efd10ea37c3070fd3fc2bad7815e81f5c3c198cd96216cc9",
+      "rus": "e16e5e036cce1d9ec2b00063cf8b54472625b9e14d893a169e2b0dedeb4df225"
+    },
+    "best": {
+      "repository": "https://github.com/tesseract-ocr/tessdata_best",
+      "commit": "e12c65a915945e4c28e237a9b52bc4a8f39a0cec",
+      "licence": "Apache-2.0",
+      "ron": "93588d7e59a28fad7920db07767345438ee5eeefa3c5f20541dfb9ad083a6d2e",
+      "rus": "b617eb6830ffabaaa795dd87ea7fd251adfe9cf0efe05eb9a2e8128b7728d6b6"
+    }
+  }
+}
