@@ -470,6 +470,161 @@ describe.skipIf(!databaseUrl)(
       });
     });
 
+    it.each(['metadata', 'PDF', 'Project association'])(
+      'refuses a new Word source when native %s changes during scanning, retaining the prior checkpoint',
+      async (change) => {
+        const bytes = literalDocx(
+          `Адрес: изменение во время проверки Word ${change}`,
+        );
+        let batch = await createdBatch([
+          file(bytes, 'concurrent-edit.docx', 'ru'),
+        ]);
+        batch = await step(await step(await action(batch, 'start'), 0), 0);
+        const target = record(record(records(batch.items)[0]?.progress).target);
+        const barrier = fixture.holdNextScan();
+        const pending = raw(batch, 0, bytes);
+        try {
+          await Promise.race([
+            barrier.reached,
+            pending.then(() => {
+              throw new Error('Word preservation missed the scanner barrier.');
+            }),
+          ]);
+          const documentPath = `/documents/${text(target.documentId)}`;
+          if (change === 'metadata') {
+            const changed = await fixture.call(
+              CERTIFICATION_OWNER,
+              documentPath,
+              {
+                method: 'PATCH',
+                body: {
+                  expectedRevision: 1,
+                  title: 'Native correction while scanning',
+                  purpose: 'The admitted metadata is no longer current',
+                },
+              },
+            );
+            expect(changed.status, await changed.clone().text()).toBe(200);
+          } else if (change === 'PDF') {
+            const detail = await fixture.call(
+              CERTIFICATION_OWNER,
+              documentPath,
+            );
+            const changed = await fetch(
+              `${new URL(detail.url).origin}/api${documentPath}/versions/${text(target.versionId)}/content?expectedRevision=1&fileName=concurrent.pdf`,
+              {
+                method: 'POST',
+                headers: {
+                  'x-test-external-provider': 'deterministic-test',
+                  'x-test-external-subject': CERTIFICATION_OWNER,
+                  'x-test-display-name': `Synthetic ${CERTIFICATION_OWNER}`,
+                  'x-test-email': `${CERTIFICATION_OWNER}@example.test`,
+                  'x-company-context-id': fixture.companyId,
+                  'content-type': 'application/pdf',
+                  'idempotency-key': randomUUID(),
+                },
+                body: new Uint8Array(SYNTHETIC_PDF),
+              },
+            );
+            expect(changed.status, await changed.clone().text()).toBe(201);
+          } else {
+            for (const { action, expectedRevision } of [
+              { action: 'unlink', expectedRevision: 1 },
+              { action: 'link', expectedRevision: 2 },
+            ]) {
+              const changed = await fixture.call(
+                CERTIFICATION_OWNER,
+                `${documentPath}/project-association`,
+                {
+                  method: 'POST',
+                  body: {
+                    action,
+                    projectId: fixture.projectId,
+                    expectedRevision,
+                  },
+                },
+              );
+              expect(changed.status, await changed.clone().text()).toBe(201);
+            }
+          }
+        } finally {
+          barrier.release();
+        }
+        const response = await pending;
+        expect(response.status, await response.clone().text()).toBe(409);
+        const current = await reopened(batch);
+        expect(records(current.items)[0]).toMatchObject({
+          progress: { stage: 'linked', target },
+          lastAttempt: { outcome: 'failed', code: 'stale_target' },
+        });
+        const workspace = record(
+          await (
+            await fixture.call(
+              CERTIFICATION_OWNER,
+              `/projects/${fixture.projectId}/dossier-analysis`,
+            )
+          ).json(),
+        );
+        expect(
+          records(workspace.sources).some(
+            (source) => source.documentId === target.documentId,
+          ),
+        ).toBe(false);
+      },
+    );
+
+    it('recovers one committed Word source after its checkpoint acknowledgement fails without a second source effect', async () => {
+      const bytes = literalDocx('Domeniu: Recuperare Word cu același original');
+      let batch = await createdBatch([file(bytes, 'word-recovery.docx')]);
+      batch = await step(await step(await action(batch, 'start'), 0), 0);
+      const target = record(record(records(batch.items)[0]?.progress).target);
+      await fixture.databasePool.query(
+        `CREATE FUNCTION reject_test_word_ack() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF jsonb_path_exists(NEW.manifest, '$.items[*].progress ? (@.stage == "source_stored")') THEN RAISE EXCEPTION 'Synthetic Word checkpoint failure'; END IF; RETURN NEW; END $$`,
+      );
+      await fixture.databasePool.query(
+        'CREATE TRIGGER test_word_ack BEFORE UPDATE ON dossier_intake_batches FOR EACH ROW EXECUTE FUNCTION reject_test_word_ack()',
+      );
+      try {
+        expect((await raw(batch, 0, bytes)).status).toBe(503);
+      } finally {
+        await fixture.databasePool.query(
+          'DROP TRIGGER test_word_ack ON dossier_intake_batches',
+        );
+        await fixture.databasePool.query(
+          'DROP FUNCTION reject_test_word_ack()',
+        );
+      }
+      const workspacePath = `/projects/${fixture.projectId}/dossier-analysis`;
+      async function originals() {
+        return records(
+          record(
+            await (
+              await fixture.call(CERTIFICATION_OWNER, workspacePath)
+            ).json(),
+          ).sources,
+        ).filter((source) => source.documentId === target.documentId);
+      }
+      const before = await originals();
+      expect(before).toHaveLength(1);
+      batch = await reopened(batch);
+      expect(record(records(batch.items)[0]?.progress).stage).toBe('linked');
+      batch = await uploaded(batch, 0, bytes);
+      expect(record(records(batch.items)[0]?.progress).sourceId).toBe(
+        before[0]?.id,
+      );
+      batch = await step(batch, 0);
+      expect(batch.phase).toBe('completed');
+      expect(await originals()).toEqual(before);
+      const original = await fixture.call(
+        CERTIFICATION_OWNER,
+        `${workspacePath}/sources/${text(before[0]?.id)}/original`,
+      );
+      expect(original.status).toBe(200);
+      expect(Buffer.from(await original.arrayBuffer())).toEqual(
+        Buffer.from(bytes),
+      );
+    });
+
     it('rejects changed originals and changed native Document metadata while retaining the exact prior checkpoint', async () => {
       const bytes = literalDocx(
         'Адрес: Учебная 1454, проверка точного оригинала',
