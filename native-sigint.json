@@ -1,0 +1,22 @@
+{
+  "schema": "prisma-prim-audit-pilot-lifecycle-evidence/v1",
+  "status": "passed",
+  "command": [
+    "node",
+    "scripts/audit-pilot.mjs"
+  ],
+  "signal": "SIGINT",
+  "ready": {
+    "schema": "prisma-prim-local-audit-pilot/v1",
+    "status": "ready",
+    "classification": "fictional local demonstration; not real-pilot qualification",
+    "guideUrl": "http://127.0.0.1:4173/__pilot",
+    "manifestUrl": "http://127.0.0.1:4173/__pilot/manifest",
+    "caseId": "891ece0b-ee5e-4c22-acec-a2fec2eb729c"
+  },
+  "exitCode": 130,
+  "ownedPortsClosed": [
+    4173,
+    4174
+  ]
+}

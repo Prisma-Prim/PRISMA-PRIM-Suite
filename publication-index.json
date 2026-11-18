@@ -1,0 +1,99 @@
+{
+  "schema": "prisma-prim-reviewed-evidence-publication/v1",
+  "pullRequest": 1468,
+  "run": "pilot-reviewed-20261118",
+  "source": "62d013d4f16aebb9161598a4725ce9ed297c82d7",
+  "base": "6f278b8fe7ebfdd4658ea4d783564b74de78e632",
+  "integration": "62d013d4f16aebb9161598a4725ce9ed297c82d7",
+  "integrationTree": "2ca7e360dc39131c7640b1eb2bbd94278367c196",
+  "classification": "selected reviewed fictional evidence; no real Client data",
+  "selection": "Inspected PNGs, actual downloaded PDFs/DOCX when present and compact native observations. Complete original traces/build logs remain local; fresh complete native evidence is also retained by CI. This selection is not the full original browser artifact.",
+  "publicationBoundary": "Same-repository documented orphan Git fallback; release asset upload unavailable in this harness. Never merge evidence into source. Retain while needed by open review; final compact report and linked evidence14days after merge.",
+  "files": [
+    {
+      "path": "fictional-evidence-62d013d4.tar.gz",
+      "bytes": 2630936,
+      "sha256": "d0c5b356a6f06b3534eeb8b77ff0072406caa45420cb8a619fef42e5fdbbabf6"
+    },
+    {
+      "path": "combined-analysis-reviewed-ro-inspection-crop.png",
+      "bytes": 138305,
+      "sha256": "3248238ebc1fa4961058a4196afad03ba0866acda6366dfed47e4f7fda8dcc07"
+    },
+    {
+      "path": "combined-analysis-reviewed-ru-inspection-crop.png",
+      "bytes": 111606,
+      "sha256": "1a5b652a6990d4baa284ac7905a70f42a74d7e3a204014de43f446744470d223"
+    },
+    {
+      "path": "combined-certificate-release-ro-inspection-crop.png",
+      "bytes": 143662,
+      "sha256": "f443e3f6fb1b087cc3bd43043da55ac1e74db0c9b698dbaf82796115398624ac"
+    },
+    {
+      "path": "combined-certificate-release-ru-inspection-crop.png",
+      "bytes": 108791,
+      "sha256": "6d2bb8c74e502e7ab2160669d8d74ae86a2df65e989129a86e3e213fa0dcc2a6"
+    },
+    {
+      "path": "combined-dossier-register-ro.pdf",
+      "bytes": 948907,
+      "sha256": "c808834a70ce0bc401db2483156d5f65232de86c78080732940634a8ba93a1dc"
+    },
+    {
+      "path": "combined-dossier-register-ru.pdf",
+      "bytes": 949453,
+      "sha256": "24b58396371564884b047cbd5c0f1abfab44dda65a1a259af5007032c78618bb"
+    },
+    {
+      "path": "combined-issued-certificate-ro.pdf",
+      "bytes": 12627,
+      "sha256": "5f1ef0898f59bdd99e05f864504272528a79480256adc7f9f63c951980b2bbae"
+    },
+    {
+      "path": "combined-issued-certificate-ru.pdf",
+      "bytes": 12806,
+      "sha256": "a6e83a3fced8ad3d69905e8333c04ddb359a93bb7b4ce7ec3c91db1186475e6b"
+    },
+    {
+      "path": "combined-native-outcome-ro.json",
+      "bytes": 1203,
+      "sha256": "db448e036b5a1812e377f6ef08c8ff3d5c671dbcdc52b61e68220266d86f960a"
+    },
+    {
+      "path": "combined-native-outcome-ru.json",
+      "bytes": 1203,
+      "sha256": "8624e8013ed8aa8231139b0912019da3a505fe2efe147bf1a2c21bdbb670aa09"
+    },
+    {
+      "path": "native-sigint.json",
+      "bytes": 576,
+      "sha256": "39b4092c1f9663df639ea9106324ef6d11779730df9f4035da97a4dcaf93e194"
+    },
+    {
+      "path": "pilot-guide-ro.png",
+      "bytes": 191509,
+      "sha256": "a3d93965d05084a48be843f398685232b508df0e558d1fe52cd99a09188ce793"
+    },
+    {
+      "path": "pilot-guide-ru.png",
+      "bytes": 209872,
+      "sha256": "f1fe90d5fd4fcdcacf64392e98f37546a0fa950edcdb187c8b2b2cfd4c8eec5e"
+    },
+    {
+      "path": "pilot-reopened-ro-inspection-crop.png",
+      "bytes": 133802,
+      "sha256": "4273563c91cf763e974463f1a969b1f381cb58d64c2048ad7f3c9970f39c9fae"
+    },
+    {
+      "path": "pilot-reopened-ru-inspection-crop.png",
+      "bytes": 114993,
+      "sha256": "2ecbe39272381ec8aa6256c27f9163285071c99df87587cbd10330c3cbd2fac7"
+    },
+    {
+      "path": "source-manifest.json",
+      "bytes": 722,
+      "sha256": "50b63276ee6f691c7b5f0400f4006b5466135c91691cc84ea5860c2ea610a6eb"
+    }
+  ]
+}
