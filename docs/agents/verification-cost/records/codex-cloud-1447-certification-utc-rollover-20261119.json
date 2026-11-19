@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1447-certification-utc-rollover-20261119",
+  "date": "2026-11-19",
+  "runType": "pull-request-proof",
+  "issue": 1447,
+  "pullRequest": 1456,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Native certificate acceptance crossed a UTC day before issuance. Both widths failed the old zero-day expectation, then both passed the exact one-day assertion with the same simulated clock. The clock is restored after the test. Browser runner windows: red 232.892s, green 319.295s. Overall wall time, tokens and price were unreported."
+  }
+}
