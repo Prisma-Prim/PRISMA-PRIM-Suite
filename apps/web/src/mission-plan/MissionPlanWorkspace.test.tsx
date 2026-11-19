@@ -25,6 +25,42 @@ import {
 } from '../access/company-grants.test-fixture';
 const identity = deterministicBrowserIdentity();
 afterEach(() => vi.unstubAllGlobals());
+
+it.each([401, 403])(
+  'keeps a late plan read%s bound to its admitting complete Actor',
+  async (status) => {
+    let release: ((response: Response) => void) | undefined;
+    const held = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    let recoveries = 0;
+    const fetcher = vi.fn((input: RequestInfo | URL) => {
+      const path = new URL(input.toString(), window.location.origin).pathname;
+      if (path === '/api/mission-plans') return held;
+      recoveries++;
+      return Promise.resolve(new Response(null, { status: 503 }));
+    });
+    vi.stubGlobal('fetch', fetcher);
+    const rejectSession = vi.fn(async () => {});
+    const browserIdentity = { ...identity, rejectSession };
+    const view = render(
+      <MissionPlanWorkspace actor={actor} identity={browserIdentity} />,
+    );
+    await waitFor(() => expect(fetcher).toHaveBeenCalledOnce());
+    fill();
+    view.rerender(
+      <MissionPlanWorkspace
+        actor={{ ...actor, displayName: 'Fresh complete Actor' }}
+        identity={browserIdentity}
+      />,
+    );
+    await act(async () => release?.(new Response(null, { status })));
+    await screen.findByRole('alert');
+    expect(rejectSession).not.toHaveBeenCalled();
+    expect(recoveries).toBe(0);
+    expect(screen.getByLabelText('Plan name')).toHaveValue('Literal plan');
+  },
+);
 function response(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), {
     status,

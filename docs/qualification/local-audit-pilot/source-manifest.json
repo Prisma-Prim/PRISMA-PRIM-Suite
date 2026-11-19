@@ -1,12 +1,108 @@
 {
-  "schema": "prisma-prim-local-audit-pilot-inputs/v1",
+  "schema": "prisma-prim-complete-audit-pilot-inputs/v1",
   "classification": "fictional local pilot; no real Client or account qualification",
-  "base": "6f278b8fe7ebfdd4658ea4d783564b74de78e632",
+  "base": "d72f10fb1980ff141d68928a8b4b08c435078a35",
   "inputs": {
-    "combinedQualification1458": "8b5303b7e62cab9c374ccdfa8b71a15a26c4f83a",
-    "controlledDraftPreparation1457": "ba7634306e456852376a289d35ae7b184ecf3033"
+    "combinedQualification1458": "a77189a7fc30b75ec43a890eeb17c3c17d652d4a",
+    "controlledDraftPreparation1457": "6e3d449d5249ab7339187d3a3052485ea15d8b55",
+    "freeOcrStructure1459": "118a8ae8f7a8875997874eecb5d36449f56e90cf",
+    "recoverableIntake1466": "e49f9747bca396f064abf36d2d13edafaac66a8e",
+    "guidedPilot1468": "37aa6194b30a071cf8100d713d61280886903ffc",
+    "reviewedAuditDrafts1469": "d8d930a940e12bf5782ab87058740196e6463dab"
   },
-  "inputCi": [44292369089, 44291134310],
-  "conflicts": "Keep both Projects journey catalogue entries; executable inputs merge without conflicting hunks.",
-  "production": "No main merge or deployment. Synthetic identity/scanner/provider boundaries remain explicit. Native grants, validation, immutable bytes and decisions remain authoritative."
+  "inputCi": [
+    44399332863, 44367941290, 44367575546, 44380597782, 44406386999, 44414578477
+  ],
+  "conflicts": "Preserve the Stage superset of the byte-identical original application runtime; retain every pilot addition. Union sorted journey metadata, additive module imports/providers, OpenAPI paths/schemas and both PRD sections. No new production workflow or permission rule.",
+  "production": "Owner subsequently authorized incremental main integration on2026-11-18 after green required checks and review, with issue updates/closure as each delivery merges. No deployment or real account/model/OCR activation. Synthetic identity/scanner/provider boundaries remain explicit; native grants, validation, immutable bytes and decisions remain authoritative.",
+  "promotionRule": "The reviewed Stage input must merge and this compatibility PR must pass its required CI before promotion.",
+  "fictionalPilotProfiles": {
+    "managerAdditionalNativeGrants": ["document-project-organizer"],
+    "auditorAdditionalNativeGrants": [
+      "document-registrar",
+      "received-audit-source-access",
+      "document-content-reader"
+    ],
+    "authority": "Ordinary native grant commands by the seeded Workspace Owner, confined to the fresh fictional Company. No production default or policy change."
+  },
+  "earlierInputs": [
+    {
+      "base": "4a540437ca9c0bc439c11e4c406c9a9e1464e903",
+      "recoverableIntake1466": "092dcecb04a1af4f9a18b22c233c1369bc50d557",
+      "reason": "Native scanner-barrier proof reproduced a Word target race after preflight; the corrected input validates admitted metadata and native revisions inside preservation. Prior green local journeys are retained as earlier-source evidence."
+    },
+    {
+      "base": "9fe29e2fcf4114edfe03595a00a9db41e037a11d",
+      "recoverableIntake1466": "74e5b42b4eea74407c15114d79cb7c01cd86d13c",
+      "reason": "Previous green CI was followed by two demonstrated review findings: PDF association change during scanning and an unskippable stale-target refusal. The latest native owner and checkpoint corrections are independently reproduced by public native/rendered regressions."
+    },
+    {
+      "base": "6f3a9056c957b329adcb2451267f7ebb03679b89",
+      "recoverableIntake1466": "eb809c7b79ec62e2d3fcd965de235089b6438390",
+      "reason": "Previous green source CI was followed by a demonstrated PDF selection metadata race after preflight. Native selection now shares the admitted Word/PDF target fence under its insertion transaction locks; original receipts retain replay semantics."
+    }
+  ],
+  "incrementalMainIntegration": {
+    "authorization": "The owner requested progressive main merges and ticket updates after each delivery on 2026-11-18.",
+    "execution": {
+      "source": "0ef583062b99604facb40e853c096e7ef8de4af5",
+      "tree": "060c2035a9ea7c0d035e1aed5b8e368526e7badc",
+      "evidence": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/tree/b5b43aa29a075bb1fc9a8436f4229058c8b97357"
+    },
+    "inputs": [
+      {
+        "issue": 1439,
+        "pr": 1449,
+        "head": "e6b728a8d5293de138f5a05bf7902305159e16bd",
+        "requiredCi": 44392309818,
+        "mainMergeCommit": "13447fd1331a74c2672717981d7d8805fc9cb3e7"
+      },
+      {
+        "issue": 1444,
+        "pr": 1458,
+        "head": "a77189a7fc30b75ec43a890eeb17c3c17d652d4a",
+        "requiredCi": 44399332863,
+        "mainMergeCommit": "ad50357782d836f66e8ff6f8c12f0928f554c0f8"
+      },
+      {
+        "issue": 1453,
+        "pr": 1457,
+        "head": "6e3d449d5249ab7339187d3a3052485ea15d8b55",
+        "requiredCi": 44367941290,
+        "mainMergeCommit": "b57d75d38f7db21e47e34c7d448f62a036f34b61"
+      },
+      {
+        "issue": 1455,
+        "pr": 1459,
+        "head": "118a8ae8f7a8875997874eecb5d36449f56e90cf",
+        "requiredCi": 44367575546,
+        "mainMergeCommit": "a09688e43ce6580c4fa154fd122f19afc3428a77"
+      },
+      {
+        "issue": 1454,
+        "pr": 1466,
+        "head": "e49f9747bca396f064abf36d2d13edafaac66a8e",
+        "requiredCi": 44380597782,
+        "mainMergeCommit": "ea0bd1d563838132f3c3f80a777328ec48ad9f6c"
+      },
+      {
+        "issue": 1460,
+        "pr": 1468,
+        "head": "37aa6194b30a071cf8100d713d61280886903ffc",
+        "requiredCi": 44406386999,
+        "mainMergeCommit": "d72f10fb1980ff141d68928a8b4b08c435078a35"
+      },
+      {
+        "issue": 1467,
+        "pr": 1469,
+        "head": "d8d930a940e12bf5782ab87058740196e6463dab",
+        "requiredCi": 44414578477
+      }
+    ],
+    "gate": "The exact Stage head and its required check identify the pending prerequisite at publication. The two pull requests track completion of their required checks and main integration."
+  },
+  "historicalComposition": {
+    "previousManifest": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/blob/f60389342068a6ebff0578d6aaf9f5173317d531/docs/qualification/local-audit-pilot/source-manifest.json",
+    "guidedLauncherManifest": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/blob/d72f10fb1980ff141d68928a8b4b08c435078a35/docs/qualification/local-audit-pilot/source-manifest.json"
+  }
 }

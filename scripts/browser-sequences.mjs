@@ -48,9 +48,14 @@ export const BROWSER_SEQUENCE_CASES = [
     title: 'explores generated native Contract signing action sequences',
   },
   {
-    id: 'profitability-version-owner',
-    journey: 'profitability-owner-action-sequences',
-    title: 'explores generated native profitability owner sequences',
+    id: 'mission-task-result',
+    journey: 'mission-result-action-sequences',
+    title: 'explores generated native mission Task-result action sequences',
+  },
+  {
+    id: 'offer-version-owner',
+    journey: 'offer-owner-action-sequences',
+    title: 'explores generated native Offer version owner sequences',
   },
   {
     id: 'pricing-snapshot-owner',
@@ -58,9 +63,9 @@ export const BROWSER_SEQUENCE_CASES = [
     title: 'explores generated native pricing owner sequences',
   },
   {
-    id: 'offer-version-owner',
-    journey: 'offer-owner-action-sequences',
-    title: 'explores generated native Offer version owner sequences',
+    id: 'profitability-version-owner',
+    journey: 'profitability-owner-action-sequences',
+    title: 'explores generated native profitability owner sequences',
   },
 ];
 

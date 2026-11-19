@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-cloud-1452-pdf-refusal-requalification-20261118",
+  "date": "2026-11-18",
+  "runType": "pull-request-proof",
+  "issue": 1452,
+  "pullRequest": 1470,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Final corrected inputeb composed on6f; native19 intake+6 Stage+1 compatibility pass in separate runs; shared input PDF37/rendered10 pass. Three native browser journeys2/2 no retries/skips;10 original captures inspected. Global types/lint/format pass. Late2P2 counted/fixed in source ledger. Required new source/compatibility CI pending; previous green CI remains baseline. No rollout; usage/time/price unreported. No merge/deploy."
+  }
+}
