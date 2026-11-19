@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ComponentProps,
@@ -14,6 +15,7 @@ import { readTaskList, type TaskView } from './task-response';
 import { TaskCalendarDate } from './TaskPresentation';
 import { useProjectTaskCopy } from './task.copy';
 import { useClientMissionCopy } from './client-mission.copy';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
 import { useClientMissionRejection } from './use-client-mission-rejection';
 
@@ -31,7 +33,7 @@ type Props = Pick<
 };
 type View =
   | { kind: 'loading' | 'error' | 'denied' }
-  | { kind: 'ready'; tasks: TaskView[] };
+  | { kind: 'ready'; tasks: TaskView[]; signal: AbortSignal };
 
 /** Task capture changes retire only this selected preview, never its Project directory. */
 export function ClientMissionTasks(props: Props) {
@@ -52,20 +54,23 @@ function TaskOwner(props: Props) {
     id = useId();
   const [view, setView] = useState<View>({ kind: 'loading' });
   const [offset, setOffset] = useState(0);
-  const pending = useRef<AbortController | undefined>(undefined);
-  const lifetime = useRef<AbortController | undefined>(undefined);
+  const reads = useScopedOperationGroup('tasks');
+  const navigation = useScopedOperationGroup('navigation');
   const callbacks = useRef(props);
-  callbacks.current = props;
+  useLayoutEffect(() => {
+    callbacks.current = props;
+  });
   const heading = useRef<HTMLHeadingElement>(null);
   const load = useCallback(() => {
     if (props.sourceSignal.aborted) return;
-    lifetime.current?.abort();
-    lifetime.current = undefined;
+    const operation = reads.beginLatest();
+    if (!operation) return;
+    navigation.retire();
     setView({ kind: 'loading' });
     setOffset(0);
     const startedUnder = callbacks.current.actor;
     return runLatestAuthenticatedRequest({
-      pending,
+      signal: operation.signal,
       identity: callbacks.current.identity,
       execute: (api, signal) =>
         api.request(`/projects/${encodeURIComponent(props.project.id)}/tasks`, {
@@ -92,22 +97,27 @@ function TaskOwner(props: Props) {
             )
           )
             throw new Error('Mismatched Client Task preview.');
-          lifetime.current = new AbortController();
-          setView({ kind: 'ready', tasks });
+          const source = navigation.beginLatest();
+          if (!source) return;
+          source.release();
+          setView({ kind: 'ready', tasks, signal: source.signal });
         } else setView({ kind: 'error' });
       },
       onError: () => setView({ kind: 'error' }),
-    });
+    }).finally(operation.release);
   }, [
     props.project.id,
     props.project.companyId,
     props.project.clientAccountId,
     props.sourceSignal,
+    reads,
+    navigation,
+    reject,
   ]);
   useEffect(() => {
     const retire = () => {
-      pending.current?.abort();
-      lifetime.current?.abort();
+      reads.retire();
+      navigation.retire();
     };
     props.sourceSignal.addEventListener('abort', retire, { once: true });
     void load();
@@ -117,8 +127,14 @@ function TaskOwner(props: Props) {
     };
   }, [load, props.sourceSignal]);
   function move(next: number) {
-    lifetime.current?.abort();
-    lifetime.current = new AbortController();
+    const source = navigation.beginLatest();
+    if (!source) return;
+    source.release();
+    setView((current) =>
+      current.kind === 'ready'
+        ? { ...current, signal: source.signal }
+        : current,
+    );
     setOffset(next);
     heading.current?.focus();
   }
@@ -165,7 +181,7 @@ function TaskOwner(props: Props) {
                     type="button"
                     aria-label={`${copy('openTask')}: ${task.title}`}
                     onClick={() => {
-                      const signal = lifetime.current?.signal;
+                      const signal = view.signal;
                       if (
                         signal &&
                         !signal.aborted &&

@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
@@ -94,12 +96,14 @@ export function useApplicabilityHistory(props: {
 }) {
   const [state, setState] = useState<PageState>({ kind: 'initial' }),
     [inspection, setInspection] = useState<Inspection>({ kind: 'closed' });
-  const request = useRef<AbortController | undefined>(undefined),
-    epoch = useRef(0),
-    selectedContext = useRef<object | null>(null);
+  const generation = useRequestLifetime(
+    props.identity,
+    JSON.stringify([props.path, props.companyId, props.plan]),
+  );
+  const requests = useScopedOperationGroup(String(generation));
+  const selectedContext = useRef<object | null>(null);
   function cancel() {
-    epoch.current += 1;
-    request.current?.abort();
+    requests.retire();
     selectedContext.current = null;
   }
   function close() {
@@ -119,7 +123,6 @@ export function useApplicabilityHistory(props: {
     cancel();
     setState({ kind: 'initial' });
   }
-  useEffect(() => () => cancel(), []);
   const visibleInspection: Inspection =
       inspection.kind === 'closed' || inspection.context.valid()
         ? inspection
@@ -144,15 +147,11 @@ export function useApplicabilityHistory(props: {
       (purpose.kind === 'inspection' && !purpose.context.valid())
     )
       return;
-    epoch.current += 1;
-    const capturedEpoch = epoch.current;
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
+    const operation = requests.beginLatest();
+    if (!operation) return;
     const live = () =>
       scopeValid() &&
-      epoch.current === capturedEpoch &&
-      !controller.signal.aborted &&
+      !operation.signal.aborted &&
       (purpose.kind === 'page' || purpose.context.valid());
     setState({ kind: 'loading', previous: currentPage(state) });
     if (purpose.kind === 'inspection')
@@ -182,11 +181,11 @@ export function useApplicabilityHistory(props: {
           (purpose.before === undefined
             ? ''
             : `?beforeRevision=${purpose.before}`),
-        { companyContextId: props.companyId, signal: controller.signal },
+        { companyContextId: props.companyId, signal: operation.signal },
       );
       if (!live()) return;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
-        await props.recover(result, live, recoveryValid, controller.signal);
+        await props.recover(result, live, recoveryValid, operation.signal);
         if (live()) props.onDenied();
         return;
       }
@@ -244,6 +243,8 @@ export function useApplicabilityHistory(props: {
       }
     } catch {
       failed();
+    } finally {
+      operation.release();
     }
   }
   function loadPage(before?: number) {

@@ -1,5 +1,13 @@
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useRequestLifetime } from '../api/use-actor-requests';
 import { useMissionPlanRejection } from './mission-plan-access-lifetime';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import {
@@ -28,18 +36,27 @@ export function useMissionPlanRead<T>(
   const [state, setState] = useState<Read<T>>({
     kind: path ? 'loading' : 'idle',
   });
-  const pending = useRef<AbortController | undefined>(undefined);
+  const generation = useRequestLifetime(
+    context.identity,
+    JSON.stringify([context.authority.key, path]),
+  );
+  const reads = useScopedOperationGroup(String(generation));
   const current = useRef({ decode, reject });
-  current.current = { decode, reject };
+  useLayoutEffect(() => {
+    current.current = { decode, reject };
+  });
   const {
     identity,
     authority: { companyId },
   } = context;
   const load = useCallback(() => {
     if (path === null) return;
+    const operation = reads.beginLatest();
+    if (!operation) return;
+    const reject = current.current.reject;
     setState({ kind: 'loading' });
     void runLatestAuthenticatedRequest({
-      pending,
+      signal: operation.signal,
       identity,
       execute: (api, signal) =>
         api.request(path, { companyContextId: companyId, signal }),
@@ -54,21 +71,21 @@ export function useMissionPlanRead<T>(
           result.status === 'forbidden'
         ) {
           setState({ kind: 'denied' });
-          current.current.reject(result);
+          reject(result);
         } else
           setState({
             kind: result.status === 'notFound' ? 'missing' : 'error',
           });
       },
       onError: () => setState({ kind: 'error' }),
-    });
-  }, [identity, companyId, path]);
+    }).finally(operation.release);
+  }, [identity, companyId, path, reads]);
   useEffect(() => {
     if (path === null) {
-      pending.current?.abort();
+      reads.retire();
       setState({ kind: 'idle' });
     } else load();
-    return () => pending.current?.abort();
+    return reads.retire;
   }, [load, path]);
   return { state, load };
 }
@@ -97,26 +114,24 @@ export function useMissionPlanCommand<T>(
     notice: null,
     error: null,
   });
-  const pending = useRef<AbortController | null>(null),
-    lock = useRef(false);
-  const callbacks = useRef({ onConfirmed });
-  callbacks.current = { onConfirmed };
-  useEffect(
-    () => () => {
-      pending.current?.abort();
-    },
-    [context.identity],
+  const generation = useRequestLifetime(
+    context.identity,
+    context.authority.key,
   );
+  const writes = useScopedOperationGroup(String(generation));
+  const callbacks = useRef({ onConfirmed });
+  useLayoutEffect(() => {
+    callbacks.current = { onConfirmed };
+  });
   async function run(attempt: Attempt<T>) {
-    if (lock.current) return;
-    lock.current = true;
-    const controller = new AbortController();
-    pending.current = controller;
+    if (writes.isPending()) return;
+    const operation = writes.begin();
+    if (!operation) return;
     setState({ kind: 'pending', attempt });
     let confirmed: T | undefined;
     try {
       const api = await createAuthenticatedApiClient(context.identity);
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       const result = await api.request(attempt.path, {
         method: 'POST',
         body: attempt.body,
@@ -125,9 +140,9 @@ export function useMissionPlanCommand<T>(
           'idempotency-key': attempt.key,
         },
         companyContextId: context.authority.companyId,
-        signal: controller.signal,
+        signal: operation.signal,
       });
-      if (controller.signal.aborted) return;
+      if (operation.signal.aborted) return;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
         setState({ kind: 'idle', notice: null, error: 'denied' });
         reject(result);
@@ -159,15 +174,12 @@ export function useMissionPlanCommand<T>(
       confirmed = attempt.decode(result.value);
       setState({ kind: 'idle', notice, error: null });
     } catch {
-      if (!controller.signal.aborted) setState({ kind: 'uncertain', attempt });
+      if (!operation.signal.aborted) setState({ kind: 'uncertain', attempt });
     } finally {
-      if (pending.current === controller) {
-        pending.current = null;
-        lock.current = false;
-      }
+      operation.release();
     }
     // A failed optional refresh cannot turn a committed, validated receipt uncertain.
-    if (confirmed !== undefined && !controller.signal.aborted)
+    if (confirmed !== undefined && !operation.signal.aborted)
       callbacks.current.onConfirmed(confirmed);
   }
   return {
@@ -178,7 +190,7 @@ export function useMissionPlanCommand<T>(
       payload: Record<string, unknown>,
       decode: (value: unknown) => T,
     ) {
-      if (state.kind !== 'idle' || lock.current) return;
+      if (state.kind !== 'idle' || writes.isPending()) return;
       void run({
         path,
         body: JSON.stringify(payload),

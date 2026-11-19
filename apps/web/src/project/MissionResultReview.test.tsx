@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import {
+  act,
   render,
   screen,
   fireEvent,
@@ -102,8 +103,153 @@ const history = {
     nextBeforeRevision: null,
   },
 };
+function pagedReviewFixture() {
+  const first = plan.activities[0];
+  if (!first) throw new Error('Expected mapped activity');
+  const judgment = (revision: number) => ({
+    id: `row-${revision}`,
+    batchId: `batch-${revision}`,
+    reviewRevision: revision,
+    predecessorId: revision > 1 ? `row-${revision - 1}` : null,
+    outcome: 'NEEDS_WORK',
+    basis: 'Protected historical basis DEMO887',
+    actor: {
+      internalUserId: 'owner',
+      workspaceMembershipId: 'member',
+      displayName: 'Owner',
+    },
+    occurredAt: '2026-10-26T10:00:00.000Z',
+    observedTask: { id: first.taskId, title: first.title, version: 2 },
+    observedResultRevision: 0,
+    evidence: {
+      kind: 'EXTERNAL_REPORTED',
+      reference: 'Protected historical evidence DEMO887',
+    },
+  });
+  const current = snapshot().review;
+  const batches = Array.from({ length: 25 }, (_, index) => {
+    const row = judgment(26 - index);
+    return {
+      id: row.batchId,
+      reviewRevision: row.reviewRevision,
+      outcome: row.outcome,
+      basis: row.basis,
+      items: [row],
+    };
+  });
+  return {
+    current: {
+      review: {
+        ...current,
+        revision: 26,
+        activities: current.activities.map((row, index) => ({
+          ...row,
+          latest: index === 0 ? { ...judgment(26), current: true } : null,
+        })),
+      },
+    },
+    history: {
+      history: {
+        kind: 'available',
+        hasMore: true,
+        nextBeforeRevision: 2,
+        batches,
+      },
+    },
+  };
+}
+
 const props = { actor, identity, projectId: 'project', plan };
 afterEach(() => vi.unstubAllGlobals());
+
+it.each(
+  ['snapshot', 'history', 'older', 'command'].flatMap((request) =>
+    [false, true].map((replaced) => ({ request, replaced })),
+  ),
+)(
+  'rejects review $request 401 only for its admitting Actor (replaced=$replaced)',
+  async ({ request, replaced }) => {
+    let release: ((value: Response) => void) | undefined;
+    const held = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    let captured = false;
+    const pages = pagedReviewFixture();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        const selected =
+          init?.method === 'POST'
+            ? 'command'
+            : url.includes('beforeRevision=')
+              ? 'older'
+              : url.includes('/history')
+                ? 'history'
+                : 'snapshot';
+        if (selected === request) {
+          captured = true;
+          return held;
+        }
+        return Response.json(
+          url.includes('/history')
+            ? request === 'older'
+              ? pages.history
+              : history
+            : request === 'older'
+              ? pages.current
+              : snapshot(),
+        );
+      }),
+    );
+    const rejectSession = vi.fn(async () => {});
+    const browserIdentity = { ...identity, rejectSession };
+    const view = render(
+      <MissionResultReview {...props} identity={browserIdentity} />,
+    );
+    if (request === 'older') {
+      const button = await screen.findByRole('button', {
+        name: 'Load older reviews',
+      });
+      await waitFor(() => expect(button).toBeEnabled());
+      fireEvent.click(button);
+    } else if (request === 'command') {
+      const boxes = await screen.findAllByRole('checkbox');
+      const box = boxes[0];
+      if (!box) throw new Error('Expected a human review selection');
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: 'Reload review' }),
+        ).toBeEnabled(),
+      );
+      fireEvent.click(box);
+      fireEvent.change(
+        screen.getByRole('textbox', {
+          name: 'Literal external reference — CT_AN01',
+        }),
+        { target: { value: 'Literal physical evidence' } },
+      );
+      fireEvent.change(
+        screen.getByRole('textbox', { name: 'Shared review basis' }),
+        { target: { value: 'Literal human basis' } },
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Record human review' }),
+      );
+    }
+    await waitFor(() => expect(captured).toBe(true));
+    if (replaced)
+      view.rerender(
+        <MissionResultReview
+          {...props}
+          identity={browserIdentity}
+          actor={{ ...actor, displayName: 'Fresh complete Actor' }}
+        />,
+      );
+    await act(async () => release?.(new Response(null, { status: 401 })));
+    await screen.findByText('Review access unavailable.');
+    expect(rejectSession).toHaveBeenCalledTimes(replaced ? 0 : 1);
+  },
+);
 it('prepares a deliberate multi-activity review and retries only the identical uncertain command', async () => {
   const commands: Array<{ body: unknown; key: string | null }> = [];
   vi.stubGlobal(
@@ -371,29 +517,7 @@ it('redacts the current projection when the following history read observes evid
 it.each([403, 404])(
   'retires loaded protected judgments, older history and a draft when pagination observes HTTP%s',
   async (status) => {
-    const first = plan.activities[0];
-    if (!first) throw new Error('Expected mapped activity');
-    const judgment = (revision: number) => ({
-      id: `row-${revision}`,
-      batchId: `batch-${revision}`,
-      reviewRevision: revision,
-      predecessorId: revision > 1 ? `row-${revision - 1}` : null,
-      outcome: 'NEEDS_WORK',
-      basis: 'Protected historical basis DEMO887',
-      actor: {
-        internalUserId: 'owner',
-        workspaceMembershipId: 'member',
-        displayName: 'Owner',
-      },
-      occurredAt: '2026-10-26T10:00:00.000Z',
-      observedTask: { id: first.taskId, title: first.title, version: 2 },
-      observedResultRevision: 0,
-      evidence: {
-        kind: 'EXTERNAL_REPORTED',
-        reference: 'Protected historical evidence DEMO887',
-      },
-    });
-    const current = snapshot().review;
+    const pages = pagedReviewFixture();
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string) => {
@@ -402,34 +526,9 @@ it.each([403, 404])(
             { message: 'Read authority revoked DEMO' },
             { status },
           );
-        if (url.includes('/history'))
-          return Response.json({
-            history: {
-              kind: 'available',
-              hasMore: true,
-              nextBeforeRevision: 2,
-              batches: Array.from({ length: 25 }, (_, index) => {
-                const row = judgment(26 - index);
-                return {
-                  id: row.batchId,
-                  reviewRevision: row.reviewRevision,
-                  outcome: row.outcome,
-                  basis: row.basis,
-                  items: [row],
-                };
-              }),
-            },
-          });
-        return Response.json({
-          review: {
-            ...current,
-            revision: 26,
-            activities: current.activities.map((row, index) => ({
-              ...row,
-              latest: index === 0 ? { ...judgment(26), current: true } : null,
-            })),
-          },
-        });
+        return Response.json(
+          url.includes('/history') ? pages.history : pages.current,
+        );
       }),
     );
     render(<MissionResultReview {...props} />);

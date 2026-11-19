@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
 import { grantOf } from '../access/company-grants';
 import {
@@ -48,18 +56,9 @@ export function MissionPlanCurrentWork(props: Props) {
     props.projectId,
     props.clientAccountId,
   ]);
-  const owner = useRef({ key, identity: props.identity, generation: 0 });
-  if (owner.current.key !== key || owner.current.identity !== props.identity)
-    owner.current = {
-      key,
-      identity: props.identity,
-      generation: owner.current.generation + 1,
-    };
+  const generation = useRequestLifetime(props.identity, key);
   return authority ? (
-    <div
-      className="mission-plan-region current-work"
-      key={owner.current.generation}
-    >
+    <div className="mission-plan-region current-work" key={generation}>
       <MissionPlanAccessLifetime
         actor={props.actor}
         context={{
@@ -102,31 +101,39 @@ function CurrentWorkOwner({
     [page, setPage] = useState(0),
     [returnTask, setReturnTask] = useState<string | null>(null),
     [focusTask, setFocusTask] = useState<string | null>(null);
-  const pending = useRef<AbortController | undefined>(undefined),
-    source = useRef<string | null>(null);
+  const source = useRef<string | null>(null);
   const resultKey = resultAuthority(props.actor);
-  const resultGeneration = useRef({ key: resultKey, generation: 0 });
+  const [resultGeneration, setResultGeneration] = useState({
+    key: resultKey,
+    generation: 0,
+  });
+  const reads = useScopedOperationGroup(String(resultGeneration.generation));
   const current = useRef({ reject, resultKey });
-  current.current = { reject, resultKey };
-  if (resultGeneration.current.key !== resultKey) {
-    resultGeneration.current = {
+  useLayoutEffect(() => {
+    current.current = { reject, resultKey };
+  });
+  if (resultGeneration.key !== resultKey) {
+    setResultGeneration({
       key: resultKey,
-      generation: resultGeneration.current.generation + 1,
-    };
-    pending.current?.abort();
+      generation: resultGeneration.generation + 1,
+    });
     if (state.kind === 'ready')
       setState({ kind: 'ready', value: withoutResults(state.value) });
   }
   const { identity, projectId, clientAccountId } = props;
   const callbacks = useRef(props);
-  callbacks.current = props;
+  useLayoutEffect(() => {
+    callbacks.current = props;
+  });
   const load = useCallback(
     (optionalOnly = false, restoreTask: string | null = null) => {
-      const generation = resultGeneration.current.generation;
+      const operation = reads.beginLatest();
+      if (!operation) return;
+      const reject = current.current.reject;
       if (!optionalOnly) setState({ kind: 'loading' });
       setFocusTask(null);
       void runLatestAuthenticatedRequest({
-        pending,
+        signal: operation.signal,
         identity,
         execute: (api, signal) =>
           api.request(`/projects/${projectId}/mission-plan/current-work`, {
@@ -134,7 +141,6 @@ function CurrentWorkOwner({
             signal,
           }),
         onResult: (result) => {
-          if (generation !== resultGeneration.current.generation) return;
           if (result.status === 'ok') {
             const value = readCurrentWork(result.value, {
               workspaceId: authority.workspaceId,
@@ -159,14 +165,14 @@ function CurrentWorkOwner({
             result.status === 'forbidden'
           ) {
             setState({ kind: 'denied' });
-            current.current.reject(result);
+            reject(result);
           } else
             setState({
               kind: result.status === 'notFound' ? 'missing' : 'error',
             });
         },
         onError: () => setState({ kind: 'error' }),
-      });
+      }).finally(operation.release);
     },
     [
       identity,
@@ -174,13 +180,14 @@ function CurrentWorkOwner({
       clientAccountId,
       authority.companyId,
       authority.workspaceId,
+      reads,
     ],
   );
   const initial = useRef(true);
   useEffect(() => {
     load(!initial.current);
     initial.current = false;
-    return () => pending.current?.abort();
+    return reads.retire;
   }, [load, resultKey]);
   const ready = state.kind === 'ready';
   return (

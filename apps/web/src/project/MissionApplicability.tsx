@@ -1,3 +1,5 @@
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useRequestLifetime } from '../api/use-actor-requests';
 import { useApplicabilityHistory } from './use-applicability-history';
 import { ApplicabilityHistoryView } from './ApplicabilityHistoryView';
 import { clientReadAuthority } from './project-authority';
@@ -140,7 +142,6 @@ type Command = {
   consumer: 'proposal' | 'decision';
   valid: () => boolean;
   recoveryValid: () => boolean;
-  controller: AbortController;
 };
 type Mutation =
   | { kind: 'idle' }
@@ -178,9 +179,13 @@ function ApplicabilityReader(
       props.identity,
     ),
     captureApprover = useAuthorityLifetime(approverKey, props.identity);
-  const protection = useRef({ retired: false }),
-    readRequest = useRef<AbortController | undefined>(undefined),
-    writeRequest = useRef<AbortController | undefined>(undefined);
+  const protection = useRef({ retired: false });
+  const readGeneration = useRequestLifetime(props.identity, props.projectId);
+  const proposalGeneration = useRequestLifetime(props.identity, coordinatorKey);
+  const decisionGeneration = useRequestLifetime(props.identity, approverKey);
+  const reads = useScopedOperationGroup(String(readGeneration));
+  const proposals = useScopedOperationGroup(String(proposalGeneration));
+  const decisions = useScopedOperationGroup(String(decisionGeneration));
   const [state, setState] = useState<ReadState>('loading'),
     [snapshot, setSnapshot] = useState<ApplicabilitySnapshot | null>(null),
     [selected, setSelected] = useState(props.plan.activities[0]?.taskId ?? ''),
@@ -219,8 +224,9 @@ function ApplicabilityReader(
   }
   function retire(next: ReadState) {
     protection.current.retired = true;
-    readRequest.current?.abort();
-    writeRequest.current?.abort();
+    reads.retire();
+    proposals.retire();
+    decisions.retire();
     setSnapshot(null);
     history.clear();
     setMutation({ kind: 'idle' });
@@ -242,21 +248,20 @@ function ApplicabilityReader(
       recoveryValid = props.captureRecovery();
     if (!valid()) return;
     history.close();
-    readRequest.current?.abort();
-    const controller = new AbortController();
-    readRequest.current = controller;
-    const live = () => valid() && !controller.signal.aborted;
+    const operation = reads.beginLatest();
+    if (!operation) return;
+    const live = () => valid() && !operation.signal.aborted;
     setState('loading');
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!live()) return;
       const result = await api.request(path, {
         companyContextId: companyId,
-        signal: controller.signal,
+        signal: operation.signal,
       });
       if (!live()) return;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
-        await recover(result, live, recoveryValid, controller.signal);
+        await recover(result, live, recoveryValid, operation.signal);
         if (live()) retire('denied');
         return;
       }
@@ -299,23 +304,26 @@ function ApplicabilityReader(
       if (live()) await history.loadPage();
     } catch {
       if (live()) setState('error');
+    } finally {
+      operation.release();
     }
   }
   useEffect(() => {
     void load();
-    return () => {
-      readRequest.current?.abort();
-      writeRequest.current?.abort();
-    };
+
     // Authority changes replace this owner; locale and unrelated grants preserve its reads.
   }, []);
   async function execute(command: Command) {
-    if (!command.valid()) return;
+    if (!command.valid() || proposals.isPending() || decisions.isPending())
+      return;
+    const operation = (
+      command.consumer === 'proposal' ? proposals : decisions
+    ).beginLatest();
+    if (!operation) return;
     setMutation({ kind: 'pending', command });
-    writeRequest.current = command.controller;
     try {
       const api = await createAuthenticatedApiClient(props.identity);
-      if (!command.valid() || command.controller.signal.aborted) return;
+      if (!command.valid() || operation.signal.aborted) return;
       const result = await api.request(command.path, {
         method: 'POST',
         body: command.body,
@@ -324,9 +332,9 @@ function ApplicabilityReader(
           'idempotency-key': command.key,
         },
         companyContextId: companyId,
-        signal: command.controller.signal,
+        signal: operation.signal,
       });
-      if (!command.valid() || command.controller.signal.aborted) return;
+      if (!command.valid() || operation.signal.aborted) return;
       if (result.status === 'ok') {
         let receipt: ReturnType<typeof readApplicabilityReceipt>;
         try {
@@ -335,6 +343,8 @@ function ApplicabilityReader(
           setMutation({ kind: 'uncertain', command });
           return;
         }
+        // A validated receipt completes command admission; optional refreshes own their own work.
+        operation.release();
         setMutation({ kind: 'confirmed', command, receipt });
         if (command.recoveryValid() && props.onActivityRecorded) {
           try {
@@ -342,9 +352,9 @@ function ApplicabilityReader(
           } catch {
             // A separate Activity refresh cannot undo the confirmed command receipt.
           }
-          if (!command.valid()) return;
+          if (!command.valid() || operation.signal.aborted) return;
         }
-        if (command.valid()) await load();
+        if (command.valid() && !operation.signal.aborted) await load();
         return;
       }
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
@@ -358,7 +368,7 @@ function ApplicabilityReader(
           result,
           command.valid,
           command.recoveryValid,
-          command.controller.signal,
+          operation.signal,
         );
         return;
       }
@@ -376,8 +386,10 @@ function ApplicabilityReader(
       }
       setMutation({ kind: 'uncertain', command });
     } catch {
-      if (command.valid() && !command.controller.signal.aborted)
+      if (command.valid() && !operation.signal.aborted)
         setMutation({ kind: 'uncertain', command });
+    } finally {
+      operation.release();
     }
   }
   function record(
@@ -400,7 +412,6 @@ function ApplicabilityReader(
       consumer,
       valid,
       recoveryValid: props.captureRecovery(),
-      controller: new AbortController(),
     });
   }
   const knownFacts = history.knownFacts;

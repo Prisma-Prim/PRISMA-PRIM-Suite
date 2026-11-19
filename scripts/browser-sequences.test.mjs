@@ -249,28 +249,61 @@ test('validates each native Contract replay against its own journey', () => {
   }
 });
 
-test('selects the native profitability replay only in its registered journey', () => {
+test('selects the native mission result replay only in its registered journey', () => {
   const command = browserSequenceReplayCommand({
-    caseId: 'profitability-version-owner',
+    caseId: 'mission-task-result',
     width: 'narrow',
-    seed: 1464001,
+    seed: 1461001,
     steps: 10,
     path: '0:1',
   });
   assert.equal(
     command,
-    "UI_SEQUENCE_REPLAY='profitability-version-owner@narrow~10~0:1' pnpm verify:journey profitability-owner-action-sequences --chaos 1464001",
+    "UI_SEQUENCE_REPLAY='mission-task-result@narrow~10~0:1' pnpm verify:journey mission-result-action-sequences --chaos 1461001",
   );
   const environment = {
-    UI_CHAOS_SEED: '1464001',
-    UI_SEQUENCE_REPLAY: 'profitability-version-owner@narrow~10~0:1',
+    UI_CHAOS_SEED: '1461001',
+    UI_SEQUENCE_REPLAY: 'mission-task-result@narrow~10~0:1',
   };
   assert.equal(
     readBrowserSequenceOptions({
-      journey: 'profitability-owner-action-sequences',
+      journey: 'mission-result-action-sequences',
       environment,
     }).replay.caseId,
-    'profitability-version-owner',
+    'mission-task-result',
+  );
+  assert.throws(
+    () =>
+      readBrowserSequenceOptions({
+        journey: 'financial-action-sequences',
+        environment,
+      }),
+    /Unknown sequence case/u,
+  );
+});
+
+test('selects the native Offer version replay only in its registered journey', () => {
+  const command = browserSequenceReplayCommand({
+    caseId: 'offer-version-owner',
+    width: 'narrow',
+    seed: 1462001,
+    steps: 10,
+    path: '0:1',
+  });
+  assert.equal(
+    command,
+    "UI_SEQUENCE_REPLAY='offer-version-owner@narrow~10~0:1' pnpm verify:journey offer-owner-action-sequences --chaos 1462001",
+  );
+  const environment = {
+    UI_CHAOS_SEED: '1462001',
+    UI_SEQUENCE_REPLAY: 'offer-version-owner@narrow~10~0:1',
+  };
+  assert.equal(
+    readBrowserSequenceOptions({
+      journey: 'offer-owner-action-sequences',
+      environment,
+    }).replay.caseId,
+    'offer-version-owner',
   );
   assert.throws(
     () =>
@@ -315,28 +348,28 @@ test('selects the native pricing replay only in its registered journey', () => {
   );
 });
 
-test('selects the native Offer version replay only in its registered journey', () => {
+test('selects the native profitability replay only in its registered journey', () => {
   const command = browserSequenceReplayCommand({
-    caseId: 'offer-version-owner',
+    caseId: 'profitability-version-owner',
     width: 'narrow',
-    seed: 1462001,
+    seed: 1464001,
     steps: 10,
     path: '0:1',
   });
   assert.equal(
     command,
-    "UI_SEQUENCE_REPLAY='offer-version-owner@narrow~10~0:1' pnpm verify:journey offer-owner-action-sequences --chaos 1462001",
+    "UI_SEQUENCE_REPLAY='profitability-version-owner@narrow~10~0:1' pnpm verify:journey profitability-owner-action-sequences --chaos 1464001",
   );
   const environment = {
-    UI_CHAOS_SEED: '1462001',
-    UI_SEQUENCE_REPLAY: 'offer-version-owner@narrow~10~0:1',
+    UI_CHAOS_SEED: '1464001',
+    UI_SEQUENCE_REPLAY: 'profitability-version-owner@narrow~10~0:1',
   };
   assert.equal(
     readBrowserSequenceOptions({
-      journey: 'offer-owner-action-sequences',
+      journey: 'profitability-owner-action-sequences',
       environment,
     }).replay.caseId,
-    'offer-version-owner',
+    'profitability-version-owner',
   );
   assert.throws(
     () =>
