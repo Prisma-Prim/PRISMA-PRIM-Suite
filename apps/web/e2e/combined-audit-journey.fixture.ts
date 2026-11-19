@@ -59,6 +59,7 @@ export async function qualifyCombinedAudit(input: AuditProofInput) {
   const words = narrow
     ? {
         title: 'Анализ досье',
+        importFiles: 'Импортировать PDF / Word',
         document: 'Документ и версия',
         addPdf: 'Добавить PDF',
         chooseFile: 'Выберите файл',
@@ -79,6 +80,7 @@ export async function qualifyCombinedAudit(input: AuditProofInput) {
       }
     : {
         title: 'Analiza dosarului',
+        importFiles: 'Importă fișiere PDF / Word',
         document: 'Document și versiune',
         addPdf: 'Adăugați PDF',
         chooseFile: 'Alegeți fișierul',
@@ -190,6 +192,12 @@ export async function qualifyCombinedAudit(input: AuditProofInput) {
     `${fixture.base}/timeline`,
   );
   let analysis = await openAnalysis();
+  if (input.kind === 'pilot') {
+    await expect(
+      analysis.getByRole('button', { name: words.importFiles, exact: true }),
+    ).toBeVisible();
+    await fixture.read(manager, `${fixture.prefix}/intake-batches`);
+  }
   const options = await openSelect(analysis.getByLabel(words.document));
   await options
     .getByRole('option', { name: /Fictional bilingual source.*evidence\.pdf/ })
@@ -517,6 +525,7 @@ export async function qualifyCombinedAudit(input: AuditProofInput) {
     await radio.check();
   await save(team, copy('proposeTeam'), '/team');
   article = await openCase(auditor);
+  if (input.kind === 'pilot') await fixture.read(auditor, fixture.prefix);
   await expect(
     article.getByRole('form', { name: copy('recordDecision'), exact: true }),
   ).toHaveCount(0);

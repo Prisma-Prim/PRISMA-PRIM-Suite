@@ -8,9 +8,9 @@
   "harness": "codex-cloud",
   "figuresSource": "self-reported",
   "time": {
-    "start": "2026-11-18T10:05:16.000Z",
-    "end": "2026-11-18T11:03:15.000Z",
-    "durationSeconds": 3479
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
   },
   "tokens": {
     "input": "not reported",
