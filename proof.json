@@ -1,0 +1,47 @@
+{
+  "issue": 1447,
+  "pullRequest": 1456,
+  "checkout": "e5adc8f6a82b51ad0128c406332af6c4fecc7975",
+  "testFile": "apps/web/e2e/certification-journey.acceptance.spec.ts",
+  "testBlob": "967cc16312e3c3a740957ac361fb9ffbdd4d159e",
+  "syntheticBusinessDayAdvance": 1,
+  "expectedVisibleDays": 1,
+  "attempts": [
+    {
+      "startedAt": "2026-11-19T00:34:03.186Z",
+      "finishedAt": "2026-11-19T00:37:56.078Z",
+      "status": "failed",
+      "expected": 0,
+      "tests": {
+        "passed": 0,
+        "failed": 2,
+        "flaky": 0,
+        "skipped": 0
+      },
+      "retries": 0
+    },
+    {
+      "startedAt": "2026-11-19T00:39:51.441Z",
+      "finishedAt": "2026-11-19T00:45:10.736Z",
+      "status": "passed",
+      "expected": 1,
+      "tests": {
+        "passed": 2,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0
+      },
+      "retries": 0
+    }
+  ],
+  "captures": [
+    {
+      "file": "desktop-certificate-awaiting-transmission.png",
+      "sha256": "d347a16bb6a41c22c3189822b1aebd365bb0463d7b0a1ee0890cc989ccb264e2"
+    },
+    {
+      "file": "narrow-certificate-awaiting-transmission.png",
+      "sha256": "8c89f39fc9bc11ae310bbab31ea537796777e654b8c04edd34df489d4268af72"
+    }
+  ]
+}
