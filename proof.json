@@ -1,0 +1,282 @@
+{
+  "fixture": "fictional",
+  "pullRequest": 1456,
+  "issue": 1447,
+  "head": "060d1a25a8fa99ea3495d62003bfd3df661aa18b",
+  "tree": "965c770c0341f2559e90dbc95671da4a3c6decf6",
+  "ci": 44432143098,
+  "journeys": [
+    {
+      "journey": "project-task-action-sequences",
+      "startedAt": "2026-11-19T00:50:19.182Z",
+      "finishedAt": "2026-11-19T00:56:41.599Z",
+      "status": "passed",
+      "replay": "pnpm verify:journey project-task-action-sequences --chaos 1447001",
+      "tests": {
+        "passed": 4,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0
+      },
+      "retries": 0,
+      "sequences": [
+        {
+          "caseId": "project-task",
+          "width": "desktop",
+          "seed": 1447001,
+          "status": "passed",
+          "runs": 2,
+          "steps": 10,
+          "coverage": {
+            "edit-literal-task-instructions": 2,
+            "stale-task-revision-requires-deliberate-reload": 1,
+            "reload-confirmed-or-conflicted-task-without-writing": 1,
+            "read-project-with-independent-task-draft": 2,
+            "isolate-http-403-task-after-company": 1,
+            "write-task-while-project-read-is-held": 2,
+            "change-interface-locale": 1
+          }
+        },
+        {
+          "caseId": "project-task",
+          "width": "narrow",
+          "seed": 1447001,
+          "status": "passed",
+          "runs": 2,
+          "steps": 10,
+          "coverage": {
+            "edit-literal-task-instructions": 2,
+            "stale-task-revision-requires-deliberate-reload": 1,
+            "reload-confirmed-or-conflicted-task-without-writing": 1,
+            "read-project-with-independent-task-draft": 2,
+            "isolate-http-403-task-after-company": 1,
+            "write-task-while-project-read-is-held": 2,
+            "change-interface-locale": 1
+          }
+        }
+      ],
+      "cases": [
+        {
+          "title": "checks Project Task actions against native literal retry and independent-read recipes",
+          "browser": "operational-acceptance-desktop"
+        },
+        {
+          "title": "checks Project Task actions against native literal retry and independent-read recipes",
+          "browser": "operational-acceptance-narrow"
+        },
+        {
+          "title": "explores generated native Project and Task action sequences",
+          "browser": "operational-acceptance-desktop"
+        },
+        {
+          "title": "explores generated native Project and Task action sequences",
+          "browser": "operational-acceptance-narrow"
+        }
+      ]
+    },
+    {
+      "journey": "document-action-sequences",
+      "startedAt": "2026-11-19T00:56:54.589Z",
+      "finishedAt": "2026-11-19T01:04:37.140Z",
+      "status": "passed",
+      "replay": "pnpm verify:journey document-action-sequences --chaos 1422001",
+      "tests": {
+        "passed": 12,
+        "failed": 0,
+        "flaky": 0,
+        "skipped": 0
+      },
+      "retries": 0,
+      "sequences": [
+        {
+          "caseId": "payment-evidence",
+          "width": "desktop",
+          "seed": 1422001,
+          "status": "passed",
+          "runs": 2,
+          "steps": 10,
+          "coverage": {
+            "correct-literal-evidence-metadata-lost-receipt": 1,
+            "toggle-only-native-payer-projection": 1,
+            "preserve-evidence-pdf-failed-read": 1,
+            "retry-confirmed-evidence-read-without-writing": 2,
+            "reselect-source-retires-old-selection": 3,
+            "select-native-evidence-version-1": 1,
+            "correct-literal-evidence-metadata-failed-read": 1,
+            "preserve-evidence-pdf-lost-receipt": 1
+          }
+        },
+        {
+          "caseId": "payment-evidence",
+          "width": "narrow",
+          "seed": 1422001,
+          "status": "passed",
+          "runs": 2,
+          "steps": 10,
+          "coverage": {
+            "correct-literal-evidence-metadata-lost-receipt": 1,
+            "toggle-only-native-payer-projection": 1,
+            "preserve-evidence-pdf-failed-read": 1,
+            "retry-confirmed-evidence-read-without-writing": 2,
+            "reselect-source-retires-old-selection": 3,
+            "select-native-evidence-version-1": 1,
+            "correct-literal-evidence-metadata-failed-read": 1,
+            "preserve-evidence-pdf-lost-receipt": 1
+          }
+        },
+        {
+          "caseId": "document-version",
+          "width": "desktop",
+          "seed": 1422001,
+          "status": "passed",
+          "runs": 2,
+          "steps": 10,
+          "coverage": {
+            "designation-lost-receipt": 1,
+            "download-native-immutable-pdf": 2,
+            "designation-failed-read": 2,
+            "retry-confirmed-read-without-writing": 2,
+            "successor-none": 1,
+            "company-a-b-a-retires-source-intent": 2,
+            "retire-held-native-pdf-403": 1
+          }
+        },
+        {
+          "caseId": "document-version",
+          "width": "narrow",
+          "seed": 1422001,
+          "status": "passed",
+          "runs": 2,
+          "steps": 10,
+          "coverage": {
+            "designation-lost-receipt": 1,
+            "download-native-immutable-pdf": 2,
+            "designation-failed-read": 2,
+            "retry-confirmed-read-without-writing": 2,
+            "successor-none": 1,
+            "company-a-b-a-retires-source-intent": 2,
+            "retire-held-native-pdf-403": 1
+          }
+        },
+        {
+          "caseId": "document-pdf",
+          "width": "desktop",
+          "seed": 1422001,
+          "status": "passed",
+          "runs": 2,
+          "steps": 10,
+          "coverage": {
+            "change-interface-locale": 2,
+            "preserve-pdf-none": 1,
+            "retire-held-native-pdf-403": 1,
+            "company-a-b-a-retires-source-intent": 2,
+            "download-native-immutable-pdf": 1,
+            "retire-held-native-pdf-200": 1,
+            "choose-exact-pdf-bytes": 1,
+            "preserve-pdf-lost-receipt": 1,
+            "retry-exact-command-with-double-admission": 1
+          }
+        },
+        {
+          "caseId": "document-pdf",
+          "width": "narrow",
+          "seed": 1422001,
+          "status": "passed",
+          "runs": 2,
+          "steps": 10,
+          "coverage": {
+            "change-interface-locale": 2,
+            "preserve-pdf-none": 1,
+            "retire-held-native-pdf-403": 1,
+            "company-a-b-a-retires-source-intent": 2,
+            "download-native-immutable-pdf": 1,
+            "retire-held-native-pdf-200": 1,
+            "choose-exact-pdf-bytes": 1,
+            "preserve-pdf-lost-receipt": 1,
+            "retry-exact-command-with-double-admission": 1
+          }
+        }
+      ],
+      "cases": [
+        {
+          "title": "checks the PaymentEvidence sequence adapter against the native source recipe",
+          "browser": "operational-acceptance-desktop"
+        },
+        {
+          "title": "recovers a confirmed Version read while its authorized immutable PDF download is still pending",
+          "browser": "operational-acceptance-desktop"
+        },
+        {
+          "title": "preserves native PDF retry bytes and freezes an official Version before starting its empty-PDF successor",
+          "browser": "operational-acceptance-desktop"
+        },
+        {
+          "title": "checks the PaymentEvidence sequence adapter against the native source recipe",
+          "browser": "operational-acceptance-narrow"
+        },
+        {
+          "title": "recovers a confirmed Version read while its authorized immutable PDF download is still pending",
+          "browser": "operational-acceptance-narrow"
+        },
+        {
+          "title": "preserves native PDF retry bytes and freezes an official Version before starting its empty-PDF successor",
+          "browser": "operational-acceptance-narrow"
+        },
+        {
+          "title": "explores generated native Document Version action sequences",
+          "browser": "operational-acceptance-desktop"
+        },
+        {
+          "title": "explores generated native Document PDF action sequences",
+          "browser": "operational-acceptance-desktop"
+        },
+        {
+          "title": "explores generated native PaymentEvidence source action sequences",
+          "browser": "operational-acceptance-desktop"
+        },
+        {
+          "title": "explores generated native Document Version action sequences",
+          "browser": "operational-acceptance-narrow"
+        },
+        {
+          "title": "explores generated native Document PDF action sequences",
+          "browser": "operational-acceptance-narrow"
+        },
+        {
+          "title": "explores generated native PaymentEvidence source action sequences",
+          "browser": "operational-acceptance-narrow"
+        }
+      ]
+    }
+  ],
+  "captures": [
+    {
+      "file": "desktop-project.png",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 5107,
+      "sha256": "231f86c2c47df7ee6173923e931dbdfd5d73c739341dbb30ee60f2ad597039a1"
+    },
+    {
+      "file": "narrow-project.png",
+      "viewport": "narrow",
+      "width": 390,
+      "height": 7099,
+      "sha256": "86b174bde971ad994c7673b00fe6e1a5390757ca620bd24f185f016bcc3f1d78"
+    },
+    {
+      "file": "desktop-document.png",
+      "viewport": "desktop",
+      "width": 1440,
+      "height": 2602,
+      "sha256": "b340dc257627a6e45a258013008f7d145f109a6a99047e1351b59cd2dd7ac85e"
+    },
+    {
+      "file": "narrow-document.png",
+      "viewport": "narrow",
+      "width": 390,
+      "height": 3140,
+      "sha256": "2b2306c312099f6914809c3a8bc4b5a0e71d7d90f37d65276410c1d9af95b52f"
+    }
+  ]
+}
