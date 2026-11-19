@@ -94,6 +94,12 @@ const R16_REASON =
   'Fictional: the Stage 2 report was released before the decision by mistake.';
 const MANUAL_ITEM = 'Fictional: verify the allergen labels at dispatch.';
 
+let restoreClock: (() => Promise<void>) | undefined;
+test.afterEach(async () => {
+  await restoreClock?.();
+  restoreClock = undefined;
+});
+
 test('runs the fictional Lactis Demo SRL Case from the application to the Certificate and downloads its dossier register', async ({
   page,
 }, info) => {
@@ -1477,12 +1483,21 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
         exact: true,
       })
       .check();
+
+    // Keep the declared issue date and cross a UTC day on the native server.
+    const clockFile = process.env.ACCEPTANCE_CLOCK_OFFSET_FILE;
+    if (!clockFile) throw new Error('Missing synthetic acceptance clock');
+    const originalOffset = await readFile(clockFile, 'utf8');
+    restoreClock = () => writeFile(clockFile, originalOffset);
+    const nextUtcNoon = Date.parse(`${addDays(journey.today, 1)}T12:00:00Z`);
+    await writeFile(clockFile, String(nextUtcNoon - Date.now()));
+
     await issue
       .getByRole('button', { name: copy('certificateSubmit'), exact: true })
       .click();
     await expect(
       release.getByText(
-        formatMessage(releaseCopy('pendingDays'), { days: 0 }),
+        formatMessage(releaseCopy('pendingDays'), { days: 1 }),
         { exact: true },
       ),
     ).toBeVisible();
