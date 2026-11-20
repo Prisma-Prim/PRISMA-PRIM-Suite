@@ -1,7 +1,9 @@
 import { ChevronLeft, ChevronRight, RefreshCw, X } from 'lucide-react';
-import { useEffect, useId, useRef, useState, type RefObject } from 'react';
+import { useEffect, useId, useState, type RefObject } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperation } from '../api/use-scoped-operation';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import {
   readCompanyOverdueTasks,
@@ -35,12 +37,15 @@ export function OverdueTasksPanel({
   const copy = useOperationalHomeCopy().overdue;
   const titleId = useId();
   const [load, setLoad] = useState<Load>({ kind: 'loading', offset: 0 });
-  const pending = useRef<AbortController | undefined>(undefined);
+  const ownerScope = String(useRequestLifetime(identity, company.id));
+  const latest = useScopedOperation(ownerScope);
 
   function read(offset: number) {
+    const requestSignal = latest.begin();
+    if (!requestSignal) return;
     setLoad({ kind: 'loading', offset });
     void runLatestAuthenticatedRequest({
-      pending,
+      signal: requestSignal,
       identity,
       execute: (api, signal) =>
         api.request(`/overdue-tasks?offset=${offset}`, {
@@ -68,8 +73,7 @@ export function OverdueTasksPanel({
   }
   useEffect(() => {
     read(0);
-    return () => pending.current?.abort();
-  }, [identity, company.id]);
+  }, [ownerScope]);
   const offset = load.kind === 'ready' ? load.list.offset : load.offset;
   const busy = load.kind === 'loading';
   const unavailablePage =

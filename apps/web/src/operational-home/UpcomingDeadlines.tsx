@@ -8,6 +8,8 @@ import {
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperation } from '../api/use-scoped-operation';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { formatMessage } from '../localization/messages';
 import { useMyTasksCopy } from '../project/my-tasks-localized.copy';
@@ -96,12 +98,20 @@ function UpcomingPanel({
   const { formatDate, formatNumber } = useInterfaceLocale();
   const titleId = useId();
   const [load, setLoad] = useState<Load>({ kind: 'loading', offset: 0 });
-  const pending = useRef<AbortController | undefined>(undefined);
+  const ownerScope = String(
+    useRequestLifetime(
+      identity,
+      JSON.stringify([company.id, workspaceMembershipId]),
+    ),
+  );
+  const latest = useScopedOperation(ownerScope);
   const range = useRef<string | undefined>(undefined);
   function read(offset: number) {
+    const requestSignal = latest.begin();
+    if (!requestSignal) return;
     setLoad({ kind: 'loading', offset });
     void runLatestAuthenticatedRequest({
-      pending,
+      signal: requestSignal,
       identity,
       execute: (api, signal) =>
         api.request(`/due-soon-tasks?offset=${offset}`, {
@@ -140,8 +150,7 @@ function UpcomingPanel({
   }
   useEffect(() => {
     read(0);
-    return () => pending.current?.abort();
-  }, [identity]);
+  }, [ownerScope]);
   const offset = load.kind === 'ready' ? load.list.offset : load.offset;
   const busy = load.kind === 'loading';
   function renderBody() {

@@ -2,7 +2,7 @@ import './ideas-workspace.css';
 import {
   useCallback,
   useEffect,
-  useMemo,
+  useLayoutEffect,
   useRef,
   useState,
   type FormEvent,
@@ -14,6 +14,11 @@ import {
   type ApiResult,
 } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
 import { useIdeasCopy } from './ideas.copy';
@@ -48,14 +53,12 @@ type Save<I extends Intent = Intent> =
   | { status: 'saving' | 'uncertain'; intent: I };
 
 export function IdeasWorkspace(props: Props) {
-  const identityScope = useMemo(() => crypto.randomUUID(), [props.identity]);
-  if (!ideasAuthority(props.actor).read) return null;
-  return (
-    <IdeasRegistry
-      key={`${identityScope}:${ideasContextKey(props.actor)}`}
-      {...props}
-    />
+  const identityScope = useRequestLifetime(
+    props.identity,
+    ideasContextKey(props.actor),
   );
+  if (!ideasAuthority(props.actor).read) return null;
+  return <IdeasRegistry key={identityScope} {...props} />;
 }
 function IdeasRegistry(props: Props) {
   const { actor, identity } = props;
@@ -64,7 +67,9 @@ function IdeasRegistry(props: Props) {
   const { formatDate, formatDateTime, formatNumber } = useInterfaceLocale();
   const authority = ideasAuthority(actor);
   const callbacks = useRef(props);
-  callbacks.current = props;
+  useLayoutEffect(() => {
+    callbacks.current = props;
+  });
   const [page, setPage] = useState<View<IdeaPage>>({ status: 'loading' });
   const [detail, setDetail] =
     useState<View<{ idea: Idea; history: History }>>();
@@ -78,10 +83,15 @@ function IdeasRegistry(props: Props) {
   const [kind, setKind] = useState<'deferred' | 'rejected'>('deferred');
   const [reason, setReason] = useState('');
   const [date, setDate] = useState('');
-  const listPending = useRef<AbortController | undefined>(undefined);
-  const detailPending = useRef<AbortController | undefined>(undefined);
-  const mutationPending = useRef<AbortController | undefined>(undefined);
-  const authorityEpoch = useRef(0);
+  const listWork = useScopedOperationGroup('ideas-list');
+  const detailWork = useScopedOperationGroup('ideas-detail');
+  const commands = useScopedOperationGroup('ideas-command');
+  const observation = useActorObservation(actor);
+  const recoveryWork = useScopedOperationGroup(String(observation));
+  const committedRecovery = useRef(recoveryWork);
+  useLayoutEffect(() => {
+    committedRecovery.current = recoveryWork;
+  }, [recoveryWork]);
   const heading = useRef<HTMLHeadingElement>(null);
   const workspace = useRef<HTMLElement>(null);
   const openingTrigger = useRef<Element | null>(null);
@@ -94,10 +104,9 @@ function IdeasRegistry(props: Props) {
       signal: AbortSignal,
       command?: Intent,
     ): Promise<ApiResult<unknown>> => {
-      const epoch = authorityEpoch.current;
+      const recoveryOwner = committedRecovery.current;
       const api = await createAuthenticatedApiClient(identity);
-      if (signal.aborted || epoch !== authorityEpoch.current)
-        return { status: 'error' };
+      if (signal.aborted) return { status: 'error' };
       const result = await api.request(path, {
         companyContextId: companyId,
         signal,
@@ -112,76 +121,82 @@ function IdeasRegistry(props: Props) {
             }
           : {}),
       });
-      if (signal.aborted || epoch !== authorityEpoch.current)
-        return { status: 'error' };
-      if (result.status === 'unauthorized' || result.status === 'forbidden') {
-        authorityEpoch.current += 1;
-        // Retire private content before authority revalidation. Other replies
-        // from this generation cannot restore it, even on a shared signal.
-        for (const pending of [listPending, detailPending, mutationPending]) {
-          if (pending.current?.signal !== signal) pending.current?.abort();
+      if (signal.aborted) return { status: 'error' };
+      if (result.status !== 'unauthorized' && result.status !== 'forbidden')
+        return result;
+      const recovery = recoveryOwner.begin();
+      listWork.retire();
+      detailWork.retire();
+      commands.retire();
+      setPage({ status: 'denied' });
+      setDetail(undefined);
+      setSelectedId(undefined);
+      setDescription('');
+      setOrigin('');
+      setReason('');
+      setDate('');
+      setKind('deferred');
+      setSave({ status: 'denied' });
+      setReviewSave({ status: 'idle' });
+      openingTrigger.current = null;
+      rowTrigger.current = null;
+      if (recovery) {
+        const current = () => !recovery.signal.aborted;
+        try {
+          if (result.status === 'unauthorized') {
+            const workspaceRejection =
+              callbacks.current.onWorkspaceAccessRejected();
+            await Promise.all([workspaceRejection, identity.rejectSession()]);
+            return result;
+          }
+          await handleAuthenticatedAccessRejection({
+            result,
+            identity,
+            companyContextId: companyId,
+            signal: recovery.signal,
+            isCurrent: current,
+            onActorRevalidated: (actor) =>
+              callbacks.current.onActorRevalidated(actor),
+            onCompanyContextRejected: (id) =>
+              callbacks.current.onCompanyContextRejected(id),
+            onWorkspaceAccessRejected: () =>
+              callbacks.current.onWorkspaceAccessRejected(),
+          });
+        } finally {
+          recovery.release();
         }
-        setPage({ status: 'denied' });
-        setDetail(undefined);
-        setSelectedId(undefined);
-        setDescription('');
-        setOrigin('');
-        setReason('');
-        setDate('');
-        setKind('deferred');
-        setSave({ status: 'denied' });
-        setReviewSave({ status: 'idle' });
-        openingTrigger.current = null;
-        rowTrigger.current = null;
-        if (result.status === 'unauthorized')
-          await callbacks.current.onWorkspaceAccessRejected();
       }
-      await handleAuthenticatedAccessRejection({
-        result,
-        identity,
-        companyContextId: companyId,
-        signal,
-        onActorRevalidated: (actor) =>
-          callbacks.current.onActorRevalidated(actor),
-        onCompanyContextRejected: (id) =>
-          callbacks.current.onCompanyContextRejected(id),
-        onWorkspaceAccessRejected: () =>
-          callbacks.current.onWorkspaceAccessRejected(),
-      });
       return result;
     },
-    [identity, companyId],
+    [identity, companyId, listWork, detailWork, commands],
   );
   const loadList = useCallback(
     async (cursor?: string) => {
-      listPending.current?.abort();
-      const controller = new AbortController();
-      listPending.current = controller;
+      const operation = listWork.beginLatest();
+      if (!operation) return;
+      const { signal } = operation;
       setPage({ status: 'loading' });
       try {
         const result = await query(
           `/ideas${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
-          controller.signal,
+          signal,
         );
-        if (controller.signal.aborted) return;
+        if (signal.aborted) return;
         setPage(
           result.status === 'ok'
             ? { status: 'ready', value: parseIdeaPage(result.value, companyId) }
             : { status: refusal(result) },
         );
       } catch {
-        if (!controller.signal.aborted) setPage({ status: 'error' });
+        if (!signal.aborted) setPage({ status: 'error' });
+      } finally {
+        operation.release();
       }
     },
-    [query, companyId],
+    [query, companyId, listWork],
   );
   useEffect(() => {
     void loadList();
-    return () => {
-      listPending.current?.abort();
-      detailPending.current?.abort();
-      mutationPending.current?.abort();
-    };
   }, [loadList]);
   useEffect(() => {
     if (
@@ -204,10 +219,10 @@ function IdeasRegistry(props: Props) {
     ideaId: string,
     options: { cursor?: string; preserveConfirmation?: boolean } = {},
   ) {
-    if (mutationPending.current) return;
-    detailPending.current?.abort();
-    const controller = new AbortController();
-    detailPending.current = controller;
+    if (commands.isPending()) return;
+    const operation = detailWork.beginLatest();
+    if (!operation) return;
+    const { signal } = operation;
     setSelectedId(ideaId);
     setDetail({ status: 'loading' });
     setReason('');
@@ -216,13 +231,13 @@ function IdeasRegistry(props: Props) {
     if (!options.preserveConfirmation) setReviewSave({ status: 'idle' });
     try {
       const [record, history] = await Promise.all([
-        query(`/ideas/${encodeURIComponent(ideaId)}`, controller.signal),
+        query(`/ideas/${encodeURIComponent(ideaId)}`, signal),
         query(
           `/ideas/${encodeURIComponent(ideaId)}/dispositions${options.cursor ? `?cursor=${encodeURIComponent(options.cursor)}` : ''}`,
-          controller.signal,
+          signal,
         ),
       ]);
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       if (record.status === 'ok' && history.status === 'ok') {
         const idea = parseIdea(record.value, companyId),
           entries = parseHistory(history.value, ideaId);
@@ -234,12 +249,14 @@ function IdeasRegistry(props: Props) {
           status: refusal(record.status === 'ok' ? history : record),
         });
     } catch {
-      if (!controller.signal.aborted) setDetail({ status: 'error' });
+      if (!signal.aborted) setDetail({ status: 'error' });
+    } finally {
+      operation.release();
     }
   }
   function close() {
-    if (mutationPending.current) return;
-    detailPending.current?.abort();
+    if (commands.isPending()) return;
+    detailWork.retire();
     setDetail(undefined);
     setSelectedId(undefined);
     setReason('');
@@ -254,14 +271,15 @@ function IdeasRegistry(props: Props) {
       workspace.current.focus();
   }
   async function executeRecord(intent: Intent) {
-    if (!authority.record || mutationPending.current) return;
-    const controller = new AbortController();
-    mutationPending.current = controller;
+    if (!authority.record || commands.isPending()) return;
+    const operation = commands.begin();
+    if (!operation) return;
+    const { signal } = operation;
     setSave({ status: 'saving', intent });
     let recordedIdeaId: string | undefined;
     try {
-      const result = await query('/ideas', controller.signal, intent);
-      if (controller.signal.aborted) return;
+      const result = await query('/ideas', signal, intent);
+      if (signal.aborted) return;
       if (result.status === 'ok') {
         const idea = parseIdea(result.value, companyId);
         setSave({ status: 'saved' });
@@ -277,29 +295,29 @@ function IdeasRegistry(props: Props) {
         setSave({ status: 'denied' });
       else setSave({ status: 'uncertain', intent });
     } catch {
-      if (!controller.signal.aborted) setSave({ status: 'uncertain', intent });
+      if (!signal.aborted) setSave({ status: 'uncertain', intent });
     } finally {
-      if (mutationPending.current === controller)
-        mutationPending.current = undefined;
+      operation.release();
     }
-    if (recordedIdeaId !== undefined && !controller.signal.aborted) {
+    if (recordedIdeaId !== undefined && !signal.aborted) {
       void open(recordedIdeaId);
       void loadList();
     }
   }
   async function executeReview(intent: ReviewIntent) {
-    if (!authority.review || mutationPending.current) return;
-    const controller = new AbortController();
-    mutationPending.current = controller;
+    if (!authority.review || commands.isPending()) return;
+    const operation = commands.begin();
+    if (!operation) return;
+    const { signal } = operation;
     setReviewSave({ status: 'saving', intent });
     let confirmed = false;
     try {
       const result = await query(
         `/ideas/${encodeURIComponent(intent.ideaId)}/dispositions`,
-        controller.signal,
+        signal,
         intent,
       );
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       if (result.status === 'ok') {
         const response = parseDispositionResult(result.value, companyId);
         if (response.idea.id !== intent.ideaId)
@@ -324,13 +342,11 @@ function IdeasRegistry(props: Props) {
         setReviewSave({ status: 'denied' });
       else setReviewSave({ status: 'uncertain', intent });
     } catch {
-      if (!controller.signal.aborted)
-        setReviewSave({ status: 'uncertain', intent });
+      if (!signal.aborted) setReviewSave({ status: 'uncertain', intent });
     } finally {
-      if (mutationPending.current === controller)
-        mutationPending.current = undefined;
+      operation.release();
     }
-    if (confirmed && !controller.signal.aborted) {
+    if (confirmed && !signal.aborted) {
       void open(intent.ideaId, { preserveConfirmation: true });
       void loadList();
     }

@@ -1,3 +1,7 @@
+import {
+  createOperationScope,
+  type PendingOperation,
+} from '../api/use-scoped-operation';
 import { holds } from '../access/company-grants';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -105,9 +109,9 @@ function workspaceMatches({
   );
 }
 
-type Job = { company: Company; controller: AbortController };
+type Job = { company: Company; operation: PendingOperation };
 type Collection = {
-  controller: AbortController;
+  operation: PendingOperation;
   api: AuthenticatedApiClient;
   jobs: Map<string, Job>;
   queue: Job[];
@@ -130,18 +134,16 @@ export function createMultiCompanySummaryReader({
   onChange: (state: MultiCompanySummaryState) => void;
   onWorkspaceAccessRejected: () => void;
 }) {
-  let lifetime: AbortController | undefined;
+  const operations = createOperationScope();
   let collection: Collection | undefined;
-  let disposed = false;
   let active = 0;
 
   function current(scope: Collection, job?: Job): boolean {
     return (
-      !disposed &&
       collection === scope &&
-      !scope.controller.signal.aborted &&
+      !scope.operation.signal.aborted &&
       (!job ||
-        (!job.controller.signal.aborted &&
+        (!job.operation.signal.aborted &&
           scope.jobs.get(job.company.id) === job))
     );
   }
@@ -157,11 +159,7 @@ export function createMultiCompanySummaryReader({
     publish(scope);
   }
   function retire() {
-    lifetime?.abort();
-    if (collection) {
-      collection.controller.abort();
-      for (const job of collection.jobs.values()) job.controller.abort();
-    }
+    operations.retire();
     collection = undefined;
   }
   async function reject(scope: Collection, job?: Job) {
@@ -202,8 +200,11 @@ export function createMultiCompanySummaryReader({
       : 'error';
   }
   function enqueue(scope: Collection, company: Company) {
-    scope.jobs.get(company.id)?.controller.abort();
-    const job = { company, controller: new AbortController() };
+    if (!current(scope)) return;
+    scope.jobs.get(company.id)?.operation.retire();
+    const operation = operations.begin();
+    if (!operation) return;
+    const job = { company, operation };
     scope.jobs.set(company.id, job);
     scope.queue.push(job);
     row(scope, job, { kind: 'qualifying', company });
@@ -215,6 +216,7 @@ export function createMultiCompanySummaryReader({
       if (!job || !current(scope, job)) continue;
       active += 1;
       void load(scope, job).finally(() => {
+        job.operation.release();
         active -= 1;
         if (collection) pump(collection);
       });
@@ -225,14 +227,14 @@ export function createMultiCompanySummaryReader({
     if (!current(scope)) return;
     const request = ++scope.visibilityRequest;
     const result = await scope.api.request('/companies', {
-      signal: scope.controller.signal,
+      signal: scope.operation.signal,
     });
     if (!current(scope) || request !== scope.visibilityRequest) return;
     if (result.status === 'unauthorized') return reject(scope);
     if (result.status === 'forbidden') {
       const recovered = await recoverWorkspace({
         api: scope.api,
-        signal: scope.controller.signal,
+        signal: scope.operation.signal,
         isCurrent: () => current(scope) && request === scope.visibilityRequest,
       });
       if (recovered === 'handled' || !current(scope)) return;
@@ -261,7 +263,7 @@ export function createMultiCompanySummaryReader({
     const visible = new Set(companies.map((company) => company.id));
     for (const [id, job] of scope.jobs) {
       if (!visible.has(id)) {
-        job.controller.abort();
+        job.operation.retire();
         scope.jobs.delete(id);
       }
     }
@@ -281,12 +283,12 @@ export function createMultiCompanySummaryReader({
   }
 
   async function load(scope: Collection, job: Job) {
-    const { company, controller } = job;
+    const { company, operation } = job;
     try {
       const qualified = await readCurrentActor({
         api: scope.api,
         companyContextId: company.id,
-        signal: controller.signal,
+        signal: operation.signal,
       });
       if (!current(scope, job)) return;
       if (qualified.status === 'unauthorized') return await reject(scope, job);
@@ -314,7 +316,7 @@ export function createMultiCompanySummaryReader({
       row(scope, job, { kind: 'loading', company });
       let result = await scope.api.request('/operational-home', {
         companyContextId: company.id,
-        signal: controller.signal,
+        signal: operation.signal,
       });
       if (!current(scope, job)) return;
       if (result.status === 'unauthorized') return await reject(scope, job);
@@ -324,7 +326,7 @@ export function createMultiCompanySummaryReader({
         const refreshed = await readCurrentActor({
           api: scope.api,
           companyContextId: company.id,
-          signal: controller.signal,
+          signal: operation.signal,
         });
         if (!current(scope, job)) return;
         if (refreshed.status === 'unauthorized')
@@ -355,7 +357,7 @@ export function createMultiCompanySummaryReader({
         // repeated denial is an error, never an automatic retry loop.
         result = await scope.api.request('/operational-home', {
           companyContextId: company.id,
-          signal: controller.signal,
+          signal: operation.signal,
         });
         if (!current(scope, job)) return;
         if (result.status === 'unauthorized') return await reject(scope, job);
@@ -389,17 +391,15 @@ export function createMultiCompanySummaryReader({
 
   async function refresh() {
     retire();
-    if (disposed) return;
-    const controller = new AbortController();
-    lifetime = controller;
+    const operation = operations.beginLatest();
+    if (!operation) return;
     onChange({ kind: 'loading' });
-    const active = () =>
-      !disposed && lifetime === controller && !controller.signal.aborted;
+    const active = () => !operation.signal.aborted;
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!active()) return;
       const result = await api.request('/companies', {
-        signal: controller.signal,
+        signal: operation.signal,
       });
       if (!active()) return;
       if (result.status === 'unauthorized') {
@@ -412,7 +412,7 @@ export function createMultiCompanySummaryReader({
         if (result.status === 'forbidden') {
           const recovered = await recoverWorkspace({
             api,
-            signal: controller.signal,
+            signal: operation.signal,
             isCurrent: active,
           });
           if (recovered !== 'handled' && active())
@@ -422,7 +422,7 @@ export function createMultiCompanySummaryReader({
       }
       const companies = readCompanies(result.value, actor.workspaceId);
       const scope: Collection = {
-        controller,
+        operation,
         api,
         jobs: new Map(),
         queue: [],
@@ -438,6 +438,8 @@ export function createMultiCompanySummaryReader({
       for (const company of companies) enqueue(scope, company);
     } catch {
       if (active()) onChange({ kind: 'error' });
+    } finally {
+      operation.release();
     }
   }
 
@@ -452,8 +454,8 @@ export function createMultiCompanySummaryReader({
       if (existing) enqueue(scope, existing.company);
     },
     dispose() {
-      disposed = true;
-      retire();
+      operations.close();
+      collection = undefined;
     },
   };
 }

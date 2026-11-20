@@ -103,21 +103,6 @@
       "count": 1
     }
   },
-  "apps/web/src/ideas/IdeasWorkspace.tsx": {
-    "no-restricted-syntax": {
-      "count": 4
-    }
-  },
-  "apps/web/src/knowledge-evidence/KnowledgeEvidenceWorkspace.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/operational-home/multi-company-summary-contract.ts": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
   "apps/web/src/opportunity-follow-up/follow-up-owner.ts": {
     "no-restricted-syntax": {
       "count": 2

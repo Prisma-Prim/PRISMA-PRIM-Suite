@@ -1,3 +1,8 @@
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperation } from '../api/use-scoped-operation';
 import { useEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
@@ -68,33 +73,39 @@ function EvidenceOwner(
   const [query, setQuery] = useState(''),
     [view, setView] = useState<View>({ kind: 'loading' });
   const recovery = useAccessRecovery({ ...props, authority: props.authority });
-  const capture = useAuthorityLifetime(
-    props.authority.key + ':' + props.authorityGeneration,
+  const ownerScope = String(
+    useRequestLifetime(
+      props.identity,
+      props.authority.key + ':' + props.authorityGeneration,
+    ),
+  );
+  const operation = useScopedOperation(ownerScope);
+  const observation = useActorObservation(props.actor);
+  const captureRecovery = useAuthorityLifetime(
+    String(observation),
     props.identity,
   );
-  const operation = useRef<AbortController | null>(null),
-    visited = useRef(new Set<string>()),
-    objectUrl = useRef<string | null>(null);
+  const visited = useRef(new Set<string>());
+  const objectUrl = useRef<string | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
-  function retire() {
-    operation.current?.abort();
-    operation.current = null;
+  function revokeUrl() {
     if (objectUrl.current) {
       URL.revokeObjectURL(objectUrl.current);
       objectUrl.current = null;
     }
   }
+  function retire() {
+    operation.retire();
+    revokeUrl();
+  }
   function begin() {
-    retire();
-    const controller = new AbortController();
-    operation.current = controller;
-    const scopeLive = capture();
+    const signal = operation.begin();
+    if (!signal) return null;
+    revokeUrl();
     return {
-      signal: controller.signal,
-      live: () =>
-        scopeLive() &&
-        operation.current === controller &&
-        !controller.signal.aborted,
+      signal,
+      live: () => !signal.aborted,
+      recoveryCurrent: captureRecovery(),
     };
   }
   function failure(result: ApiResult<unknown>): Failure {
@@ -104,7 +115,10 @@ function EvidenceOwner(
         ? 'invalid'
         : 'unavailable';
   }
-  async function request(path: string, owner: ReturnType<typeof begin>) {
+  async function request(
+    path: string,
+    owner: NonNullable<ReturnType<typeof begin>>,
+  ) {
     if (!owner.live()) return;
     const api = await createAuthenticatedApiClient(props.identity);
     if (!owner.live()) return;
@@ -116,8 +130,10 @@ function EvidenceOwner(
     if (!owner.live()) return;
     if (result.status === 'unauthorized' || result.status === 'forbidden') {
       retire();
-      setView({ kind: 'loading' });
-      recovery.reject(result);
+      if (owner.recoveryCurrent()) {
+        setView({ kind: 'loading' });
+        recovery.reject(result);
+      } else setView({ kind: 'failure', reason: 'unavailable' });
       return;
     }
     if (result.status !== 'ok') {
@@ -136,6 +152,7 @@ function EvidenceOwner(
       return;
     }
     const owner = begin();
+    if (!owner) return;
     setView({ kind: 'loading' });
     if (!cursor) visited.current.clear();
     else visited.current.add(cursor);
@@ -182,6 +199,7 @@ function EvidenceOwner(
   async function open(target: Citation, mode: 'current' | 'historical') {
     // Capture the immutable known target before the prior operation is retired.
     const owner = begin();
+    if (!owner) return;
     setView({ kind: 'loading' });
     try {
       const value = await request(passagePath(target, mode), owner);
@@ -198,6 +216,7 @@ function EvidenceOwner(
   }
   async function download(target: Citation, mode: 'current' | 'historical') {
     const owner = begin();
+    if (!owner) return;
     let verified: Citation | undefined;
     setView({ kind: 'citation', citation: target, mode, pdf: 'pending' });
     try {
@@ -223,8 +242,10 @@ function EvidenceOwner(
       if (!owner.live()) return;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
         retire();
-        setView({ kind: 'loading' });
-        recovery.reject(result);
+        if (owner.recoveryCurrent()) {
+          setView({ kind: 'loading' });
+          recovery.reject(result);
+        } else setView({ kind: 'failure', reason: 'unavailable' });
         return;
       }
       if (result.status === 'notFound') {
@@ -272,7 +293,7 @@ function EvidenceOwner(
   useEffect(() => {
     void list();
     return retire;
-  }, []);
+  }, [operation]);
   if (recovery.denied)
     return (
       <section className="knowledge-evidence">

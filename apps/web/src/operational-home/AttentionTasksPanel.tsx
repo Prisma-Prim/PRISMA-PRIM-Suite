@@ -2,6 +2,8 @@ import { ChevronLeft, ChevronRight, RefreshCw, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperation } from '../api/use-scoped-operation';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { formatMessage } from '../localization/messages';
 import { AttentionTaskList } from './AttentionTaskList';
@@ -38,13 +40,21 @@ export function AttentionTasksPanel({
   const message = useAttentionTasksCopy();
   const { formatDate, formatNumber } = useInterfaceLocale();
   const titleId = useId();
-  const pending = useRef<AbortController | undefined>(undefined);
+  const ownerScope = String(
+    useRequestLifetime(
+      identity,
+      JSON.stringify([company.id, workspaceMembershipId]),
+    ),
+  );
+  const latest = useScopedOperation(ownerScope);
   const today = useRef<string | undefined>(undefined);
   const [load, setLoad] = useState<Load>({ kind: 'loading', offset: 0 });
   function read(offset: number) {
+    const requestSignal = latest.begin();
+    if (!requestSignal) return;
     setLoad({ kind: 'loading', offset });
     void runLatestAuthenticatedRequest({
-      pending,
+      signal: requestSignal,
       identity,
       execute: (api, signal) =>
         api.request(`/attention-tasks?offset=${offset}`, {
@@ -83,8 +93,7 @@ export function AttentionTasksPanel({
   useEffect(() => {
     headingRef.current?.focus();
     read(0);
-    return () => pending.current?.abort();
-  }, [identity]);
+  }, [ownerScope]);
   const offset = load.kind === 'ready' ? load.page.offset : load.offset;
   const busy = load.kind === 'loading';
   function body() {
