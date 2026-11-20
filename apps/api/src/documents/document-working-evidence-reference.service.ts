@@ -1,3 +1,4 @@
+import { DocumentFamilyAccess } from './document-family-access.js';
 import {
   documentVersionPdfQuery,
   frozenDocumentPdfPredicate,
@@ -10,7 +11,6 @@ import {
 } from '@nestjs/common';
 import { and, desc, eq, lt, or, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
-import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
@@ -59,8 +59,8 @@ type SourceInput = {
 @Injectable()
 export class DocumentWorkingEvidenceReferenceService {
   constructor(
+    private readonly familyAccess: DocumentFamilyAccess,
     private readonly database: DatabaseContext,
-    private readonly authorization: CompanyContextAuthorization,
     private readonly clients: ClientOperationalReferenceService,
     private readonly storage: DocumentPdfStorage,
   ) {}
@@ -177,12 +177,14 @@ export class DocumentWorkingEvidenceReferenceService {
     context: WorkingEvidenceSourceContext;
     lock: boolean;
   }): Promise<void> {
-    const companyId =
-      await this.authorization.requireReceivedAuditSourceNativeAccess(
-        input.actor,
-        { action: 'content-read', lockAssignment: input.lock },
-      );
-    if (companyId !== input.context.companyId) throw new NotFoundException();
+    await this.familyAccess.requireFamilyAccess(
+      input.actor,
+      'received-audit-source',
+      'content-read',
+      { lock: input.lock },
+    );
+    if (input.actor.activeCompany?.id !== input.context.companyId)
+      throw new NotFoundException();
     await this.clients.readReferenceClient(
       input.actor,
       input.context.originalClientId,
