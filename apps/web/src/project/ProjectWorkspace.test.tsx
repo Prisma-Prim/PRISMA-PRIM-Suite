@@ -76,6 +76,98 @@ const validProject = {
   createdAt: '2026-09-19T08:00:00.000Z',
 };
 
+it('keeps the current Project when a held refresh of the previous Project is denied', async () => {
+  const other = { ...validProject, id: 'other-project', title: 'Other audit' };
+  const currentActor = {
+    ...actor,
+    activeCompany: {
+      ...actor.activeCompany,
+      id: 'company',
+      displayName: 'PRISMA-PRIM',
+      grants: companyGrants({
+        bundle: 'company_project_access',
+        version: 'v2',
+        assignmentId: 'project-grant',
+      }),
+    },
+  };
+  let parentReads = 0;
+  let finishRefresh: (response: Response) => void = () => {
+    throw new Error('Expected held Project refresh');
+  };
+  const heldRefresh = new Promise<Response>((resolve) => {
+    finishRefresh = resolve;
+  });
+  const responsible = {
+    workspaceMembershipId: 'ion',
+    displayLabel: 'Ion Popa',
+  };
+  let cleared = false;
+  stubFetch('fetch', async (url, init) => {
+    switch (url) {
+      case '/api/projects':
+        return Response.json([validProject, other]);
+      case '/api/clients':
+        return Response.json([
+          { id: 'client', displayName: 'Synthetic Client' },
+        ]);
+      case '/api/projects/project':
+        parentReads += 1;
+        return parentReads === 1 ? Response.json(validProject) : heldRefresh;
+      case '/api/projects/other-project':
+        return Response.json(other);
+      case '/api/projects/project/eligible-responsible-members':
+        return Response.json({ members: [responsible] });
+      case '/api/projects/project/responsible':
+        if (init?.method === 'PUT') {
+          cleared = true;
+          return Response.json({
+            projectId: 'project',
+            outcome: 'changed',
+            revision: 2,
+            responsible: null,
+          });
+        }
+        return Response.json({
+          responsible: cleared ? null : responsible,
+          revision: cleared ? 2 : 1,
+          lastChange: {
+            actorDisplayName: 'Owner',
+            occurredAt: validProject.createdAt,
+          },
+          mutable: true,
+        });
+      default:
+        return new Response(null, { status: 404 });
+    }
+  });
+  const identity = deterministicBrowserIdentity();
+  render(<ProjectWorkspace actor={currentActor} identity={identity} />);
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: 'ISO preparation Client: Synthetic Client',
+    }),
+  );
+  fireEvent.click(await screen.findByRole('button', { name: /^Change$/u }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Clear responsible member' }),
+  );
+  await waitFor(() => expect(parentReads).toBe(2));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Reload responsible member' }),
+    ).toBeEnabled(),
+  );
+  fireEvent.click(
+    screen.getByRole('button', {
+      name: 'Other audit Client: Synthetic Client',
+    }),
+  );
+  await screen.findByRole('article', { name: 'Other audit' });
+  await act(async () => finishRefresh(new Response(null, { status: 403 })));
+  expect(screen.getByRole('article', { name: 'Other audit' })).toBeVisible();
+});
+
 it('shows open Projects by default, includes closed Projects on request and resets that filter after external navigation', async () => {
   const completedProject = {
     ...validProject,

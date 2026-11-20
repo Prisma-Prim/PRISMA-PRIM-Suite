@@ -1,3 +1,9 @@
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { WorkingEvidenceWorkspace } from '../working-evidence/WorkingEvidenceWorkspace';
 import { workingEvidenceAuthority } from '../working-evidence/working-evidence-access';
 import { useWorkingEvidenceCopy } from '../working-evidence/working-evidence.copy';
@@ -33,6 +39,7 @@ import { ProjectResponsible } from './ProjectResponsible';
 import { ProjectTasks, type RequestedTask } from './ProjectTasks';
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type FormEvent,
@@ -40,7 +47,8 @@ import {
 } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { holds } from '../access/company-grants';
+import { grantOf, holds } from '../access/company-grants';
+import { clientReadAuthority } from './project-authority';
 import {
   createAuthenticatedApiClient,
   type ApiResult,
@@ -204,12 +212,8 @@ export function ProjectWorkspace({
     projectId: string;
     membershipId: string | null;
   } | null>(null);
-  /** The detail re-read after a confirmed lifecycle change; never a write. */
-  const detailRefresh = useRef<AbortController | null>(null);
   /** A detail replacement does not retire the Company/session that owns it. */
   const scope = useRef({ retired: false });
-  /** The detail read or registration in flight; never a list read. */
-  const request = useRef<AbortController | null>(null);
   /**
    * Whether that request is a registration, which no requested open aborts.
    * It describes the request in flight, so it is consulted only while pending.
@@ -225,12 +229,17 @@ export function ProjectWorkspace({
   const latestProjectRequest = useRef<
     Extract<ProjectNavigationRequest, { kind: 'project' }> | undefined
   >(navigation?.kind === 'project' ? navigation : undefined);
-  if (navigation?.kind === 'project') latestProjectRequest.current = navigation;
+  useLayoutEffect(() => {
+    if (navigation?.kind === 'project')
+      latestProjectRequest.current = navigation;
+  }, [navigation]);
   const appliedNavigation = useRef<number | undefined>(undefined);
   const projectHeading = useRef<HTMLHeadingElement>(null);
   const focusedProjectRequest = useRef<number | undefined>(undefined);
   const identityRevision = useRef(clientIdentityRevision);
-  identityRevision.current = clientIdentityRevision;
+  useLayoutEffect(() => {
+    identityRevision.current = clientIdentityRevision;
+  }, [clientIdentityRevision]);
   const retry = useRef<Registration | null>(null);
   const companyId = actor.activeCompany?.id;
   const authorized =
@@ -246,15 +255,31 @@ export function ProjectWorkspace({
   // with a late intent (#1158). A new scope clears it, a Client identity
   // refresh retires only a dossier restriction and each directory intent
   // applies once. The scope mirrors the reset effect's dependencies below.
-  const searchScope = [
+  const scopeValues = [
     actor.workspaceId,
     actor.internalUserId,
     actor.workspaceMembershipId,
     companyId,
     authorized,
     generation,
-    identity,
   ];
+  const searchScope = [...scopeValues, identity];
+  const viewScope = useRequestLifetime(identity, JSON.stringify(scopeValues));
+  // Replacing a consumed grant retires I/O, but equivalent access still owns
+  // the open view and its independently authorized drafts.
+  const operationScope = JSON.stringify([
+    viewScope,
+    grantOf(actor.activeCompany, 'company_project_access'),
+    clientReadAuthority(actor),
+  ]);
+  const interactive = useScopedOperationGroup(operationScope);
+  const selectedScope = JSON.stringify([operationScope, selected?.project.id]);
+  const detailRefresh = useScopedOperationGroup(selectedScope);
+  const identityRead = useScopedOperationGroup(
+    JSON.stringify([selectedScope, clientIdentityRevision]),
+  );
+  const observation = useActorObservation(actor);
+  const captureRecovery = useAuthorityLifetime(String(observation), identity);
   const [searchSources, setSearchSources] = useState<SearchSources>(() => ({
     scope: searchScope,
     clientIdentityRevision,
@@ -290,18 +315,35 @@ export function ProjectWorkspace({
   }
   const directory = useProjectDirectory({
     identity,
+    operationScope,
+    captureRecovery,
     companyId,
     authorized: Boolean(authorized),
     clientIdentityRevision,
     onDenied: () => {
       scope.current.retired = true;
-      request.current?.abort();
-      detailRefresh.current?.abort();
+      interactive.retire();
+      detailRefresh.retire();
+      identityRead.retire();
       setPending(false);
       setSelected(null);
     },
   });
   const load = directory.load;
+  useLayoutEffect(() => {
+    const current = { retired: false };
+    scope.current = current;
+    registering.current = false;
+    setPending(false);
+    if (retry.current) {
+      retry.current = null;
+      setFeedback(null);
+    }
+    consumedProjectRequest.current = latestProjectRequest.current?.requestId;
+    return () => {
+      current.retired = true;
+    };
+  }, [operationScope]);
   function deny() {
     directory.deny();
   }
@@ -312,36 +354,19 @@ export function ProjectWorkspace({
   // module presents, including the drafts, commands and requested opens
   // started under it. Its search was already cleared during render.
   useEffect(() => {
-    scope.current = { retired: false };
-    request.current?.abort();
-    detailRefresh.current?.abort();
     setSelected(null);
     setResponsibleRead(null);
     lastResponsibleRead.current = null;
     setFeedback(null);
-    setPending(false);
     setTitle('');
     setClientAccountId('');
     setTemplateSelection(null);
     setDeniedTemplateAuthority(null);
-    retry.current = null;
-    consumedProjectRequest.current = latestProjectRequest.current?.requestId;
     directory.reset();
-    return () => {
-      scope.current.retired = true;
-      request.current?.abort();
-      directory.cancel();
-      detailRefresh.current?.abort();
-    };
-  }, [
-    actor.workspaceId,
-    actor.internalUserId,
-    actor.workspaceMembershipId,
-    companyId,
-    authorized,
-    generation,
-    identity,
-  ]);
+  }, [viewScope]);
+  useEffect(() => {
+    directory.resumeRetiredRead();
+  }, [operationScope]);
   // Dedicated Template authority retires its choices and commands without
   // discarding independently authorized manual Project or Task work.
   useEffect(() => {
@@ -352,7 +377,7 @@ export function ProjectWorkspace({
     if (retry.current?.source.kind !== 'template') return;
     retry.current = null;
     if (!registering.current) return;
-    request.current?.abort();
+    interactive.retire();
     setPending(false);
     setFeedback(null);
   }, [templateAuthority]);
@@ -365,19 +390,23 @@ export function ProjectWorkspace({
       : undefined;
   useEffect(() => {
     if (!staleProjectId || !companyId) return;
-    const controller = new AbortController();
+    const operation = identityRead.beginLatest();
+    if (!operation) return;
+    const { signal } = operation;
+    const recoveryCurrent = captureRecovery();
     const startedUnder = clientIdentityRevision;
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
-        if (controller.signal.aborted) return;
+        if (signal.aborted) return;
         const result = await api.request(
           `/projects/${encodeURIComponent(staleProjectId)}`,
-          { companyContextId: companyId, signal: controller.signal },
+          { companyContextId: companyId, signal },
         );
-        if (controller.signal.aborted) return;
+        if (signal.aborted) return;
         if (result.status === 'unauthorized') {
-          await identity.rejectSession();
+          if (recoveryCurrent()) await identity.rejectSession();
+          else setFeedback('error');
           return;
         }
         if (result.status === 'forbidden') {
@@ -399,11 +428,20 @@ export function ProjectWorkspace({
         );
         refreshRow(project, startedUnder);
       } catch {
-        if (!controller.signal.aborted) setFeedback('error');
+        if (!signal.aborted) setFeedback('error');
+      } finally {
+        operation.release();
       }
     })();
-    return () => controller.abort();
-  }, [staleProjectId, clientIdentityRevision, companyId, identity]);
+    return operation.retire;
+  }, [
+    staleProjectId,
+    clientIdentityRevision,
+    companyId,
+    identity,
+    identityRead,
+    captureRecovery,
+  ]);
 
   // Identity refresh retires only the obsolete dossier restriction (during
   // render, above). Stable exact targets, the selected view and independently
@@ -490,25 +528,29 @@ export function ProjectWorkspace({
     refreshMine?: boolean;
   }) {
     const { projectId } = input;
-    detailRefresh.current?.abort();
-    const controller = new AbortController();
-    detailRefresh.current = controller;
-    const startedUnder = identityRevision.current;
     if (!companyId) return;
+    const operation = detailRefresh.beginLatest();
+    if (!operation) return;
+    const { signal } = operation;
+    const sameScope = interactive.capture();
+    const recoveryCurrent = captureRecovery();
+    const startedUnder = identityRevision.current;
     const startedIn = scope.current;
     let authorityRejected = false;
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       const result = await api.request(
         `/projects/${encodeURIComponent(projectId)}`,
-        { companyContextId: companyId, signal: controller.signal },
+        { companyContextId: companyId, signal },
       );
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       if (result.status === 'unauthorized') {
         authorityRejected = true;
-        startedIn.retired = true;
-        await identity.rejectSession();
+        if (recoveryCurrent()) {
+          startedIn.retired = true;
+          await identity.rejectSession();
+        } else setFeedback('error');
         return;
       }
       if (result.status === 'forbidden') {
@@ -532,12 +574,18 @@ export function ProjectWorkspace({
         );
       refreshRow(project, startedUnder);
     } catch {
-      if (!controller.signal.aborted) setFeedback('error');
+      if (!signal.aborted) setFeedback('error');
     } finally {
       // A confirmed command still changes current Mine membership if a newer
       // detail read supersedes this one or this read is unavailable. Only the
       // owning scope's retirement or denial suppresses that continuation.
-      if (input.refreshMine && !startedIn.retired && !authorityRejected)
+      operation.release();
+      if (
+        input.refreshMine &&
+        sameScope() &&
+        !startedIn.retired &&
+        !authorityRejected
+      )
         directory.refreshMineAfterChange();
     }
   }
@@ -552,16 +600,21 @@ export function ProjectWorkspace({
       projectRequest.kind === 'register' ? projectRequest.command : undefined;
     const sourceSignal =
       projectRequest.kind === 'open' ? projectRequest.sourceSignal : undefined;
-    if (sourceSignal?.aborted) return;
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
+    if (
+      sourceSignal?.aborted ||
+      (registering.current && interactive.isPending())
+    )
+      return;
+    const operation = interactive.beginLatest();
+    if (!operation) return;
+    detailRefresh.retire();
+    identityRead.retire();
+    const { signal } = operation;
+    const recoveryCurrent = captureRecovery();
     const retireSourceRead = () => {
-      controller.abort();
-      if (request.current === controller) {
-        request.current = null;
-        setPending(false);
-      }
+      if (signal.aborted) return;
+      operation.retire();
+      setPending(false);
     };
     sourceSignal?.addEventListener('abort', retireSourceRead, { once: true });
     registering.current = command !== undefined;
@@ -572,11 +625,11 @@ export function ProjectWorkspace({
     setFeedback(null);
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       phase = 'sent';
       const result = await api.request(path, {
         companyContextId: companyId,
-        signal: controller.signal,
+        signal,
         ...(command
           ? {
               method: 'POST',
@@ -597,9 +650,10 @@ export function ProjectWorkspace({
             }
           : {}),
       });
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       if (result.status === 'unauthorized') {
-        await identity.rejectSession();
+        if (recoveryCurrent()) await identity.rejectSession();
+        else setFeedback('error');
         return;
       }
       if (result.status === 'forbidden') {
@@ -665,9 +719,13 @@ export function ProjectWorkspace({
       setTitle('');
       setClientAccountId('');
       setTemplateSelection(null);
-      await onActivityRecorded();
+      void Promise.resolve()
+        .then(() => {
+          if (!signal.aborted) return onActivityRecorded();
+        })
+        .catch(() => undefined);
     } catch {
-      if (!controller.signal.aborted)
+      if (!signal.aborted)
         setFeedback(
           command?.source.kind === 'template' && phase !== 'confirmed'
             ? {
@@ -681,7 +739,8 @@ export function ProjectWorkspace({
         );
     } finally {
       sourceSignal?.removeEventListener('abort', retireSourceRead);
-      if (!controller.signal.aborted) setPending(false);
+      operation.release();
+      if (!signal.aborted) setPending(false);
     }
   }
   function submit(event: FormEvent) {

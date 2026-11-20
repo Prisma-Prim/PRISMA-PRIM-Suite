@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
+import { useScopedOperation } from '../api/use-scoped-operation';
 import { isClosedProjectStatus } from './project-lifecycle-response';
 import {
   isClientChoice,
@@ -30,6 +31,8 @@ export function useProjectDirectory(input: {
   identity: BrowserIdentity;
   companyId: string | undefined;
   authorized: boolean;
+  operationScope: string;
+  captureRecovery: () => () => boolean;
   clientIdentityRevision: number;
   onDenied: () => void;
 }) {
@@ -39,12 +42,18 @@ export function useProjectDirectory(input: {
     view: 'all',
   });
   const current = useRef(load);
-  current.current = load;
   const onDenied = useRef(input.onDenied);
-  onDenied.current = input.onDenied;
   const revision = useRef(clientIdentityRevision);
-  revision.current = clientIdentityRevision;
-  const request = useRef<AbortController | null>(null);
+  useLayoutEffect(() => {
+    onDenied.current = input.onDenied;
+    revision.current = clientIdentityRevision;
+  }, [input.onDenied, clientIdentityRevision]);
+  const request = useScopedOperation(input.operationScope);
+  const inFlight = useRef<{
+    signal: AbortSignal;
+    reason: ReadReason;
+    view: ProjectDirectoryView;
+  } | null>(null);
   const readRevision = useRef<number | undefined>(undefined);
   const reads = useRef(0);
   const confirmations = useRef(
@@ -59,7 +68,8 @@ export function useProjectDirectory(input: {
     setLoad(next);
   }
   function deny(view = current.current.view) {
-    request.current?.abort();
+    inFlight.current = null;
+    request.retire();
     commit({ kind: 'denied', view });
     onDenied.current();
   }
@@ -77,9 +87,9 @@ export function useProjectDirectory(input: {
     view?: ProjectDirectoryView;
     reason: ReadReason;
   }) {
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
+    const signal = request.begin();
+    if (!signal) return;
+    const recoveryCurrent = input.captureRecovery();
     const before = current.current;
     const view = options.view ?? before.view;
     const startedUnder = revision.current;
@@ -89,6 +99,7 @@ export function useProjectDirectory(input: {
       deny(view);
       return;
     }
+    inFlight.current = { signal, view, reason: options.reason };
     const retainedClients =
       options.reason !== 'reset' && before.kind === 'ready'
         ? before.clients
@@ -116,24 +127,26 @@ export function useProjectDirectory(input: {
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
-        if (controller.signal.aborted) return;
+        if (signal.aborted) return;
         const [projects, clients] = await Promise.all([
           api.request(
             view === 'mine_open' ? '/projects?view=mine_open' : '/projects',
-            { companyContextId: companyId, signal: controller.signal },
+            { companyContextId: companyId, signal },
           ),
           readClients
             ? api.request('/clients', {
                 companyContextId: companyId,
-                signal: controller.signal,
+                signal,
               })
             : undefined,
         ]);
-        if (controller.signal.aborted) return;
+        if (signal.aborted) return;
         if (
           projects.status === 'unauthorized' ||
           clients?.status === 'unauthorized'
         ) {
+          if (!recoveryCurrent())
+            throw new Error('Directory recovery scope retired.');
           await identity.rejectSession();
           return;
         }
@@ -181,7 +194,7 @@ export function useProjectDirectory(input: {
           },
         });
       } catch {
-        if (controller.signal.aborted) return;
+        if (signal.aborted) return;
         const latest = current.current;
         if (
           preserveRows &&
@@ -203,6 +216,9 @@ export function useProjectDirectory(input: {
             rows: { kind: 'error' },
           });
         } else commit({ kind: 'error', view });
+      } finally {
+        if (inFlight.current?.signal === signal && !signal.aborted)
+          inFlight.current = null;
       }
     })();
   }
@@ -220,6 +236,11 @@ export function useProjectDirectory(input: {
   function reset() {
     confirmations.current.clear();
     readList({ view: 'all', reason: 'reset' });
+  }
+  function resumeRetiredRead() {
+    const read = inFlight.current;
+    if (read?.signal.aborted)
+      readList({ view: read.view, reason: read.reason });
   }
   function changeView(view: ProjectDirectoryView) {
     if (view === current.current.view) return;
@@ -276,12 +297,12 @@ export function useProjectDirectory(input: {
   return {
     load,
     reset,
+    resumeRetiredRead,
     changeView,
     deny,
     refreshRow,
     confirmRegistration,
     refreshMineAfterChange,
-    cancel: () => request.current?.abort(),
     refresh: () => readList({ reason: 'refresh' }),
     revalidateProjectRead: () => readList({ reason: 'recovery' }),
   };

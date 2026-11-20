@@ -1,5 +1,6 @@
 import { changeValue } from '../test/select-option';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -482,6 +483,35 @@ it.each(['throw', 'reject'] as const)(
     expect(puts()).toHaveLength(1);
   },
 );
+
+it('can reload a confirmed responsible member while its first reread is held', async () => {
+  let receiptReads = 0;
+  let finishRead: (response: Response) => void = () => {
+    throw new Error('Expected a held responsible-member read.');
+  };
+  const held = new Promise<Response>((resolve) => {
+    finishRead = resolve;
+  });
+  const { puts } = server({
+    read: (state) =>
+      state.revision > 0 && ++receiptReads === 1 ? held : undefined,
+  });
+  show();
+  await choose(ion);
+  await within(region()).findByText('Responsible member saved.');
+  await waitFor(() => expect(receiptReads).toBe(1));
+  expect(within(region()).queryByRole('button', { name: 'Change' })).toBeNull();
+  const reload = within(region()).getByRole('button', {
+    name: 'Reload responsible member',
+  });
+  expect(reload).toBeEnabled();
+  fireEvent.click(reload);
+  await within(region()).findByText(ion.displayLabel);
+  await act(async () => finishRead(new Response(null, { status: 403 })));
+  expect(within(region()).getByText('Responsible member saved.')).toBeVisible();
+  expect(within(region()).getByText(ion.displayLabel)).toBeVisible();
+  expect(puts()).toHaveLength(1);
+});
 
 it('preserves the responsible-member draft while the interface locale changes', async () => {
   const { puts } = server();
