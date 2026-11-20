@@ -67,6 +67,7 @@ export function EvidenceEditor(
   } | null>(null);
   async function loadSources(cursor: string | null = null) {
     const request = operations.operation();
+    if (!request) return;
     setSourceState('loading');
     try {
       const api = await createAuthenticatedApiClient(props.identity);
@@ -75,7 +76,7 @@ export function EvidenceEditor(
         `/projects/${props.projectId}/working-evidence-sources${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
         {
           companyContextId: props.actor.activeCompany?.id,
-          signal: request.controller.signal,
+          signal: request.signal,
           cache: 'no-store',
         },
       );
@@ -131,6 +132,7 @@ export function EvidenceEditor(
     }
     const command = sealed.current,
       request = operations.operation();
+    if (!request) return;
     setState('pending');
     try {
       const api = await createAuthenticatedApiClient(props.identity);
@@ -138,7 +140,7 @@ export function EvidenceEditor(
       const result = await api.request(command.path, {
         method: 'POST',
         companyContextId: props.actor.activeCompany?.id,
-        signal: request.controller.signal,
+        signal: request.signal,
         headers: { 'content-type': 'application/json' },
         body: command.body,
       });

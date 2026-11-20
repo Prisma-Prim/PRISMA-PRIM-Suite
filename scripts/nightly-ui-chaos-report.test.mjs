@@ -218,6 +218,25 @@ const passingProjects = summary('project-task-action-sequences', [
   },
 ]);
 
+const passingWorkingEvidence = summary('working-evidence-action-sequences', [
+  {
+    status: 'passed',
+    chaosSeed: 1422001,
+    sequences: ['desktop', 'narrow'].map((width) => ({
+      caseId: 'working-evidence',
+      width,
+      seed: 1422001,
+      steps: 10,
+      status: 'passed',
+      runs: 2,
+      shrinks: 0,
+      durationMilliseconds: 1000,
+      path: null,
+      coverage: { 'download-native-frozen-statement': 1 },
+    })),
+  },
+]);
+
 const passingRisk = summary('operational-risk-action-sequences', [
   {
     status: 'passed',
@@ -347,6 +366,12 @@ const jobs = [
     started_at: '2026-11-14T02:21:31Z',
     completed_at: '2026-11-14T02:25:31Z',
   },
+  {
+    name: 'chaos (working-evidence-action-sequences)',
+    conclusion: 'success',
+    started_at: '2026-11-14T02:21:31Z',
+    completed_at: '2026-11-14T02:25:31Z',
+  },
 ];
 const summaries = () =>
   new Map([
@@ -394,6 +419,10 @@ const summaries = () =>
     [
       'operational-risk-action-sequences',
       parseChaosSummary(JSON.stringify(passingRisk)),
+    ],
+    [
+      'working-evidence-action-sequences',
+      parseChaosSummary(JSON.stringify(passingWorkingEvidence)),
     ],
   ]);
 
@@ -539,6 +568,10 @@ test("each journey's downloaded summary is found by journey", async (t) => {
       'nightly-ui-chaos-summary-operational-risk-action-sequences',
       JSON.stringify(passingRisk),
     ],
+    [
+      'nightly-ui-chaos-summary-working-evidence-action-sequences',
+      JSON.stringify(passingWorkingEvidence),
+    ],
     ['nightly-ui-chaos-summary-broken', '{'],
   ]) {
     await mkdir(join(directory, folder), { recursive: true });
@@ -577,6 +610,7 @@ test('a night keeps each journey job runtime, runs and failures', () => {
       ['profitability-owner-action-sequences', 'success', 4, 1, 1, false],
       ['project-task-action-sequences', 'success', 4, 1, 1, false],
       ['operational-risk-action-sequences', 'success', 4, 1, 1, false],
+      ['working-evidence-action-sequences', 'success', 4, 1, 1, false],
     ],
   );
   assert.equal(weekOf('2026-11-14T02:21:07Z'), '2026-11-09');
@@ -592,7 +626,9 @@ test('the first night of a week opens its comment with runtime, failure, seed, r
   assert.equal(post.path, 'issues/1132/comments');
   const body = post.body.body;
   assert.ok(
-    body.includes('[run-501]: https://github.com/owner/repo/actions/runs/501'),
+    body.includes(
+      '[run-501-attempt-1]: https://github.com/owner/repo/actions/runs/501/attempts/1',
+    ),
   );
   assert.ok(
     body.includes(
@@ -606,7 +642,7 @@ test('the first night of a week opens its comment with runtime, failure, seed, r
   );
   assert.ok(
     body.includes(
-      '| 2026-11-14 02:21 | [nightly][run-501] | [`c0ffee1`][commit-' +
+      '| 2026-11-14 02:21 | [nightly attempt 1][run-501-attempt-1] | [`c0ffee1`][commit-' +
         sha +
         '] | certification-journey | 2 of 2 (budget) | passed | 18.5 min |',
     ),
@@ -637,7 +673,7 @@ test('the first night of a week opens its comment with runtime, failure, seed, r
   );
 });
 
-test('a later night and a rerun of the same night update the one comment of the week', async () => {
+test('reports new attempts in the same week without erasing previous failures or harness results', async () => {
   const first = github();
   await report(first.api);
   const existing = { id: 42, body: first.writes()[0].body.body, html_url: 'u' };
@@ -671,7 +707,7 @@ test('a later night and a rerun of the same night update the one comment of the 
   // The multi-company-home job of the later night left no summary.
   assert.ok(
     patch.body.body.includes(
-      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary); 2026-11-15 document-action-sequences (success without a summary); 2026-11-15 contract-action-sequences (success without a summary); 2026-11-15 mission-result-action-sequences (success without a summary); 2026-11-15 offer-owner-action-sequences (success without a summary); 2026-11-15 pricing-owner-action-sequences (success without a summary); 2026-11-15 profitability-owner-action-sequences (success without a summary); 2026-11-15 project-task-action-sequences (success without a summary); 2026-11-15 operational-risk-action-sequences (success without a summary).',
+      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary); 2026-11-15 document-action-sequences (success without a summary); 2026-11-15 contract-action-sequences (success without a summary); 2026-11-15 mission-result-action-sequences (success without a summary); 2026-11-15 offer-owner-action-sequences (success without a summary); 2026-11-15 pricing-owner-action-sequences (success without a summary); 2026-11-15 profitability-owner-action-sequences (success without a summary); 2026-11-15 project-task-action-sequences (success without a summary); 2026-11-15 operational-risk-action-sequences (success without a summary); 2026-11-15 working-evidence-action-sequences (success without a summary).',
     ),
   );
 
@@ -686,19 +722,45 @@ test('a later night and a rerun of the same night update the one comment of the 
   await reportNightlyUiChaos({
     ref: 'refs/heads/main',
     runId: 502,
-    summaries: summaries(),
+    summaries: new Map([
+      ...summaries(),
+      [
+        'multi-company-home',
+        parseChaosSummary(
+          JSON.stringify(
+            summary('multi-company-home', [
+              { status: 'passed', chaosSeed: 1376001 },
+            ]),
+          ),
+        ),
+      ],
+    ]),
     server,
     repository,
     api: rerun.api,
     log: quiet,
   });
-  const replaced = nightsInComment(rerun.writes()[0].body.body, '2026-11-09');
+  const retainedAttempts = nightsInComment(
+    rerun.writes()[0].body.body,
+    '2026-11-09',
+  );
   assert.deepEqual(
-    replaced.map((night) => [night.runId, night.attempt]),
+    retainedAttempts.map((night) => [night.runId, night.attempt]),
     [
       [501, 1],
+      [502, 1],
       [502, 2],
     ],
+  );
+  const home = (attempt) =>
+    attempt.journeys.find(({ journey }) => journey === 'multi-company-home');
+  assert.equal(home(retainedAttempts[0]).failures[0].seed, 1376001);
+  assert.equal(home(retainedAttempts[1]).status, null);
+  assert.equal(home(retainedAttempts[1]).conclusion, 'failure');
+  assert.equal(home(retainedAttempts[2]).status, 'passed');
+  assert.match(
+    rerun.writes()[0].body.body,
+    /\/actions\/runs\/502\/attempts\/1[\s\S]*\/actions\/runs\/502\/attempts\/2/u,
   );
 });
 
@@ -929,6 +991,7 @@ test('the financial-only repetition week remains bounded within one GitHub comme
               'chaos (profitability-owner-action-sequences)',
               'chaos (project-task-action-sequences)',
               'chaos (operational-risk-action-sequences)',
+              'chaos (working-evidence-action-sequences)',
             ].includes(job.name),
         ),
         summaries: new Map([
@@ -944,6 +1007,7 @@ test('the financial-only repetition week remains bounded within one GitHub comme
                 'profitability-owner-action-sequences',
                 'project-task-action-sequences',
                 'operational-risk-action-sequences',
+                'working-evidence-action-sequences',
               ].includes(journey),
           ),
           [
@@ -1138,7 +1202,69 @@ test('keeps pathless interruption evidence separate from successful aggregates',
   assert.ok(body.includes('could not run (interrupted)'));
 });
 
-test('an oversized week opens a bounded continuation and reruns update their owning part', async () => {
+test('generated failures keep replay evidence without publishing private trace diagnostics', () => {
+  const trace =
+    'Original action trace: /workspace/private/synthetic-evidence.json';
+  const raw = summary('working-evidence-action-sequences', [
+    {
+      status: 'failed',
+      chaosSeed: 1422017,
+      failures: [
+        {
+          title: 'explores generated native Working Evidence action sequences',
+          project: 'operational-acceptance-narrow',
+          error: trace,
+        },
+      ],
+      sequences: [
+        {
+          ...passingWorkingEvidence.runs[0].sequences[1],
+          status: 'failed',
+          seed: 1422017,
+          path: '0:1',
+        },
+      ],
+    },
+  ]);
+  const parsed = parseChaosSummary(JSON.stringify(raw));
+  assert.ok(parsed);
+  assert.equal(parsed.failures[0].error, trace);
+  const night = nightOf({
+    run: workflowRun(),
+    jobs,
+    summaries: new Map([['working-evidence-action-sequences', parsed]]),
+  });
+  const body = renderWeek({
+    week: '2026-11-09',
+    nights: [night],
+    bugs: new Map(),
+    server,
+    repository,
+  });
+  assert.doesNotMatch(body, /Original action trace|\/workspace\/private/u);
+  assert.ok(
+    body.includes("UI_SEQUENCE_REPLAY='working-evidence@narrow~10~0:1'"),
+  );
+  const generated = nightsInComment(body, '2026-11-09')[0].journeys.find(
+    ({ journey }) => journey === 'working-evidence-action-sequences',
+  );
+  assert.equal(generated.failures[0].seed, 1422017);
+  assert.equal(generated.failures[0].error, null);
+
+  const republished = nightOf({
+    run: workflowRun(),
+    jobs,
+    summaries: new Map(),
+  });
+  const preserved = withNight(nightsInComment(body, '2026-11-09'), republished);
+  assert.equal(preserved.length, 1);
+  const retained = preserved[0].journeys.find(
+    ({ journey }) => journey === 'working-evidence-action-sequences',
+  );
+  assert.deepEqual(retained, generated);
+});
+
+test('an oversized week opens a bounded continuation and republishing an attempt updates its part', async () => {
   const large = structuredClone(failingHome);
   const diagnostic = 'Native diagnostic evidence '.repeat(800);
   large.runs[1].failures[0].error = diagnostic;
@@ -1155,6 +1281,9 @@ test('an oversized week opens a bounded continuation and reruns update their own
     body: first.writes()[0].body.body,
   };
   assert.ok(earlier.body.length <= 65536);
+  assert.ok(
+    earlier.body.includes('complete diagnostic in run data and artifacts'),
+  );
   const later = github({
     comments: [earlier],
     run: workflowRun({ id: 502, startedAt: '2026-11-15T02:20:00Z' }),
@@ -1185,7 +1314,7 @@ test('an oversized week opens a bounded continuation and reruns update their own
   assert.equal(retained[0].journeys[1].failures[0].error, diagnostic);
   const rerun = github({
     comments: [earlier, current],
-    run: workflowRun({ id: 501, attempt: 2 }),
+    run: workflowRun({ id: 501, attempt: 1 }),
     bugs: [{ number: 1400, title: 'A confirmed defect', body: 'seed 1376001' }],
   });
   await report(rerun.api, { summaries: evidence() });

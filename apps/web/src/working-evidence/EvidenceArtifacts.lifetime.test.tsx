@@ -197,10 +197,16 @@ it('suppresses late hashing and prevents a retired owner from replacing global A
   const recovery = deferred<Response>(),
     revalidated = vi.fn();
   let reads = 0;
-  vi.stubGlobal('fetch', async () => {
-    reads++;
-    return reads === 1 ? new Response(null, { status: 403 }) : recovery.promise;
-  });
+  let recoverySignal: AbortSignal | null | undefined;
+  vi.stubGlobal(
+    'fetch',
+    async (_input: RequestInfo | URL, init?: RequestInit) => {
+      reads++;
+      if (reads === 1) return new Response(null, { status: 403 });
+      recoverySignal = init?.signal;
+      return recovery.promise;
+    },
+  );
   view.rerender(
     <EvidenceArtifacts
       actor={actor}
@@ -227,6 +233,7 @@ it('suppresses late hashing and prevents a retired owner from replacing global A
       onActorRevalidated={revalidated}
     />,
   );
+  expect(recoverySignal?.aborted).toBe(true);
   await act(async () => recovery.resolve(Response.json(changed)));
   expect(revalidated).not.toHaveBeenCalled();
   expect(

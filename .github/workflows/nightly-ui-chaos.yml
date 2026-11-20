@@ -33,6 +33,7 @@ on:
           - profitability-owner-action-sequences
           - project-task-action-sequences
           - operational-risk-action-sequences
+          - working-evidence-action-sequences
       seed:
         description: Numeric seed copied from a failure, or random for exploration
         type: string
@@ -54,7 +55,7 @@ jobs:
       # One journey's failure never cancels another journey's night.
       fail-fast: false
       matrix:
-        journey: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.journey != 'all' && format('["{0}"]', inputs.journey) || '["certification-journey","multi-company-home","financial-action-sequences","access-action-sequences","document-action-sequences","contract-action-sequences","mission-result-action-sequences","offer-owner-action-sequences","pricing-owner-action-sequences","profitability-owner-action-sequences","project-task-action-sequences","operational-risk-action-sequences"]') }}
+        journey: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.journey != 'all' && format('["{0}"]', inputs.journey) || '["certification-journey","multi-company-home","financial-action-sequences","access-action-sequences","document-action-sequences","contract-action-sequences","mission-result-action-sequences","offer-owner-action-sequences","pricing-owner-action-sequences","profitability-owner-action-sequences","project-task-action-sequences","operational-risk-action-sequences","working-evidence-action-sequences"]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
@@ -95,7 +96,7 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: nightly-ui-chaos-summary-${{ matrix.journey }}
+          name: nightly-ui-chaos-summary-attempt-${{ github.run_attempt }}-${{ matrix.journey }}
           path: ${{ runner.temp }}/ui-chaos/${{ matrix.journey }}/summary.json
           if-no-files-found: ignore
 
@@ -103,7 +104,7 @@ jobs:
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
         with:
-          name: nightly-ui-chaos-evidence-${{ matrix.journey }}
+          name: nightly-ui-chaos-evidence-attempt-${{ github.run_attempt }}-${{ matrix.journey }}
           path: ${{ runner.temp }}/ui-chaos/${{ matrix.journey }}
           if-no-files-found: ignore
           retention-days: 14
@@ -135,7 +136,7 @@ jobs:
         continue-on-error: true
         uses: actions/download-artifact@v4
         with:
-          pattern: nightly-ui-chaos-summary-*
+          pattern: nightly-ui-chaos-summary-attempt-${{ github.run_attempt }}-*
           path: ${{ runner.temp }}/ui-chaos-summaries
 
       - name: Add the night to the weekly inspection

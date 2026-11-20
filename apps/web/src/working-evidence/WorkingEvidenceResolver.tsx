@@ -69,6 +69,7 @@ function ResolverOwner(
     [state, setState] = useState<'ready' | 'pending' | 'unavailable'>('ready');
   async function open() {
     const owner = operations.operation();
+    if (!owner) return;
     setState('pending');
     const destination = props.destination;
     const result = await operations.download(

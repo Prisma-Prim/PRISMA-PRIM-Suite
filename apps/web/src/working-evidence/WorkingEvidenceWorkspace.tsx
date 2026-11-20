@@ -165,6 +165,7 @@ function EvidenceReader(
     const request = operations.operation(
       () => sequences.current.list === sequence,
     );
+    if (!request) return;
     setState('loading');
     try {
       const api = await createAuthenticatedApiClient(props.identity);
@@ -173,7 +174,7 @@ function EvidenceReader(
         `/projects/${props.projectId}/working-evidence-cases${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
         {
           companyContextId: props.actor.activeCompany?.id,
-          signal: request.controller.signal,
+          signal: request.signal,
           cache: 'no-store',
         },
       );
@@ -226,6 +227,7 @@ function EvidenceReader(
     const request = operations.operation(
       () => sequences.current.open === sequence,
     );
+    if (!request) return;
     const sourceIsCurrent = props.authority.source
       ? captureSource()
       : () => false;
@@ -238,7 +240,7 @@ function EvidenceReader(
         : `/working-evidence-cases/${caseId}`;
       const result = await api.request(path, {
         companyContextId: props.actor.activeCompany?.id,
-        signal: request.controller.signal,
+        signal: request.signal,
         cache: 'no-store',
       });
       if (!request.current()) return;
@@ -281,6 +283,7 @@ function EvidenceReader(
     const request = operations.operation(
       () => sequences.current.history === sequence,
     );
+    if (!request) return;
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!request.current()) return;
@@ -288,7 +291,7 @@ function EvidenceReader(
         `/working-evidence-cases/${current.caseId}/revisions${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
         {
           companyContextId: props.actor.activeCompany?.id,
-          signal: request.controller.signal,
+          signal: request.signal,
           cache: 'no-store',
         },
       );

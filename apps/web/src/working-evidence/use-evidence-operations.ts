@@ -1,12 +1,16 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
-import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import {
   createAuthenticatedApiClient,
   type ApiResult,
 } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 export type EvidenceCallbacks = {
   onActorRevalidated?: (actor: ActorContext) => void | Promise<void>;
   onCompanyContextRejected?: (companyId: string) => void;
@@ -22,52 +26,63 @@ export function useEvidenceOperations({
   identity: BrowserIdentity;
   signature: string;
 }) {
-  const capture = useAuthorityLifetime(signature, identity);
-  const recovery = useAuthorityLifetime(JSON.stringify(actor), identity);
-  const controllers = useRef(new Set<AbortController>()),
-    urls = useRef(new Set<string>());
-  useEffect(
+  const lifetime = useRequestLifetime(identity, signature);
+  const work = useScopedOperationGroup(String(lifetime));
+  const actorObservation = useActorObservation(actor);
+  const recovery = useScopedOperationGroup(
+    JSON.stringify([lifetime, actorObservation]),
+  );
+  const latestCallbacks = useRef(callbacks);
+  const urls = useRef(new Set<string>());
+  useLayoutEffect(() => {
+    latestCallbacks.current = callbacks;
+  });
+  useLayoutEffect(
     () => () => {
-      for (const controller of controllers.current) controller.abort();
       for (const url of urls.current) URL.revokeObjectURL(url);
-      controllers.current.clear();
       urls.current.clear();
     },
-    [signature, identity],
+    [work],
   );
   function operation(isOperationCurrent: () => boolean = () => true) {
-    const live = capture(),
-      recoveryLive = recovery(),
-      controller = new AbortController();
-    controllers.current.add(controller);
+    const request = work.begin();
+    if (!request) return null;
+    const sameLifetime = work.capture();
     const current = () =>
-      live() && !controller.signal.aborted && isOperationCurrent();
+      sameLifetime() && !request.signal.aborted && isOperationCurrent();
     const recover = (result: ApiResult<unknown>) => {
-      if (result.status !== 'unauthorized' && result.status !== 'forbidden')
+      if (
+        !current() ||
+        (result.status !== 'unauthorized' && result.status !== 'forbidden')
+      )
         return;
-      // Settle the local operation first. Actor/session recovery has an independent owner.
+      const repair = recovery.begin();
+      if (!repair) return;
+      // Settle locally before starting independently cancellable Actor recovery.
       void Promise.resolve()
         .then(() =>
           handleAuthenticatedAccessRejection({
             result,
             identity,
             companyContextId: actor.activeCompany?.id,
-            signal: controller.signal,
-            isCurrent: () => current() && recoveryLive(),
-            onActorRevalidated:
-              callbacks.onActorRevalidated ?? (() => undefined),
-            onCompanyContextRejected:
-              callbacks.onCompanyContextRejected ?? (() => undefined),
-            onWorkspaceAccessRejected: callbacks.onWorkspaceAccessRejected,
+            signal: repair.signal,
+            isCurrent: () => current() && !repair.signal.aborted,
+            onActorRevalidated: (updated) =>
+              latestCallbacks.current.onActorRevalidated?.(updated),
+            onCompanyContextRejected: (companyId) =>
+              latestCallbacks.current.onCompanyContextRejected?.(companyId),
+            onWorkspaceAccessRejected: () =>
+              latestCallbacks.current.onWorkspaceAccessRejected?.(),
           }),
         )
-        .catch(() => undefined);
+        .catch(() => undefined)
+        .finally(repair.release);
     };
     return {
       current,
-      controller,
+      signal: request.signal,
       recover,
-      finish: () => controllers.current.delete(controller),
+      finish: request.release,
     };
   }
   async function download(
@@ -78,12 +93,13 @@ export function useEvidenceOperations({
     expected?: { sizeBytes: number; sha256: string },
   ) {
     const request = operation();
+    if (!request) return false;
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!request.current()) return false;
       const result = await api.download(path, {
         companyContextId: actor.activeCompany?.id,
-        signal: request.controller.signal,
+        signal: request.signal,
         cache: 'no-store',
         maximumBytes,
       });
@@ -133,12 +149,13 @@ export function useEvidenceOperations({
   }
   async function statement(path: string) {
     const request = operation();
+    if (!request) return null;
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!request.current()) return null;
       const result = await api.download(path, {
         companyContextId: actor.activeCompany?.id,
-        signal: request.controller.signal,
+        signal: request.signal,
         cache: 'no-store',
         maximumBytes: 256 * 1024,
       });
