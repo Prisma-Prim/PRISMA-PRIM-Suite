@@ -41,6 +41,20 @@ export function blockedUntilReload(feedback: Feedback): boolean {
   return feedback.status === 'refused' && feedback.reload;
 }
 
+export function clearReloadedFeedback(feedback: Feedback): Feedback {
+  return feedback.status === 'refused' || feedback.status === 'unmet'
+    ? IDLE
+    : feedback;
+}
+
+export function describedFeedbackId(feedback: Feedback, id: string) {
+  return feedback.status === 'refused' ||
+    feedback.status === 'uncertain' ||
+    feedback.status === 'unmet'
+    ? id
+    : undefined;
+}
+
 export function refusedWith(
   message: CertificationMessageKey,
   reload = false,

@@ -1114,6 +1114,53 @@ describe('Certification Stage 1 and Stage 2 audits', () => {
     expect(saved?.key).not.toBe(stale?.key);
   });
 
+  it('retries an uncertain Stage plan unchanged after reloading its Case', async () => {
+    const { server, actor } = serve({ manager: true });
+    const caseId = server.seedApprovedTeam({
+      orderReference: 'CERT-STAGE-RETRY',
+    });
+    server.attachAsColleague(caseId, server.addSource('Stage 1 plan'), 'plan');
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-STAGE-RETRY');
+    const plan = form(STAGE_1, 'Record the Stage 1 plan');
+    fillPlan(plan, {
+      start: '2026-11-10',
+      end: '2026-11-10',
+      onSite: '1',
+      remote: '0',
+      document: 'Stage 1 plan — version 1 (stage-1-plan.pdf)',
+    });
+    server.interceptions.push({
+      match: (request) => request.path.endsWith('/stages/stage-1/plan'),
+      respond: () => Promise.reject(new TypeError('Synthetic lost reply')),
+    });
+    submit(plan, 'Record the Stage 1 plan');
+    await within(region(STAGE_1)).findByRole('button', {
+      name: 'Retry unchanged save',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reload Case' }));
+    const retry = await screen.findByRole('button', {
+      name: 'Retry unchanged save',
+    });
+    expect(
+      within(form(STAGE_1, 'Record the Stage 1 plan')).getByLabelText(
+        'On-site auditor-days',
+      ),
+    ).toHaveValue('1');
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(nextStep()).toBe('Stage 1 audit report'));
+    const commands = server.mutations();
+    expect(commands).toHaveLength(2);
+    const [original, retried] = commands;
+    expect(original?.key).toEqual(expect.any(String));
+    expect(retried?.key).toBe(original?.key);
+    expect(retried?.body).toEqual(original?.body);
+    expect(screen.getByText(SAVED)).toBeVisible();
+  });
+
   it('marks only the plan field left blank invalid, and no field after a stale refusal', async () => {
     const { server, actor } = serve({ manager: true });
     const caseId = server.seedApprovedTeam({
