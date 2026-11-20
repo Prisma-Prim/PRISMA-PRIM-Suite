@@ -1,4 +1,20 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import {
+  useScopedOperation,
+  useScopedOperationGroup,
+} from '../api/use-scoped-operation';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
 import type { ActorContext } from '../access-types';
 import { grantOf, holds } from '../access/company-grants';
 import type { BrowserIdentity } from '../access-composition';
@@ -110,8 +126,13 @@ function ConfigurationSection({
   const heading = useId();
   const [read, setRead] = useState<Read>({ kind: 'loading' });
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
-  const readRequest = useRef<AbortController | null>(null);
-  const commandRequest = useRef<AbortController | null>(null);
+  const ownerScope = String(
+    useRequestLifetime(identity, projectTemplateConfigurationAuthority(actor)),
+  );
+  const reads = useScopedOperation(ownerScope);
+  const writes = useScopedOperationGroup(ownerScope);
+  const observation = useActorObservation(actor);
+  const captureRecovery = useAuthorityLifetime(String(observation), identity);
   const companyId = actor.activeCompany?.id;
   const canPublish = holds(
     actor.activeCompany,
@@ -125,17 +146,20 @@ function ConfigurationSection({
     onCompanyContextRejected,
     onWorkspaceAccessRejected,
   });
-  callbacks.current = {
-    onCatalogueChanged,
-    onActivityRecorded,
-    onActorRevalidated,
-    onCompanyContextRejected,
-    onWorkspaceAccessRejected,
-  };
+  useLayoutEffect(() => {
+    callbacks.current = {
+      onCatalogueChanged,
+      onActivityRecorded,
+      onActorRevalidated,
+      onCompanyContextRejected,
+      onWorkspaceAccessRejected,
+    };
+  });
 
   async function reject(
     result: ApiResult<unknown>,
-    controller: AbortController,
+    signal: AbortSignal,
+    recoveryCurrent: () => boolean,
   ) {
     setRead({ kind: 'denied' });
     setMutation({ kind: 'idle' });
@@ -148,20 +172,21 @@ function ConfigurationSection({
         onActorRevalidated: callbacks.current.onActorRevalidated,
         onCompanyContextRejected: callbacks.current.onCompanyContextRejected,
         onWorkspaceAccessRejected: callbacks.current.onWorkspaceAccessRejected,
-        signal: controller.signal,
+        signal,
+        isCurrent: () => !signal.aborted && recoveryCurrent(),
       });
     } catch {
       /* The received denial remains definite even if revalidation is unavailable. */
     }
   }
   async function load(resetCommand = true) {
-    readRequest.current?.abort();
     if (resetCommand) {
-      commandRequest.current?.abort();
+      writes.retire();
       setMutation({ kind: 'idle' });
     }
-    const controller = new AbortController();
-    readRequest.current = controller;
+    const signal = reads.begin();
+    if (!signal) return;
+    const recoveryCurrent = captureRecovery();
     setRead({ kind: 'loading' });
     if (!canReadProjectTemplateCatalogue(actor)) {
       setRead({ kind: 'denied' });
@@ -169,14 +194,14 @@ function ConfigurationSection({
     }
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       const result = await api.request('/project-templates', {
         companyContextId: companyId,
-        signal: controller.signal,
+        signal,
       });
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
-        await reject(result, controller);
+        await reject(result, signal, recoveryCurrent);
         return;
       }
       const catalogue =
@@ -198,25 +223,23 @@ function ConfigurationSection({
         ),
       });
     } catch {
-      if (!controller.signal.aborted) setRead({ kind: 'error' });
+      if (!signal.aborted) setRead({ kind: 'error' });
     }
   }
   useEffect(() => {
     void load();
-    return () => {
-      readRequest.current?.abort();
-      commandRequest.current?.abort();
-    };
-  }, [identity]);
+  }, [ownerScope]);
 
   async function publish(command: Command) {
-    const controller = new AbortController();
-    commandRequest.current?.abort();
-    commandRequest.current = controller;
+    if (writes.isPending()) return;
+    const operation = writes.begin();
+    if (!operation) return;
+    const { signal } = operation;
+    const recoveryCurrent = captureRecovery();
     setMutation({ kind: 'pending', command });
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       const result = await api.request(
         '/project-templates/CONSULTING_PREPARATION_ILLUSTRATIVE/versions',
         {
@@ -227,12 +250,12 @@ function ConfigurationSection({
             'idempotency-key': command.key,
           },
           companyContextId: companyId,
-          signal: controller.signal,
+          signal,
         },
       );
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
-        await reject(result, controller);
+        await reject(result, signal, recoveryCurrent);
         return;
       }
       if (result.status === 'conflict') {
@@ -257,15 +280,20 @@ function ConfigurationSection({
         return;
       }
       setMutation({ kind: 'confirmed', version: receipt.version });
-      callbacks.current.onCatalogueChanged?.();
       // Later refresh failure cannot change an acknowledged publication into an uncertain one.
-      void Promise.resolve()
-        .then(() => callbacks.current.onActivityRecorded?.())
-        .catch(() => undefined);
+      void Promise.allSettled([
+        Promise.resolve().then(() => {
+          if (!signal.aborted) callbacks.current.onCatalogueChanged?.();
+        }),
+        Promise.resolve().then(() => {
+          if (!signal.aborted) return callbacks.current.onActivityRecorded?.();
+        }),
+      ]);
       await load(false);
     } catch {
-      if (!controller.signal.aborted)
-        setMutation({ kind: 'uncertain', command });
+      if (!signal.aborted) setMutation({ kind: 'uncertain', command });
+    } finally {
+      operation.release();
     }
   }
   function submit(event: FormEvent) {

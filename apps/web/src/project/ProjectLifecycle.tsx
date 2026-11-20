@@ -1,4 +1,13 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import {
+  useScopedOperation,
+  useScopedOperationGroup,
+} from '../api/use-scoped-operation';
+import { useEffect, useId, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { companyAuthorityWithoutProjectTemplate } from './project-authority';
@@ -151,10 +160,6 @@ function LifecycleSection({
   const [editor, setEditor] = useState<Editor>({ kind: 'closed' });
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
   const [feedback, setFeedback] = useState<Feedback>(null);
-  const readRequest = useRef<AbortController | null>(null);
-  const membersRequest = useRef<AbortController | null>(null);
-  /** Marks a command's reply as stale; the write itself is never cancelled. */
-  const commandRequest = useRef<AbortController | null>(null);
   const company = actor.activeCompany;
   const companyId = company?.id ?? '';
   const canRead =
@@ -169,24 +174,30 @@ function LifecycleSection({
     canRead && holds(company, 'company_project_approver', 'project.close');
   const canReadTasks = holds(company, 'company_task_manager', 'task.read');
   const path = `/projects/${encodeURIComponent(projectId)}`;
+  const operationScope = String(useRequestLifetime(identity, projectId));
+  const projectRead = useScopedOperation(operationScope);
+  const membersRead = useScopedOperation(operationScope);
+  const commands = useScopedOperationGroup(operationScope);
+  const observation = useActorObservation(actor);
+  const captureRecovery = useAuthorityLifetime(String(observation), identity);
 
   function stopReads() {
-    readRequest.current?.abort();
-    membersRequest.current?.abort();
+    projectRead.retire();
+    membersRead.retire();
   }
   /** Lost authority or a hidden Project shows no value and keeps no draft. */
   function retire() {
     stopReads();
-    commandRequest.current?.abort();
+    commands.retire();
     setRead({ kind: 'unavailable' });
     setEditor({ kind: 'closed' });
     setMutation({ kind: 'idle' });
     setFeedback(null);
   }
   async function load() {
-    readRequest.current?.abort();
-    const controller = new AbortController();
-    readRequest.current = controller;
+    const signal = projectRead.begin();
+    if (!signal) return;
+    const recoveryCurrent = captureRecovery();
     if (!canRead || !companyId) {
       setRead({ kind: 'unavailable' });
       return;
@@ -194,15 +205,15 @@ function LifecycleSection({
     setRead({ kind: 'loading' });
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       const result = await api.request(`${path}/lifecycle`, {
         companyContextId: companyId,
-        signal: controller.signal,
+        signal,
       });
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       if (result.status === 'unauthorized') {
-        await identity.rejectSession();
-        retire();
+        if (recoveryCurrent()) await identity.rejectSession();
+        if (!signal.aborted) retire();
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
@@ -212,19 +223,15 @@ function LifecycleSection({
       if (result.status !== 'ok') throw new Error('Unavailable');
       setRead({ kind: 'ready', value: readProjectLifecycle(result.value) });
     } catch {
-      if (!controller.signal.aborted) setRead({ kind: 'error' });
+      if (!signal.aborted) setRead({ kind: 'error' });
     }
   }
   useEffect(() => {
     void load();
-    return () => {
-      stopReads();
-      commandRequest.current?.abort();
-    };
-  }, [identity]);
+  }, [operationScope]);
 
   async function reloadProject() {
-    membersRequest.current?.abort();
+    membersRead.retire();
     setEditor({ kind: 'closed' });
     setMutation((current) =>
       current.kind === 'reload-required' ? { kind: 'idle' } : current,
@@ -233,9 +240,9 @@ function LifecycleSection({
     await Promise.all([load(), onProjectChanged?.()]);
   }
   async function openActivation() {
-    membersRequest.current?.abort();
-    const controller = new AbortController();
-    membersRequest.current = controller;
+    const signal = membersRead.begin();
+    if (!signal) return;
+    const recoveryCurrent = captureRecovery();
     setFeedback(null);
     setEditor({
       kind: 'activate',
@@ -248,15 +255,15 @@ function LifecycleSection({
     });
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       const result = await api.request(
         `${path}/eligible-start-exception-members`,
-        { companyContextId: companyId, signal: controller.signal },
+        { companyContextId: companyId, signal },
       );
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       if (result.status === 'unauthorized') {
-        await identity.rejectSession();
-        retire();
+        if (recoveryCurrent()) await identity.rejectSession();
+        if (!signal.aborted) retire();
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
@@ -282,7 +289,7 @@ function LifecycleSection({
           : current,
       );
     } catch {
-      if (!controller.signal.aborted)
+      if (!signal.aborted)
         setEditor((current) =>
           current.kind === 'activate'
             ? { ...current, members: { kind: 'error' } }
@@ -291,18 +298,21 @@ function LifecycleSection({
     }
   }
   function closeEditor() {
-    membersRequest.current?.abort();
+    membersRead.retire();
     setEditor({ kind: 'closed' });
   }
   async function run(command: Command) {
-    membersRequest.current?.abort();
-    const controller = new AbortController();
-    commandRequest.current = controller;
+    if (commands.isPending()) return;
+    const operation = commands.beginLatest();
+    if (!operation) return;
+    const { signal } = operation;
+    const recoveryCurrent = captureRecovery();
+    membersRead.retire();
     setMutation({ kind: 'pending', command });
     setFeedback(null);
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       // No abort signal: a later read, reload or authority change never
       // cancels a submitted write; its reply is only ignored.
       const result = await api.request(`${path}/lifecycle-transitions`, {
@@ -314,10 +324,10 @@ function LifecycleSection({
         },
         body: JSON.stringify(command.body),
       });
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       if (result.status === 'unauthorized') {
-        await identity.rejectSession();
-        retire();
+        if (recoveryCurrent()) await identity.rejectSession();
+        if (!signal.aborted) retire();
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
@@ -349,21 +359,26 @@ function LifecycleSection({
       if (result.status !== 'ok') throw new Error('Unconfirmed change');
       readLifecycleReceipt(result.value, projectId, command.body.action);
       setEditor({ kind: 'closed' });
-      setMutation({ kind: 'idle' });
       setFeedback('saved');
-      // A receipt is historical: the section, the detail status and the list
-      // row are re-read together before another change is offered.
-      await Promise.all([load(), onProjectChanged?.()]);
-      if (!controller.signal.aborted) {
+      // A validated receipt stays confirmed even if the independent refresh fails.
+      void Promise.resolve()
+        .then(() => {
+          if (!signal.aborted) return onProjectChanged?.();
+        })
+        .catch(() => undefined);
+      await load();
+      if (!signal.aborted) setMutation({ kind: 'idle' });
+      if (!signal.aborted) {
         try {
-          await onActivityRecorded?.();
+          void Promise.resolve(onActivityRecorded?.()).catch(() => undefined);
         } catch {
           /* A failed Activity Log refresh does not undo a confirmed change. */
         }
       }
     } catch {
-      if (!controller.signal.aborted)
-        setMutation({ kind: 'uncertain', command });
+      if (!signal.aborted) setMutation({ kind: 'uncertain', command });
+    } finally {
+      operation.release();
     }
   }
   function activate(event: FormEvent, current: LifecycleValue) {

@@ -109,6 +109,12 @@ it('permits a Task reader without Task manage to request advance and clears cach
 it('requires an explicit reload after a stale revision and keeps a confirmed transition distinct from refresh failure', async () => {
   let writes = 0;
   let reads = 0;
+  let finishProgress: (response: Response) => void = () => {
+    throw new Error('Expected held progress read');
+  };
+  const heldProgress = new Promise<Response>((resolve) => {
+    finishProgress = resolve;
+  });
   vi.stubGlobal(
     'fetch',
     vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -128,6 +134,7 @@ it('requires an explicit reload after a stale revision and keeps a confirmed tra
             );
       }
       reads += 1;
+      if (reads === 3) return heldProgress;
       return reads > 2
         ? new Response(null, { status: 503 })
         : Response.json(progress());
@@ -157,6 +164,11 @@ it('requires an explicit reload after a stale revision and keeps a confirmed tra
   });
   await waitFor(() => expect(advance).toBeEnabled());
   fireEvent.click(advance);
+  await waitFor(() => expect(reads).toBe(3));
+  const reload = screen.getByRole('button', { name: 'Reload stage progress' });
+  expect(reload).toBeEnabled();
+  expect(advance).toBeDisabled();
+  fireEvent.click(reload);
   await screen.findByText(
     'Stage advance confirmed. Current progress could not be refreshed. Reload to see it.',
   );
@@ -167,6 +179,12 @@ it('requires an explicit reload after a stale revision and keeps a confirmed tra
     screen.getByRole('button', { name: 'Advance to Préparation' }),
   ).toBeDisabled();
   expect(writes).toBe(2);
+  await act(async () => finishProgress(Response.json(progress())));
+  expect(
+    screen.getByText(
+      'Stage advance confirmed. Current progress could not be refreshed. Reload to see it.',
+    ),
+  ).toBeInTheDocument();
 });
 
 it.each(['company', 'session', 'dedicated'] as const)(

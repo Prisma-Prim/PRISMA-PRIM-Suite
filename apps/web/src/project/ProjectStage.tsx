@@ -1,4 +1,13 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import {
+  useScopedOperation,
+  useScopedOperationGroup,
+} from '../api/use-scoped-operation';
+import { useEffect, useId, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
@@ -53,8 +62,6 @@ function StageSection({
   const heading = useId();
   const [read, setRead] = useState<Read>({ kind: 'loading' });
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
-  const readRequest = useRef<AbortController | null>(null);
-  const commandRequest = useRef<AbortController | null>(null);
   const company = actor.activeCompany;
   const canAdvance = holds(
     company,
@@ -63,28 +70,33 @@ function StageSection({
   );
   const companyId = company?.id;
   const path = `/projects/${encodeURIComponent(projectId)}`;
+  const operationScope = String(useRequestLifetime(identity, projectId));
+  const projectRead = useScopedOperation(operationScope);
+  const commands = useScopedOperationGroup(operationScope);
+  const observation = useActorObservation(actor);
+  const captureRecovery = useAuthorityLifetime(String(observation), identity);
   function retire() {
-    readRequest.current?.abort();
-    commandRequest.current?.abort();
+    projectRead.retire();
+    commands.retire();
     setRead({ kind: 'denied' });
     setMutation({ kind: 'idle' });
   }
   async function load(afterConfirmation = false) {
-    readRequest.current?.abort();
-    const controller = new AbortController();
-    readRequest.current = controller;
+    const signal = projectRead.begin();
+    if (!signal) return;
+    const recoveryCurrent = captureRecovery();
     if (!afterConfirmation) setRead({ kind: 'loading' });
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       const result = await api.request(`${path}/stage-progress`, {
         companyContextId: companyId,
-        signal: controller.signal,
+        signal,
       });
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       if (result.status === 'unauthorized') {
         retire();
-        await identity.rejectSession();
+        if (recoveryCurrent()) await identity.rejectSession();
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
@@ -95,25 +107,24 @@ function StageSection({
       setRead({ kind: 'ready', progress: readStageProgress(result.value) });
       if (afterConfirmation) setMutation({ kind: 'confirmed' });
     } catch {
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       if (afterConfirmation) setMutation({ kind: 'confirmedRefreshFailed' });
       else setRead({ kind: 'error' });
     }
   }
   useEffect(() => {
     void load();
-    return () => {
-      readRequest.current?.abort();
-      commandRequest.current?.abort();
-    };
-  }, [identity]);
+  }, [operationScope]);
   async function submit(command: Command) {
-    const controller = new AbortController();
-    commandRequest.current = controller;
+    if (commands.isPending()) return;
+    const operation = commands.beginLatest();
+    if (!operation) return;
+    const { signal } = operation;
+    const recoveryCurrent = captureRecovery();
     setMutation({ kind: 'pending', command });
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       const result = await api.request(`${path}/stage-advance`, {
         method: 'POST',
         body: command.body,
@@ -123,10 +134,10 @@ function StageSection({
         },
         companyContextId: companyId,
       });
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       if (result.status === 'unauthorized') {
         retire();
-        await identity.rejectSession();
+        if (recoveryCurrent()) await identity.rejectSession();
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
@@ -141,11 +152,15 @@ function StageSection({
       readStageReceipt(result.value, projectId);
       setMutation({ kind: 'confirmed' });
       await load(true);
-      if (!controller.signal.aborted)
-        void Promise.resolve(onActivityRecorded?.()).catch(() => undefined);
+      void Promise.resolve()
+        .then(() => {
+          if (!signal.aborted) return onActivityRecorded?.();
+        })
+        .catch(() => undefined);
     } catch {
-      if (!controller.signal.aborted)
-        setMutation({ kind: 'uncertain', command });
+      if (!signal.aborted) setMutation({ kind: 'uncertain', command });
+    } finally {
+      operation.release();
     }
   }
   const gateCopy = {

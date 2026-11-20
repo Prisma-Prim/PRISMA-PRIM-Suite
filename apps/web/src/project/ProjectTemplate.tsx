@@ -1,5 +1,11 @@
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { MissionApplicability } from './MissionApplicability';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import { grantOf, holds } from '../access/company-grants';
 import type { BrowserIdentity } from '../access-composition';
@@ -91,7 +97,9 @@ export function ProjectTemplateSelector({
     page.revision === catalogueRevision ? page.beforeVersion : undefined;
   const priorTemplates = useRef<SelectableTemplateVersion[]>([]);
   const latestSelection = useRef(selection);
-  latestSelection.current = selection;
+  useLayoutEffect(() => {
+    latestSelection.current = selection;
+  }, [selection]);
   const [load, setLoad] = useState<
     | { kind: 'loading' | 'error' | 'denied' }
     | {
@@ -106,24 +114,38 @@ export function ProjectTemplateSelector({
     purpose === 'inspection'
       ? canUsePilotTemplate(actor)
       : canInstantiatePilotTemplate(actor);
+  const ownerScope = String(
+    useRequestLifetime(
+      identity,
+      JSON.stringify([projectTemplateAuthority(actor), purpose]),
+    ),
+  );
+  const reads = useScopedOperationGroup(ownerScope);
+  const observation = useActorObservation(actor);
+  const captureRecovery = useAuthorityLifetime(String(observation), identity);
   useEffect(() => {
-    const controller = new AbortController();
+    const operation = reads.beginLatest();
+    if (!operation) return;
+    const { signal } = operation;
+    const recoveryCurrent = captureRecovery();
     setLoad({ kind: 'loading' });
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
+        if (signal.aborted) return;
         const response = await api.request(
           beforeVersion === undefined
             ? '/project-templates'
             : `/project-templates?beforeVersion=${beforeVersion}`,
           {
             companyContextId: companyId,
-            signal: controller.signal,
+            signal,
           },
         );
-        if (controller.signal.aborted) return;
+        if (signal.aborted) return;
         if (response.status === 'unauthorized') {
-          await identity.rejectSession();
+          if (recoveryCurrent()) await identity.rejectSession();
+          else setLoad({ kind: 'denied' });
           return;
         }
         if (response.status === 'forbidden') {
@@ -153,11 +175,12 @@ export function ProjectTemplateSelector({
         if (includePilot) {
           const pilot = await api.request(
             `/project-templates?templateKey=${pilotTemplateKey}`,
-            { companyContextId: companyId, signal: controller.signal },
+            { companyContextId: companyId, signal },
           );
-          if (controller.signal.aborted) return;
+          if (signal.aborted) return;
           if (pilot.status === 'unauthorized') {
-            await identity.rejectSession();
+            if (recoveryCurrent()) await identity.rejectSession();
+            else setLoad({ kind: 'denied' });
             return;
           }
           if (pilot.status === 'forbidden') {
@@ -204,10 +227,12 @@ export function ProjectTemplateSelector({
           revision: catalogueRevision,
         });
       } catch {
-        if (!controller.signal.aborted) setLoad({ kind: 'error' });
+        if (!signal.aborted) setLoad({ kind: 'error' });
+      } finally {
+        operation.release();
       }
     })();
-    return () => controller.abort();
+    return operation.retire;
   }, [
     companyId,
     identity,
@@ -215,6 +240,8 @@ export function ProjectTemplateSelector({
     catalogueRevision,
     beforeVersion,
     includePilot,
+    reads,
+    captureRecovery,
   ]);
   if (load.kind !== 'ready' || load.revision !== catalogueRevision)
     return (
@@ -366,19 +393,40 @@ export function ProjectTemplatePlan({
     | { kind: 'ready'; template: CopiedTemplatePlan | null }
   >({ kind: 'loading' });
   const companyId = actor.activeCompany?.id;
+  const ownerScope = String(
+    useRequestLifetime(
+      identity,
+      JSON.stringify([
+        projectId,
+        actor.internalUserId,
+        actor.workspaceId,
+        actor.workspaceMembershipId,
+        companyId,
+        grantOf(actor.activeCompany, 'company_project_access'),
+      ]),
+    ),
+  );
+  const reads = useScopedOperationGroup(ownerScope);
+  const observation = useActorObservation(actor);
+  const captureRecovery = useAuthorityLifetime(String(observation), identity);
   useEffect(() => {
-    const controller = new AbortController();
+    const operation = reads.beginLatest();
+    if (!operation) return;
+    const { signal } = operation;
+    const recoveryCurrent = captureRecovery();
     setLoad({ kind: 'loading' });
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
+        if (signal.aborted) return;
         const response = await api.request(`/projects/${projectId}/template`, {
           companyContextId: companyId,
-          signal: controller.signal,
+          signal,
         });
-        if (controller.signal.aborted) return;
+        if (signal.aborted) return;
         if (response.status === 'unauthorized') {
-          await identity.rejectSession();
+          if (recoveryCurrent()) await identity.rejectSession();
+          else setLoad({ kind: 'denied' });
           return;
         }
         if (response.status === 'forbidden') {
@@ -393,11 +441,13 @@ export function ProjectTemplatePlan({
           plan ? { kind: 'ready', template: plan.template } : { kind: 'error' },
         );
       } catch {
-        if (!controller.signal.aborted) setLoad({ kind: 'error' });
+        if (!signal.aborted) setLoad({ kind: 'error' });
+      } finally {
+        operation.release();
       }
     })();
-    return () => controller.abort();
-  }, [companyId, identity, projectId, generation]);
+    return operation.retire;
+  }, [companyId, identity, projectId, generation, reads, captureRecovery]);
   if (load.kind === 'ready' && load.template === null) return null;
   const planView = (
     <section className="project-template-plan" aria-label={copy('plan')}>

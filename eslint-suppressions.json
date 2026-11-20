@@ -42,11 +42,6 @@
       "count": 2
     }
   },
-  "apps/web/src/project/ProjectLifecycle.tsx": {
-    "no-restricted-syntax": {
-      "count": 3
-    }
-  },
   "apps/web/src/project/ProjectNextAction.tsx": {
     "no-restricted-syntax": {
       "count": 2
@@ -57,34 +52,9 @@
       "count": 2
     }
   },
-  "apps/web/src/project/ProjectResponsible.tsx": {
-    "no-restricted-syntax": {
-      "count": 3
-    }
-  },
-  "apps/web/src/project/ProjectStage.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
   "apps/web/src/project/ProjectTasks.tsx": {
     "no-restricted-syntax": {
       "count": 2
-    }
-  },
-  "apps/web/src/project/ProjectTemplate.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/project/ProjectTemplateConfiguration.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/project/ProjectWorkspace.tsx": {
-    "no-restricted-syntax": {
-      "count": 3
     }
   },
   "apps/web/src/project/TaskPlanning.tsx": {
@@ -95,11 +65,6 @@
   "apps/web/src/project/TeamTasks.tsx": {
     "no-restricted-syntax": {
       "count": 3
-    }
-  },
-  "apps/web/src/project/use-project-directory.ts": {
-    "no-restricted-syntax": {
-      "count": 1
     }
   },
   "apps/web/src/ui-baseline/PrismaCertUiBaseline.tsx": {
