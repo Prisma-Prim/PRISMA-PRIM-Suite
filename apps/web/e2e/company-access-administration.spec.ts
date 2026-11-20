@@ -347,7 +347,18 @@ test('confirms Workspace suspension and leaves active state after self-suspensio
     const request = route.request();
     expect(request.method()).toBe('POST');
     expect(request.headers()['idempotency-key']).toBeTruthy();
-    const target = request.postDataJSON().workspaceMembershipId as string;
+    const body: unknown = request.postDataJSON();
+    if (
+      typeof body !== 'object' ||
+      body === null ||
+      !('workspaceMembershipId' in body) ||
+      typeof body.workspaceMembershipId !== 'string'
+    ) {
+      throw new Error(
+        'Expected a Workspace Membership in the suspension request.',
+      );
+    }
+    const target = body.workspaceMembershipId;
     suspensionCommands += 1;
     if (target === memberId) {
       memberActive = false;

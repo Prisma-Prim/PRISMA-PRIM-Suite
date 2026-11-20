@@ -2272,10 +2272,13 @@ describe('CompanyContextAccess', () => {
         ),
       },
     };
+    const activeCompany = selfActor.activeCompany;
+    if (!activeCompany)
+      throw new Error('Expected an active Company in the fixture.');
     const revalidatedActor: ActorContext = {
       ...selfActor,
       activeCompany: {
-        ...selfActor.activeCompany!,
+        ...activeCompany,
 
         grants: withCompanyGrants(selfActor.activeCompany?.grants, {
           bundle: 'company_director_client_access',
