@@ -11,7 +11,13 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { holds } from '../access/company-grants';
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import { holdsContractRead, holdsOfferRead } from '../contract/contract-grants';
 import type { CommercialPdfTarget } from './commercial-pdf-response';
 import { useCommercialPdfCopy } from './commercial-pdf.copy';
@@ -49,7 +55,7 @@ type Feedback =
   | 'limit'
   | 'unavailable';
 type ScopedTarget = {
-  scope: string;
+  scope: number;
   target: CommercialPdfTarget;
   requiresClientRead: boolean;
 };
@@ -73,15 +79,7 @@ export function useCommercialPdfDownload(props: Props) {
     captionId = useId();
   const [displayed, setDisplayed] = useState<Displayed | null>(null);
   const [command, setCommand] = useState<Command | null>(null);
-  const pending = useRef<AbortController | undefined>(undefined);
-  const held = useRef<CommercialPdfTarget | null>(null);
   const blobUrl = useRef<string | undefined>(undefined);
-  const generation = useRef({ identity: props.identity, value: 0 });
-  if (generation.current.identity !== props.identity)
-    generation.current = {
-      identity: props.identity,
-      value: generation.current.value + 1,
-    };
   const company = props.actor.activeCompany;
   const clientReadable =
     props.actor.workspacePermissions.includes('client.manage') ||
@@ -101,40 +99,48 @@ export function useCommercialPdfDownload(props: Props) {
     (props.kind === 'offer'
       ? holdsOfferRead(company)
       : holdsContractRead(company));
-  const scope = JSON.stringify([
-    generation.current.value,
-    props.actor.active,
-    props.actor.internalUserId,
-    props.actor.workspaceId,
-    props.actor.workspaceMembershipId,
-    company?.id,
-    props.opportunityId,
-    props.kind,
-    mayRead,
-  ]);
-  const liveScope = useRef(scope);
-  liveScope.current = scope;
-  const retire = useCallback(() => {
-    pending.current?.abort();
-    pending.current = undefined;
-    held.current = null;
+  const scope = useRequestLifetime(
+    props.identity,
+    JSON.stringify([
+      props.actor.active,
+      props.actor.internalUserId,
+      props.actor.workspaceId,
+      props.actor.workspaceMembershipId,
+      company?.id,
+      props.opportunityId,
+      props.kind,
+      mayRead,
+    ]),
+  );
+  const work = useScopedOperationGroup(
+    JSON.stringify([scope, props.navigation]),
+  );
+  const actorObservation = useActorObservation(props.actor);
+  const captureRecovery = useAuthorityLifetime(
+    String(actorObservation),
+    props.identity,
+  );
+  const clear = useCallback(() => {
     if (blobUrl.current) URL.revokeObjectURL(blobUrl.current);
     blobUrl.current = undefined;
     setDisplayed(null);
     setCommand(null);
   }, []);
-  // Cleanup runs before replacement child selections. A revoked lifetime never revives on regrant.
-  useLayoutEffect(() => () => retire(), [scope, props.navigation, retire]);
+  useLayoutEffect(() => clear, [work, clear]);
+  function retire() {
+    work.retire();
+    clear();
+  }
   const select = useCallback(
     (selection: CommercialPdfSelection, inlineBlocked = false) => {
-      if (!mayRead || !company?.id || liveScope.current !== scope) return;
+      if (!mayRead || !company?.id) return;
       if (selection === null) {
-        setDisplayed(null);
+        setDisplayed((current) => (current?.scope === scope ? null : current));
         return;
       }
       if (selection.kind !== props.kind) return;
       if (selection.requiresClientRead && !clientReadable) {
-        setDisplayed(null);
+        setDisplayed((current) => (current?.scope === scope ? null : current));
         return;
       }
       const { requiresClientRead: selectedClientRead, ...source } = selection;
@@ -159,7 +165,10 @@ export function useCommercialPdfDownload(props: Props) {
       };
       // Display refreshes cannot cancel or retarget a pending/failed exact command.
       setDisplayed((previous) =>
-        JSON.stringify(previous) === JSON.stringify(next) ? previous : next,
+        (previous && previous.scope > scope) ||
+        JSON.stringify(previous) === JSON.stringify(next)
+          ? previous
+          : next,
       );
     },
     [
@@ -176,20 +185,13 @@ export function useCommercialPdfDownload(props: Props) {
     exact: CommercialPdfTarget,
     consumesClientRead: boolean,
   ) {
-    if (
-      !mayRead ||
-      (consumesClientRead && !clientReadable) ||
-      liveScope.current !== scope ||
-      pending.current
-    )
+    if (!mayRead || (consumesClientRead && !clientReadable) || work.isPending())
       return;
-    const controller = new AbortController();
-    pending.current = controller;
-    held.current = exact;
-    const valid = () =>
-      !controller.signal.aborted &&
-      liveScope.current === scope &&
-      held.current === exact;
+    const operation = work.begin();
+    if (!operation) return;
+    const { signal } = operation;
+    const valid = () => !signal.aborted;
+    const recoveryCurrent = captureRecovery();
     const exactCommand = {
       scope,
       target: exact,
@@ -202,20 +204,21 @@ export function useCommercialPdfDownload(props: Props) {
       const result = await api.downloadCommercialPdf(
         `/${exact.kind === 'offer' ? 'offers' : 'contracts'}/opportunities/${encodeURIComponent(exact.opportunityId)}/versions/${encodeURIComponent(exact.versionId)}/pdf?sourceHtmlSha256=${exact.sourceHtmlSha256}`,
         exact,
-        { companyContextId: exact.companyId, signal: controller.signal },
+        { companyContextId: exact.companyId, signal },
       );
       if (!valid()) return;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
         setCommand({ ...exactCommand, feedback: 'denied' });
-        // The shell revalidation owns its lifetime; no child abort signal is passed.
-        await handleAuthenticatedAccessRejection({
-          result,
-          identity: props.identity,
-          companyContextId: exact.companyId,
-          onCompanyContextRejected: props.onCompanyContextRejected,
-          onActorRevalidated: props.onActorRevalidated ?? (() => undefined),
-          onWorkspaceAccessRejected: props.onWorkspaceAccessRejected,
-        });
+        // The shell may finish an admitted revalidation after this PDF view closes.
+        if (recoveryCurrent())
+          await handleAuthenticatedAccessRejection({
+            result,
+            identity: props.identity,
+            companyContextId: exact.companyId,
+            onCompanyContextRejected: props.onCompanyContextRejected,
+            onActorRevalidated: props.onActorRevalidated ?? (() => undefined),
+            onWorkspaceAccessRejected: props.onWorkspaceAccessRejected,
+          });
         return;
       }
       if (result.status !== 'ok') {
@@ -248,7 +251,7 @@ export function useCommercialPdfDownload(props: Props) {
     } catch {
       if (valid()) setCommand({ ...exactCommand, feedback: 'error' });
     } finally {
-      if (pending.current === controller) pending.current = undefined;
+      operation.release();
     }
   }
   const selected =

@@ -7,26 +7,6 @@
       "count": 1
     }
   },
-  "apps/web/src/commercial-catalogue/ServiceCatalogueWorkspace.tsx": {
-    "no-restricted-syntax": {
-      "count": 3
-    }
-  },
-  "apps/web/src/commercial-decision-queue/PendingDecisionQueue.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/commercial-pdf/CommercialPdfDownload.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "apps/web/src/opportunity-follow-up/follow-up-owner.ts": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
   "apps/web/src/project/ProjectNextAction.tsx": {
     "no-restricted-syntax": {
       "count": 2

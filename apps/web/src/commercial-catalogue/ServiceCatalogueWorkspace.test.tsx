@@ -597,6 +597,42 @@ describe('ServiceCatalogueWorkspace', () => {
     expect(requestsTo(fetchMock, route('GET', 'offerings'))).toEqual([]);
   });
 
+  it('settles a stale definitions refusal locally after a compatible Actor is committed', async () => {
+    const firstRead = deferredResponse();
+    const rejectSession = vi.fn(() => Promise.resolve());
+    const identity = { ...deterministicBrowserIdentity(), rejectSession };
+    const fetchMock = stubApi({
+      [route('GET', 'service-definitions')]: (call) =>
+        call === 1 ? firstRead.promise : Response.json({ items: [definition] }),
+      [route('GET', 'offerings')]: () => Response.json({ items: [] }),
+    });
+    const renderActor = (currentActor: ActorContext) => (
+      <InterfaceLocaleProvider>
+        <ServiceCatalogueWorkspace
+          actor={currentActor}
+          identity={identity}
+          onCompanyContextRejected={vi.fn()}
+        />
+      </InterfaceLocaleProvider>
+    );
+    const view = render(renderActor(actor));
+    await waitFor(() =>
+      expect(
+        requestsTo(fetchMock, route('GET', 'service-definitions')),
+      ).toHaveLength(1),
+    );
+    view.rerender(renderActor({ ...actor, displayName: 'Updated Iurie' }));
+    await settleLate(firstRead, new Response(null, { status: 401 }));
+    expect(rejectSession).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText('No offerings for PRISMA-PRIM yet.'),
+    ).toBeVisible();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reload Service Definitions' }),
+    );
+    expect(await screen.findByText(definition.name)).toBeVisible();
+  });
+
   it('reads offerings only for the current Company after a switch during the superseding refresh', async () => {
     const firstRead = deferredResponse();
     const refresh = deferredResponse();
