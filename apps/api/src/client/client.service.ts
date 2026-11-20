@@ -104,12 +104,21 @@ export class ClientService {
 
   /** Counts the active Company directory within the caller's snapshot. */
   async countActiveCompanyClients(actor: ActorContext): Promise<number> {
-    const directory = this.activeCompanyClientDirectory(actor).as(
-      'active_company_clients',
-    );
-    const [result] = await this.databaseContext.connection
+    const scope = this.activeCompanyClientScope(actor);
+    const connection = this.databaseContext.connection;
+    // Bound each account lookup to one row to keep concurrent counts from
+    // allocating a large parallel hash table in PostgreSQL shared memory.
+    const activeAccount = connection
+      .select({ id: clientAccounts.id })
+      .from(clientAccounts)
+      .where(activeAccountForCompanyRelationship())
+      .limit(1)
+      .as('active_account');
+    const [result] = await connection
       .select({ total: count() })
-      .from(directory);
+      .from(clientCompanyRelationships)
+      .innerJoinLateral(activeAccount, sql`true`)
+      .where(scope);
     return result.total;
   }
 
@@ -243,39 +252,26 @@ export class ClientService {
   private async listForActiveCompany(
     actor: ActorContext,
   ): Promise<ClientAccountView[]> {
-    const rows = await this.activeCompanyClientDirectory(actor).orderBy(
-      asc(clientAccounts.displayName),
-      asc(clientAccounts.id),
-    );
-    return rows.map((client) => toSummary(client, true));
-  }
-
-  private activeCompanyClientDirectory(actor: ActorContext) {
-    const companyId = requireMinimalClientPermission(actor, 'client.read');
-    return this.databaseContext.connection
+    const scope = this.activeCompanyClientScope(actor);
+    const rows = await this.databaseContext.connection
       .select({
         id: clientAccounts.id,
         displayName: clientAccounts.displayName,
       })
       .from(clientCompanyRelationships)
-      .innerJoin(
-        clientAccounts,
-        and(
-          eq(
-            clientCompanyRelationships.workspaceId,
-            clientAccounts.workspaceId,
-          ),
-          eq(clientCompanyRelationships.clientAccountId, clientAccounts.id),
-        ),
-      )
-      .where(
-        and(
-          eq(clientCompanyRelationships.workspaceId, actor.workspaceId),
-          eq(clientCompanyRelationships.companyId, companyId),
-          eq(clientCompanyRelationships.status, 'active'),
-          eq(clientAccounts.status, 'active'),
-        ),
-      );
+      .innerJoin(clientAccounts, activeAccountForCompanyRelationship())
+      .where(scope)
+      .orderBy(asc(clientAccounts.displayName), asc(clientAccounts.id));
+    return rows.map((client) => toSummary(client, true));
+  }
+
+  private activeCompanyClientScope(actor: ActorContext) {
+    const companyId = requireMinimalClientPermission(actor, 'client.read');
+    return and(
+      eq(clientCompanyRelationships.workspaceId, actor.workspaceId),
+      eq(clientCompanyRelationships.companyId, companyId),
+      eq(clientCompanyRelationships.status, 'active'),
+    );
   }
 
   private async searchWorkspace(
@@ -581,6 +577,14 @@ export class ClientService {
       metadata: {},
     });
   }
+}
+
+function activeAccountForCompanyRelationship() {
+  return and(
+    eq(clientAccounts.workspaceId, clientCompanyRelationships.workspaceId),
+    eq(clientAccounts.id, clientCompanyRelationships.clientAccountId),
+    eq(clientAccounts.status, 'active'),
+  );
 }
 
 function requireMinimalClientPermission(

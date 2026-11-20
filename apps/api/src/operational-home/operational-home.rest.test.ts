@@ -584,9 +584,7 @@ describe.skipIf(!databaseUrl)('Operational home REST contract', () => {
       summaries: [{ kind: 'active_clients', count: 0 }],
     });
     const directoryReads = queries.filter((query) =>
-      query.includes(
-        'from "client_company_relationships" inner join "client_accounts"',
-      ),
+      query.includes('from "client_company_relationships"'),
     );
     expect(directoryReads).toEqual([
       expect.stringMatching(/^select count\(\*\) from /u),
