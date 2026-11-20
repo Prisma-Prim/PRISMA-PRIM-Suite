@@ -374,7 +374,20 @@ function runAnchor({ runId, attempt }) {
 
 /** Keep earlier attempts when a new attempt completes. */
 export function withNight(nights, night) {
-  return [...nights.filter((entry) => !sameAttempt(entry, night)), night].sort(
+  const previous = nights.find((entry) => sameAttempt(entry, night));
+  const summarized = new Map(
+    previous?.journeys
+      .filter((entry) => entry.status !== null)
+      .map((entry) => [entry.journey, entry]),
+  );
+  // A report-only retry can temporarily lose access to one uploaded summary.
+  const journeys = night.journeys.map((entry) =>
+    entry.status === null ? (summarized.get(entry.journey) ?? entry) : entry,
+  );
+  return [
+    ...nights.filter((entry) => !sameAttempt(entry, night)),
+    { ...night, journeys },
+  ].sort(
     (left, right) =>
       left.startedAt.localeCompare(right.startedAt) ||
       left.runId - right.runId ||

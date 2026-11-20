@@ -118,11 +118,13 @@ test('the chaos job replays its journey with a random seed on PostgreSQL within 
   assert.match(summary, /if: \$\{\{ !cancelled\(\) \}\}/);
   assert.match(
     summary,
-    /\n {10}name: nightly-ui-chaos-summary-\$\{\{ matrix\.journey \}\}\n/,
+    /\n {10}name: nightly-ui-chaos-summary-attempt-\$\{\{ github\.run_attempt \}\}-\$\{\{ matrix\.journey \}\}\n/,
   );
+  const failure = stepBody(chaos, 'Upload the failure evidence');
+  assert.match(failure, /if: \$\{\{ failure\(\) \}\}/);
   assert.match(
-    stepBody(chaos, 'Upload the failure evidence'),
-    /if: \$\{\{ failure\(\) \}\}/,
+    failure,
+    /\n {10}name: nightly-ui-chaos-evidence-attempt-\$\{\{ github\.run_attempt \}\}-\$\{\{ matrix\.journey \}\}\n/,
   );
 });
 
@@ -142,7 +144,10 @@ test('only the report job writes, after every finished night, one at a time', as
     /\n {4}concurrency:\n {6}group: nightly-ui-chaos-report\n {6}cancel-in-progress: false\n/,
   );
   const download = stepBody(report, 'Download the chaos summaries');
-  assert.match(download, /\n {10}pattern: nightly-ui-chaos-summary-\*\n/);
+  assert.match(
+    download,
+    /\n {10}pattern: nightly-ui-chaos-summary-attempt-\$\{\{ github\.run_attempt \}\}-\*\n/,
+  );
   assert.match(
     download,
     /\n {10}path: \$\{\{ runner\.temp \}\}\/ui-chaos-summaries\n/,

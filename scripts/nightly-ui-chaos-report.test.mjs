@@ -1250,6 +1250,18 @@ test('generated failures keep replay evidence without publishing private trace d
   );
   assert.equal(generated.failures[0].seed, 1422017);
   assert.equal(generated.failures[0].error, null);
+
+  const republished = nightOf({
+    run: workflowRun(),
+    jobs,
+    summaries: new Map(),
+  });
+  const preserved = withNight(nightsInComment(body, '2026-11-09'), republished);
+  assert.equal(preserved.length, 1);
+  const retained = preserved[0].journeys.find(
+    ({ journey }) => journey === 'working-evidence-action-sequences',
+  );
+  assert.deepEqual(retained, generated);
 });
 
 test('an oversized week opens a bounded continuation and republishing an attempt updates its part', async () => {
