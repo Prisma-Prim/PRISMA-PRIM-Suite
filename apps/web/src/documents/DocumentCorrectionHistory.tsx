@@ -2,11 +2,17 @@ import {
   paymentEvidenceAuthority,
   type PaymentEvidenceOperationKeys,
 } from '../payment-evidence/payment-evidence-authority';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { holds } from '../access/company-grants';
+import { grantOf, holds } from '../access/company-grants';
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperation } from '../api/use-scoped-operation';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import {
   readDocumentCorrectionHistory,
@@ -57,6 +63,28 @@ export function DocumentCorrectionHistory({
     documentType === 'payment-evidence'
       ? paymentEvidenceAuthority(actor)?.readKey
       : undefined;
+  const canReadReference = holds(
+    company,
+    'company_document_registrar',
+    'document.reference.read',
+  );
+  const documentScope = useRequestLifetime(
+    identity,
+    JSON.stringify([
+      actor.workspaceId,
+      actor.internalUserId,
+      actor.workspaceMembershipId,
+      company?.id,
+      documentId,
+      documentType === 'payment-evidence'
+        ? operationKeys?.readKey
+        : company && documentFamilyCaptureKey(company, documentType),
+      grantOf(company, 'company_document_registrar'),
+      canReadReference,
+    ]),
+  );
+  const observation = useActorObservation(actor);
+  const captureRecovery = useAuthorityLifetime(String(observation), identity);
   if (
     !company ||
     !holds(company, 'company_document_registrar', 'document.read') ||
@@ -65,28 +93,15 @@ export function DocumentCorrectionHistory({
       : !hasDocumentFamilyAccess(company, documentType))
   )
     return null;
-  const canReadReference = holds(
-    company,
-    'company_document_registrar',
-    'document.reference.read',
-  );
   return (
     <CorrectionHistorySection
-      key={JSON.stringify([
-        actor.workspaceId,
-        actor.workspaceMembershipId,
-        company.id,
-        documentId,
-        documentType === 'payment-evidence'
-          ? operationKeys?.readKey
-          : documentFamilyCaptureKey(company, documentType),
-        canReadReference,
-      ])}
+      key={documentScope}
       identity={identity}
       companyId={company.id}
       documentId={documentId}
       workingRevision={workingRevision}
       canReadReference={canReadReference}
+      captureRecovery={captureRecovery}
     />
   );
 }
@@ -97,12 +112,14 @@ function CorrectionHistorySection({
   documentId,
   workingRevision,
   canReadReference,
+  captureRecovery,
 }: {
   identity: BrowserIdentity;
   companyId: string;
   documentId: string;
   workingRevision: number;
   canReadReference: boolean;
+  captureRecovery: () => () => boolean;
 }) {
   const copy = useDocumentCorrectionHistoryCopy();
   const titleId = useId();
@@ -110,10 +127,17 @@ function CorrectionHistorySection({
   const [expanded, setExpanded] = useState(false);
   const [history, setHistory] = useState<HistoryState>({ status: 'loading' });
   /** History reads only; a correction or detail read is never aborted here. */
-  const pending = useRef<AbortController | undefined>(undefined);
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([companyId, documentId, workingRevision, expanded]),
+  );
+  const historyRead = useScopedOperation(String(lifetime));
 
   const loadPage = useCallback(
     async (beforeRevision: number | undefined): Promise<void> => {
+      const signal = historyRead.begin();
+      if (!signal) return;
+      const recoveryCurrent = captureRecovery();
       // A first page replaces the section; an older page only extends the
       // loaded list it continues.
       const update = (
@@ -137,7 +161,7 @@ function CorrectionHistorySection({
         older: 'loading',
       }));
       await runLatestAuthenticatedRequest({
-        pending,
+        signal,
         identity,
         execute: (api, signal) =>
           api.request(
@@ -150,7 +174,8 @@ function CorrectionHistorySection({
           ),
         async onResult(result) {
           if (result.status === 'unauthorized') {
-            await identity.rejectSession();
+            if (recoveryCurrent()) await identity.rejectSession();
+            else setHistory({ status: 'unavailable' });
             return;
           }
           // Lost authority clears every loaded row, like a hidden Document.
@@ -193,7 +218,14 @@ function CorrectionHistorySection({
         onError: fail,
       });
     },
-    [documentId, companyId, canReadReference, identity],
+    [
+      documentId,
+      companyId,
+      canReadReference,
+      identity,
+      historyRead,
+      captureRecovery,
+    ],
   );
 
   // Expanding or a newer working revision reloads the first page from the
@@ -201,8 +233,7 @@ function CorrectionHistorySection({
   useEffect(() => {
     if (!expanded) return;
     void loadPage(undefined);
-    return () => pending.current?.abort();
-  }, [expanded, loadPage, workingRevision]);
+  }, [expanded, loadPage]);
 
   return (
     <section

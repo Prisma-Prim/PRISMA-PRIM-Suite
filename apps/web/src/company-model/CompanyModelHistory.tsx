@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperation } from '../api/use-scoped-operation';
 import type { ApiResult } from '../api/authenticated-api-client';
 import { formatMessage } from '../localization/messages';
 import { useInterfaceLocale } from '../localization/interface-locale';
@@ -29,6 +31,7 @@ export function CompanyModelHistory<
   identity,
   model,
   blocked,
+  captureRecovery,
   epoch,
   onDenied,
   onCopy,
@@ -37,6 +40,7 @@ export function CompanyModelHistory<
   identity: BrowserIdentity;
   model: CompanyModel<Content>;
   blocked: boolean;
+  captureRecovery: () => () => boolean;
   epoch: { current: number };
   onDenied: (result: ApiResult<unknown>) => void;
   onCopy?: (content: Content) => void;
@@ -47,22 +51,22 @@ export function CompanyModelHistory<
   const [exact, setExact] = useState<Read<Version<Content>>>({
     kind: 'closed',
   });
-  const historyPending = useRef<AbortController | undefined>(undefined);
-  const exactPending = useRef<AbortController | undefined>(undefined);
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([kind.path, model.companyId, model.head.id, blocked]),
+  );
+  const historyRead = useScopedOperation(String(lifetime));
+  const exactRead = useScopedOperation(String(lifetime));
   const denied = useRef(onDenied);
-  denied.current = onDenied;
+  useLayoutEffect(() => {
+    denied.current = onDenied;
+  }, [onDenied]);
   useEffect(() => {
     if (blocked) {
-      historyPending.current?.abort();
-      exactPending.current?.abort();
       setHistory({ kind: 'closed' });
       setExact({ kind: 'closed' });
     }
-    return () => {
-      historyPending.current?.abort();
-      exactPending.current?.abort();
-    };
-  }, [identity, blocked]);
+  }, [blocked]);
   function load({
     path,
     versionId,
@@ -74,11 +78,13 @@ export function CompanyModelHistory<
   }) {
     if (blocked) return;
     const captured = epoch.current;
-    const pending = versionId ? exactPending : historyPending;
+    const signal = (versionId ? exactRead : historyRead).begin();
+    if (!signal) return;
+    const recoveryCurrent = captureRecovery();
     if (versionId) setExact({ kind: 'loading' });
     else setHistory({ kind: 'loading' });
     void runLatestAuthenticatedRequest({
-      pending,
+      signal,
       identity,
       execute: (api, signal) =>
         api.request(path, {
@@ -88,7 +94,9 @@ export function CompanyModelHistory<
       onResult: (result) => {
         if (captured !== epoch.current) return;
         if (result.status === 'unauthorized' || result.status === 'forbidden') {
-          denied.current(result);
+          if (recoveryCurrent()) denied.current(result);
+          else if (versionId) setExact({ kind: 'unavailable' });
+          else setHistory({ kind: 'error' });
           return;
         }
         try {
