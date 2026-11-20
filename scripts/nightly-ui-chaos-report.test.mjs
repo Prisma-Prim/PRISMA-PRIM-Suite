@@ -218,6 +218,25 @@ const passingProjects = summary('project-task-action-sequences', [
   },
 ]);
 
+const passingCertificationActions = summary('certification-action-sequences', [
+  {
+    status: 'passed',
+    chaosSeed: 1422001,
+    sequences: ['desktop', 'narrow'].map((width) => ({
+      caseId: 'certification-recommendation',
+      width,
+      seed: 1422001,
+      steps: 10,
+      status: 'passed',
+      runs: 2,
+      shrinks: 0,
+      durationMilliseconds: 1000,
+      path: null,
+      coverage: { 'retry-conserved-native-certification-recommendation': 1 },
+    })),
+  },
+]);
+
 const passingWorkingEvidence = summary('working-evidence-action-sequences', [
   {
     status: 'passed',
@@ -372,6 +391,12 @@ const jobs = [
     started_at: '2026-11-14T02:21:31Z',
     completed_at: '2026-11-14T02:25:31Z',
   },
+  {
+    name: 'chaos (certification-action-sequences)',
+    conclusion: 'success',
+    started_at: '2026-11-14T02:21:31Z',
+    completed_at: '2026-11-14T02:25:31Z',
+  },
 ];
 const summaries = () =>
   new Map([
@@ -423,6 +448,10 @@ const summaries = () =>
     [
       'working-evidence-action-sequences',
       parseChaosSummary(JSON.stringify(passingWorkingEvidence)),
+    ],
+    [
+      'certification-action-sequences',
+      parseChaosSummary(JSON.stringify(passingCertificationActions)),
     ],
   ]);
 
@@ -572,6 +601,10 @@ test("each journey's downloaded summary is found by journey", async (t) => {
       'nightly-ui-chaos-summary-working-evidence-action-sequences',
       JSON.stringify(passingWorkingEvidence),
     ],
+    [
+      'nightly-ui-chaos-summary-certification-action-sequences',
+      JSON.stringify(passingCertificationActions),
+    ],
     ['nightly-ui-chaos-summary-broken', '{'],
   ]) {
     await mkdir(join(directory, folder), { recursive: true });
@@ -611,6 +644,7 @@ test('a night keeps each journey job runtime, runs and failures', () => {
       ['project-task-action-sequences', 'success', 4, 1, 1, false],
       ['operational-risk-action-sequences', 'success', 4, 1, 1, false],
       ['working-evidence-action-sequences', 'success', 4, 1, 1, false],
+      ['certification-action-sequences', 'success', 4, 1, 1, false],
     ],
   );
   assert.equal(weekOf('2026-11-14T02:21:07Z'), '2026-11-09');
@@ -707,7 +741,7 @@ test('reports new attempts in the same week without erasing previous failures or
   // The multi-company-home job of the later night left no summary.
   assert.ok(
     patch.body.body.includes(
-      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary); 2026-11-15 document-action-sequences (success without a summary); 2026-11-15 contract-action-sequences (success without a summary); 2026-11-15 mission-result-action-sequences (success without a summary); 2026-11-15 offer-owner-action-sequences (success without a summary); 2026-11-15 pricing-owner-action-sequences (success without a summary); 2026-11-15 profitability-owner-action-sequences (success without a summary); 2026-11-15 project-task-action-sequences (success without a summary); 2026-11-15 operational-risk-action-sequences (success without a summary); 2026-11-15 working-evidence-action-sequences (success without a summary).',
+      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary); 2026-11-15 document-action-sequences (success without a summary); 2026-11-15 contract-action-sequences (success without a summary); 2026-11-15 mission-result-action-sequences (success without a summary); 2026-11-15 offer-owner-action-sequences (success without a summary); 2026-11-15 pricing-owner-action-sequences (success without a summary); 2026-11-15 profitability-owner-action-sequences (success without a summary); 2026-11-15 project-task-action-sequences (success without a summary); 2026-11-15 operational-risk-action-sequences (success without a summary); 2026-11-15 working-evidence-action-sequences (success without a summary); 2026-11-15 certification-action-sequences (success without a summary).',
     ),
   );
 
@@ -992,6 +1026,7 @@ test('the financial-only repetition week remains bounded within one GitHub comme
               'chaos (project-task-action-sequences)',
               'chaos (operational-risk-action-sequences)',
               'chaos (working-evidence-action-sequences)',
+              'chaos (certification-action-sequences)',
             ].includes(job.name),
         ),
         summaries: new Map([
@@ -1008,6 +1043,7 @@ test('the financial-only repetition week remains bounded within one GitHub comme
                 'project-task-action-sequences',
                 'operational-risk-action-sequences',
                 'working-evidence-action-sequences',
+                'certification-action-sequences',
               ].includes(journey),
           ),
           [

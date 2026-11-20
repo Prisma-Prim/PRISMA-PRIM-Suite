@@ -3,6 +3,12 @@ import { pathToFileURL } from 'node:url';
 
 export const BROWSER_SEQUENCE_CASES = [
   {
+    id: 'certification-recommendation',
+    journey: 'certification-action-sequences',
+    title:
+      'explores generated native Certification recommendation action sequences',
+  },
+  {
     id: 'working-evidence',
     journey: 'working-evidence-action-sequences',
     title: 'explores generated native Working Evidence action sequences',
