@@ -1143,7 +1143,9 @@ test('runs the fictional Lactis Demo SRL Case from the application to the Certif
       .getByRole('button', { name: releaseCopy('recordDraft'), exact: true })
       .click();
     await expect(
-      release.getByText(releaseCopy('current'), { exact: false }),
+      release.getByText(
+        new RegExp(`^DEMO-0001 · .+ · ${releaseCopy('current')}$`, 'u'),
+      ),
     ).toBeVisible();
     await journey.step(manager, `${journey.base}/exchanges`, {
       direction: 'sent',
