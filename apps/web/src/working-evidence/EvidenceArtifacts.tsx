@@ -56,6 +56,7 @@ export function EvidenceArtifacts(
     expected?: { sizeBytes: number; sha256: string },
   ) {
     const request = operations.operation();
+    if (!request) return;
     setPending(true);
     setUnavailable(false);
     const saved = await operations.download(
@@ -73,6 +74,7 @@ export function EvidenceArtifacts(
   }
   async function openStatement() {
     const request = operations.operation();
+    if (!request) return;
     setPending(true);
     setUnavailable(false);
     const result = await operations.statement(`${root}/statement`);

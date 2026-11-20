@@ -309,6 +309,7 @@ test('names the journeys that opt into UI chaos and refuses chaos on any other',
     'pricing-owner-action-sequences',
     'profitability-owner-action-sequences',
     'project-task-action-sequences',
+    'working-evidence-action-sequences',
   ]);
 
   const options = {

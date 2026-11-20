@@ -40,6 +40,99 @@ async function proof(page: Page, operation: string, stage?: string) {
     { operation, stage },
   );
 }
+/** Create one exact, official native source and a recorded Working Evidence Case. */
+export async function prepareWorkingEvidenceCase({
+  page,
+  suffix,
+  headers,
+  post,
+}: {
+  page: Page;
+  suffix: string;
+  headers: Record<string, string>;
+  post: (
+    path: string,
+    data: unknown,
+    expectedStatus?: number,
+  ) => Promise<Record<string, unknown>>;
+}) {
+  const client = await post('/clients', {
+      displayName: `Fictional lifetime Client ${suffix}`,
+    }),
+    clientId = text(client.id),
+    projectTitle = `Fictional lifetime Project ${suffix}`,
+    project = await post('/projects', {
+      title: projectTitle,
+      clientAccountId: clientId,
+    }),
+    projectId = text(project.id);
+  const source = await post('/documents', {
+      type: 'received-audit-source',
+      clientId,
+      title: `Fictional lifetime original ${suffix}`,
+      purpose: 'Fictional lifetime proof only',
+    }),
+    documentId = text(source.id),
+    versionId = text(object(source.version).id);
+  const original = await readFile(
+    new URL(
+      '../../api/test-support/fixtures/questionnaire-demo.pdf',
+      import.meta.url,
+    ),
+  );
+  const upload = await page.request.post(
+    `${origin}/api/documents/${documentId}/versions/${versionId}/content?expectedRevision=1&fileName=fictional-lifetime.pdf`,
+    {
+      headers: {
+        ...headers,
+        'idempotency-key': randomUUID(),
+        'content-type': 'application/pdf',
+      },
+      data: original,
+    },
+  );
+  expect(upload.status()).toBe(201);
+  await post(
+    `/documents/${documentId}/versions/${versionId}/official-designation`,
+    { expectedRevision: 2 },
+    200,
+  );
+  const sourcesResponse = await page.request.get(
+    `${origin}/api/projects/${projectId}/working-evidence-sources`,
+    { headers },
+  );
+  expect(sourcesResponse.status()).toBe(200);
+  const sourcePage = object(await sourcesResponse.json());
+  if (!Array.isArray(sourcePage.items) || !sourcePage.items[0])
+    throw new Error('Missing exact source');
+  const exact = object(sourcePage.items[0]);
+  const caseTitle = `Fictional lifetime Case ${suffix}`,
+    receipt = await post(`/projects/${projectId}/working-evidence-cases`, {
+      format: 'WORKING_EVIDENCE_CASE_COMMAND/1',
+      commandId: randomUUID(),
+      expectedRevision: 0,
+      values: {
+        title: caseTitle,
+        declaredContext: null,
+        process: 'Fictional process',
+        statement: 'Fictional old human statement',
+        observationNote: null,
+        supports: [
+          {
+            documentId,
+            versionId,
+            representationId: text(exact.representationId),
+            locator: null,
+            supportNote: 'Fictional support',
+          },
+        ],
+      },
+    }),
+    caseId = text(receipt.caseId),
+    revisionId = text(receipt.revisionId);
+  return { projectTitle, projectId, caseTitle, caseId, revisionId, original };
+}
+
 /** Real App with native HTTP authorities; only asynchronous scheduling is controlled. */
 export async function workingEvidenceLifetimes(page: Page, info: TestInfo) {
   const narrow = info.project.name.endsWith('narrow'),
@@ -97,80 +190,8 @@ export async function workingEvidenceLifetimes(page: Page, info: TestInfo) {
     }
     await assignment('context', true, otherCompanyId);
     contextGranted = true;
-    const client = await post('/clients', {
-        displayName: `Fictional lifetime Client ${suffix}`,
-      }),
-      clientId = text(client.id),
-      projectTitle = `Fictional lifetime Project ${suffix}`,
-      project = await post('/projects', {
-        title: projectTitle,
-        clientAccountId: clientId,
-      }),
-      projectId = text(project.id);
-    const source = await post('/documents', {
-        type: 'received-audit-source',
-        clientId,
-        title: `Fictional lifetime original ${suffix}`,
-        purpose: 'Fictional lifetime proof only',
-      }),
-      documentId = text(source.id),
-      versionId = text(object(source.version).id);
-    const original = await readFile(
-      new URL(
-        '../../api/test-support/fixtures/questionnaire-demo.pdf',
-        import.meta.url,
-      ),
-    );
-    const upload = await page.request.post(
-      `${origin}/api/documents/${documentId}/versions/${versionId}/content?expectedRevision=1&fileName=fictional-lifetime.pdf`,
-      {
-        headers: {
-          ...headers,
-          'idempotency-key': randomUUID(),
-          'content-type': 'application/pdf',
-        },
-        data: original,
-      },
-    );
-    expect(upload.status()).toBe(201);
-    await post(
-      `/documents/${documentId}/versions/${versionId}/official-designation`,
-      { expectedRevision: 2 },
-      200,
-    );
-    const sourcesResponse = await page.request.get(
-      `${origin}/api/projects/${projectId}/working-evidence-sources`,
-      { headers },
-    );
-    expect(sourcesResponse.status()).toBe(200);
-    const sourcePage = object(await sourcesResponse.json());
-    if (!Array.isArray(sourcePage.items) || !sourcePage.items[0])
-      throw new Error('Missing exact source');
-    const exact = object(sourcePage.items[0]);
-    const caseTitle = `Fictional lifetime Case ${suffix}`,
-      receipt = await post(`/projects/${projectId}/working-evidence-cases`, {
-        format: 'WORKING_EVIDENCE_CASE_COMMAND/1',
-        commandId: randomUUID(),
-        expectedRevision: 0,
-        values: {
-          title: caseTitle,
-          declaredContext: null,
-          process: 'Fictional process',
-          statement: 'Fictional old human statement',
-          observationNote: null,
-          supports: [
-            {
-              documentId,
-              versionId,
-              representationId: text(exact.representationId),
-              locator: null,
-              supportNote: 'Fictional support',
-            },
-          ],
-        },
-      }),
-      caseId = text(receipt.caseId),
-      revisionId = text(receipt.revisionId);
+    const { projectTitle, caseTitle, caseId, revisionId, original } =
+      await prepareWorkingEvidenceCase({ page, suffix, headers, post });
     await page.addInitScript(() => {
       const originalJSON = Response.prototype.json,
         originalArrayBuffer = Blob.prototype.arrayBuffer,

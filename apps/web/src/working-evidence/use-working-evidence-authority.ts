@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { workingEvidenceAuthority } from './working-evidence-access';
@@ -21,6 +21,8 @@ export function useWorkingEvidenceAuthority(
       ? previous.read
       : undefined,
   );
-  selected.current = { identity, scope, read: authority?.read };
+  useLayoutEffect(() => {
+    selected.current = { identity, scope, read: authority?.read };
+  }, [identity, scope, authority?.read]);
   return authority;
 }

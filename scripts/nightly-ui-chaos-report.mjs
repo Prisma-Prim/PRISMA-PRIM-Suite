@@ -13,7 +13,7 @@ import {
 // each finished night on main updates a bounded part of its week (Monday, UTC) on
 // the open `weekly-inspection` issue with every night's runtime and result,
 // and each failure's seed, replay command and triage state. The comment
-// keeps its nights in a data block, so a rerun of the same night replaces it.
+// keeps every run attempt in a data block and updates a repeated publication.
 
 /** The journeys of the nightly matrix (`.github/workflows/nightly-ui-chaos.yml`). */
 export const CHAOS_JOURNEYS = [
@@ -29,12 +29,14 @@ export const CHAOS_JOURNEYS = [
   'profitability-owner-action-sequences',
   'project-task-action-sequences',
   'operational-risk-action-sequences',
+  'working-evidence-action-sequences',
 ];
 const INSPECTION_LABEL = 'weekly-inspection';
 const BUG_LABEL = 'fuzz-found';
 const DATA_VERSION = 1;
 const MAXIMUM_COMMENT_PAGES = 10;
 const MAXIMUM_COMMENT_LENGTH = 65536;
+const MAXIMUM_VISIBLE_DIAGNOSTIC_LENGTH = 4000;
 const STATUSES = ['passed', 'failed', 'error', 'interrupted', 'usage-error'];
 const CONCLUSIONS = [
   'success',
@@ -117,12 +119,26 @@ function compactSequences(sequences) {
 function compactNight(night) {
   return {
     ...night,
-    journeys: night.journeys.map((entry) => ({
-      ...entry,
-      ...(entry.sequences
-        ? { sequences: compactSequences(entry.sequences) }
-        : {}),
-    })),
+    journeys: night.journeys.map((entry) => {
+      const generated = BROWSER_SEQUENCE_CASES.some(
+        ({ journey }) => journey === entry.journey,
+      );
+      return {
+        ...entry,
+        ...(entry.sequences
+          ? { sequences: compactSequences(entry.sequences) }
+          : {}),
+        ...(generated
+          ? {
+              message: null,
+              failures: entry.failures.map((failure) => ({
+                ...failure,
+                error: null,
+              })),
+            }
+          : {}),
+      };
+    }),
   };
 }
 
@@ -348,10 +364,21 @@ export function nightsInComment(body, week) {
   }
 }
 
-/** The week's nights with this one added, or replacing a rerun of it. */
+function sameAttempt(left, right) {
+  return left.runId === right.runId && left.attempt === right.attempt;
+}
+
+function runAnchor({ runId, attempt }) {
+  return `run-${runId}-attempt-${attempt}`;
+}
+
+/** Keep earlier attempts when a new attempt completes. */
 export function withNight(nights, night) {
-  return [...nights.filter((entry) => entry.runId !== night.runId), night].sort(
-    (left, right) => left.startedAt.localeCompare(right.startedAt),
+  return [...nights.filter((entry) => !sameAttempt(entry, night)), night].sort(
+    (left, right) =>
+      left.startedAt.localeCompare(right.startedAt) ||
+      left.runId - right.runId ||
+      left.attempt - right.attempt,
   );
 }
 
@@ -404,7 +431,7 @@ export function renderWeek({ week, nights, bugs, server, repository }) {
           entry.jobMinutes === null
             ? '—'
             : `${entry.jobMinutes.toFixed(1)} min`;
-        return `| ${time} | [${night.event === 'schedule' ? 'nightly' : night.event}][run-${night.runId}] | [\`${night.sha.slice(0, 7)}\`][commit-${night.sha}] | ${entry.journey} | ${runs} | ${result(entry)} | ${minutes} |`;
+        return `| ${time} | [${night.event === 'schedule' ? 'nightly' : night.event} attempt ${night.attempt}][${runAnchor(night)}] | [\`${night.sha.slice(0, 7)}\`][commit-${night.sha}] | ${entry.journey} | ${runs} | ${result(entry)} | ${minutes} |`;
       }),
   );
   const sequenceRows = retained.flatMap((night) =>
@@ -456,7 +483,7 @@ export function renderWeek({ week, nights, bugs, server, repository }) {
           '',
           'Generated browser sequence evidence:',
           '',
-          'Successful repetitions are aggregated by night, case, screen and step bound; every seed is retained. Per-repetition detail remains in the run summary artifact. Failures, interruptions and exact replays remain separate.',
+          'Successful repetitions are aggregated by night, case, screen and step bound; every seed is retained. Per-repetition detail, generated diagnostics and action traces stay in the workflow artifacts. Failures, interruptions and exact replays remain separate.',
           '',
           '| Night / repetition | Case / screen | Result | Model runs | Reductions | Duration | Verified actions | Seeds / exact replay |',
           '| --- | --- | --- | ---: | ---: | ---: | --- | --- |',
@@ -470,7 +497,14 @@ export function renderWeek({ week, nights, bugs, server, repository }) {
     '',
     ...failures.map(({ night, entry, failure }, index) => {
       const bug = bugs.get(failure.seed);
-      return `${index + 1}. ${night.startedAt.slice(0, 10)}, ${entry.journey}, run ${failure.run}, ${inert(failure.project)}: \`${inert(failure.title)}\`.${failure.error ? ` \`${inert(failure.error)}\`.` : ''} Seed \`${failure.seed}\`; replay \`${chaosReplayCommand(entry.journey, failure.seed)}\`. Triage: ${bug ? `real bug #${bug}` : 'not filed'}.`;
+      const preview = failure.error?.slice(
+        0,
+        MAXIMUM_VISIBLE_DIAGNOSTIC_LENGTH,
+      );
+      const diagnostic = preview
+        ? ` \`${inert(preview)}\`${preview.length < failure.error.length ? ' (complete diagnostic in run data and artifacts)' : ''}.`
+        : '';
+      return `${index + 1}. ${night.startedAt.slice(0, 10)}, ${entry.journey}, run ${failure.run}, ${inert(failure.project)}: \`${inert(failure.title)}\`.${diagnostic} Seed \`${failure.seed}\`; replay \`${chaosReplayCommand(entry.journey, failure.seed)}\`. Triage: ${bug ? `real bug #${bug}` : 'not filed'}.`;
     }),
     ...(harness.length === 0
       ? []
@@ -491,7 +525,7 @@ export function renderWeek({ week, nights, bugs, server, repository }) {
     ...[
       ...new Set(
         retained.flatMap((night) => [
-          `[run-${night.runId}]: ${base}/actions/runs/${night.runId}`,
+          `[${runAnchor(night)}]: ${base}/actions/runs/${night.runId}/attempts/${night.attempt}`,
           `[commit-${night.sha}]: ${base}/commit/${night.sha}`,
         ]),
       ),
@@ -575,8 +609,8 @@ export async function reportNightlyUiChaos({
   );
   const existing =
     weekComments.findLast((comment) =>
-      nightsInComment(comment.body, week)?.some(
-        (entry) => entry.runId === night.runId,
+      nightsInComment(comment.body, week)?.some((entry) =>
+        sameAttempt(entry, night),
       ),
     ) ?? weekComments.at(-1);
   const previous = existing ? nightsInComment(existing.body, week) : [];
@@ -624,8 +658,8 @@ export async function reportNightlyUiChaos({
       const earlier =
         existing.html_url ??
         `${server}/${repository}/issues/${inspection.number}#issuecomment-${existing.id}`;
-      const note = previous?.some((entry) => entry.runId === night.runId)
-        ? `This entry supersedes run ${night.runId} in the [earlier report part](${earlier}); its earlier evidence remains there.`
+      const note = previous?.some((entry) => sameAttempt(entry, night))
+        ? `This entry supersedes run ${night.runId} attempt ${night.attempt} in the [earlier report part](${earlier}); its earlier evidence remains there.`
         : `The [earlier report part](${earlier}) retains all its nights and failures. This continuation keeps each GitHub comment within its size limit.`;
       body = body.replace(
         '\n\nReplay a failure',

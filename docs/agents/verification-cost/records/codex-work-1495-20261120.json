@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-work-1495-20261120",
+  "date": "2026-11-20",
+  "runType": "pull-request-proof",
+  "issue": 1495,
+  "pullRequest": "not reported",
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 2,
+      "P3": 0
+    },
+    "notes": "Working Evidence rendered and existing native cases passed. Final default seed 1422001 took 41.989 seconds desktop and 42.458 seconds narrow, two trials each. Exact correction seed 1422017 took 15.261 and 21.885 seconds, with the original lost write receipt and exact retry. The runner and report suite passed 69 tests. Two review axes verified raw-trace privacy and attempt retention after corrections. Harness usage figures are unavailable."
+  }
+}
