@@ -175,7 +175,7 @@ export function carriesCapturedPermissions(
   );
 }
 
-/** Bind the legacy fields the existing projector wrote to this particular grant. */
+/** Bind the existing permission projection fields to this particular grant. */
 export function captureGrantProjection(input: {
   before: CompanyAuthorityContext;
   after: CompanyAuthorityContext;

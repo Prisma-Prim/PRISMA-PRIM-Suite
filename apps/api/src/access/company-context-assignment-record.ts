@@ -23,7 +23,7 @@ export function assignmentRecord(
     throw new Error('Invalid Company assignment bundle.');
   const metadata = {
     bundle: COMPANY_ROLE_BUNDLES[assignment.bundle].label,
-    // This legacy bundle has always published an explicitly unversioned record.
+    // The Company Context Access bundle publishes an explicitly unversioned record.
     permissionSetVersion:
       assignment.bundle === COMPANY_CONTEXT_ACCESS_BUNDLE
         ? null

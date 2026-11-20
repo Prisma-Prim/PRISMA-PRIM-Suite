@@ -15,7 +15,7 @@
  * 2. Add the bundle and those two actions to the database enums, then run
  *    `pnpm --filter @prisma-prim/api db:generate` and review the migration.
  * 3. The registry assignment controller derives its route from the id or
- *    legacy noun. Knowledge alone keeps its separately owned routes. Add the
+ *    explicit assignment noun. Knowledge keeps its separately owned routes. Add the
  *    web option, route, labels and Activity entries. The registry and web
  *    fixture guard name anything still missing.
  *
@@ -672,7 +672,7 @@ export function companyRoleGrantVersion<Bundle extends CompanyRoleBundle>(
   return CAPTURED_PERMISSION_SETS[bundle].grantVersion;
 }
 
-type LegacyAssignmentNounBundle = {
+type BundleWithAssignmentNoun = {
   [Bundle in CompanyRoleBundle]: CompanyRoleBundleRegistry[Bundle] extends {
     readonly assignmentNoun: string;
   }
@@ -682,19 +682,19 @@ type LegacyAssignmentNounBundle = {
 
 /** The noun naming a bundle's assignment actions: its id unless it predates that convention. */
 export type CompanyRoleAssignmentNoun =
-  | Exclude<CompanyRoleBundle, LegacyAssignmentNounBundle>
-  | CompanyRoleBundleRegistry[LegacyAssignmentNounBundle]['assignmentNoun'];
+  | Exclude<CompanyRoleBundle, BundleWithAssignmentNoun>
+  | CompanyRoleBundleRegistry[BundleWithAssignmentNoun]['assignmentNoun'];
 
-function hasLegacyAssignmentNoun(
+function hasAssignmentNoun(
   bundle: CompanyRoleBundle,
-): bundle is LegacyAssignmentNounBundle {
+): bundle is BundleWithAssignmentNoun {
   return Object.hasOwn(COMPANY_ROLE_BUNDLES[bundle], 'assignmentNoun');
 }
 
 export function companyRoleAssignmentNoun(
   bundle: CompanyRoleBundle,
 ): CompanyRoleAssignmentNoun {
-  return hasLegacyAssignmentNoun(bundle)
+  return hasAssignmentNoun(bundle)
     ? COMPANY_ROLE_BUNDLES[bundle].assignmentNoun
     : bundle;
 }

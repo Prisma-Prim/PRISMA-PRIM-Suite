@@ -1,3 +1,4 @@
+import { requireFirstRow } from '../../test-support/require-first-row.js';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -2747,14 +2748,14 @@ describeWithPostgres('Client REST API', () => {
       SELECT workspace_id, internal_user_id FROM foreign_membership`,
       [clientAccountId, `foreign-owner-${clientAccountId}`],
     );
-    const actor = foreignActor.rows[0]!;
+    const actor = requireFirstRow(foreignActor.rows);
     const membership = await pool.query<{ membership_id: string }>(
       `SELECT id AS membership_id
        FROM workspace_memberships
        WHERE workspace_id = $1 AND internal_user_id = $2`,
       [actor.workspace_id, actor.internal_user_id],
     );
-    const membershipId = membership.rows[0]!.membership_id;
+    const membershipId = requireFirstRow(membership.rows).membership_id;
     const company = await pool.query<{ company_id: string }>(
       `WITH foreign_company AS (
         INSERT INTO companies (
@@ -2782,7 +2783,7 @@ describeWithPostgres('Client REST API', () => {
       ],
     );
     return {
-      company_id: company.rows[0]!.company_id,
+      company_id: requireFirstRow(company.rows).company_id,
       internal_user_id: actor.internal_user_id,
       membership_id: membershipId,
     };

@@ -197,10 +197,10 @@ describe('ClientWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
 
     await screen.findByRole('heading', { name: 'Ordered Contacts Client' });
-    const body = JSON.parse(
+    const body = readRecordedContacts(
       String(vi.mocked(fetch).mock.calls[1]?.[1]?.body),
-    ) as { contacts: unknown[] };
-    expect(body.contacts).toEqual([
+    );
+    expect(body).toEqual([
       { name: 'Ana Popescu', telephone: '+373 60 111 111' },
       { name: 'Ion Ionescu', email: 'ion@example.test' },
     ]);
@@ -272,10 +272,10 @@ describe('ClientWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
 
     await screen.findByRole('heading', { name: 'AGRONOVA Demo SRL' });
-    const body = JSON.parse(
+    const body = readRecordedContacts(
       String(vi.mocked(fetch).mock.calls[1]?.[1]?.body),
-    ) as { contacts: unknown[] };
-    expect(body.contacts).toEqual([
+    );
+    expect(body).toEqual([
       {
         name: 'Ion Demo',
         position: 'Director general',
@@ -423,10 +423,10 @@ describe('ClientWorkspace', () => {
         body: expect.stringContaining('"expectedVersion":1'),
       }),
     );
-    const correctionBody = JSON.parse(
+    const correctionBody = readRecordedContacts(
       String(sequence.mock.calls[2]?.[1]?.body),
-    ) as { contacts: Array<{ name: string; email?: string }> };
-    expect(correctionBody.contacts).toEqual(initialDossier.contacts);
+    );
+    expect(correctionBody).toEqual(initialDossier.contacts);
     expect(refreshActivity).toHaveBeenCalledOnce();
   });
 
@@ -591,12 +591,15 @@ describe('ClientWorkspace', () => {
         ),
     );
 
+    const activeCompany = actor.activeCompany;
+    if (!activeCompany)
+      throw new Error('Expected a Company in the Client fixture.');
     render(
       <ClientWorkspace
         actor={{
           ...actor,
           activeCompany: {
-            ...actor.activeCompany!,
+            ...activeCompany,
 
             grants: withoutCompanyGrants(
               actor.activeCompany?.grants,
@@ -1731,9 +1734,7 @@ describe('ClientWorkspace', () => {
       'idempotency-key': expect.any(String),
     });
     expect(retryHeaders).toMatchObject({
-      'idempotency-key': (firstHeaders as Record<string, string>)[
-        'idempotency-key'
-      ],
+      'idempotency-key': new Headers(firstHeaders).get('idempotency-key'),
     });
     expect(refreshActivity).toHaveBeenCalledOnce();
   });
@@ -2312,4 +2313,15 @@ function deferred<T>() {
     reject = rejectPromise;
   });
   return { promise, resolve, reject };
+}
+
+function readRecordedContacts(body: string): unknown {
+  const payload: unknown = JSON.parse(body);
+  if (
+    typeof payload !== 'object' ||
+    payload === null ||
+    !('contacts' in payload)
+  )
+    throw new Error('Expected contacts in the captured Client request.');
+  return payload.contacts;
 }

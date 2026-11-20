@@ -13,18 +13,23 @@ const isTimestamp = (value: unknown): value is string =>
   typeof value === 'string' && !Number.isNaN(Date.parse(value));
 
 const actor = { workspaceMembershipId: 'membership-ada', displayLabel: 'Ada' };
+const beginning: OutcomeHistoryEntry = {
+  previousStatus: 'OPEN',
+  newStatus: 'WON',
+  lossReasonCode: null,
+  reason: null,
+  note: null,
+  version: 2,
+  actor,
+  changedAt: '2026-10-11T10:00:00.000Z',
+};
 function entry(overrides: Record<string, unknown>) {
-  return {
-    previousStatus: 'OPEN',
-    newStatus: 'WON',
-    lossReasonCode: null,
-    reason: null,
-    note: null,
-    version: 2,
-    actor,
-    changedAt: '2026-10-11T10:00:00.000Z',
-    ...overrides,
-  };
+  return { ...beginning, ...overrides };
+}
+function validHistoryEntry(
+  overrides: Partial<OutcomeHistoryEntry>,
+): OutcomeHistoryEntry {
+  return { ...beginning, ...overrides };
 }
 const page = (entries: unknown[]) => ({ entries });
 // A page with older entries to follow.
@@ -234,12 +239,12 @@ describe('outcome history boundary', () => {
   });
 
   it('requires the status to agree with its newest history entry', () => {
-    const lost = entry({
+    const lost = validHistoryEntry({
       newStatus: 'LOST',
       lossReasonCode: 'PRICE',
       version: 3,
       changedAt: '2026-10-02T09:00:00.000Z',
-    }) as OutcomeHistoryEntry;
+    });
     const snapshot = {
       status: 'LOST' as const,
       statusEnteredAt: '2026-10-02T09:00:00.000Z',
@@ -281,17 +286,17 @@ describe('outcome history boundary', () => {
   });
 
   it('accepts an older page only when it continues the shown chronology', () => {
-    const newest = entry({
+    const newest = validHistoryEntry({
       previousStatus: 'ON_HOLD',
       newStatus: 'LOST',
       lossReasonCode: 'PRICE',
       version: 3,
-    }) as OutcomeHistoryEntry;
-    const hold = entry({
+    });
+    const hold = validHistoryEntry({
       newStatus: 'ON_HOLD',
       reason: 'Waiting',
       version: 2,
-    }) as OutcomeHistoryEntry;
+    });
     expect(continuesOutcomeHistory([newest], [hold])).toBe(true);
     expect(continuesOutcomeHistory([newest], [])).toBe(false);
     expect(continuesOutcomeHistory([], [hold])).toBe(true);
