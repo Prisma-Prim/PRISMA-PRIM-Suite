@@ -306,6 +306,7 @@ function LifecycleSection({
     const operation = commands.beginLatest();
     if (!operation) return;
     const { signal } = operation;
+    const scopeCurrent = commands.capture();
     const recoveryCurrent = captureRecovery();
     membersRead.retire();
     setMutation({ kind: 'pending', command });
@@ -363,11 +364,11 @@ function LifecycleSection({
       // A validated receipt stays confirmed even if the independent refresh fails.
       void Promise.resolve()
         .then(() => {
-          if (!signal.aborted) return onProjectChanged?.();
+          if (!signal.aborted && scopeCurrent()) return onProjectChanged?.();
         })
         .catch(() => undefined);
-      await load();
-      if (!signal.aborted) setMutation({ kind: 'idle' });
+      void load();
+      setMutation({ kind: 'idle' });
       if (!signal.aborted) {
         try {
           void Promise.resolve(onActivityRecorded?.()).catch(() => undefined);

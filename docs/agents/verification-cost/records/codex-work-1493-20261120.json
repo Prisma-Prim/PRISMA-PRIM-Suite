@@ -28,9 +28,9 @@
     "findings": {
       "P0": 0,
       "P1": 0,
-      "P2": 3,
+      "P2": 4,
       "P3": 0
     },
-    "notes": "882 rendered cases on the corrected source, including both App lifetime suites. Four final native desktop/narrow cases, preceding isolated operational journey, scoped TypeScript, lint, format, visual inspection and bounded review. Usage unavailable."
+    "notes": "882 rendered cases after the grant correction and 217 related cases on the final source; native personal Projects, stage and operational proof at both widths; scoped lint, format, types, private visuals and bounded review. Usage unavailable."
   }
 }

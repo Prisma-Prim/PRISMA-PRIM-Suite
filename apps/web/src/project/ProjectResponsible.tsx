@@ -189,7 +189,6 @@ function Responsible({
     setMutation((current) =>
       current.kind === 'reload-required' ? { kind: 'idle' } : current,
     );
-    if (mutation.kind !== 'uncertain') setFeedback(null);
     void Promise.all([load(), onProjectChanged?.()]);
   }
   async function openEditor(current: ProjectResponsibility) {
@@ -236,6 +235,7 @@ function Responsible({
     const operation = commands.beginLatest();
     if (!operation) return;
     const { signal } = operation;
+    const scopeCurrent = commands.capture();
     const recoveryCurrent = captureRecovery();
     membersRead.retire();
     setMutation({ kind: 'pending', command });
@@ -292,11 +292,11 @@ function Responsible({
       // Refresh failures cannot make the validated receipt uncertain again.
       void Promise.resolve()
         .then(() => {
-          if (!signal.aborted) return onProjectChanged?.();
+          if (!signal.aborted && scopeCurrent()) return onProjectChanged?.();
         })
         .catch(() => undefined);
-      await load();
-      if (!signal.aborted) setMutation({ kind: 'idle' });
+      void load();
+      setMutation({ kind: 'idle' });
       if (receipt.outcome === 'changed' && !signal.aborted) {
         try {
           void Promise.resolve(onActivityRecorded?.()).catch(() => undefined);

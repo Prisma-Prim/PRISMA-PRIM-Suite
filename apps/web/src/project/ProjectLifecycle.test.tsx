@@ -434,6 +434,42 @@ it('disables activation without a responsible member and explains why', async ()
   );
 });
 
+it('can reload a confirmed lifecycle transition while its first reread is held', async () => {
+  let receiptReads = 0;
+  let finishRead: (response: Response) => void = () => {
+    throw new Error('Expected a held lifecycle read.');
+  };
+  const held = new Promise<Response>((resolve) => {
+    finishRead = resolve;
+  });
+  const boundary = server({
+    state: activeLifecycle,
+    read: (state) =>
+      state.lifecycleRevision > activeLifecycle.lifecycleRevision &&
+      ++receiptReads === 1
+        ? held
+        : undefined,
+  });
+  show();
+  const current = within(section());
+  fireEvent.click(await current.findByRole('button', { name: 'Put on hold' }));
+  fireEvent.change(current.getByLabelText('Hold reason'), {
+    target: { value: 'Wait for the confirmed audit date.' },
+  });
+  fireEvent.click(current.getByRole('button', { name: 'Put Project on hold' }));
+  await current.findByText('Project lifecycle updated.');
+  await waitFor(() => expect(receiptReads).toBe(1));
+  expect(current.queryByRole('button', { name: 'Resume Project' })).toBeNull();
+  const reload = current.getByRole('button', { name: 'Reload lifecycle' });
+  expect(reload).toBeEnabled();
+  fireEvent.click(reload);
+  await current.findByRole('button', { name: 'Resume Project' });
+  await act(async () => finishRead(new Response(null, { status: 403 })));
+  expect(current.getByText('Project lifecycle updated.')).toBeVisible();
+  expect(current.getByRole('button', { name: 'Resume Project' })).toBeEnabled();
+  expect(boundary.commands()).toHaveLength(1);
+});
+
 it('puts an active Project on hold with a required reason and resumes it after an explicit confirmation', async () => {
   const boundary = server({ state: activeLifecycle });
   show();
