@@ -1,4 +1,10 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperation } from '../api/use-scoped-operation';
+import { useEffect, useId, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { holds } from '../access/company-grants';
@@ -49,20 +55,26 @@ function AssignedTasks({ actor, identity, onOpenTask }: Props) {
   const { formatDate } = useInterfaceLocale();
   const titleId = useId();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
-  const pending = useRef<AbortController | undefined>(undefined);
+  const operationScope = String(useRequestLifetime(identity, 'tasks'));
+  const latest = useScopedOperation(operationScope);
+  const observation = useActorObservation(actor);
+  const captureRecovery = useAuthorityLifetime(String(observation), identity);
   const companyId = actor.activeCompany?.id;
   const readable = canReadTasks(actor);
 
   // The latest read supersedes any earlier read still in flight.
   function read() {
     if (!readable || !companyId) {
-      pending.current?.abort();
+      latest.retire();
       setLoad({ kind: 'denied' });
       return;
     }
+    const requestSignal = latest.begin();
+    if (!requestSignal) return;
+    const recoveryCurrent = captureRecovery();
     setLoad({ kind: 'loading' });
     void runLatestAuthenticatedRequest({
-      pending,
+      signal: requestSignal,
       identity,
       execute: (api, signal) =>
         api.request('/assigned-tasks', {
@@ -71,7 +83,7 @@ function AssignedTasks({ actor, identity, onOpenTask }: Props) {
         }),
       onResult: async (result, signal) => {
         if (result.status === 'unauthorized') {
-          await identity.rejectSession();
+          if (recoveryCurrent()) await identity.rejectSession();
           if (!signal.aborted) setLoad({ kind: 'denied' });
         } else if (result.status === 'forbidden') setLoad({ kind: 'denied' });
         else if (result.status !== 'ok') setLoad({ kind: 'error' });
@@ -89,8 +101,7 @@ function AssignedTasks({ actor, identity, onOpenTask }: Props) {
   }
   useEffect(() => {
     read();
-    return () => pending.current?.abort();
-  }, [identity]);
+  }, [operationScope]);
 
   return (
     <section

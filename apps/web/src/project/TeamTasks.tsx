@@ -1,3 +1,8 @@
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperation } from '../api/use-scoped-operation';
 import { SectionVisibility } from '../production-shell/section-visibility';
 import { useContext, useLayoutEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
@@ -57,15 +62,11 @@ export function teamTaskAuthority(actor: ActorContext) {
   ]);
 }
 export function TeamTasks(props: Props) {
-  const key = teamTaskAuthority(props.actor),
-    owner = useRef({ key, identity: props.identity, generation: 0 });
-  if (owner.current.key !== key || owner.current.identity !== props.identity)
-    owner.current = {
-      key,
-      identity: props.identity,
-      generation: owner.current.generation + 1,
-    };
-  return <TeamTasksOwner key={owner.current.generation} {...props} />;
+  const owner = useRequestLifetime(
+    props.identity,
+    teamTaskAuthority(props.actor),
+  );
+  return <TeamTasksOwner key={owner} {...props} />;
 }
 type Load =
   | { kind: 'idle' | 'loading' | 'denied' | 'error' | 'malformed' }
@@ -78,35 +79,30 @@ function TeamTasksOwner(props: Props) {
       filters: defaultTeamTaskFilters,
       offset: 0,
     });
-  const pending = useRef<AbortController | undefined>(undefined),
-    recovery = useRef<AbortController | undefined>(undefined),
-    lifetime = useRef(new AbortController()),
-    current = useRef(props),
-    request = useRef(applied);
-  // A recovery publishes a full Actor; every newer base snapshot retires it independently of this read.
-  if (
-    current.current.actor !== props.actor ||
-    current.current.identity !== props.identity
-  ) {
-    recovery.current?.abort();
-    recovery.current = undefined;
-  }
-  current.current = props;
+  const ordinary = useScopedOperation('team-task-list');
+  const observation = useActorObservation(props.actor);
+  const recovery = useScopedOperation(String(observation));
+  const navigation = useScopedOperation('team-task-navigation');
+  const [sourceSignal, setSourceSignal] = useState<AbortSignal | null>(null);
+  const current = useRef(props);
+  const request = useRef(applied);
+  useLayoutEffect(() => {
+    current.current = props;
+  });
   function read(filters: TeamTaskFilters, offset: number) {
-    recovery.current?.abort();
-    recovery.current = undefined;
+    const signal = ordinary.begin();
+    if (!signal) return;
+    recovery.retire();
     request.current = { filters, offset };
     setApplied(request.current);
     setLoad({ kind: 'loading' });
-    const sourceSignal = lifetime.current.signal;
-    const baseActor = props.actor;
-    const companyId = baseActor.activeCompany?.id;
+    const companyId = props.actor.activeCompany?.id;
     if (!companyId || !canReadTasks(props.actor)) {
       setLoad({ kind: 'denied' });
       return;
     }
     void runLatestAuthenticatedRequest({
-      pending,
+      signal,
       identity: props.identity,
       execute: (api, signal) =>
         api.request(teamTasksPath(filters, offset), {
@@ -127,20 +123,15 @@ function TeamTasksOwner(props: Props) {
         }
         if (result.status === 'unauthorized' || result.status === 'forbidden') {
           setLoad({ kind: 'denied' });
-          if (current.current.actor !== baseActor) return;
-          recovery.current?.abort();
-          const controller = new AbortController();
-          recovery.current = controller;
-          const live = () =>
-            !sourceSignal.aborted &&
-            !controller.signal.aborted &&
-            recovery.current === controller &&
-            current.current.actor === baseActor;
+          const recoverySignal = recovery.begin();
+          if (!recoverySignal) return;
+          const live = () => !recoverySignal.aborted;
           void handleAuthenticatedAccessRejection({
             result,
             identity: props.identity,
             companyContextId: companyId,
-            signal: controller.signal,
+            signal: recoverySignal,
+            isCurrent: live,
             onActorRevalidated: (actor) =>
               live() ? current.current.onActorRevalidated(actor) : undefined,
             onCompanyContextRejected: (id) => {
@@ -156,20 +147,18 @@ function TeamTasksOwner(props: Props) {
     });
   }
   const latestRead = useRef(read);
-  latestRead.current = read;
+  useLayoutEffect(() => {
+    latestRead.current = read;
+  });
   const active = useContext(SectionVisibility),
     wasActive = useRef(false);
   useLayoutEffect(() => {
-    const owner = new AbortController();
-    lifetime.current = owner;
+    setSourceSignal(navigation.begin());
     wasActive.current = false;
     return () => {
-      pending.current?.abort();
-      recovery.current?.abort();
-      owner.abort();
       wasActive.current = false;
     };
-  }, []);
+  }, [navigation]);
   useLayoutEffect(() => {
     if (active && !wasActive.current) {
       const r = request.current;
@@ -178,8 +167,7 @@ function TeamTasksOwner(props: Props) {
     wasActive.current = active;
   }, [active]);
   const busy = load.kind === 'loading',
-    f = applied.filters,
-    sourceSignal = lifetime.current.signal;
+    f = applied.filters;
   return (
     <section
       id="team-tasks"
@@ -228,7 +216,7 @@ function TeamTasksOwner(props: Props) {
           <TeamTaskRows
             tasks={load.page.tasks}
             onOpen={(task) => {
-              if (!sourceSignal.aborted)
+              if (sourceSignal && !sourceSignal.aborted)
                 current.current.onOpenTask?.({
                   projectId: task.projectId,
                   taskId: task.id,

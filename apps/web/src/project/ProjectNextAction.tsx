@@ -1,3 +1,8 @@
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperation } from '../api/use-scoped-operation';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
@@ -64,8 +69,9 @@ export function canCoordinateNextAction(actor: ActorContext) {
   );
 }
 export function ProjectNextAction(props: Props) {
+  const observation = useActorObservation(props.actor);
   const captureRecovery = useAuthorityLifetime(
-    JSON.stringify(props.actor),
+    String(observation),
     props.identity,
   );
   const key = JSON.stringify([
@@ -99,8 +105,9 @@ function NextActionReader(
   };
   const path = `/projects/${encodeURIComponent(props.projectId)}/next-action`;
   const capture = useAuthorityLifetime(JSON.stringify(scope), props.identity);
-  const protection = useRef({ retired: false }),
-    request = useRef<AbortController | undefined>(undefined);
+  const readScope = String(useRequestLifetime(props.identity, path));
+  const request = useScopedOperation(readScope);
+  const protection = useRef({ retired: false });
   const historyHeading = useRef<HTMLHeadingElement>(null),
     pendingHistoryFocus = useRef<(() => boolean) | undefined>(undefined);
   const [state, setState] = useState<ReadState>('loading'),
@@ -134,7 +141,7 @@ function NextActionReader(
   };
   function deny() {
     protection.current.retired = true;
-    request.current?.abort();
+    request.retire();
     setSnapshot(null);
     setState('denied');
   }
@@ -144,16 +151,15 @@ function NextActionReader(
   ) {
     const valid = localCapture();
     if (!valid()) return;
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
-    const live = () => valid() && !controller.signal.aborted;
+    const signal = request.begin();
+    if (!signal) return;
+    const live = () => valid() && !signal.aborted;
     // Retire protected rendering immediately. Recovery belongs to this reader,
     // so removing its writer cannot cancel or revive shared session effects.
     setSnapshot(null);
     setState('denied');
     try {
-      await recover(result, live, recoveryValid, controller.signal);
+      await recover(result, live, recoveryValid, signal);
     } finally {
       if (live()) deny();
     }
@@ -171,17 +177,16 @@ function NextActionReader(
     const valid = localCapture(),
       recoveryValid = props.captureRecovery();
     if (!valid()) return;
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
-    const live = () => valid() && !controller.signal.aborted;
+    const signal = request.begin();
+    if (!signal) return;
+    const live = () => valid() && !signal.aborted;
     setState('loading');
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!live()) return;
       const result = await api.request(
         path + (cursor === undefined ? '' : `?beforeRevision=${cursor}`),
-        { companyContextId: companyId, signal: controller.signal },
+        { companyContextId: companyId, signal },
       );
       if (!live()) return;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
@@ -219,10 +224,10 @@ function NextActionReader(
   }
   useEffect(() => {
     void load();
-    return () => request.current?.abort();
+    return request.retire;
     // Revalidate an original Client's visibility without replacing an otherwise
     // valid read/write owner or abandoning its historical confirmation intent.
-  }, [props.originalClientGeneration]);
+  }, [props.originalClientGeneration, request]);
   useEffect(() => {
     if (pendingHistoryFocus.current?.()) historyHeading.current?.focus();
     pendingHistoryFocus.current = undefined;

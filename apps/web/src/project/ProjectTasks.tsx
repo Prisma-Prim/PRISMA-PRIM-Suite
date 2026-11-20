@@ -1,3 +1,9 @@
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import {
   useEffect,
   useId,
@@ -379,18 +385,43 @@ function TaskProject({
   const drafts = useRef(
     new Map<string, { version: number | null; draft: Draft }>(),
   );
-  const request = useRef<AbortController | null>(null);
   const clientReadRevision = useRef(clientIdentityRevision);
-  clientReadRevision.current = clientIdentityRevision;
+  useLayoutEffect(() => {
+    clientReadRevision.current = clientIdentityRevision;
+  }, [clientIdentityRevision]);
   const refreshedClientRevision = useRef(clientIdentityRevision);
-  const mutationRequest = useRef<AbortController | null>(null);
   /** The latest requested open already applied. */
   const consumedTaskRequest = useRef<number | undefined>(undefined);
   const readIdentity = useRef(identity);
+  const previousReadLifetime = useRef<(() => boolean) | undefined>(undefined);
   const taskHeading = useRef<HTMLHeadingElement>(null);
   const focusedTaskRequest = useRef<number | undefined>(undefined);
   const companyId = actor.activeCompany?.id ?? '';
   const scope = { companyId, projectId };
+  const ownerScope = String(
+    useRequestLifetime(identity, JSON.stringify(scope)),
+  );
+  const reads = useScopedOperationGroup(ownerScope);
+  const writes = useScopedOperationGroup(ownerScope);
+  const captureActiveOwner = useAuthorityLifetime(
+    JSON.stringify([ownerScope, active]),
+    identity,
+  );
+  const activeProject = useRef(active);
+  const reloadOnReturn = useRef(false);
+  const settlingRead = useRef<AbortSignal | null>(null);
+  // The hidden Project keeps its authorized Task cache. Shared recovery
+  // requires the exact committed visible Project.
+  useLayoutEffect(() => {
+    activeProject.current = active;
+  }, [active]);
+  const observation = useActorObservation(actor);
+  const captureRecovery = useAuthorityLifetime(String(observation), identity);
+  function captureActiveRecovery() {
+    const capture = captureRecovery();
+    const visible = captureActiveOwner();
+    return () => activeProject.current && visible() && capture();
+  }
   const canRead = canReadTasks(actor);
   const canManage =
     canRead &&
@@ -449,9 +480,11 @@ function TaskProject({
 
   async function resultValue(
     result: ApiResult<unknown>,
+    recoveryCurrent: () => boolean,
     notFound: 'denied' | 'missing' = 'denied',
   ): Promise<unknown> {
     if (result.status === 'unauthorized') {
+      if (!recoveryCurrent()) throw new ReadFailure('error');
       await identity.rejectSession();
       throw new ReadFailure('denied');
     }
@@ -461,6 +494,8 @@ function TaskProject({
     return result.value;
   }
   function deny() {
+    reads.retire();
+    writes.retire();
     setLoad({ kind: 'denied' });
     setDetail(null);
     setMembers(null);
@@ -471,21 +506,22 @@ function TaskProject({
   }
   async function refresh(
     taskId: string | null,
-    controller: AbortController,
+    signal: AbortSignal,
+    recoveryCurrent: () => boolean,
     read: { requestedOpenId?: number; onTargetReady?: () => void } = {},
   ) {
     const startedUnder = clientReadRevision.current;
     const live = () =>
-      !controller.signal.aborted && clientReadRevision.current === startedUnder;
+      !signal.aborted && clientReadRevision.current === startedUnder;
     const api = await createAuthenticatedApiClient(identity);
     if (!live()) return false;
-    const options = { companyContextId: companyId, signal: controller.signal };
+    const options = { companyContextId: companyId, signal };
     const listingResult = await api.request(
       `/projects/${encodeURIComponent(projectId)}/tasks`,
       options,
     );
     if (!live()) return false;
-    const listingValue = await resultValue(listingResult);
+    const listingValue = await resultValue(listingResult, recoveryCurrent);
     if (!live()) return false;
     const listing = readTaskList(listingValue, scope);
     let nextDetail: Detail | null = null;
@@ -496,9 +532,17 @@ function TaskProject({
       ]);
       if (!live()) return false;
       try {
-        const taskValue = await resultValue(taskResult, 'missing');
+        const taskValue = await resultValue(
+          taskResult,
+          recoveryCurrent,
+          'missing',
+        );
         if (!live()) return false;
-        const historyValue = await resultValue(historyResult, 'missing');
+        const historyValue = await resultValue(
+          historyResult,
+          recoveryCurrent,
+          'missing',
+        );
         if (!live()) return false;
         const task = readTaskDetail(taskValue, scope, taskId);
         const events = readTaskHistory(historyValue, scope, taskId);
@@ -572,14 +616,18 @@ function TaskProject({
           options,
         );
         if (!live()) return false;
-        const membersValue = await resultValue(result);
+        if (result.status === 'forbidden' || result.status === 'notFound') {
+          setFeedback('membersError');
+          return true;
+        }
+        const membersValue = await resultValue(result, recoveryCurrent);
         if (!live()) return false;
         setMembers(readAssignees(membersValue));
       } catch (error: unknown) {
         if (!live()) return false;
         if (error instanceof ReadFailure && error.kind === 'denied')
           throw error;
-        if (!controller.signal.aborted) setFeedback('membersError');
+        if (!signal.aborted) setFeedback('membersError');
       }
     }
     return live();
@@ -594,11 +642,17 @@ function TaskProject({
       preserveFeedback?: boolean;
     } = {},
   ) {
+    if (!activeProject.current) {
+      reloadOnReturn.current = true;
+      return;
+    }
     if (options.sourceSignal?.aborted) return;
+    const operation = reads.beginLatest();
+    if (!operation) return;
+    const { signal } = operation;
+    const recoveryCurrent = captureActiveRecovery();
+    reloadOnReturn.current = false;
     const previousLoad = load;
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
     setSelected(taskId);
     setDetail(taskId ? { kind: 'loading' } : null);
     setDraft(emptyDraft);
@@ -617,15 +671,11 @@ function TaskProject({
       return;
     }
     const retireSourceRead = () => {
-      controller.abort();
-      if (request.current === controller) {
-        request.current = null;
-        setSelected(null);
-        setDetail(null);
-        setLoad(
-          previousLoad.kind === 'ready' ? previousLoad : { kind: 'error' },
-        );
-      }
+      if (signal.aborted) return;
+      operation.retire();
+      setSelected(null);
+      setDetail(null);
+      setLoad(previousLoad.kind === 'ready' ? previousLoad : { kind: 'error' });
     };
     options.sourceSignal?.addEventListener('abort', retireSourceRead, {
       once: true,
@@ -634,12 +684,12 @@ function TaskProject({
       options.sourceSignal?.removeEventListener('abort', retireSourceRead);
     setLoad({ kind: 'loading' });
     try {
-      await refresh(taskId, controller, {
+      await refresh(taskId, signal, recoveryCurrent, {
         requestedOpenId: options.requestedOpenId,
         onTargetReady: stopSourceRetirement,
       });
     } catch (error: unknown) {
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       if (error instanceof ReadFailure && error.kind === 'denied') deny();
       else {
         setLoad({ kind: 'error' });
@@ -647,13 +697,15 @@ function TaskProject({
       }
     } finally {
       stopSourceRetirement();
+      operation.release();
     }
   }
   useLayoutEffect(() => {
     if (refreshedClientRevision.current === clientIdentityRevision) return;
     refreshedClientRevision.current = clientIdentityRevision;
     // Dossier projections changed; the native immutable target and exact commands remain owned here.
-    request.current?.abort();
+    if (settlingRead.current && !settlingRead.current.aborted) return;
+    reads.retire();
     if (mutation.kind !== 'pending' && mutation.kind !== 'uncertain')
       void open(selected, {
         preserveReasonDraft: true,
@@ -663,17 +715,29 @@ function TaskProject({
   useEffect(() => {
     // Effect replay cancels the first requested read before it can finish.
     // A genuinely replaced identity keeps that request consumed permanently.
-    if (readIdentity.current === identity && request.current?.signal.aborted)
+    if (
+      readIdentity.current === identity &&
+      previousReadLifetime.current?.() === false
+    )
       consumedTaskRequest.current = undefined;
     readIdentity.current = identity;
+    previousReadLifetime.current = reads.capture();
     drafts.current.clear();
     setMutation({ kind: 'idle' });
     void open(null);
-    return () => {
-      request.current?.abort();
-      mutationRequest.current?.abort();
-    };
-  }, [identity]);
+  }, [identity, reads]);
+  useEffect(() => {
+    if (
+      !active ||
+      !reloadOnReturn.current ||
+      mutation.kind === 'pending' ||
+      mutation.kind === 'uncertain'
+    )
+      return;
+    if (mutation.kind === 'blocked' && feedback === 'confirmed')
+      setMutation({ kind: 'idle' });
+    void open(selected, { preserveReasonDraft: true, preserveFeedback: true });
+  }, [active, mutation.kind]);
   // A requested open is the same open as choosing the Task's row, so it
   // supersedes a read still loading, including the first list read. A pending
   // command is never aborted: the open waits for its outcome and, once
@@ -720,22 +784,24 @@ function TaskProject({
   }, [detail, requestedTask]);
 
   async function run(command: Command) {
-    request.current?.abort();
-    mutationRequest.current?.abort();
-    const controller = new AbortController();
-    mutationRequest.current = controller;
+    if (writes.isPending()) return;
+    const operation = writes.beginLatest();
+    if (!operation) return;
+    const { signal } = operation;
+    const recoveryCurrent = captureActiveRecovery();
+    reads.retire();
     setMutation({ kind: 'pending', command });
     setFeedback(null);
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       const path =
         command.action === 'create'
           ? `/projects/${encodeURIComponent(projectId)}/tasks`
           : `/tasks/${encodeURIComponent(command.taskId)}${command.action === 'edit' ? '' : `/${command.action}`}`;
       const result = await api.request(path, {
         companyContextId: companyId,
-        signal: controller.signal,
+        signal,
         method: command.action === 'edit' ? 'PATCH' : 'POST',
         headers: {
           'content-type': 'application/json',
@@ -743,14 +809,23 @@ function TaskProject({
         },
         body: JSON.stringify(command.body),
       });
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       if (result.status === 'unauthorized') {
+        if (!recoveryCurrent()) {
+          setFeedback('rejected');
+          setMutation({ kind: 'blocked' });
+          return;
+        }
         await identity.rejectSession();
-        deny();
+        if (!signal.aborted) deny();
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
-        deny();
+        if (recoveryCurrent()) deny();
+        else {
+          setFeedback('rejected');
+          setMutation({ kind: 'blocked' });
+        }
         return;
       }
       if (result.status === 'conflict' || result.status === 'validation') {
@@ -789,37 +864,51 @@ function TaskProject({
       setSelected(receipt.id);
       setDetail({ kind: 'loading' });
       setLoad({ kind: 'loading' });
+      operation.release();
+      void Promise.resolve()
+        .then(() => {
+          if (!signal.aborted) return onActivityRecorded?.();
+        })
+        .catch(() => undefined);
       // A replay receipt is historical. Only fresh detail and history authorize subsequent changes.
+      if (!activeProject.current) {
+        reloadOnReturn.current = true;
+        return;
+      }
+      const settlement = reads.beginLatest();
+      if (!settlement) return;
+      const readSignal = settlement.signal;
+      settlingRead.current = readSignal;
       try {
         // A union/reversal can retire a read while preserving this committed command.
         // Settle only a current native read; never resubmit or rebase the saved command.
         while (
-          !controller.signal.aborted &&
-          !(await refresh(receipt.id, controller))
+          !signal.aborted &&
+          !readSignal.aborted &&
+          !(await refresh(receipt.id, readSignal, captureActiveRecovery(), {
+            onTargetReady: () => setMutation({ kind: 'idle' }),
+          }))
         ) {
           // The next read captures the newest Client projection revision.
         }
-        if (!controller.signal.aborted) setMutation({ kind: 'idle' });
       } catch (error: unknown) {
-        if (controller.signal.aborted) return;
+        if (signal.aborted || readSignal.aborted) return;
         if (error instanceof ReadFailure && error.kind === 'denied') deny();
         else {
           setLoad({ kind: 'error' });
           setDetail({ kind: 'error' });
         }
-      }
-      if (!controller.signal.aborted) {
-        try {
-          await onActivityRecorded?.();
-        } catch {
-          /* A failed Activity Log refresh does not undo a confirmed Task command. */
-        }
+      } finally {
+        if (settlingRead.current === readSignal) settlingRead.current = null;
+        settlement.release();
       }
     } catch {
-      if (!controller.signal.aborted) {
+      if (!signal.aborted) {
         setFeedback('uncertain');
         setMutation({ kind: 'uncertain', command });
       }
+    } finally {
+      operation.release();
     }
   }
   function save(event: FormEvent) {
@@ -979,6 +1068,8 @@ function TaskProject({
       {canManage && load.kind !== 'denied' && (
         <TaskPlanning
           identity={identity}
+          active={active}
+          captureRecovery={captureActiveRecovery}
           companyId={companyId}
           projectId={projectId}
           disabled={

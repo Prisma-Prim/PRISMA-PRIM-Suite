@@ -6,30 +6,5 @@
     "no-warning-comments": {
       "count": 1
     }
-  },
-  "apps/web/src/project/ProjectNextAction.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/project/ProjectNextActionEditor.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/project/ProjectTasks.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/project/TaskPlanning.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
-  "apps/web/src/project/TeamTasks.tsx": {
-    "no-restricted-syntax": {
-      "count": 3
-    }
   }
 }

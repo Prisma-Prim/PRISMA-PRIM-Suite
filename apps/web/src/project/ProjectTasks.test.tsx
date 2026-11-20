@@ -4,6 +4,7 @@ import {
   selectOptionLabels,
 } from '../test/select-option';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -1482,6 +1483,133 @@ it('refreshes filtered navigation after complete and reopen while keeping the op
   expect(
     within(tasks).getByRole('heading', { name: savedTask.title }),
   ).toBeInTheDocument();
+});
+
+it.each([403, 404])(
+  'keeps the exact Task readable when the separate assignee roster returns %i',
+  async (status) => {
+    fixture({
+      read: (url) =>
+        url.endsWith('/eligible-task-assignees')
+          ? new Response(null, { status })
+          : undefined,
+    });
+    render(
+      <ProjectWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    const tasks = await openSavedTask();
+    expect(
+      await within(tasks).findByRole('heading', { name: savedTask.title }),
+    ).toBeVisible();
+    expect(
+      within(tasks).getByRole('button', { name: 'Save Task' }),
+    ).toBeDisabled();
+  },
+);
+
+it('keeps the new Task selected after an earlier confirmed Task refresh is denied', async () => {
+  let confirmed = false;
+  let held = false;
+  let finishRead: (response: Response) => void = () => {
+    throw new Error('Expected held eligible members read');
+  };
+  const pending = new Promise<Response>((resolve) => {
+    finishRead = resolve;
+  });
+  fixture({
+    mutate: () => {
+      confirmed = true;
+      return Response.json({
+        ...savedTask,
+        title: 'Confirmed edit',
+        version: 2,
+      });
+    },
+    read: (url) => {
+      if (confirmed && url.endsWith('/eligible-task-assignees') && !held) {
+        held = true;
+        return pending;
+      }
+      return undefined;
+    },
+  });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  changeValue(within(tasks).getByLabelText('Task title'), 'Confirmed edit');
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
+  await waitFor(() => expect(held).toBe(true));
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Another preparation Task' }),
+  );
+  await within(tasks).findByRole('heading', {
+    name: 'Another preparation Task',
+  });
+  await act(async () => finishRead(new Response(null, { status: 403 })));
+  expect(
+    within(tasks).getByRole('heading', { name: 'Another preparation Task' }),
+  ).toBeVisible();
+});
+
+it('reconciles completed planning with the Task selected while planning was loading', async () => {
+  let hold = false;
+  let held = false;
+  let finishPlanning: (response: Response) => void = () => {
+    throw new Error('Expected held planning list');
+  };
+  const planning = new Promise<Response>((resolve) => {
+    finishPlanning = resolve;
+  });
+  const other = {
+    ...savedTask,
+    id: 'other-task',
+    title: 'Another preparation Task',
+  };
+  const fetch = fixture({
+    read: (url) => {
+      if (hold && url.endsWith('/tasks')) {
+        hold = false;
+        held = true;
+        return planning;
+      }
+      return undefined;
+    },
+  });
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const tasks = await openSavedTask();
+  fireEvent.click(screen.getByRole('button', { name: 'Plan selected Tasks' }));
+  const panel = screen.getByRole('region', { name: 'Grouped Task planning' });
+  await within(panel).findByRole('checkbox', { name: savedTask.title });
+  hold = true;
+  fireEvent.click(
+    within(panel).getByRole('button', { name: 'Reload planning' }),
+  );
+  await waitFor(() => expect(held).toBe(true));
+  fireEvent.click(within(tasks).getByRole('button', { name: other.title }));
+  await within(tasks).findByRole('heading', { name: other.title });
+  const previousTaskReads = () =>
+    fetch.mock.calls.filter(([url]) => url === '/api/tasks/task').length;
+  const alreadyRead = previousTaskReads();
+  await act(async () =>
+    finishPlanning(Response.json({ mutable: true, tasks: [savedTask, other] })),
+  );
+  await within(panel).findByRole('checkbox', { name: savedTask.title });
+  expect(
+    within(tasks).getByRole('heading', { name: other.title }),
+  ).toBeVisible();
+  expect(previousTaskReads()).toBe(alreadyRead);
 });
 
 it('keeps the original edit key and expected version across Task navigation and reads current state after a historical replay', async () => {
