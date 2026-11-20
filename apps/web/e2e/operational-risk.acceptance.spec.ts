@@ -1,27 +1,19 @@
 import { removeRoute } from './route-removal';
 import { randomUUID } from 'node:crypto';
-import {
-  expect,
-  test,
-  type APIRequestContext,
-  type Page,
-  type TestInfo,
-} from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { selectOption } from './select-option';
 
-const apiOrigin = 'http://127.0.0.1:4174';
-const owner = {
-  'x-test-external-provider': 'local-demo',
-  'x-test-external-subject': 'workspace-owner',
-  'x-test-display-name': 'Workspace Owner',
-  'x-test-email': 'owner@example.test',
-};
-const ada = {
-  'x-test-external-provider': 'local-demo',
-  'x-test-external-subject': 'local-demonstration-user',
-  'x-test-display-name': 'Ada Ionescu',
-  'x-test-email': 'ada@example.test',
-};
+import {
+  ada,
+  apiOrigin,
+  createCompany,
+  grant,
+  navigate,
+  object,
+  owner,
+  required,
+  string,
+} from './operational-risk.acceptance.fixture';
 
 // Every identity, fact, Company and observation is synthetic. Commands reach
 // the real API/PostgreSQL; interception loses only one committed response.
@@ -651,61 +643,4 @@ async function journalCorrectionJourney({
     fullPage: true,
   });
   return observationId;
-}
-
-async function navigate(
-  page: Page,
-  label: string,
-  narrow: boolean,
-): Promise<void> {
-  if (narrow)
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByRole('navigation', { name: 'Primary navigation' })
-    .getByRole('link', { name: label, exact: true })
-    .click();
-}
-async function createCompany(
-  request: APIRequestContext,
-  displayName: string,
-): Promise<{ id: string }> {
-  const response = await request.post(`${apiOrigin}/api/companies`, {
-    headers: { ...owner, 'idempotency-key': randomUUID() },
-    data: { displayName },
-  });
-  expect(response.status()).toBe(201);
-  const body: unknown = await response.json();
-  return { id: string(object(body).id) };
-}
-async function grant({
-  request,
-  path,
-  workspaceMembershipId,
-  companyId,
-}: {
-  request: APIRequestContext;
-  path: string;
-  workspaceMembershipId: string;
-  companyId: string;
-}): Promise<void> {
-  const response = await request.post(`${apiOrigin}/api/${path}`, {
-    headers: { ...owner, 'idempotency-key': randomUUID() },
-    data: { workspaceMembershipId, companyId },
-  });
-  expect(response.status()).toBe(201);
-}
-function required(name: string): string {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing synthetic acceptance fixture ${name}.`);
-  return value;
-}
-function object(value: unknown): Record<string, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value))
-    throw new Error('Expected a synthetic object.');
-  return Object.fromEntries(Object.entries(value));
-}
-function string(value: unknown): string {
-  if (typeof value !== 'string')
-    throw new Error('Expected a synthetic string.');
-  return value;
 }

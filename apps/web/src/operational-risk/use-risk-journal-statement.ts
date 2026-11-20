@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
   type ApiResult,
 } from '../api/authenticated-api-client';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { readRiskJournalStatement } from './operational-risk.response';
 import type { OperationalRiskJournalStatement } from './operational-risk.types';
 
@@ -29,54 +30,33 @@ export function useRiskJournalStatement({
   onRead: (value: OperationalRiskJournalStatement) => void;
 }) {
   const [state, setState] = useState<JournalLoad>({ kind: 'none' });
-  const request = useRef<AbortController | undefined>(undefined);
-  const mounted = useRef(false);
+  const work = useScopedOperationGroup(JSON.stringify([companyId, riskId]));
   const generation = useRef(0);
-  const selectedRisk = useRef(riskId);
-  selectedRisk.current = riskId;
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      request.current?.abort();
-    };
-  }, []);
-  function clear(rejectingSignal?: AbortSignal) {
+  function clear() {
     generation.current++;
-    // Retire the read without aborting the live shared rejection callback.
-    if (request.current?.signal !== rejectingSignal) request.current?.abort();
+    work.retire();
     setState({ kind: 'none' });
   }
   async function load(
     originalEntryId: string,
   ): Promise<OperationalRiskJournalStatement | undefined> {
-    if (
-      !companyId ||
-      !riskId ||
-      !mounted.current ||
-      selectedRisk.current !== riskId
-    )
-      return undefined;
-    request.current?.abort();
-    const controller = new AbortController();
-    request.current = controller;
+    if (!companyId || !riskId) return undefined;
+    const operation = work.beginLatest();
+    if (!operation) return undefined;
     const root = originalEntryId;
     const sequence = ++generation.current;
     const live = () =>
-      mounted.current &&
-      !controller.signal.aborted &&
-      selectedRisk.current === riskId &&
-      generation.current === sequence;
+      !operation.signal.aborted && generation.current === sequence;
     setState({ kind: 'loading', root });
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (!live()) return undefined;
       const result = await api.request(
         `/operational-risks/${encodeURIComponent(riskId)}/journal/${encodeURIComponent(root)}`,
-        { companyContextId: companyId, signal: controller.signal },
+        { companyContextId: companyId, signal: operation.signal },
       );
       // Guard even the shared rejection callback against retired/abort-ignoring reads.
-      if (!live() || (await reject(result, controller.signal)) || !live())
+      if (!live() || (await reject(result, operation.signal)) || !live())
         return undefined;
       if (result.status === 'notFound') {
         setState({ kind: 'unavailable', root });
@@ -96,15 +76,14 @@ export function useRiskJournalStatement({
     } catch {
       if (live()) setState({ kind: 'error', root });
       return undefined;
+    } finally {
+      operation.release();
     }
   }
   function checkpoint(): () => boolean {
-    const risk = selectedRisk.current;
+    const sameLifetime = work.capture();
     const sequence = generation.current;
-    return () =>
-      mounted.current &&
-      selectedRisk.current === risk &&
-      generation.current === sequence;
+    return () => sameLifetime() && generation.current === sequence;
   }
   return { state, load, clear, checkpoint };
 }
