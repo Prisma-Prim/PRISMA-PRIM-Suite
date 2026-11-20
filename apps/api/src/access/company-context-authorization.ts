@@ -913,7 +913,7 @@ export class CompanyContextAuthorization {
     });
   }
 
-  /** Exact native captures fence only the financial family; legacy families retain their delivered policy. */
+  /** The financial family checks exact native captures. Other families use their established permission projections. */
   async requirePaymentEvidenceNativeAccess(
     actor: ActorContext,
     options: {

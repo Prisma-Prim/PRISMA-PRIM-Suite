@@ -29,7 +29,7 @@ const REGISTRY_ORDER: readonly string[] = Object.keys(COMPANY_ROLE_BUNDLES);
 /**
  * The grants of one Company described from its live assignment rows, in
  * registry order. A row with a version its bundle never captured is left out
- * (fail closed), as the legacy projections leave it out.
+ * (fail closed), matching the existing permission projections.
  */
 export function describeCompanyGrants(
   rows: readonly {

@@ -108,11 +108,16 @@ function created(task: TaskView): TaskEvent {
  * Every read and command is recorded.
  */
 async function installServer(page: Page) {
-  const state = {
+  const state: {
+    assignedReads: number;
+    projectReads: string[];
+    taskReads: string[];
+    commands: string[];
+  } = {
     assignedReads: 0,
-    projectReads: [] as string[],
-    taskReads: [] as string[],
-    commands: [] as string[],
+    projectReads: [],
+    taskReads: [],
+    commands: [],
   };
   await page.route('**/api/**', (route) => {
     const request = route.request();

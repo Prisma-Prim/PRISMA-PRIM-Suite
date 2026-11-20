@@ -23,21 +23,22 @@ function restoreEnvironment(name: string, value: string | undefined) {
 }
 
 it('omits local-demo identity injection from a normal production build', async () => {
-  outputDirectory = await mkdtemp(join(tmpdir(), 'prisma-prim-production-'));
+  const outDir = await mkdtemp(join(tmpdir(), 'prisma-prim-production-'));
+  outputDirectory = outDir;
   process.env.VITE_ACCESS_IDENTITY_MODE = 'local-demo';
   process.env.VITE_DEMO_EXTERNAL_PROVIDER = 'must-not-reach-production';
 
   await build({
     mode: 'production',
-    build: { outDir: outputDirectory },
+    build: { outDir },
     logLevel: 'silent',
   });
 
-  const assetNames = await readdir(join(outputDirectory, 'assets'));
+  const assetNames = await readdir(join(outDir, 'assets'));
   const javascript = await Promise.all(
     assetNames
       .filter((name) => name.endsWith('.js'))
-      .map((name) => readFile(join(outputDirectory!, 'assets', name), 'utf8')),
+      .map((name) => readFile(join(outDir, 'assets', name), 'utf8')),
   );
   const emittedApplication = javascript.join('\n');
 

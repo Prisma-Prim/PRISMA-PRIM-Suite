@@ -243,7 +243,7 @@ test('registers and reopens a Company-confidential working reference', async ({
   await expect(workspace).toHaveClass(/working-documents--prisme/);
   expect(
     await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
+      () => window.document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
   await page.screenshot({
@@ -478,12 +478,14 @@ test('designates official Versions, starts and corrects a new draft and keeps th
     supersededAt?: string;
     supersededByVersionNumber?: number;
   }
+  const storedVersions: StoredVersion[] = [];
+  const recordedCommands: Array<{ path: string; body: unknown }> = [];
   const server = {
     registered: false,
     title: firstTitle,
     workingRevision: 1,
-    versions: [] as StoredVersion[],
-    commands: [] as Array<{ path: string; body: unknown }>,
+    versions: storedVersions,
+    commands: recordedCommands,
   };
   const at = (minute: number) =>
     `2026-09-26T08:${String(minute).padStart(2, '0')}:00.000Z`;

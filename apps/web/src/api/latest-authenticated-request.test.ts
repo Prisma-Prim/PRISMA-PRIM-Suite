@@ -16,7 +16,9 @@ describe('latest authenticated request', () => {
   });
 
   it('aborts an older request owned by the same resource', async () => {
-    const pending = { current: undefined as AbortController | undefined };
+    const pending: { current: AbortController | undefined } = {
+      current: undefined,
+    };
     const first = deferred<string>();
     const firstRun = runLatestAuthenticatedRequest({
       pending,
@@ -44,7 +46,9 @@ describe('latest authenticated request', () => {
   });
 
   it('retains ownership through asynchronous result publication', async () => {
-    const pending = { current: undefined as AbortController | undefined };
+    const pending: { current: AbortController | undefined } = {
+      current: undefined,
+    };
     const publication = deferred<string>();
     let ownedDuringPublication = false;
 

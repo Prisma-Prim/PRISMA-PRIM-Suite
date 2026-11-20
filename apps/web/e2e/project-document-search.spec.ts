@@ -78,11 +78,12 @@ const searchLabel = 'Search eligible working Documents';
 // Existing local-demo identity and intercepted REST responses; no live Clerk,
 // backend, database or external provider is exercised by this browser journey.
 async function installDocumentSearchFixture(page: Page) {
+  const commands: unknown[] = [];
   const state = {
     linked: new Set<string>(),
     revisions: new Map(eligibleDocuments.map((row) => [row.id, 0])),
     reads: 0,
-    commands: [] as unknown[],
+    commands,
   };
   await page.route('**/api/**', (route) => {
     const request = route.request();

@@ -142,9 +142,10 @@ function deferredResponse() {
 function installTransport(
   options: { administrator?: boolean; holdLinkedRead?: boolean } = {},
 ) {
+  const heldLinkedReads: Array<ReturnType<typeof deferredResponse>> = [];
   const state = {
     detailReads: new Map<string, number>(),
-    heldLinkedReads: [] as Array<ReturnType<typeof deferredResponse>>,
+    heldLinkedReads,
     grants: 0,
   };
   vi.stubGlobal(

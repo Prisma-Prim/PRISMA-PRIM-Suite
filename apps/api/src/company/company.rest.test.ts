@@ -1,3 +1,4 @@
+import { requireFirstRow } from '../../test-support/require-first-row.js';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -460,6 +461,7 @@ describeWithPostgres('Company REST API', () => {
       VALUES ('00000000-0000-4000-8000-000000000132', 'Hidden Company Workspace')
       RETURNING id
     `);
+    const hiddenWorkspaceId = requireFirstRow(hidden.rows).id;
 
     const response = await fetch(`${origin}/api/companies`, {
       method: 'POST',
@@ -470,13 +472,13 @@ describeWithPostgres('Company REST API', () => {
       },
       body: JSON.stringify({
         displayName: 'Actor Scoped Provider',
-        workspaceId: hidden.rows[0]!.id,
+        workspaceId: hiddenWorkspaceId,
       }),
     });
     const company = await response.json();
 
     expect(response.status).toBe(201);
-    expect(company.workspaceId).not.toBe(hidden.rows[0]!.id);
+    expect(company.workspaceId).not.toBe(hiddenWorkspaceId);
     const persisted = await pool.query<{
       workspace_id: string;
       hidden_count: string;
@@ -484,7 +486,7 @@ describeWithPostgres('Company REST API', () => {
       `SELECT company.workspace_id,
         (SELECT count(*) FROM companies WHERE workspace_id = $1) AS hidden_count
        FROM companies AS company WHERE company.id = $2`,
-      [hidden.rows[0]!.id, company.id],
+      [hiddenWorkspaceId, company.id],
     );
     expect(persisted.rows[0]).toEqual({
       workspace_id: company.workspaceId,
@@ -623,15 +625,15 @@ describeWithPostgres('Company REST API', () => {
       WHERE internal_user.external_subject = 'hidden-company-owner'
       RETURNING id AS company_id
     `);
+    const hiddenCompanyId = requireFirstRow(hidden.rows).company_id;
 
-    const response = await fetch(
-      `${origin}/api/companies/${hidden.rows[0]!.company_id}`,
-      { headers: identityHeaders('workspace-owner', 'Ada Ionescu') },
-    );
+    const response = await fetch(`${origin}/api/companies/${hiddenCompanyId}`, {
+      headers: identityHeaders('workspace-owner', 'Ada Ionescu'),
+    });
 
     expect(response.status).toBe(404);
     const responseText = await response.text();
-    expect(responseText).not.toContain(hidden.rows[0]!.company_id);
+    expect(responseText).not.toContain(hiddenCompanyId);
     expect(responseText).not.toContain('Hidden Provider');
     expect(responseText).not.toContain(owner.workspaceId);
   });
@@ -669,7 +671,7 @@ describeWithPostgres('Company REST API', () => {
         ON internal_user.id = membership.internal_user_id
       WHERE internal_user.external_subject = 'constraint-user'
     `);
-    const hidden = hiddenMembership.rows[0]!;
+    const hidden = requireFirstRow(hiddenMembership.rows);
 
     await expect(
       pool.query(
@@ -710,7 +712,7 @@ describeWithPostgres('Company REST API', () => {
           owner.workspaceId,
           owner.internalUserId,
           owner.workspaceMembershipId,
-          hiddenCompany.rows[0]!.id,
+          requireFirstRow(hiddenCompany.rows).id,
         ],
       ),
     ).rejects.toMatchObject({ code: '23503' });
