@@ -1,3 +1,4 @@
+import { requireFirstRow } from '../../test-support/require-first-row.js';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -248,8 +249,8 @@ describeWithPostgres('Access REST API', () => {
 
     expect(response.status).toBe(200);
     expect(actor).toMatchObject({
-      internalUserId: existing.rows[0]!.user_id,
-      workspaceId: target.rows[0]!.workspace_id,
+      internalUserId: requireFirstRow(existing.rows).user_id,
+      workspaceId: requireFirstRow(target.rows).workspace_id,
       workspaceName: 'Invitation Target Workspace',
       workspaceMembershipId: expect.any(String),
     });
@@ -257,10 +258,12 @@ describeWithPostgres('Access REST API', () => {
       `SELECT workspace_id FROM workspace_memberships
        WHERE internal_user_id = $1
        ORDER BY workspace_id`,
-      [existing.rows[0]!.user_id],
+      [requireFirstRow(existing.rows).user_id],
     );
     expect(memberships.rows).toEqual(
-      expect.arrayContaining([{ workspace_id: target.rows[0]!.workspace_id }]),
+      expect.arrayContaining([
+        { workspace_id: requireFirstRow(target.rows).workspace_id },
+      ]),
     );
     expect(memberships.rows).toHaveLength(2);
 
@@ -543,7 +546,7 @@ describeWithPostgres('Access REST API', () => {
         ON internal_user.id = membership.internal_user_id
       WHERE internal_user.external_subject = 'cross-subject'
     `);
-    const hiddenUser = hidden.rows[0]!;
+    const hiddenUser = requireFirstRow(hidden.rows);
 
     await expect(
       pool.query(

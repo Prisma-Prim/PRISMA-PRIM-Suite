@@ -135,10 +135,13 @@ describe('Company context transitions', () => {
       activeActor,
     );
     const origin = requiredOrigin(active);
+    const activeCompany = activeActor.activeCompany;
+    if (!activeCompany)
+      throw new Error('Expected an active Company in the fixture.');
     const revalidatedActor: ActorContext = {
       ...activeActor,
       activeCompany: {
-        ...activeActor.activeCompany!,
+        ...activeCompany,
 
         grants: withoutCompanyGrants(
           activeActor.activeCompany?.grants,
