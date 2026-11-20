@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-work-1507-20261120",
+  "date": "2026-11-20",
+  "runType": "pull-request-proof",
+  "issue": 1507,
+  "pullRequest": 1508,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "69 focused PostgreSQL REST cases and 576 equivalent synthetic HTTP requests passed. The first aggregate exhausted shared memory at 100,000 Clients under concurrency. A bounded account lookup passed the same workload. Format, lint, types, API build and independent review passed. Token figures unavailable."
+  }
+}
