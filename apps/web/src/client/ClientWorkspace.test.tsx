@@ -1504,6 +1504,86 @@ describe('ClientWorkspace', () => {
     },
   );
 
+  it('does not reject a refreshed Actor after an earlier Client registration returns unauthorized', async () => {
+    const api = clientRegistrationApi();
+    const rejectSession = vi.fn(async () => undefined);
+    const identity = { ...deterministicBrowserIdentity(), rejectSession };
+    const props = {
+      identity,
+      onCompanyContextRejected: vi.fn(),
+      onActivityRecorded: vi.fn(async () => undefined),
+    };
+    const { rerender } = render(
+      <ClientWorkspace {...props} actor={assignedActor()} />,
+    );
+    await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    openRegistration();
+    fireEvent.change(screen.getByLabelText('Client display name'), {
+      target: { value: 'Synthetic registration' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+    await waitFor(() => expect(api.registrations).toHaveLength(1));
+    rerender(
+      <ClientWorkspace
+        {...props}
+        actor={{
+          ...assignedActor(),
+          displayName: 'Refreshed synthetic Director',
+        }}
+      />,
+    );
+    expect(api.registrations[0]?.signal?.aborted).toBe(false);
+    await act(async () =>
+      api.registrations[0]?.response.resolve(
+        new Response(null, { status: 401 }),
+      ),
+    );
+    expect(rejectSession).not.toHaveBeenCalled();
+    expect(props.onActivityRecorded).not.toHaveBeenCalled();
+    expect(screen.getByText('No Clients for PRISMA-PRIM yet.')).toBeVisible();
+  });
+
+  it('admits a second Client registration while the first confirmed directory refresh is held', async () => {
+    const refresh = deferred<Response>();
+    let lists = 0;
+    const api = clientRegistrationApi((clients) =>
+      ++lists === 2 ? refresh.promise : Response.json(clients),
+    );
+    render(
+      <ClientWorkspace
+        actor={assignedActor()}
+        identity={deterministicBrowserIdentity()}
+        onCompanyContextRejected={vi.fn()}
+        onActivityRecorded={vi.fn(async () => undefined)}
+      />,
+    );
+    await screen.findByText('No Clients for PRISMA-PRIM yet.');
+    openRegistration();
+    const name = screen.getByLabelText('Client display name');
+    const create = screen.getByRole('button', { name: 'Create Client' });
+    fireEvent.change(name, { target: { value: 'Fictional first Client' } });
+    fireEvent.click(create);
+    await waitFor(() => expect(api.registrations).toHaveLength(1));
+    await act(async () => {
+      api.registrations[0]?.response.resolve(
+        Response.json(
+          {
+            id: 'confirmed-first-client',
+            displayName: 'Fictional first Client',
+            relatedToActiveCompany: true,
+          },
+          { status: 201 },
+        ),
+      );
+    });
+    await waitFor(() => expect(lists).toBe(2));
+    expect(create).toBeEnabled();
+    fireEvent.change(name, { target: { value: 'Fictional second Client' } });
+    fireEvent.click(create);
+    await waitFor(() => expect(api.registrations).toHaveLength(2));
+    await act(async () => refresh.resolve(Response.json([])));
+  });
+
   it.each([
     { work: 'duplicate-review detail', refresh: 'equivalent', kept: true },
     { work: 'duplicate-review detail', refresh: 'narrowed', kept: false },
@@ -2250,7 +2330,15 @@ function assignedActor(
   };
 }
 
-function clientRegistrationApi() {
+function clientRegistrationApi(
+  readClients: (
+    clients: readonly {
+      id: string;
+      displayName: string;
+      relatedToActiveCompany: boolean;
+    }[],
+  ) => Response | Promise<Response> = (clients) => Response.json(clients),
+) {
   const clients: {
     id: string;
     displayName: string;
@@ -2276,8 +2364,7 @@ function clientRegistrationApi() {
         });
         return response.promise;
       }
-      if (path === '/api/clients')
-        return new Response(JSON.stringify(clients), { status: 200 });
+      if (path === '/api/clients') return readClients(clients);
       throw new Error(`Unexpected request: ${path}`);
     }),
   );

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-work-1485-20261120",
+  "date": "2026-11-20",
+  "runType": "pull-request-proof",
+  "issue": 1485,
+  "pullRequest": "not reported",
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 3,
+      "P3": 0
+    },
+    "notes": "379 rendered tests and four native App and PostgreSQL cases pass across desktop and narrow. One Standards/Spec round with targeted follow-up verified admission after confirmation and stale refusal recovery. A regression test failed before the admission fix and passes after it. Browser run elapsed 102 seconds per Playwright summary. Harness usage figures are unavailable."
+  }
+}

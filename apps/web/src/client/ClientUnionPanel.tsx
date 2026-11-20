@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { useInterfaceLocale } from '../localization/interface-locale';
@@ -6,6 +12,8 @@ import {
   handleAuthenticatedAccessRejection,
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { resolveRetryCommand, type RetryCommand } from './client-command';
 import {
   readUnionDetail,
@@ -45,6 +53,7 @@ export function ClientUnionPanel({
   clientId,
   companyContextId,
   identity,
+  captureRecovery,
   canResolve,
   onChanged,
   onOpenCanonical,
@@ -56,6 +65,7 @@ export function ClientUnionPanel({
   clientId: string | undefined;
   companyContextId: string;
   identity: BrowserIdentity;
+  captureRecovery?: () => () => boolean;
   canResolve: boolean;
   /** Reported after a confirmed union or reversal changed Client identities. */
   onChanged: (canonicalClientId?: string) => Promise<void>;
@@ -87,7 +97,13 @@ export function ClientUnionPanel({
   const [feedback, setFeedback] = useState<
     UnionFailureFeedback | 'idle' | 'busy' | 'unavailable' | 'refreshError'
   >('idle');
-  const pending = useRef<AbortController | undefined>(undefined);
+  const requestScope = String(
+    useRequestLifetime(
+      identity,
+      JSON.stringify([clientId, companyContextId, canResolve]),
+    ),
+  );
+  const unionWork = useScopedOperationGroup(requestScope);
   const retry = useRef<{ path: string; command: RetryCommand } | undefined>(
     undefined,
   );
@@ -99,22 +115,22 @@ export function ClientUnionPanel({
     onActorRevalidated,
     onWorkspaceAccessRejected,
   });
-  callbacks.current = {
-    onChanged,
-    onOpenCanonical,
-    onConfirmed,
-    onCompanyContextRejected,
-    onActorRevalidated,
-    onWorkspaceAccessRejected,
-  };
+  useLayoutEffect(() => {
+    callbacks.current = {
+      onChanged,
+      onOpenCanonical,
+      onConfirmed,
+      onCompanyContextRejected,
+      onActorRevalidated,
+      onWorkspaceAccessRejected,
+    };
+  });
 
   useEffect(() => {
-    pending.current?.abort();
     retry.current = undefined;
     openingTrigger.current = null;
     setView({ kind: 'idle' });
     setFeedback('idle');
-    return () => pending.current?.abort();
   }, [clientId, companyContextId, identity, canResolve]);
 
   async function run<T>({
@@ -132,6 +148,10 @@ export function ClientUnionPanel({
     failureFeedback?: UnionFailureFeedback;
     conflictFeedback?: 'unavailable' | 'reversalStale';
   }) {
+    if (unionWork.isPending()) return;
+    const operation = unionWork.beginLatest();
+    if (!operation) return;
+    const recoveryCurrent = captureRecovery?.();
     const serializedBody =
       input === undefined ? undefined : JSON.stringify(input);
     const command =
@@ -144,7 +164,7 @@ export function ClientUnionPanel({
     if (command) retry.current = { path, command };
     setFeedback('busy');
     await runLatestAuthenticatedRequest({
-      pending,
+      signal: operation.signal,
       identity,
       execute: (api, signal) =>
         api.request(path, {
@@ -167,6 +187,7 @@ export function ClientUnionPanel({
           identity,
           companyContextId,
           signal,
+          isCurrent: () => !signal.aborted && (recoveryCurrent?.() ?? true),
           ...callbacks.current,
         });
         if (signal.aborted) return;
@@ -189,9 +210,11 @@ export function ClientUnionPanel({
         const parsed = parse(result.value);
         retry.current = undefined;
         setFeedback('idle');
+        operation.release();
         await receive(parsed, signal);
       },
       onError: () => setFeedback(failureFeedback),
+      onSettled: operation.release,
     });
   }
 
@@ -210,7 +233,7 @@ export function ClientUnionPanel({
     });
   }
   function close() {
-    pending.current?.abort();
+    unionWork.retire();
     retry.current = undefined;
     openingTrigger.current = null;
     setView({ kind: 'idle' });

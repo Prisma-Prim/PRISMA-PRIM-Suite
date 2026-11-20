@@ -1,10 +1,19 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import {
   handleAuthenticatedAccessRejection,
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperation } from '../api/use-scoped-operation';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import {
   ClientContactDescription,
@@ -33,6 +42,7 @@ export function ClientCorrectionHistory({
   dossierVersion,
   companyContextId,
   identity,
+  captureRecovery,
   onCompanyContextRejected,
   onActorRevalidated,
   onWorkspaceAccessRejected,
@@ -41,6 +51,7 @@ export function ClientCorrectionHistory({
   dossierVersion: number;
   companyContextId: string;
   identity: BrowserIdentity;
+  captureRecovery?: () => () => boolean;
   onCompanyContextRejected: (companyContextId: string) => void;
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected: () => Promise<void> | void;
@@ -50,16 +61,32 @@ export function ClientCorrectionHistory({
   const contentId = useId();
   const [expanded, setExpanded] = useState(false);
   const [history, setHistory] = useState<HistoryState>({ status: 'loading' });
-  const pending = useRef<AbortController | undefined>(undefined);
+  const requestScope = String(
+    useRequestLifetime(
+      identity,
+      JSON.stringify([
+        clientAccountId,
+        companyContextId,
+        dossierVersion,
+        expanded,
+      ]),
+    ),
+  );
+  const historyRead = useScopedOperation(requestScope);
   const rejectCompanyContext = useRef(onCompanyContextRejected);
-  rejectCompanyContext.current = onCompanyContextRejected;
   const acceptRevalidatedActor = useRef(onActorRevalidated);
-  acceptRevalidatedActor.current = onActorRevalidated;
   const rejectWorkspaceAccess = useRef(onWorkspaceAccessRejected);
-  rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
+  useLayoutEffect(() => {
+    rejectCompanyContext.current = onCompanyContextRejected;
+    acceptRevalidatedActor.current = onActorRevalidated;
+    rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
+  });
 
   const loadPage = useCallback(
     async (cursor: string | undefined): Promise<void> => {
+      const requestSignal = historyRead.begin();
+      if (!requestSignal) return;
+      const recoveryCurrent = captureRecovery?.();
       // A first page replaces the section; an older page only extends the
       // loaded list it continues.
       const update = (
@@ -83,7 +110,7 @@ export function ClientCorrectionHistory({
         older: 'loading',
       }));
       await runLatestAuthenticatedRequest({
-        pending,
+        signal: requestSignal,
         identity,
         execute: (api, signal) =>
           api.request(
@@ -106,6 +133,7 @@ export function ClientCorrectionHistory({
               acceptRevalidatedActor.current(revalidatedActor),
             onWorkspaceAccessRejected: () => rejectWorkspaceAccess.current(),
             signal,
+            isCurrent: () => !signal.aborted && (recoveryCurrent?.() ?? true),
           });
           if (signal.aborted) return;
           if (rejection || result.status === 'notFound') {
@@ -127,7 +155,7 @@ export function ClientCorrectionHistory({
         onError: fail,
       });
     },
-    [clientAccountId, companyContextId, identity],
+    [captureRecovery, clientAccountId, companyContextId, historyRead, identity],
   );
 
   // Expanding, a new dossier version or another request identity reloads the
@@ -135,7 +163,6 @@ export function ClientCorrectionHistory({
   useEffect(() => {
     if (!expanded) return;
     void loadPage(undefined);
-    return () => pending.current?.abort();
   }, [expanded, loadPage, dossierVersion]);
 
   return (
