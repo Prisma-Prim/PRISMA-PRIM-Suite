@@ -1,0 +1,2 @@
+ts	phase	decision	why	evidence	result
+2026-11-20T19:39:25Z	implementation	Own Stage plan and report editing and feedback in one persistent Certification hook	Keep draft continuity across reloads and the shared mutation authority in the workspace	#1509; CertificationWorkspace.stages.test.tsx; CertificationWorkspace.stage-prefill.test.tsx	selected
