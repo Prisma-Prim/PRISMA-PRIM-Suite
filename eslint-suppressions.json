@@ -136,16 +136,6 @@
       "count": 2
     }
   },
-  "apps/web/src/operational-risk/OperationalRiskWorkspace.tsx": {
-    "no-restricted-syntax": {
-      "count": 4
-    }
-  },
-  "apps/web/src/operational-risk/use-risk-journal-statement.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "apps/web/src/opportunity-follow-up/follow-up-owner.ts": {
     "no-restricted-syntax": {
       "count": 2

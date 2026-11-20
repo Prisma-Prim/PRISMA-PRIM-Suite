@@ -455,6 +455,42 @@ describe('Operational Risk manual workspace', () => {
     },
   );
 
+  it('keeps the refreshed Actor signed in when an earlier Risk read rejects authentication', async () => {
+    let reply: ((value: Response) => void) | undefined;
+    const rejectSession = vi.fn(async () => undefined);
+    const identity = { ...deterministicBrowserIdentity(), rejectSession };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            reply = resolve;
+          }),
+      ),
+    );
+    const mounted = view({ identity });
+    await waitFor(() => expect(reply).toBeDefined());
+    mounted.rerender(
+      <>
+        <LocaleChoice />
+        <OperationalRiskWorkspace
+          actor={{ ...actor, displayName: 'Refreshed synthetic author' }}
+          identity={identity}
+          onActorRevalidated={noop}
+          onCompanyContextRejected={noop}
+          onWorkspaceAccessRejected={noop}
+        />
+      </>,
+    );
+    await act(async () => {
+      reply?.(new Response(null, { status: 401 }));
+    });
+    expect(
+      screen.getByText(/Access to this register is no longer available/u),
+    ).toBeVisible();
+    expect(rejectSession).not.toHaveBeenCalled();
+  });
+
   it('ignores an abort-ignoring late command 401 after disposal instead of rejecting a replacement identity', async () => {
     let reply: ((value: Response) => void) | undefined;
     const rejectSession = vi.fn(async () => undefined);

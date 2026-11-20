@@ -1,4 +1,11 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { holds } from '../access/company-grants';
@@ -8,6 +15,8 @@ import {
   type ApiResult,
 } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { useActorObservation } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { useOperationalRiskCopy } from './operational-risk.copy';
 import {
@@ -114,28 +123,27 @@ export function OperationalRiskWorkspace({
   const [confirmedJournal, setConfirmedJournal] =
     useState<OperationalRiskJournalCorrection>();
   const [denied, setDenied] = useState(false);
-  const mounted = useRef(false);
   const retired = useRef(false);
   const selected = useRef<string | undefined>(undefined);
   const knownRevision = useRef(0);
   const activeCommand = useRef<Command | undefined>(undefined);
-  const listRequest = useRef<AbortController | undefined>(undefined);
-  const detailRequest = useRef<AbortController | undefined>(undefined);
-  const commandRequest = useRef<AbortController | undefined>(undefined);
-  const rejection = useRef({
-    actor,
-    identity,
+  const listWork = useScopedOperationGroup('risk-list');
+  const detailWork = useScopedOperationGroup('risk-detail');
+  const commandWork = useScopedOperationGroup('risk-command');
+  const actorObservation = useActorObservation(actor);
+  const recoveryWork = useScopedOperationGroup(String(actorObservation));
+  const callbacks = useRef({
     onActorRevalidated,
     onCompanyContextRejected,
     onWorkspaceAccessRejected,
   });
-  rejection.current = {
-    actor,
-    identity,
-    onActorRevalidated,
-    onCompanyContextRejected,
-    onWorkspaceAccessRejected,
-  };
+  useLayoutEffect(() => {
+    callbacks.current = {
+      onActorRevalidated,
+      onCompanyContextRejected,
+      onWorkspaceAccessRejected,
+    };
+  });
 
   const journal = useRiskJournalStatement({
     identity,
@@ -160,14 +168,7 @@ export function OperationalRiskWorkspace({
   // App keys this workspace by session, Company and both captured assignments.
   // Locale changes only format labels: no effect retires drafts or commands.
   useEffect(() => {
-    mounted.current = true;
     void loadList();
-    return () => {
-      mounted.current = false;
-      listRequest.current?.abort();
-      detailRequest.current?.abort();
-      commandRequest.current?.abort();
-    };
     // The scope is immutable for this keyed component.
   }, []);
 
@@ -175,44 +176,52 @@ export function OperationalRiskWorkspace({
     result: ApiResult<unknown>,
     signal: AbortSignal,
   ): Promise<boolean> {
-    // A transport may ignore abort. Old scope replies must never reach the
-    // shared identity rejection path and sign out a now-current session.
-    if (signal.aborted || !mounted.current || retired.current) return true;
+    if (signal.aborted || retired.current) return true;
     if (result.status !== 'unauthorized' && result.status !== 'forbidden')
       return false;
-    // Retire Risk content immediately, even if revalidation itself is offline.
-    if (!signal.aborted && mounted.current) {
-      retired.current = true;
-      setDenied(true);
-      for (const request of [
-        listRequest.current,
-        detailRequest.current,
-        commandRequest.current,
-      ])
-        if (request?.signal !== signal) request?.abort();
-      setList({ kind: 'loading' });
-      setDetail({ kind: 'loading' });
-      setHistory({ kind: 'loading' });
-      selected.current = undefined;
-      knownRevision.current = 0;
-      setSelectedId(undefined);
-      setEditor(undefined);
-      journal.clear(signal);
-      setConfirmedJournal(undefined);
-      setReview(undefined);
-      reviewSequence.current++;
-      activeCommand.current = undefined;
-      setPending(undefined);
+
+    // Local refusal applies to these Risk requests. Session recovery can only
+    // start under the full Actor observation that admitted the refused read.
+    const recovery = recoveryWork.begin();
+    retired.current = true;
+    setDenied(true);
+    listWork.retire();
+    detailWork.retire();
+    commandWork.retire();
+    setList({ kind: 'loading' });
+    setDetail({ kind: 'loading' });
+    setHistory({ kind: 'loading' });
+    selected.current = undefined;
+    knownRevision.current = 0;
+    setSelectedId(undefined);
+    setEditor(undefined);
+    journal.clear();
+    setConfirmedJournal(undefined);
+    setReview(undefined);
+    reviewSequence.current++;
+    activeCommand.current = undefined;
+    setPending(undefined);
+
+    if (recovery) {
+      const current = () => !recovery.signal.aborted;
+      try {
+        await handleAuthenticatedAccessRejection({
+          result,
+          identity,
+          companyContextId: companyId,
+          signal: recovery.signal,
+          isCurrent: current,
+          onCompanyContextRejected: (company) =>
+            callbacks.current.onCompanyContextRejected(company),
+          onActorRevalidated: (updated) =>
+            callbacks.current.onActorRevalidated(updated),
+          onWorkspaceAccessRejected: () =>
+            callbacks.current.onWorkspaceAccessRejected(),
+        });
+      } finally {
+        recovery.release();
+      }
     }
-    await handleAuthenticatedAccessRejection({
-      result,
-      identity: rejection.current.identity,
-      companyContextId: companyId,
-      signal,
-      onCompanyContextRejected: rejection.current.onCompanyContextRejected,
-      onActorRevalidated: rejection.current.onActorRevalidated,
-      onWorkspaceAccessRejected: rejection.current.onWorkspaceAccessRejected,
-    });
     return true;
   }
 
@@ -222,10 +231,9 @@ export function OperationalRiskWorkspace({
   }
 
   async function loadList(cursor?: string): Promise<boolean> {
-    if (!companyId) return false;
-    listRequest.current?.abort();
-    const request = new AbortController();
-    listRequest.current = request;
+    if (!companyId || retired.current) return false;
+    const request = listWork.beginLatest();
+    if (!request) return false;
     if (cursor)
       setList((previous) =>
         previous.kind === 'ready' ? { ...previous, more: 'loading' } : previous,
@@ -233,16 +241,12 @@ export function OperationalRiskWorkspace({
     else setList({ kind: 'loading' });
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (request.signal.aborted || !mounted.current) return false;
+      if (request.signal.aborted) return false;
       const result = await api.request(
         `/operational-risks${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
         { companyContextId: companyId, signal: request.signal },
       );
-      if (
-        (await reject(result, request.signal)) ||
-        request.signal.aborted ||
-        !mounted.current
-      )
+      if ((await reject(result, request.signal)) || request.signal.aborted)
         return false;
       if (result.status !== 'ok') throw new Error('Risk read failed.');
       const page = readRiskPage({ value: result.value, companyId });
@@ -260,20 +264,24 @@ export function OperationalRiskWorkspace({
       }));
       return true;
     } catch {
-      if (!request.signal.aborted && mounted.current)
+      if (!request.signal.aborted)
         setList((previous) =>
           cursor && previous.kind === 'ready'
             ? { ...previous, more: 'error' }
             : { kind: 'error' },
         );
       return false;
+    } finally {
+      request.release();
     }
   }
 
   async function loadDetail(
     riskId: string,
   ): Promise<OperationalRiskRecord | undefined> {
-    if (!companyId) return undefined;
+    if (!companyId || retired.current) return undefined;
+    const request = detailWork.beginLatest();
+    if (!request) return undefined;
     if (selected.current !== riskId) {
       knownRevision.current =
         list.kind === 'ready'
@@ -282,25 +290,18 @@ export function OperationalRiskWorkspace({
       journal.clear();
       setConfirmedJournal(undefined);
     }
-    detailRequest.current?.abort();
-    const request = new AbortController();
-    detailRequest.current = request;
     selected.current = riskId;
     setSelectedId(riskId);
     setDetail({ kind: 'loading' });
     setHistory({ kind: 'loading' });
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (request.signal.aborted || !mounted.current) return undefined;
+      if (request.signal.aborted) return undefined;
       const result = await api.request(
         `/operational-risks/${encodeURIComponent(riskId)}`,
         { companyContextId: companyId, signal: request.signal },
       );
-      if (
-        (await reject(result, request.signal)) ||
-        request.signal.aborted ||
-        !mounted.current
-      )
+      if ((await reject(result, request.signal)) || request.signal.aborted)
         return undefined;
       if (result.status === 'notFound') {
         setNotice((current) =>
@@ -316,11 +317,7 @@ export function OperationalRiskWorkspace({
         `/operational-risks/${encodeURIComponent(riskId)}/history`,
         { companyContextId: companyId, signal: request.signal },
       );
-      if (
-        (await reject(entries, request.signal)) ||
-        request.signal.aborted ||
-        !mounted.current
-      )
+      if ((await reject(entries, request.signal)) || request.signal.aborted)
         return undefined;
       setDetail({ kind: 'ready', value, more: 'idle' });
       if (entries.status !== 'ok') {
@@ -334,11 +331,13 @@ export function OperationalRiskWorkspace({
       setHistory({ kind: 'ready', value: page, more: 'idle' });
       return value;
     } catch {
-      if (!request.signal.aborted && mounted.current) {
+      if (!request.signal.aborted) {
         setDetail({ kind: 'error' });
         setHistory({ kind: 'error' });
       }
       return undefined;
+    } finally {
+      request.release();
     }
   }
 
@@ -346,21 +345,21 @@ export function OperationalRiskWorkspace({
     if (
       !companyId ||
       !selectedId ||
+      retired.current ||
       history.kind !== 'ready' ||
       !history.value.next_cursor
     )
       return;
     const riskId = selectedId;
     const cursor = history.value.next_cursor;
-    detailRequest.current?.abort();
-    const request = new AbortController();
-    detailRequest.current = request;
+    const request = detailWork.beginLatest();
+    if (!request) return;
     setHistory((previous) =>
       previous.kind === 'ready' ? { ...previous, more: 'loading' } : previous,
     );
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (request.signal.aborted || !mounted.current) return;
+      if (request.signal.aborted) return;
       const result = await api.request(
         `/operational-risks/${encodeURIComponent(riskId)}/history?cursor=${encodeURIComponent(cursor)}`,
         { companyContextId: companyId, signal: request.signal },
@@ -368,7 +367,6 @@ export function OperationalRiskWorkspace({
       if (
         (await reject(result, request.signal)) ||
         request.signal.aborted ||
-        !mounted.current ||
         selected.current !== riskId
       )
         return;
@@ -389,25 +387,27 @@ export function OperationalRiskWorkspace({
           : previous,
       );
     } catch {
-      if (!request.signal.aborted && mounted.current)
+      if (!request.signal.aborted)
         setHistory((previous) =>
           previous.kind === 'ready' ? { ...previous, more: 'error' } : previous,
         );
+    } finally {
+      request.release();
     }
   }
 
   async function execute(command: Command): Promise<void> {
-    if (!companyId || commandRequest.current || denied) return;
+    if (!companyId || retired.current || commandWork.isPending()) return;
+    const request = commandWork.begin();
+    if (!request) return;
     reviewSequence.current++;
     setReview(undefined);
     activeCommand.current = command;
     setPending({ kind: 'submitting', command });
     setNotice(undefined);
-    const request = new AbortController();
-    commandRequest.current = request;
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (request.signal.aborted || !mounted.current) return;
+      if (request.signal.aborted) return;
       const result = await api.request(command.path, {
         method: 'POST',
         companyContextId: companyId,
@@ -418,11 +418,7 @@ export function OperationalRiskWorkspace({
         body: command.body,
         signal: request.signal,
       });
-      if (
-        (await reject(result, request.signal)) ||
-        request.signal.aborted ||
-        !mounted.current
-      )
+      if ((await reject(result, request.signal)) || request.signal.aborted)
         return;
       if (result.status === 'ok') {
         // Malformed success is uncertain, never permission to make another key.
@@ -448,14 +444,14 @@ export function OperationalRiskWorkspace({
         setEditor(undefined);
         setNotice('recorded');
         const listLoaded = await loadList();
-        if (request.signal.aborted || !mounted.current) return;
+        if (request.signal.aborted) return;
         const detailLoaded = await loadDetail(saved.risk.id);
-        if (request.signal.aborted || !mounted.current) return;
+        if (request.signal.aborted) return;
         const statementLoaded =
           command.kind === 'journal-correct'
             ? await journal.load(command.journalEntryId)
             : true;
-        if (!request.signal.aborted && mounted.current) {
+        if (!request.signal.aborted) {
           activeCommand.current = undefined;
           setPending(undefined);
           setNotice(
@@ -498,11 +494,9 @@ export function OperationalRiskWorkspace({
       }
       setPending({ kind: 'uncertain', command });
     } catch {
-      if (!request.signal.aborted && mounted.current)
-        setPending({ kind: 'uncertain', command });
+      if (!request.signal.aborted) setPending({ kind: 'uncertain', command });
     } finally {
-      if (commandRequest.current === request)
-        commandRequest.current = undefined;
+      request.release();
     }
   }
 
@@ -547,8 +541,9 @@ export function OperationalRiskWorkspace({
             : journal.state.root;
     const riskId = selected.current;
     const sameJournalRead = journal.checkpoint();
+    const sameLifetime = listWork.capture();
     const live = () =>
-      mounted.current &&
+      sameLifetime() &&
       !retired.current &&
       sequence === reviewSequence.current &&
       selected.current === riskId;
@@ -645,10 +640,12 @@ export function OperationalRiskWorkspace({
     const root = journal.state.value.originalEntry.id;
     const riskId = selectedId;
     const sequence = ++reviewSequence.current;
+    const sameLifetime = listWork.capture();
     const latest = await journal.load(root);
     if (
       !latest ||
-      !mounted.current ||
+      !sameLifetime() ||
+      retired.current ||
       sequence !== reviewSequence.current ||
       selected.current !== riskId ||
       latest.riskId !== riskId ||

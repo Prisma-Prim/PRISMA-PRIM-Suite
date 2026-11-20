@@ -218,6 +218,25 @@ const passingProjects = summary('project-task-action-sequences', [
   },
 ]);
 
+const passingRisk = summary('operational-risk-action-sequences', [
+  {
+    status: 'passed',
+    chaosSeed: 1422010,
+    sequences: ['desktop', 'narrow'].map((width) => ({
+      caseId: 'operational-risk',
+      width,
+      seed: 1422010,
+      steps: 10,
+      status: 'passed',
+      runs: 2,
+      shrinks: 0,
+      durationMilliseconds: 1000,
+      path: null,
+      coverage: { 'record-risk-with-lost-receipt': 1 },
+    })),
+  },
+]);
+
 const passingProfitabilityOwners = summary(
   'profitability-owner-action-sequences',
   [
@@ -322,6 +341,12 @@ const jobs = [
     started_at: '2026-11-14T02:21:31Z',
     completed_at: '2026-11-14T02:25:31Z',
   },
+  {
+    name: 'chaos (operational-risk-action-sequences)',
+    conclusion: 'success',
+    started_at: '2026-11-14T02:21:31Z',
+    completed_at: '2026-11-14T02:25:31Z',
+  },
 ];
 const summaries = () =>
   new Map([
@@ -365,6 +390,10 @@ const summaries = () =>
     [
       'project-task-action-sequences',
       parseChaosSummary(JSON.stringify(passingProjects)),
+    ],
+    [
+      'operational-risk-action-sequences',
+      parseChaosSummary(JSON.stringify(passingRisk)),
     ],
   ]);
 
@@ -506,6 +535,10 @@ test("each journey's downloaded summary is found by journey", async (t) => {
       'nightly-ui-chaos-summary-project-task-action-sequences',
       JSON.stringify(passingProjects),
     ],
+    [
+      'nightly-ui-chaos-summary-operational-risk-action-sequences',
+      JSON.stringify(passingRisk),
+    ],
     ['nightly-ui-chaos-summary-broken', '{'],
   ]) {
     await mkdir(join(directory, folder), { recursive: true });
@@ -543,6 +576,7 @@ test('a night keeps each journey job runtime, runs and failures', () => {
       ['pricing-owner-action-sequences', 'success', 4, 1, 1, false],
       ['profitability-owner-action-sequences', 'success', 4, 1, 1, false],
       ['project-task-action-sequences', 'success', 4, 1, 1, false],
+      ['operational-risk-action-sequences', 'success', 4, 1, 1, false],
     ],
   );
   assert.equal(weekOf('2026-11-14T02:21:07Z'), '2026-11-09');
@@ -637,7 +671,7 @@ test('a later night and a rerun of the same night update the one comment of the 
   // The multi-company-home job of the later night left no summary.
   assert.ok(
     patch.body.body.includes(
-      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary); 2026-11-15 document-action-sequences (success without a summary); 2026-11-15 contract-action-sequences (success without a summary); 2026-11-15 mission-result-action-sequences (success without a summary); 2026-11-15 offer-owner-action-sequences (success without a summary); 2026-11-15 pricing-owner-action-sequences (success without a summary); 2026-11-15 profitability-owner-action-sequences (success without a summary); 2026-11-15 project-task-action-sequences (success without a summary).',
+      '**Could not run:** 2026-11-15 multi-company-home (failed without a summary); 2026-11-15 financial-action-sequences (success without a summary); 2026-11-15 access-action-sequences (success without a summary); 2026-11-15 document-action-sequences (success without a summary); 2026-11-15 contract-action-sequences (success without a summary); 2026-11-15 mission-result-action-sequences (success without a summary); 2026-11-15 offer-owner-action-sequences (success without a summary); 2026-11-15 pricing-owner-action-sequences (success without a summary); 2026-11-15 profitability-owner-action-sequences (success without a summary); 2026-11-15 project-task-action-sequences (success without a summary); 2026-11-15 operational-risk-action-sequences (success without a summary).',
     ),
   );
 
@@ -894,6 +928,7 @@ test('the financial-only repetition week remains bounded within one GitHub comme
               'chaos (pricing-owner-action-sequences)',
               'chaos (profitability-owner-action-sequences)',
               'chaos (project-task-action-sequences)',
+              'chaos (operational-risk-action-sequences)',
             ].includes(job.name),
         ),
         summaries: new Map([
@@ -908,6 +943,7 @@ test('the financial-only repetition week remains bounded within one GitHub comme
                 'pricing-owner-action-sequences',
                 'profitability-owner-action-sequences',
                 'project-task-action-sequences',
+                'operational-risk-action-sequences',
               ].includes(journey),
           ),
           [
@@ -1104,7 +1140,8 @@ test('keeps pathless interruption evidence separate from successful aggregates',
 
 test('an oversized week opens a bounded continuation and reruns update their owning part', async () => {
   const large = structuredClone(failingHome);
-  large.runs[1].failures[0].error = 'Native diagnostic evidence '.repeat(900);
+  const diagnostic = 'Native diagnostic evidence '.repeat(800);
+  large.runs[1].failures[0].error = diagnostic;
   const evidence = () =>
     new Map([
       ...summaries(),
@@ -1145,11 +1182,7 @@ test('an oversized week opens a bounded continuation and reruns update their own
       .flatMap((entry) => entry.failures).length,
     2,
   );
-  assert.ok(
-    retained[0].journeys[1].failures[0].error.includes(
-      'Native diagnostic evidence',
-    ),
-  );
+  assert.equal(retained[0].journeys[1].failures[0].error, diagnostic);
   const rerun = github({
     comments: [earlier, current],
     run: workflowRun({ id: 501, attempt: 2 }),
