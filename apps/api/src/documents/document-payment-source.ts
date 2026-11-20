@@ -1,3 +1,4 @@
+import { DocumentFamilyAccess } from './document-family-access.js';
 import {
   documentVersionPdfQuery,
   frozenDocumentPdfPredicate,
@@ -37,6 +38,7 @@ import { DocumentContentService } from './document-content.service.js';
 @Injectable()
 export class DocumentPaymentSource {
   constructor(
+    private readonly familyAccess: DocumentFamilyAccess,
     private readonly database: DatabaseContext,
     private readonly access: CompanyContextAuthorization,
     private readonly clients: ClientOperationalReferenceService,
@@ -57,10 +59,12 @@ export class DocumentPaymentSource {
       }))
     )
       throw new ForbiddenException();
-    await this.access.requirePaymentEvidenceNativeAccess(actor, {
-      action: 'content-read',
-      lockAssignment: true,
-    });
+    await this.familyAccess.requireFamilyAccess(
+      actor,
+      'payment-evidence',
+      'content-read',
+      { lock: true },
+    );
     await this.clients.requireCapturedReferenceReadAuthorityWithinTransaction(
       actor,
     );
@@ -215,10 +219,12 @@ export class DocumentPaymentSource {
       if (v && (v.status === 'official' || v.status === 'superseded')) {
         let content: PaymentContent = { kind: 'UNAVAILABLE' };
         try {
-          await this.access.requirePaymentEvidenceNativeAccess(actor, {
-            action: 'content-read',
-            lockAssignment: false,
-          });
+          await this.familyAccess.requireFamilyAccess(
+            actor,
+            'payment-evidence',
+            'content-read',
+            { lock: false },
+          );
           const [p] = await this.database.connection
             .select({
               fileName: documentPdfs.fileName,

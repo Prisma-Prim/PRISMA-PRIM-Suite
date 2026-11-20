@@ -1,22 +1,4 @@
 {
-  "apps/api/src/documents/document-invoice-record-source.ts": {
-    "no-restricted-syntax": {
-      "count": 3,
-      "reason": "Existing native Invoice Record source checks pending migration through DocumentFamilyAccess; #1212 explicitly preserves these consumer calls without changing runtime behavior."
-    }
-  },
-  "apps/api/src/documents/document-payment-source.ts": {
-    "no-restricted-syntax": {
-      "count": 2,
-      "reason": "Existing native Payment source checks pending migration through DocumentFamilyAccess; #1212 explicitly preserves these consumer calls without changing runtime behavior."
-    }
-  },
-  "apps/api/src/documents/document-working-evidence-reference.service.ts": {
-    "no-restricted-syntax": {
-      "count": 1,
-      "reason": "Existing native Working Evidence source check pending migration through DocumentFamilyAccess; #1212 explicitly preserves this consumer call without changing runtime behavior."
-    }
-  },
   "apps/web/src/api/latest-authenticated-request.ts": {
     "no-restricted-syntax": {
       "count": 1
@@ -70,11 +52,6 @@
       "count": 2
     }
   },
-  "apps/web/src/project/ProjectDocuments.tsx": {
-    "no-restricted-syntax": {
-      "count": 3
-    }
-  },
   "apps/web/src/project/ProjectLifecycle.tsx": {
     "no-restricted-syntax": {
       "count": 3
@@ -88,11 +65,6 @@
   "apps/web/src/project/ProjectNextActionEditor.tsx": {
     "no-restricted-syntax": {
       "count": 2
-    }
-  },
-  "apps/web/src/project/ProjectPdfBundle.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
     }
   },
   "apps/web/src/project/ProjectResponsible.tsx": {

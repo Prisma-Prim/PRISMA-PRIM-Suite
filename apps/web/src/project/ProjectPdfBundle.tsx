@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import type { ActorContext } from '../access-types';
 import { grantOf, holds } from '../access/company-grants';
 import type { BrowserIdentity } from '../access-composition';
@@ -43,15 +49,8 @@ function capture({ actor, projectId, originalClientId }: Props) {
 }
 /** Each observed scope/identity transition retires the previous owner permanently, including A→B→A. */
 export function ProjectPdfBundle(props: Props) {
-  const key = capture(props);
-  const owner = useRef({ key, identity: props.identity, generation: 0 });
-  if (owner.current.key !== key || owner.current.identity !== props.identity)
-    owner.current = {
-      key,
-      identity: props.identity,
-      generation: owner.current.generation + 1,
-    };
-  return <BundleSession key={owner.current.generation} {...props} />;
+  const generation = useRequestLifetime(props.identity, capture(props));
+  return <BundleSession key={generation} {...props} />;
 }
 function BundleSession({
   actor,
@@ -68,19 +67,13 @@ function BundleSession({
   const [windowSize, setWindowSize] = useState(10);
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
-  const lifetime = useRef({
-    active: true,
-    requests: new Set<AbortController>(),
-    download: false,
-  });
-  useEffect(() => {
-    const owner = lifetime.current;
-    owner.active = true;
-    return () => {
-      owner.active = false;
-      for (const request of owner.requests) request.abort();
-    };
-  }, []);
+  const discoveryWork = useScopedOperationGroup('project-pdf-associations');
+  const versionWork = useScopedOperationGroup('project-pdf-versions');
+  const downloadWork = useScopedOperationGroup('project-pdf-download');
+  const captureRecovery = useAuthorityLifetime(
+    String(useActorObservation(actor)),
+    identity,
+  );
   const company = actor.activeCompany;
   const canRead =
     actor.active &&
@@ -93,16 +86,13 @@ function BundleSession({
     ) &&
     (actor.workspacePermissions.includes('client.manage') ||
       holds(company, 'company_director_client_access', 'client.read'));
-  function request() {
-    const controller = new AbortController();
-    lifetime.current.requests.add(controller);
-    return controller;
-  }
-  function live(controller: AbortController) {
-    return lifetime.current.active && !controller.signal.aborted;
+  function retire() {
+    discoveryWork.retire();
+    versionWork.retire();
+    downloadWork.retire();
   }
   function deny() {
-    for (const controller of lifetime.current.requests) controller.abort();
+    retire();
     setDiscovery({ kind: 'denied' });
     setReads(new Map());
     setSelected([]);
@@ -110,26 +100,29 @@ function BundleSession({
     setPending(false);
   }
   async function discover() {
-    if (!canRead || pending) return;
-    for (const controller of lifetime.current.requests) controller.abort();
+    if (!canRead || downloadWork.isPending()) return;
+    retire();
     setSelected([]);
     setReads(new Map());
     setFeedback(null);
     setWindowSize(10);
     setDiscovery({ kind: 'loading' });
-    const controller = request();
+    const request = discoveryWork.beginLatest();
+    if (!request) return;
+    const { signal } = request;
+    const canRejectSession = captureRecovery();
     let received = false;
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (!live(controller)) return;
+      if (signal.aborted) return;
       const result = await api.request(`/projects/${projectId}/documents`, {
         companyContextId: company?.id,
-        signal: controller.signal,
+        signal,
       });
-      if (!live(controller)) return;
+      if (signal.aborted) return;
       if (result.status === 'unauthorized') {
         deny();
-        await identity.rejectSession();
+        if (canRejectSession()) await identity.rejectSession();
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
@@ -148,29 +141,32 @@ function BundleSession({
       });
       setDiscovery({ kind: 'ready', documents });
     } catch {
-      if (live(controller))
+      if (!signal.aborted)
         setDiscovery({ kind: received ? 'malformed' : 'error' });
     } finally {
-      lifetime.current.requests.delete(controller);
+      request.release();
     }
   }
   async function loadVersions(row: Association) {
-    const controller = request();
+    const request = versionWork.begin();
+    if (!request) return;
+    const { signal } = request;
+    const canRejectSession = captureRecovery();
     setReads((current) =>
       new Map(current).set(row.document.id, { kind: 'loading' }),
     );
     let received = false;
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (!live(controller)) return;
+      if (signal.aborted) return;
       const result = await api.request(
         `/documents/${row.document.id}/versions`,
-        { companyContextId: company?.id, signal: controller.signal },
+        { companyContextId: company?.id, signal },
       );
-      if (!live(controller)) return;
+      if (signal.aborted) return;
       if (result.status === 'unauthorized') {
         deny();
-        await identity.rejectSession();
+        if (canRejectSession()) await identity.rejectSession();
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
@@ -192,14 +188,14 @@ function BundleSession({
         }),
       );
     } catch {
-      if (live(controller))
+      if (!signal.aborted)
         setReads((current) =>
           new Map(current).set(row.document.id, {
             kind: received ? 'malformed' : 'error',
           }),
         );
     } finally {
-      lifetime.current.requests.delete(controller);
+      request.release();
     }
   }
   function select(row: Association, version: DocumentVersion) {
@@ -242,24 +238,30 @@ function BundleSession({
     ]);
   }
   async function download() {
-    const owner = lifetime.current;
-    if (owner.download || selected.length === 0 || feedback === 'stale') return;
-    owner.download = true;
+    if (
+      downloadWork.isPending() ||
+      selected.length === 0 ||
+      feedback === 'stale'
+    )
+      return;
+    const request = downloadWork.begin();
+    if (!request) return;
+    const { signal } = request;
+    const canRejectSession = captureRecovery();
     setPending(true);
     setFeedback(null);
-    const controller = request();
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (!live(controller)) return;
+      if (signal.aborted) return;
       const result = await api.downloadSelection(
         `/projects/${projectId}/pdf-bundle`,
         JSON.stringify({ items: selected.map((s) => s.item) }),
-        { companyContextId: company?.id, signal: controller.signal },
+        { companyContextId: company?.id, signal },
       );
-      if (!live(controller)) return;
+      if (signal.aborted) return;
       if (result.status === 'unauthorized') {
         deny();
-        await identity.rejectSession();
+        if (canRejectSession()) await identity.rejectSession();
         return;
       }
       if (result.status === 'forbidden' || result.status === 'notFound') {
@@ -288,11 +290,10 @@ function BundleSession({
         URL.revokeObjectURL(url);
       }
     } catch {
-      if (live(controller)) setFeedback('error');
+      if (!signal.aborted) setFeedback('error');
     } finally {
-      owner.download = false;
-      owner.requests.delete(controller);
-      if (live(controller)) setPending(false);
+      request.release();
+      if (!signal.aborted) setPending(false);
     }
   }
   return (

@@ -552,6 +552,39 @@ it('discards late results when Company or actor authority changes', async () => 
   ).not.toBeInTheDocument();
 });
 
+it('keeps the refreshed Actor signed in when an earlier Document listing rejects authentication', async () => {
+  let finish: ((response: Response) => void) | undefined;
+  const fetcher = vi.fn(
+    () =>
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  vi.stubGlobal('fetch', fetcher);
+  const rejectSession = vi.fn(async () => undefined);
+  const identity = { ...deterministicBrowserIdentity(), rejectSession };
+  const view = render(
+    <ProjectDocuments actor={actor} identity={identity} projectId="project" />,
+  );
+  await waitFor(() => expect(fetcher).toHaveBeenCalledOnce());
+  view.rerender(
+    <ProjectDocuments
+      actor={{ ...actor, displayName: 'Refreshed Owner' }}
+      identity={identity}
+      projectId="project"
+    />,
+  );
+  await act(async () => {
+    if (!finish) throw new Error('Expected the held Document listing.');
+    finish(new Response(null, { status: 401 }));
+  });
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'read access are required',
+  );
+  expect(fetcher).toHaveBeenCalledOnce();
+  expect(rejectSession).not.toHaveBeenCalled();
+});
+
 it('finds one eligible Document among similar rows and attaches exactly that row', async () => {
   const { commands, fetcher } = selectorFixture(eligibleRows, () =>
     Response.json({
@@ -801,6 +834,51 @@ it('closes a loading selector, abandons its request and reopens a fresh one', as
   ]);
 });
 
+it('keeps an admitted unlink pending when an obsolete eligible read returns a refusal', async () => {
+  let eligibleReply: ((value: Response) => void) | undefined;
+  let unlinkReply: ((value: Response) => void) | undefined;
+  const attempts: Command[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, options?: RequestInit) => {
+      if (url.endsWith('/eligible-documents')) {
+        return new Promise<Response>((resolve) => {
+          eligibleReply = resolve;
+        });
+      }
+      if (options?.method === 'POST') {
+        attempts.push({
+          url,
+          key: new Headers(options.headers).get('idempotency-key'),
+          body: options.body,
+        });
+        if (attempts.length === 1)
+          return new Promise<Response>((resolve) => {
+            unlinkReply = resolve;
+          });
+        return new Response(null, { status: 503 });
+      }
+      return Response.json({ mutable: true, documents: linkedRows });
+    }),
+  );
+  renderSession();
+  await openSelector();
+  await waitFor(() => expect(eligibleReply).toBeDefined());
+  fireEvent.click(
+    screen.getByRole('button', { name: `Remove ${linkedDocument.title}` }),
+  );
+  await waitFor(() => expect(unlinkReply).toBeDefined());
+  await act(async () => eligibleReply?.(new Response(null, { status: 403 })));
+  expect(screen.getByRole('button', { name: /reload/i })).toBeDisabled();
+
+  await act(async () => unlinkReply?.(new Response(null, { status: 503 })));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Retry unchanged command' }),
+  );
+  await waitFor(() => expect(attempts).toHaveLength(2));
+  expect(attempts[1]).toEqual(attempts[0]);
+});
+
 it('clears previously loaded links when the selector discovers revoked read access', async () => {
   vi.stubGlobal(
     'fetch',
@@ -959,4 +1037,59 @@ it('refuses a received Audit source in an ordinary Project Document projection b
   expect(
     screen.queryByText('Fictional withheld source'),
   ).not.toBeInTheDocument();
+});
+
+it('admits a new eligible read while confirmed unlink Activity Log refresh is held', async () => {
+  let linked = true;
+  let finishActivity: (() => void) | undefined;
+  const onActivityRecorded = vi.fn(
+    () =>
+      new Promise<void>((resolve) => {
+        finishActivity = resolve;
+      }),
+  );
+  const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'POST') {
+      linked = false;
+      return Response.json({
+        documentId: linkedDocument.id,
+        projectId: 'project',
+        action: 'unlink',
+        revision: 2,
+      });
+    }
+    return Response.json({
+      mutable: true,
+      documents: url.endsWith('/eligible-documents')
+        ? eligibleRows
+        : linked
+          ? linkedRows
+          : [],
+    });
+  });
+  vi.stubGlobal('fetch', fetcher);
+  render(
+    <ProjectDocuments
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+      projectId="project"
+      onActivityRecorded={onActivityRecorded}
+    />,
+  );
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `Remove ${linkedDocument.title}`,
+    }),
+  );
+  await screen.findByText('No working Documents attached.');
+  await waitFor(() => expect(onActivityRecorded).toHaveBeenCalledOnce());
+  const choose = screen.getByRole('button', {
+    name: 'Attach working Document',
+  });
+  expect(choose).toBeEnabled();
+  fireEvent.click(choose);
+  expect(
+    await screen.findByRole('searchbox', { name: searchLabel }),
+  ).toBeVisible();
+  await act(async () => finishActivity?.());
 });

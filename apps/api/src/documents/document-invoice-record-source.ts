@@ -1,3 +1,4 @@
+import { DocumentFamilyAccess } from './document-family-access.js';
 import {
   ConflictException,
   ForbiddenException,
@@ -102,6 +103,7 @@ export interface DocumentInvoiceSelectable {
 @Injectable()
 export class DocumentInvoiceRecordSource {
   constructor(
+    private readonly familyAccess: DocumentFamilyAccess,
     private readonly database: DatabaseContext,
     private readonly access: CompanyContextAuthorization,
     private readonly boundary: DocumentReadBoundary,
@@ -117,10 +119,12 @@ export class DocumentInvoiceRecordSource {
       }))
     )
       throw new ForbiddenException();
-    await this.access.requireExternalInvoiceNativeAccess(actor, {
-      action: 'content-read',
-      lockAssignment: true,
-    });
+    await this.familyAccess.requireFamilyAccess(
+      actor,
+      'external-invoice',
+      'content-read',
+      { lock: true },
+    );
     await this.contracts.requireReadAuthority(actor, true);
     if (tuple) {
       const visible = await this.boundary.requireVisible(
@@ -284,10 +288,14 @@ export class DocumentInvoiceRecordSource {
     actor: ActorContext,
     after?: DocumentInvoiceTuple,
   ): Promise<{ items: DocumentInvoiceSelectable[]; hasMore: boolean }> {
-    const companyId = await this.access.requireExternalInvoiceNativeAccess(
+    await this.familyAccess.requireFamilyAccess(
       actor,
-      { action: 'content-read', lockAssignment: true },
+      'external-invoice',
+      'content-read',
+      { lock: true },
     );
+    const companyId = actor.activeCompany?.id;
+    if (companyId === undefined) throw new ForbiddenException();
     await this.requireAuthority(actor);
     const result = await documentVersionPdfQuery(
       this.database.connection
@@ -406,10 +414,12 @@ export class DocumentInvoiceRecordSource {
               },
             ],
           });
-          await this.access.requireExternalInvoiceNativeAccess(actor, {
-            action: 'content-read',
-            lockAssignment: false,
-          });
+          await this.familyAccess.requireFamilyAccess(
+            actor,
+            'external-invoice',
+            'content-read',
+            { lock: false },
+          );
           const [pdf] = await this.database.connection
             .select({
               fileName: documentPdfs.fileName,
