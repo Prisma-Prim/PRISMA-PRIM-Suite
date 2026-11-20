@@ -162,6 +162,10 @@ const pageLabels: Record<PageId, string> = {
   coverage: 'Couverture MVP',
 };
 
+function isPageId(value: string): value is PageId {
+  return Object.hasOwn(pageLabels, value);
+}
+
 const offersSeed = [
   {
     id: 'OFR-2026-142',
@@ -169,7 +173,7 @@ const offersSeed = [
     version: 'v2',
     status: 'sent',
     label: 'Envoyée',
-    tone: 'info' as Tone,
+    tone: 'info',
     total: '8 424,60 €',
     source: 'CAL-0281-03',
   },
@@ -179,7 +183,7 @@ const offersSeed = [
     version: 'v3',
     status: 'accepted',
     label: 'Acceptée',
-    tone: 'success' as Tone,
+    tone: 'success',
     total: '4 800,00 €',
     source: 'CAL-0278-02',
   },
@@ -189,7 +193,7 @@ const offersSeed = [
     version: 'v1',
     status: 'qa_failed',
     label: 'QA échouée',
-    tone: 'danger' as Tone,
+    tone: 'danger',
     total: '6 190,00 €',
     source: 'CAL-0284-01',
   },
@@ -199,7 +203,7 @@ const offersSeed = [
     version: 'v2',
     status: 'pending_approval',
     label: 'À approuver',
-    tone: 'warning' as Tone,
+    tone: 'warning',
     total: '3 240,00 €',
     source: 'CAL-0277-03',
   },
@@ -209,7 +213,7 @@ const offersSeed = [
     version: 'v1',
     status: 'superseded',
     label: 'Remplacée',
-    tone: 'neutral' as Tone,
+    tone: 'neutral',
     total: '2 980,00 €',
     source: 'CAL-0270-01',
   },
@@ -219,11 +223,20 @@ const offersSeed = [
     version: 'v1',
     status: 'expired',
     label: 'Expirée',
-    tone: 'warning' as Tone,
+    tone: 'warning',
     total: '2 460,00 €',
     source: 'CAL-0268-01',
   },
-];
+] as const satisfies readonly {
+  tone: Tone;
+  id: string;
+  client: string;
+  version: string;
+  status: string;
+  label: string;
+  total: string;
+  source: string;
+}[];
 
 const contractsSeed = [
   {
@@ -233,7 +246,7 @@ const contractsSeed = [
     offer: 'OFR-2026-139 v3',
     status: 'signed',
     label: 'Signé',
-    tone: 'success' as Tone,
+    tone: 'success',
     total: '4 800,00 €',
   },
   {
@@ -243,7 +256,7 @@ const contractsSeed = [
     offer: 'OFR-2026-145 v2',
     status: 'qa_failed',
     label: 'QA échouée',
-    tone: 'danger' as Tone,
+    tone: 'danger',
     total: '6 190,00 €',
   },
   {
@@ -253,7 +266,7 @@ const contractsSeed = [
     offer: 'OFR-2026-137 v2',
     status: 'approved',
     label: 'Approuvé',
-    tone: 'info' as Tone,
+    tone: 'info',
     total: '3 240,00 €',
   },
   {
@@ -263,10 +276,19 @@ const contractsSeed = [
     offer: 'OFR-2026-128 v1',
     status: 'superseded',
     label: 'Remplacé',
-    tone: 'neutral' as Tone,
+    tone: 'neutral',
     total: '2 980,00 €',
   },
-];
+] as const satisfies readonly {
+  tone: Tone;
+  id: string;
+  client: string;
+  version: string;
+  status: string;
+  label: string;
+  total: string;
+  offer: string;
+}[];
 
 const auditSeed = [
   [
@@ -352,22 +374,19 @@ function initials(name: string) {
     .toUpperCase();
 }
 function workflowLabel(value: string) {
-  return (
-    (
-      {
-        draft: 'Brouillon',
-        qa_failed: 'QA échouée',
-        pending_approval: 'À approuver',
-        approved: 'Approuvé',
-        sent: 'Envoyé',
-        accepted: 'Accepté',
-        rejected: 'Rejeté',
-        expired: 'Expiré',
-        signed: 'Signé',
-        superseded: 'Remplacé',
-      } as Record<string, string>
-    )[value] || value
-  );
+  const labels: Record<string, string> = {
+    draft: 'Brouillon',
+    qa_failed: 'QA échouée',
+    pending_approval: 'À approuver',
+    approved: 'Approuvé',
+    sent: 'Envoyé',
+    accepted: 'Accepté',
+    rejected: 'Rejeté',
+    expired: 'Expiré',
+    signed: 'Signé',
+    superseded: 'Remplacé',
+  };
+  return labels[value] || value;
 }
 
 function Status({
@@ -875,29 +894,36 @@ function Dashboard({
           <Button onClick={() => open('case', 'all')}>Voir les 20 cas</Button>
         </header>
         <div>
-          {[
+          {(
             [
-              'Temps gagné',
-              '62 %',
-              '596 min économisées / 960 min de référence',
-              Clock3,
-            ],
-            ['Extraction', '93 %', '268 champs exacts / 288 contrôlés', Bot],
-            ['Calcul exact', '100 %', '16 résultats exacts / 16', Gauge],
-            ['Traçabilité', '100 %', '16 dossiers complets / 16', History],
-            [
-              'Erreurs détectées',
-              '9',
-              '7 erreurs · 2 avertissements',
-              AlertTriangle,
-            ],
-            ['Corrections humaines', '20', '20 valeurs corrigées / 288', Edit3],
-          ].map(([a, b, c, Icon]) => (
+              [
+                'Temps gagné',
+                '62 %',
+                '596 min économisées / 960 min de référence',
+                Clock3,
+              ],
+              ['Extraction', '93 %', '268 champs exacts / 288 contrôlés', Bot],
+              ['Calcul exact', '100 %', '16 résultats exacts / 16', Gauge],
+              ['Traçabilité', '100 %', '16 dossiers complets / 16', History],
+              [
+                'Erreurs détectées',
+                '9',
+                '7 erreurs · 2 avertissements',
+                AlertTriangle,
+              ],
+              [
+                'Corrections humaines',
+                '20',
+                '20 valeurs corrigées / 288',
+                Edit3,
+              ],
+            ] as const
+          ).map(([a, b, c, Icon]) => (
             <button key={String(a)} onClick={() => open('case', String(a))}>
               <Icon />
-              <small>{a as string}</small>
-              <strong>{b as string}</strong>
-              <span>{c as string}</span>
+              <small>{a}</small>
+              <strong>{b}</strong>
+              <span>{c}</span>
             </button>
           ))}
         </div>
@@ -1231,6 +1257,10 @@ const analysisCopy: Record<
   },
 };
 
+function isAnalysisState(value: string): value is AnalysisState {
+  return Object.hasOwn(analysisCopy, value);
+}
+
 function AnalysisPanel({
   request,
   state,
@@ -1261,15 +1291,17 @@ function AnalysisPanel({
     <div>
       <div className="scenario-strip">
         <b>Scénarios de démonstration</b>
-        {(Object.keys(analysisCopy) as AnalysisState[]).map((k) => (
-          <button
-            key={k}
-            className={state === k ? 'active' : ''}
-            onClick={() => setState(k)}
-          >
-            {analysisCopy[k].title.replace('Analyse ', '')}
-          </button>
-        ))}
+        {Object.keys(analysisCopy)
+          .filter(isAnalysisState)
+          .map((k) => (
+            <button
+              key={k}
+              className={state === k ? 'active' : ''}
+              onClick={() => setState(k)}
+            >
+              {analysisCopy[k].title.replace('Analyse ', '')}
+            </button>
+          ))}
       </div>
       <div className={`state-banner ${c.tone}`}>
         <span>
@@ -3163,7 +3195,6 @@ function CatalogPage({
   open: (k: ModalKind, d?: string) => void;
   notify: (s: string) => void;
 }) {
-  const [tab, setTab] = useState('active');
   const data = {
     active: [
       [
@@ -3199,6 +3230,7 @@ function CatalogPage({
       ],
     ],
   } as const;
+  const [tab, setTab] = useState<keyof typeof data>('active');
   return (
     <div className="page">
       <Heading
@@ -3213,11 +3245,13 @@ function CatalogPage({
         }
       />
       <div className="tabs">
-        {[
-          ['active', 'Actifs'],
-          ['draft', 'Brouillons'],
-          ['archived', 'Archivés'],
-        ].map(([id, l]) => (
+        {(
+          [
+            ['active', 'Actifs'],
+            ['draft', 'Brouillons'],
+            ['archived', 'Archivés'],
+          ] as const
+        ).map(([id, l]) => (
           <button
             className={tab === id ? 'active' : ''}
             key={id}
@@ -3241,7 +3275,7 @@ function CatalogPage({
             </tr>
           </thead>
           <tbody>
-            {data[tab as keyof typeof data].map((r) => (
+            {data[tab].map((r) => (
               <tr key={r[0]}>
                 <td>
                   <b>{r[1]}</b>
@@ -3506,10 +3540,12 @@ function UsersPage({
             </article>
           ))}
         {tab === 'pending' &&
-          [
-            ['VM', 'Victor Munteanu', 'Expire dans 3 jours', 'warning'],
-            ['AC', 'Ana Cebotari', 'Invitation expirée', 'danger'],
-          ].map((u) => (
+          (
+            [
+              ['VM', 'Victor Munteanu', 'Expire dans 3 jours', 'warning'],
+              ['AC', 'Ana Cebotari', 'Invitation expirée', 'danger'],
+            ] as const
+          ).map((u) => (
             <article key={u[1]}>
               <span>{u[0]}</span>
               <div>
@@ -3517,7 +3553,7 @@ function UsersPage({
                 <small>{u[1].toLowerCase().replace(' ', '.')}@prisma.md</small>
               </div>
               <p>{u[2]}</p>
-              <Status tone={u[3] as Tone}>{u[2]}</Status>
+              <Status tone={u[3]}>{u[2]}</Status>
               <Button
                 kind="ghost"
                 onClick={() =>
@@ -3867,7 +3903,15 @@ function FieldModal({
         <select
           value={state}
           onChange={(e) => {
-            setState(e.target.value as ReviewField['state']);
+            const value = e.target.value;
+            if (
+              value !== 'confirmed' &&
+              value !== 'corrected' &&
+              value !== 'inferred' &&
+              value !== 'missing'
+            )
+              return;
+            setState(value);
             setDirty(true);
           }}
         >
@@ -3963,12 +4007,14 @@ function CreateRequestModal({
       {step === 1 && (
         <>
           <div className="channel-grid">
-            {[
-              ['Email', Mail],
-              ['Documents', UploadCloud],
-              ['Formulaire', ClipboardCheck],
-              ['Saisie', Edit3],
-            ].map(([l, Icon]) => (
+            {(
+              [
+                ['Email', Mail],
+                ['Documents', UploadCloud],
+                ['Formulaire', ClipboardCheck],
+                ['Saisie', Edit3],
+              ] as const
+            ).map(([l, Icon]) => (
               <button
                 className={channel === l ? 'active' : ''}
                 key={String(l)}
@@ -3978,7 +4024,7 @@ function CreateRequestModal({
                 }}
               >
                 <Icon />
-                <b>{l as string}</b>
+                <b>{l}</b>
               </button>
             ))}
           </div>
@@ -4965,7 +5011,7 @@ export function PrismaCertUiBaseline() {
   );
   const [modal, setModal] = useState<ModalState>(null);
   const [toast, setToast] = useState('');
-  const trigger = useRef<HTMLElement | null>(null);
+  const trigger = useRef<(() => void) | null>(null);
   const [analysis, setAnalysis] = useState<Record<string, AnalysisState>>(
     Object.fromEntries(requests.map((r) => [r.ref, r.analysis])),
   );
@@ -5010,12 +5056,16 @@ export function PrismaCertUiBaseline() {
     go(`${route}${suffix}`);
   };
   const open = (kind: ModalKind, data?: string) => {
-    trigger.current = document.activeElement as HTMLElement;
+    const active = document.activeElement;
+    trigger.current =
+      active && 'focus' in active && typeof active.focus === 'function'
+        ? active.focus.bind(active)
+        : null;
     setModal({ kind, data });
   };
   const close = () => {
     setModal(null);
-    requestAnimationFrame(() => trigger.current?.focus());
+    requestAnimationFrame(() => trigger.current?.());
   };
   const notify = (s: string) => setToast(s);
   useEffect(() => {
@@ -5029,28 +5079,11 @@ export function PrismaCertUiBaseline() {
     return () => window.removeEventListener('keydown', key);
   });
   const parts = route.split('/').filter(Boolean);
-  let page = (parts[0] || 'dashboard') as PageId;
-  if (
-    ![
-      'dashboard',
-      'requests',
-      'request',
-      'clients',
-      'offers',
-      'contracts',
-      'projects',
-      'documents',
-      'catalog',
-      'activity',
-      'users',
-      'coverage',
-    ].includes(page)
-  )
-    page = 'dashboard';
+  const requestedPage = parts[0] ?? '';
+  const page: PageId = isPageId(requestedPage) ? requestedPage : 'dashboard';
   const req = requests.find((r) => r.ref === parts[1]) || requests[0];
-  const stage = (
-    stages.some((s) => s.id === parts[2]) ? parts[2] : req.stage
-  ) as Stage;
+  const stage =
+    stages.find((option) => option.id === parts[2])?.id ?? req.stage;
   const fields = fieldSets[req.ref] || baseFields;
   const context =
     page === 'request'

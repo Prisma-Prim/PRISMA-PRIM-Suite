@@ -31,10 +31,5 @@
     "no-restricted-syntax": {
       "count": 3
     }
-  },
-  "apps/web/src/ui-baseline/PrismaCertUiBaseline.tsx": {
-    "@typescript-eslint/consistent-type-assertions": {
-      "count": 22
-    }
   }
 }
