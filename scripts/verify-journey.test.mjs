@@ -298,6 +298,7 @@ test('names the journeys that opt into UI chaos and refuses chaos on any other',
   assert.deepEqual(await listChaosJourneys(fixture), ['a']);
   assert.deepEqual(await listChaosJourneys(root), [
     'access-action-sequences',
+    'certification-action-sequences',
     'certification-journey',
     'contract-action-sequences',
     'document-action-sequences',
@@ -728,7 +729,7 @@ test('command line: chaos on a journey without the chaos fixture is a usage erro
   assert.match(child.stderr, /"ideas" has not opted into UI chaos/u);
   assert.match(
     child.stderr,
-    /access-action-sequences, certification-journey, contract-action-sequences, document-action-sequences, financial-action-sequences, mission-result-action-sequences, multi-company-home, offer-owner-action-sequences, operational-risk-action-sequences, pricing-owner-action-sequences, profitability-owner-action-sequences/u,
+    /access-action-sequences, certification-action-sequences, certification-journey, contract-action-sequences, document-action-sequences, financial-action-sequences, mission-result-action-sequences, multi-company-home, offer-owner-action-sequences, operational-risk-action-sequences, pricing-owner-action-sequences, profitability-owner-action-sequences/u,
   );
   assert.equal(child.final.status, 'usage-error');
 });

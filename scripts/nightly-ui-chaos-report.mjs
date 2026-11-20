@@ -30,6 +30,7 @@ export const CHAOS_JOURNEYS = [
   'project-task-action-sequences',
   'operational-risk-action-sequences',
   'working-evidence-action-sequences',
+  'certification-action-sequences',
 ];
 const INSPECTION_LABEL = 'weekly-inspection';
 const BUG_LABEL = 'fuzz-found';
