@@ -33,10 +33,8 @@ const nextActor: ActorContext = {
   workspaceName: 'Next Workspace',
 };
 
-const companies = [
-  { id: 'company-a', displayName: 'Company A' },
-  { id: 'company-b', displayName: 'Company B' },
-];
+const companyA = { id: 'company-a', displayName: 'Company A' };
+const companies = [companyA, { id: 'company-b', displayName: 'Company B' }];
 
 describe('production shell session', () => {
   beforeEach(() => localStorage.clear());
@@ -368,7 +366,7 @@ describe('production shell session', () => {
         };
       },
       async loadCompanies() {
-        return { status: 'ok', value: [companies[0]!] };
+        return { status: 'ok', value: [companyA] };
       },
       async loadActivityLog({ companyId }) {
         return activitySuccess(companyId);
@@ -411,7 +409,7 @@ describe('production shell session', () => {
           };
         },
         async loadCompanies() {
-          return { status: 'ok', value: [companies[0]!] };
+          return { status: 'ok', value: [companyA] };
         },
         loadActivityLog,
       }),
@@ -455,7 +453,7 @@ describe('production shell session', () => {
       label: 'empty',
       result: {
         status: 'ok' as const,
-        value: [] as { id: string; displayName: string }[],
+        value: [],
       },
       expected: { status: 'ready', cardinality: 'zero', companies: [] },
     },
@@ -638,7 +636,7 @@ describe('production shell session', () => {
       transport: transportWith({
         loadActor,
         async loadCompanies() {
-          return { status: 'ok', value: [companies[0]!] };
+          return { status: 'ok', value: [companyA] };
         },
         async loadActivityLog({ companyId }) {
           activityRequest += 1;
@@ -690,7 +688,7 @@ describe('production shell session', () => {
           };
         },
         async loadCompanies() {
-          return { status: 'ok', value: [companies[0]!] };
+          return { status: 'ok', value: [companyA] };
         },
         async loadActivityLog({ companyId, signal }) {
           activityRequest += 1;
@@ -724,12 +722,14 @@ describe('production shell session', () => {
         events: [{ id: 'activity-after-mutation' }],
       },
     });
+    const [originalEvent] = activitySuccess('company-a').value.events;
+    if (!originalEvent) throw new Error('Expected the initial Activity event.');
     initialActivity.resolve({
       status: 'ok',
       value: {
         events: [
           {
-            ...activitySuccess('company-a').value.events[0]!,
+            ...originalEvent,
             id: 'stale-activity',
           },
         ],
@@ -749,7 +749,7 @@ describe('production shell session', () => {
     const initiallyAuthorizedActor: ActorContext = {
       ...selectedActor('company-a'),
       activeCompany: {
-        ...selectedActor('company-a').activeCompany!,
+        ...selectedActor('company-a').activeCompany,
 
         grants: withCompanyGrants(
           selectedActor('company-a').activeCompany?.grants,
@@ -774,7 +774,7 @@ describe('production shell session', () => {
           };
         },
         async loadCompanies() {
-          return { status: 'ok', value: [companies[0]!] };
+          return { status: 'ok', value: [companyA] };
         },
         async loadActivityLog({ companyId }) {
           activityRequest += 1;
@@ -784,10 +784,13 @@ describe('production shell session', () => {
     });
     await vi.waitFor(() => expect(activityRequest).toBe(1));
 
+    const initiallyAuthorizedCompany = initiallyAuthorizedActor.activeCompany;
+    if (!initiallyAuthorizedCompany)
+      throw new Error('Expected an active Company in the fixture.');
     await observed.current().acceptRevalidatedActor({
       ...initiallyAuthorizedActor,
       activeCompany: {
-        ...initiallyAuthorizedActor.activeCompany!,
+        ...initiallyAuthorizedCompany,
 
         grants: withoutCompanyGrants(
           initiallyAuthorizedActor.activeCompany?.grants,
@@ -891,7 +894,7 @@ describe('production shell session', () => {
           };
         },
         async loadCompanies() {
-          return { status: 'ok', value: [companies[0]!] };
+          return { status: 'ok', value: [companyA] };
         },
         async loadActivityLog() {
           return { status: 'forbidden' };
@@ -930,7 +933,7 @@ describe('production shell session', () => {
             : { status: 'forbidden' };
         },
         async loadCompanies() {
-          return { status: 'ok', value: [companies[0]!] };
+          return { status: 'ok', value: [companyA] };
         },
         async loadActivityLog() {
           return { status: 'forbidden' };
@@ -1012,13 +1015,13 @@ describe('production shell session', () => {
     await vi.waitFor(() => expect(selections.has('company-b')).toBe(true));
 
     expect(signals.get('company-a')?.aborted).toBe(true);
-    selections
-      .get('company-b')!
-      .resolve({ status: 'ok', value: selectedActor('company-b') });
+    const selectionB = selections.get('company-b');
+    if (!selectionB) throw new Error('Expected Company B selection.');
+    selectionB.resolve({ status: 'ok', value: selectedActor('company-b') });
     await newer;
-    selections
-      .get('company-a')!
-      .resolve({ status: 'ok', value: selectedActor('company-a') });
+    const selectionA = selections.get('company-a');
+    if (!selectionA) throw new Error('Expected Company A selection.');
+    selectionA.resolve({ status: 'ok', value: selectedActor('company-a') });
     await older;
 
     expect(observed.current().shellContext).toMatchObject({
@@ -1145,7 +1148,7 @@ async function waitForReady(
   );
 }
 
-function selectedActor(companyId: string): ActorContext {
+function selectedActor(companyId: string) {
   const company = companies.find(({ id }) => id === companyId);
   return {
     ...baseActor,

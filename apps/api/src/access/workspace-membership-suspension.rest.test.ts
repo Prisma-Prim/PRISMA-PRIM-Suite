@@ -1,3 +1,4 @@
+import { requireFirstRow } from '../../test-support/require-first-row.js';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -435,12 +436,15 @@ describeWithPostgres('Workspace Membership suspension REST API', () => {
       `INSERT INTO workspace_memberships (workspace_id, internal_user_id)
        VALUES ($1, $2)
        RETURNING id`,
-      [foreignWorkspace.rows[0]!.id, foreignUser.rows[0]!.id],
+      [
+        requireFirstRow(foreignWorkspace.rows).id,
+        requireFirstRow(foreignUser.rows).id,
+      ],
     );
     await expectForbidden(
       await suspendAs(
         'workspace-owner',
-        foreignMembership.rows[0]!.id,
+        requireFirstRow(foreignMembership.rows).id,
         'foreign-suspension',
       ),
     );
@@ -495,7 +499,7 @@ describeWithPostgres('Workspace Membership suspension REST API', () => {
         target.workspaceMembershipId,
         'stale-actor-suspension',
       );
-      await waitForWorkspaceLock(blockerBackend.rows[0]!.pid);
+      await waitForWorkspaceLock(requireFirstRow(blockerBackend.rows).pid);
       const revoked = await pool.query(
         `DELETE FROM workspace_permission_grants
          WHERE workspace_id = $1
@@ -647,7 +651,7 @@ describeWithPostgres('Workspace Membership suspension REST API', () => {
          membership.id, membership.status`,
       [workspaceMembershipId],
     );
-    return result.rows[0]!;
+    return requireFirstRow(result.rows);
   }
 
   async function waitForWorkspaceLock(blockingPid: number) {

@@ -1,3 +1,4 @@
+import { requireFirstRow } from '../../test-support/require-first-row.js';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -765,7 +766,7 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
        WHERE command.workspace_id = $1`,
       [workspaceId],
     );
-    expect(auditedCommands.rows[0]!.count).toBe('9');
+    expect(requireFirstRow(auditedCommands.rows).count).toBe('9');
   });
 
   it('uses one metadata-safe denial for unauthorized actors and invalid grant targets', async () => {
@@ -852,7 +853,10 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
       `INSERT INTO workspace_memberships (workspace_id, internal_user_id)
        VALUES ($1, $2)
        RETURNING id`,
-      [foreignWorkspace.rows[0]!.id, foreignUser.rows[0]!.id],
+      [
+        requireFirstRow(foreignWorkspace.rows).id,
+        requireFirstRow(foreignUser.rows).id,
+      ],
     );
     const foreignCompany = await pool.query<{ id: string }>(
       `INSERT INTO companies (
@@ -861,15 +865,15 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
        ) VALUES ($1, 'Foreign Company', $2, $3, 'foreign-assignment-company')
        RETURNING id`,
       [
-        foreignWorkspace.rows[0]!.id,
-        foreignUser.rows[0]!.id,
-        foreignMembership.rows[0]!.id,
+        requireFirstRow(foreignWorkspace.rows).id,
+        requireFirstRow(foreignUser.rows).id,
+        requireFirstRow(foreignMembership.rows).id,
       ],
     );
     await expectForbidden(
       await grantAs(
         'workspace-owner',
-        foreignMembership.rows[0]!.id,
+        requireFirstRow(foreignMembership.rows).id,
         company.id,
       ),
     );
@@ -877,7 +881,7 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
       await grantAs(
         'workspace-owner',
         member.workspaceMembershipId,
-        foreignCompany.rows[0]!.id,
+        requireFirstRow(foreignCompany.rows).id,
       ),
     );
 
@@ -1064,7 +1068,7 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
        WHERE workspace_membership_id = $1 AND company_id = $2 AND revoked_at IS NULL`,
       [workspaceMembershipId, companyId],
     );
-    return result.rows[0]!.count;
+    return requireFirstRow(result.rows).count;
   }
 
   async function installAssignmentEventFailureTrigger() {

@@ -6,7 +6,12 @@ const actor = {
   internalUserId: 'user-1',
   workspaceMembershipId: 'membership-1',
   workspaceId: 'workspace-1',
-} as ActorContext;
+  workspaceName: 'Workspace',
+  displayName: 'Ada',
+  email: 'ada@example.test',
+  active: true,
+  workspacePermissions: [],
+} satisfies ActorContext;
 
 describe('Company context preference store', () => {
   it('isolates preferences by Workspace Membership', () => {

@@ -18,6 +18,17 @@ import {
   operationalHomeFixture,
 } from './actor-context.fixture';
 
+type CompanyFixture = { id: string; displayName: string };
+
+function companyDisplayName(
+  companies: readonly CompanyFixture[],
+  id: string,
+): string {
+  const company = companies.find((entry) => entry.id === id);
+  if (!company) throw new Error(`Expected Company ${id} in the fixture.`);
+  return company.displayName;
+}
+
 /** Prisme keeps the Company selector in the navigation drawer when narrow. */
 async function openNavigation(page: Page, testInfo: TestInfo) {
   if (testInfo.project.name === 'narrow')
@@ -293,7 +304,8 @@ test('lets an authorized Workspace owner register and immediately view a Company
     companyChoices.getByRole('option', { name: 'North Star Consulting' }),
   ).toHaveCount(1);
   await expect.poll(() => pendingActivity !== undefined).toBe(true);
-  await pendingActivity!.fulfill({ json: { events: [] } });
+  if (!pendingActivity) throw new Error('Expected a held Activity request.');
+  await pendingActivity.fulfill({ json: { events: [] } });
   await expect(
     companyChoices.getByRole('option', { name: 'North Star Consulting' }),
   ).toHaveCount(1);
@@ -360,7 +372,7 @@ test('selects and restores one server-validated Company context', async ({
       createdAt: '2026-08-15T10:35:00.000Z',
       createdByInternalUserId: actorContextFixture.internalUserId,
     },
-  ];
+  ] as const;
   const validatedSelections: string[] = [];
   await page.route('**/api/access/current-actor', (route) => {
     const selectedId = route.request().headers()['x-company-context-id'];
@@ -393,9 +405,9 @@ test('selects and restores one server-validated Company context', async ({
   await expect(breadcrumb(page)).toContainText('PRISMA Workspace');
   await expect(breadcrumb(page)).toContainText('No active Company');
 
-  await chooseCompany(page, testInfo, companies[1]!.id);
+  await chooseCompany(page, testInfo, companies[1].id);
   await expect(breadcrumb(page)).toContainText('North Star Consulting');
-  expect(validatedSelections).toContain(companies[1]!.id);
+  expect(validatedSelections).toContain(companies[1].id);
   await expect
     .poll(() =>
       page.evaluate(
@@ -403,11 +415,11 @@ test('selects and restores one server-validated Company context', async ({
         companyContextStorageKey(),
       ),
     )
-    .toBe(companies[1]!.id);
+    .toBe(companies[1].id);
 
-  await chooseCompany(page, testInfo, companies[0]!.id);
+  await chooseCompany(page, testInfo, companies[0].id);
   await expect(breadcrumb(page)).toContainText('Atlas Assurance');
-  expect(validatedSelections).toContain(companies[0]!.id);
+  expect(validatedSelections).toContain(companies[0].id);
   await expect
     .poll(() =>
       page.evaluate(
@@ -415,12 +427,12 @@ test('selects and restores one server-validated Company context', async ({
         companyContextStorageKey(),
       ),
     )
-    .toBe(companies[0]!.id);
+    .toBe(companies[0].id);
 
   await page.reload();
   await expect(breadcrumb(page)).toContainText('Atlas Assurance');
   expect(
-    validatedSelections.filter((id) => id === companies[0]!.id),
+    validatedSelections.filter((id) => id === companies[0].id),
   ).toHaveLength(2);
 
   const geometry = await page.evaluate(() => ({
@@ -446,7 +458,7 @@ test('does not clear a newer Company when an older registration is rejected', as
       id: '00000000-0000-4000-8000-000000000031',
       displayName: 'Company B',
     },
-  ];
+  ] as const;
   let pendingRegistration: Route | undefined;
   await page.route('**/api/access/current-actor', (route) => {
     const selectedId = route.request().headers()['x-company-context-id'];
@@ -472,18 +484,20 @@ test('does not clear a newer Company when an older registration is rejected', as
   );
 
   await page.goto('/#companies');
-  await chooseCompany(page, testInfo, companies[0]!.id);
+  await chooseCompany(page, testInfo, companies[0].id);
   await page.getByLabel('Company display name').fill('Delayed registration');
   await page.getByRole('button', { name: 'Register Company' }).click();
   await expect.poll(() => pendingRegistration !== undefined).toBe(true);
 
-  await chooseCompany(page, testInfo, companies[1]!.id);
-  await pendingRegistration!.fulfill({
+  await chooseCompany(page, testInfo, companies[1].id);
+  if (!pendingRegistration)
+    throw new Error('Expected a held registration request.');
+  await pendingRegistration.fulfill({
     status: 403,
     json: { message: 'Forbidden', statusCode: 403 },
   });
 
-  await expectValue(page.getByLabel('Active Company'), companies[1]!.id);
+  await expectValue(page.getByLabel('Active Company'), companies[1].id);
   await expect(breadcrumb(page)).toContainText('Company B');
   await expectValue(page.getByLabel('Company display name'), '');
   await expect(
@@ -890,7 +904,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
       id: '00000000-0000-4000-8000-000000001412',
       displayName: 'BIC',
     },
-  ];
+  ] as const;
   const client = {
     id: '00000000-0000-4000-8000-000000001413',
     displayName: 'Exemplu Client SRL',
@@ -931,14 +945,10 @@ test('creates and reuses one shared Client identity across two Company contexts'
               activeCompany: {
                 ...activeCompany,
 
-                grants: withCompanyGrants(activeCompany?.grants, {
+                grants: withCompanyGrants(undefined, {
                   bundle: 'company_director_client_access',
                   version: 'v1',
-                  assignmentId:
-                    grantOf(
-                      { grants: activeCompany?.grants },
-                      'company_director_client_access',
-                    )?.assignmentId ?? 'fixture-client-access',
+                  assignmentId: 'fixture-client-access',
                 }),
               },
             }
@@ -974,6 +984,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
     const url = new URL(request.url());
     const companyId = request.headers()['x-company-context-id'];
     expect(companyId).toBeTruthy();
+    if (!companyId) throw new Error('Expected the Company-context header.');
     if (url.pathname.endsWith('/legal-entities'))
       return route.fulfill({
         json: { clientVersion: dossier.version, legalEntities: [] },
@@ -985,14 +996,14 @@ test('creates and reuses one shared Client identity across two Company contexts'
         json: [
           {
             ...client,
-            relatedToActiveCompany: relatedCompanyIds.has(companyId!),
+            relatedToActiveCompany: relatedCompanyIds.has(companyId),
           },
         ],
       });
     }
     if (url.pathname.endsWith('/active-company-relationship')) {
       expect(request.method()).toBe('PUT');
-      relatedCompanyIds.add(companyId!);
+      relatedCompanyIds.add(companyId);
       activityEvents.push({
         id: `relationship-${companyId}`,
         action: 'client_company_relationship.established',
@@ -1007,8 +1018,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
           clientAccountId: client.id,
           clientDisplayName: client.displayName,
           companyId,
-          companyDisplayName: companies.find(({ id }) => id === companyId)!
-            .displayName,
+          companyDisplayName: companyDisplayName(companies, companyId),
         },
         metadata: {},
       });
@@ -1038,8 +1048,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
             clientAccountId: client.id,
             displayName: client.displayName,
             companyId,
-            companyDisplayName: companies.find(({ id }) => id === companyId)!
-              .displayName,
+            companyDisplayName: companyDisplayName(companies, companyId),
           },
           metadata: {
             changes: {
@@ -1055,9 +1064,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
       dossier = {
         ...dossier,
         involvedCompanyDisplayNames: [...relatedCompanyIds]
-          .map(
-            (id) => companies.find((company) => company.id === id)!.displayName,
-          )
+          .map((id) => companyDisplayName(companies, id))
           .sort(),
       };
       return route.fulfill({ json: dossier });
@@ -1067,7 +1074,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
       expect(request.postDataJSON()).toEqual({
         displayName: client.displayName,
       });
-      relatedCompanyIds.add(companyId!);
+      relatedCompanyIds.add(companyId);
       activityEvents.push(
         {
           id: 'client-created',
@@ -1098,8 +1105,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
             clientAccountId: client.id,
             clientDisplayName: client.displayName,
             companyId,
-            companyDisplayName: companies.find(({ id }) => id === companyId)!
-              .displayName,
+            companyDisplayName: companyDisplayName(companies, companyId),
           },
           metadata: {},
         },
@@ -1107,7 +1113,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
       return route.fulfill({ status: 201, json: client });
     }
     return route.fulfill({
-      json: relatedCompanyIds.has(companyId!) ? [client] : [],
+      json: relatedCompanyIds.has(companyId) ? [client] : [],
     });
   });
 
@@ -1116,7 +1122,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
     exact: true,
   });
   await page.goto('/#clients');
-  await chooseCompany(page, testInfo, companies[0]!.id);
+  await chooseCompany(page, testInfo, companies[0].id);
   await expect(page.getByText('No Clients for PRISMA-PRIM yet.')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Clients' })).toHaveCount(1);
   await page.getByRole('button', { name: 'New Client', exact: true }).click();
@@ -1132,7 +1138,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
   ).toBeVisible();
 
   await openSection(page, testInfo, 'Clients');
-  await chooseCompany(page, testInfo, companies[1]!.id);
+  await chooseCompany(page, testInfo, companies[1].id);
   await expect(page.getByText('No Clients for BIC yet.')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Clients' })).toHaveCount(1);
   await page.getByLabel('Find a shared Client').fill('Exemplu');
@@ -1146,7 +1152,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
   await openSection(page, testInfo, 'Activity Log');
   await expect(
     activity.getByText(
-      `Target: ${client.displayName} — ${companies[1]!.displayName}`,
+      `Target: ${client.displayName} — ${companies[1].displayName}`,
     ),
   ).toBeVisible();
   await openSection(page, testInfo, 'Clients');
@@ -1171,7 +1177,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
   ).toBeVisible();
   await expect(
     activity.getByText(
-      `Target: ${client.displayName} — ${companies[1]!.displayName}`,
+      `Target: ${client.displayName} — ${companies[1].displayName}`,
     ),
   ).toHaveCount(2);
 
@@ -1198,21 +1204,21 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
       id: '00000000-0000-4000-8000-000000001462',
       displayName: 'BIC',
     },
-  ];
+  ] as const;
   const directors = {
     a: {
       internalUserId: 'director-a',
       workspaceMembershipId: 'director-membership-a',
       displayName: 'PRISMA Director',
       email: 'director-a@example.test',
-      company: companies[0]!,
+      company: companies[0],
     },
     b: {
       internalUserId: 'director-b',
       workspaceMembershipId: 'director-membership-b',
       displayName: 'BIC Director',
       email: 'director-b@example.test',
-      company: companies[1]!,
+      company: companies[1],
     },
   };
   const client = {
@@ -1226,20 +1232,25 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
   const relatedCompanyIds = new Set<string>();
   let clientCreated = false;
   let correctionRecorded = false;
-  let dossier = {
+  let dossier: typeof client & {
+    taxId: string | null;
+    address: string | null;
+    telephone: string | null;
+    generalEmail: string | null;
+    contacts: Array<{ name: string; telephone?: string; email?: string }>;
+    businessActivity: string | null;
+    version: number;
+    involvedCompanyDisplayNames: string[];
+  } = {
     ...client,
-    taxId: null as string | null,
-    address: null as string | null,
-    telephone: null as string | null,
-    generalEmail: null as string | null,
-    contacts: [] as Array<{
-      name: string;
-      telephone?: string;
-      email?: string;
-    }>,
-    businessActivity: null as string | null,
+    taxId: null,
+    address: null,
+    telephone: null,
+    generalEmail: null,
+    contacts: [],
+    businessActivity: null,
     version: 1,
-    involvedCompanyDisplayNames: [] as string[],
+    involvedCompanyDisplayNames: [],
   };
   const assignmentKey = (membershipId: string, companyId: string) =>
     `${membershipId}:${companyId}`;
@@ -1300,14 +1311,10 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
               activeCompany: {
                 ...director.company,
 
-                grants: withCompanyGrants(director.company?.grants, {
+                grants: withCompanyGrants(undefined, {
                   bundle: 'company_director_client_access',
                   version: 'v1',
-                  assignmentId:
-                    grantOf(
-                      { grants: director.company?.grants },
-                      'company_director_client_access',
-                    )?.assignmentId ?? 'fixture-client-access',
+                  assignmentId: 'fixture-client-access',
                 }),
               },
             }
@@ -1342,8 +1349,10 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
         });
       }
       const pathParts = new URL(request.url()).pathname.split('/');
-      const companyId = pathParts.pop()!;
-      const membershipId = pathParts.pop()!;
+      const companyId = pathParts.pop();
+      const membershipId = pathParts.pop();
+      if (companyId === undefined || membershipId === undefined)
+        throw new Error('Expected the assignment route parameters.');
       assignments.delete(assignmentKey(membershipId, companyId));
       return route.fulfill({
         json: {
@@ -1414,6 +1423,7 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
       return route.fulfill({ status: 403, json: { message: 'Forbidden' } });
     }
     expect(companyId).toBeTruthy();
+    if (!companyId) throw new Error('Expected the Company-context header.');
     if (url.pathname.endsWith('/legal-entities'))
       return route.fulfill({
         json: { clientVersion: dossier.version, legalEntities: [] },
@@ -1424,26 +1434,24 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
           ? [
               {
                 ...client,
-                relatedToActiveCompany: relatedCompanyIds.has(companyId!),
+                relatedToActiveCompany: relatedCompanyIds.has(companyId),
               },
             ]
           : [],
       });
     }
     if (url.pathname.endsWith('/active-company-relationship')) {
-      relatedCompanyIds.add(companyId!);
+      relatedCompanyIds.add(companyId);
       return route.fulfill({ json: client });
     }
     if (url.pathname.endsWith(`/clients/${client.id}`)) {
-      if (!clientCreated || !relatedCompanyIds.has(companyId!)) {
+      if (!clientCreated || !relatedCompanyIds.has(companyId)) {
         return route.fulfill({ status: 404, json: { message: 'Not Found' } });
       }
       dossier = {
         ...dossier,
         involvedCompanyDisplayNames: [...relatedCompanyIds]
-          .map(
-            (id) => companies.find((company) => company.id === id)!.displayName,
-          )
+          .map((id) => companyDisplayName(companies, id))
           .sort(),
       };
       if (request.method() === 'PATCH') {
@@ -1459,17 +1467,17 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
       const body = request.postDataJSON();
       expect(request.headers()['idempotency-key']).toBeTruthy();
       clientCreated = true;
-      relatedCompanyIds.add(companyId!);
+      relatedCompanyIds.add(companyId);
       dossier = {
         ...dossier,
         ...body,
         version: 1,
-        involvedCompanyDisplayNames: [companies[0]!.displayName],
+        involvedCompanyDisplayNames: [companies[0].displayName],
       };
       return route.fulfill({ status: 201, json: client });
     }
     return route.fulfill({
-      json: clientCreated && relatedCompanyIds.has(companyId!) ? [client] : [],
+      json: clientCreated && relatedCompanyIds.has(companyId) ? [client] : [],
     });
   });
 
@@ -1531,7 +1539,7 @@ test('covers the Owner-to-Director shared Client journey and immediate revocatio
 
   identity = 'owner';
   await page.reload();
-  await chooseCompany(page, testInfo, companies[1]!.id);
+  await chooseCompany(page, testInfo, companies[1].id);
   await page.getByLabel('Find a shared Client').fill('Director Client');
   await page.getByRole('button', { name: 'Search Clients' }).click();
   await page.getByRole('button', { name: 'Add to BIC' }).click();

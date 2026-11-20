@@ -1,9 +1,4 @@
 {
-  "apps/api/src/access/access.rest.test.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 5
-    }
-  },
   "apps/api/src/access/captured-company-permissions.ts": {
     "no-warning-comments": {
       "count": 1
@@ -12,16 +7,6 @@
   "apps/api/src/access/company-context-assignment-record.ts": {
     "no-warning-comments": {
       "count": 1
-    }
-  },
-  "apps/api/src/access/company-context-assignment.rest.test.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 9
-    }
-  },
-  "apps/api/src/access/company-context-assignment.service.test.ts": {
-    "@typescript-eslint/consistent-type-assertions": {
-      "count": 4
     }
   },
   "apps/api/src/access/company-context-authorization.ts": {
@@ -42,11 +27,6 @@
       "count": 1
     }
   },
-  "apps/api/src/access/workspace-membership-suspension.rest.test.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 5
-    }
-  },
   "apps/api/src/accountability/accountability.service.test.ts": {
     "@typescript-eslint/consistent-type-assertions": {
       "count": 2
@@ -62,22 +42,9 @@
       "count": 7
     }
   },
-  "apps/web/e2e/company-access-administration.spec.ts": {
-    "@typescript-eslint/consistent-type-assertions": {
-      "count": 1
-    }
-  },
   "apps/web/e2e/my-task-open.spec.ts": {
     "@typescript-eslint/consistent-type-assertions": {
       "count": 3
-    }
-  },
-  "apps/web/e2e/production-shell.spec.ts": {
-    "@typescript-eslint/consistent-type-assertions": {
-      "count": 7
-    },
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 36
     }
   },
   "apps/web/e2e/project-document-search.spec.ts": {
@@ -92,11 +59,6 @@
   },
   "apps/web/src/App.project-document-navigation.test.tsx": {
     "@typescript-eslint/consistent-type-assertions": {
-      "count": 1
-    }
-  },
-  "apps/web/src/access/CompanyContextAccess.test.tsx": {
-    "@typescript-eslint/no-non-null-assertion": {
       "count": 1
     }
   },
@@ -174,29 +136,6 @@
   "apps/web/src/production-build.test.ts": {
     "@typescript-eslint/no-non-null-assertion": {
       "count": 1
-    }
-  },
-  "apps/web/src/production-shell/company-context-preference.test.ts": {
-    "@typescript-eslint/consistent-type-assertions": {
-      "count": 1
-    }
-  },
-  "apps/web/src/production-shell/company-context-transitions.test.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 1
-    }
-  },
-  "apps/web/src/production-shell/production-shell-session.test.ts": {
-    "@typescript-eslint/consistent-type-assertions": {
-      "count": 1
-    },
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 12
-    }
-  },
-  "apps/web/src/production-shell/useProductionShellContext.test.tsx": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 4
     }
   },
   "apps/web/src/project/ProjectDocuments.tsx": {

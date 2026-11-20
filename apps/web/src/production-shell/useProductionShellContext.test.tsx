@@ -55,13 +55,13 @@ describe('useProductionShellContext request coordination', () => {
       newer = result.current.selectCompany('company-b');
     });
     await waitFor(() => expect(selections.size).toBe(2));
-    selections
-      .get('company-b')!
-      .resolve(jsonResponse(selectedActor('company-b', 'Company B')));
+    const selectionB = selections.get('company-b');
+    if (!selectionB) throw new Error('Expected Company B selection.');
+    selectionB.resolve(jsonResponse(selectedActor('company-b', 'Company B')));
     await act(() => newer);
-    selections
-      .get('company-a')!
-      .resolve(jsonResponse(selectedActor('company-a', 'Company A')));
+    const selectionA = selections.get('company-a');
+    if (!selectionA) throw new Error('Expected Company A selection.');
+    selectionA.resolve(jsonResponse(selectedActor('company-a', 'Company A')));
     await act(() => older);
 
     expect(activeCompanyId(result.current.shellContext)).toBe('company-b');
@@ -139,7 +139,9 @@ describe('useProductionShellContext request coordination', () => {
           'x-company-context-id',
         );
         if (url.endsWith('/access/current-actor') && selectedId) {
-          const company = companies.find(({ id }) => id === selectedId)!;
+          const company = companies.find(({ id }) => id === selectedId);
+          if (!company)
+            throw new Error(`Unknown Company ${selectedId} in fixture.`);
           return Promise.resolve(
             jsonResponse(selectedActor(company.id, company.displayName)),
           );
@@ -227,7 +229,9 @@ describe('useProductionShellContext request coordination', () => {
           'x-company-context-id',
         );
         if (url.endsWith('/access/current-actor') && selectedId) {
-          const company = companies.find(({ id }) => id === selectedId)!;
+          const company = companies.find(({ id }) => id === selectedId);
+          if (!company)
+            throw new Error(`Unknown Company ${selectedId} in fixture.`);
           return Promise.resolve(
             jsonResponse(selectedActor(company.id, company.displayName)),
           );
