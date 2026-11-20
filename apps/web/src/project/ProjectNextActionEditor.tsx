@@ -1,4 +1,6 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import { useEffect, useId, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import {
@@ -32,8 +34,6 @@ type Command = {
   body: string;
   key: string;
   valid: () => boolean;
-  recoveryValid: () => boolean;
-  controller: AbortController;
 };
 type Mutation =
   | { kind: 'idle' | 'invalid' | 'conflict' | 'denied' }
@@ -68,17 +68,21 @@ export function NextActionEditor(props: {
       value: ReturnType<typeof readProjectLifecycle>;
     } | null>(null),
     [lifecycleError, setLifecycleError] = useState(false);
-  const writeRequest = useRef<AbortController | undefined>(undefined);
+  const operationScope = String(useRequestLifetime(props.identity, props.path));
+  const reads = useScopedOperationGroup(operationScope);
+  const writes = useScopedOperationGroup(operationScope);
   function validCapture() {
     const read = props.capture(),
       write = capture();
     return () => read() && write();
   }
   useEffect(() => {
-    const valid = validCapture(),
-      recoveryValid = props.captureRecovery(),
-      controller = new AbortController();
-    const live = () => valid() && !controller.signal.aborted;
+    const operation = reads.beginLatest();
+    if (!operation) return;
+    const { signal } = operation;
+    const valid = validCapture();
+    const recoveryValid = props.captureRecovery();
+    const live = () => valid() && !signal.aborted;
     setLifecycle(null);
     setLifecycleError(false);
     void (async () => {
@@ -89,7 +93,7 @@ export function NextActionEditor(props: {
           `/projects/${encodeURIComponent(props.scope.projectId)}/lifecycle`,
           {
             companyContextId: props.scope.companyId,
-            signal: controller.signal,
+            signal,
           },
         );
         if (!live()) return;
@@ -105,11 +109,12 @@ export function NextActionEditor(props: {
         if (live()) setLifecycle({ refresh: props.refresh, value });
       } catch {
         if (live()) setLifecycleError(true);
+      } finally {
+        operation.release();
       }
     })();
-    return () => controller.abort();
-  }, [props.refresh]);
-  useEffect(() => () => writeRequest.current?.abort(), []);
+    return operation.retire;
+  }, [props.refresh, reads]);
   useEffect(() => {
     if (
       props.ready &&
@@ -137,10 +142,13 @@ export function NextActionEditor(props: {
     !source ||
     !observedLifecycle;
   async function execute(command: Command) {
-    if (!command.valid()) return;
+    if (!command.valid() || writes.isPending()) return;
+    const operation = writes.beginLatest();
+    if (!operation) return;
+    const { signal } = operation;
+    const recoveryValid = props.captureRecovery();
     setMutation({ kind: 'pending', command });
-    writeRequest.current = command.controller;
-    const live = () => command.valid() && !command.controller.signal.aborted;
+    const live = () => command.valid() && !signal.aborted;
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!live()) return;
@@ -152,7 +160,7 @@ export function NextActionEditor(props: {
           'idempotency-key': command.key,
         },
         companyContextId: props.scope.companyId,
-        signal: command.controller.signal,
+        signal,
       });
       if (!live()) return;
       if (result.status === 'ok') {
@@ -173,11 +181,16 @@ export function NextActionEditor(props: {
         }
         setMutation({ kind: 'confirmed', command, receipt });
         setDirty(false);
-        await props.onConfirmed();
+        operation.release();
+        void Promise.resolve()
+          .then(() => {
+            if (live()) return props.onConfirmed();
+          })
+          .catch(() => undefined);
         return;
       }
       if (result.status === 'unauthorized') {
-        await props.onReadRejected(result, command.recoveryValid);
+        await props.onReadRejected(result, recoveryValid);
         return;
       }
       if (result.status === 'forbidden') {
@@ -185,12 +198,7 @@ export function NextActionEditor(props: {
         setDirty(false);
         setMutation({ kind: 'denied' });
         try {
-          await props.recover(
-            result,
-            live,
-            command.recoveryValid,
-            command.controller.signal,
-          );
+          await props.recover(result, live, recoveryValid, signal);
         } catch {
           // A definite write refusal remains refused if optional recovery fails.
         }
@@ -205,6 +213,8 @@ export function NextActionEditor(props: {
       );
     } catch {
       if (live()) setMutation({ kind: 'uncertain', command });
+    } finally {
+      operation.release();
     }
   }
   function submit(clear = false) {
@@ -230,8 +240,6 @@ export function NextActionEditor(props: {
       body: JSON.stringify(intent),
       key: crypto.randomUUID(),
       valid: validCapture(),
-      recoveryValid: props.captureRecovery(),
-      controller: new AbortController(),
     });
   }
   function onSubmit(event: FormEvent) {

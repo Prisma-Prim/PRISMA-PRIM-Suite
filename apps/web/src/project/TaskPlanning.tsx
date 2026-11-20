@@ -1,8 +1,9 @@
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import {
   useEffect,
   useLayoutEffect,
   useId,
-  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -33,6 +34,8 @@ import './task-planning.css';
 
 type Props = {
   identity: BrowserIdentity;
+  active: boolean;
+  captureRecovery: () => () => boolean;
   companyId: string;
   projectId: string;
   disabled: boolean;
@@ -57,6 +60,7 @@ type Mutation =
   | { kind: 'pending' | 'uncertain'; attempt: PlanningAttempt };
 type Feedback =
   'saved' | 'uncertain' | 'conflict' | 'validation' | 'rejected' | 'missing';
+type ReadMode = 'open' | 'reload' | 'confirmed';
 
 /** The native Project/Task authority key owns this consumer; each identity change also permanently retires its I/O. */
 export function TaskPlanning(props: Props) {
@@ -70,15 +74,27 @@ export function TaskPlanning(props: Props) {
   const id = useId(),
     heading = useRef<HTMLHeadingElement>(null),
     trigger = useRef<HTMLButtonElement>(null);
-  const readRequest = useRef<AbortController | null>(null),
-    commandRequest = useRef<AbortController | null>(null);
-  const lifetime = useMemo(
-    () => ({ retired: false }),
-    [props.identity, props.companyId, props.projectId],
-  );
-  const currentLifetime = useRef(lifetime);
-  currentLifetime.current = lifetime;
   const scope = { companyId: props.companyId, projectId: props.projectId };
+  const ownerScope = String(
+    useRequestLifetime(props.identity, JSON.stringify(scope)),
+  );
+  const reads = useScopedOperationGroup(
+    JSON.stringify([ownerScope, props.active]),
+  );
+  const writes = useScopedOperationGroup(ownerScope);
+  const reloadCurrent = useRef(reload);
+  const requestedReadMode = useRef<ReadMode | null>(null);
+  const callbacks = useRef({
+    onReloaded: props.onReloaded,
+    onConfirmed: props.onConfirmed,
+  });
+  useLayoutEffect(() => {
+    reloadCurrent.current = reload;
+    callbacks.current = {
+      onReloaded: props.onReloaded,
+      onConfirmed: props.onConfirmed,
+    };
+  });
   const protectedIntent =
     mutation.kind === 'pending' ||
     mutation.kind === 'uncertain' ||
@@ -89,27 +105,15 @@ export function TaskPlanning(props: Props) {
     load.kind === 'ready' &&
     load.availability.kind === 'mutable' &&
     mutation.kind === 'idle';
-  function live(controller: AbortController) {
-    return (
-      !controller.signal.aborted &&
-      !lifetime.retired &&
-      currentLifetime.current === lifetime
-    );
-  }
   useLayoutEffect(() => {
-    lifetime.retired = false;
     setExpanded(false);
     setLoad({ kind: 'idle' });
     setSelected([]);
     setMutation({ kind: 'idle' });
     setFeedback(null);
+    requestedReadMode.current = null;
     props.onProtectionChange(false);
-    return () => {
-      lifetime.retired = true;
-      readRequest.current?.abort();
-      commandRequest.current?.abort();
-    };
-  }, [lifetime]);
+  }, [ownerScope]);
   useEffect(() => {
     props.onProtectionChange(protectedIntent);
   }, [protectedIntent, props.onProtectionChange]);
@@ -124,42 +128,48 @@ export function TaskPlanning(props: Props) {
 
   async function value(
     result: ApiResult<unknown>,
-    controller: AbortController,
+    signal: AbortSignal,
+    recoveryCurrent: () => boolean,
   ): Promise<unknown> {
     if (result.status === 'unauthorized') {
-      if (live(controller)) await props.identity.rejectSession();
-      if (live(controller)) props.onDenied();
+      if (signal.aborted || !recoveryCurrent())
+        throw new Error('Planning session changed.');
+      await props.identity.rejectSession();
+      if (!signal.aborted) props.onDenied();
       throw new Error('Planning authority unavailable.');
     }
     if (result.status === 'forbidden' || result.status === 'notFound') {
-      if (live(controller)) props.onDenied();
+      if (!signal.aborted) props.onDenied();
       throw new Error('Planning authority unavailable.');
     }
     if (result.status !== 'ok') throw new Error('Planning read failed.');
     return result.value;
   }
-  async function reload(mode: 'open' | 'reload' | 'confirmed') {
-    readRequest.current?.abort();
-    const controller = new AbortController();
-    readRequest.current = controller;
+  async function reload(mode: ReadMode) {
+    requestedReadMode.current = mode;
+    if (!props.active) return;
+    const operation = reads.beginLatest();
+    if (!operation) return;
+    const { signal } = operation;
+    const recoveryCurrent = props.captureRecovery();
     setLoad({ kind: 'loading' });
     try {
       const api = await createAuthenticatedApiClient(props.identity);
-      if (!live(controller)) return;
+      if (signal.aborted) return;
       const options = {
         companyContextId: props.companyId,
-        signal: controller.signal,
+        signal,
       };
       const listingResult = await api.request(
         `/projects/${encodeURIComponent(props.projectId)}/tasks`,
         options,
       );
-      if (!live(controller)) return;
+      if (signal.aborted) return;
       const listing = readTaskList(
-        await value(listingResult, controller),
+        await value(listingResult, signal, recoveryCurrent),
         scope,
       );
-      if (!live(controller)) return;
+      if (signal.aborted) return;
       let availability: PlanningAvailability;
       if (props.projectClosed) availability = { kind: 'closed' };
       else if (listing.mutable) {
@@ -167,10 +177,10 @@ export function TaskPlanning(props: Props) {
           `/projects/${encodeURIComponent(props.projectId)}/eligible-task-assignees`,
           options,
         );
-        if (!live(controller)) return;
+        if (signal.aborted) return;
         availability = {
           kind: 'mutable',
-          members: readAssignees(await value(result, controller)),
+          members: readAssignees(await value(result, signal, recoveryCurrent)),
         };
       } else {
         // Native mutable=false combines Client and Project state. Resolve the lifecycle after that read;
@@ -179,8 +189,8 @@ export function TaskPlanning(props: Props) {
           `/projects/${encodeURIComponent(props.projectId)}`,
           options,
         );
-        if (!live(controller)) return;
-        const project = await value(result, controller);
+        if (signal.aborted) return;
+        const project = await value(result, signal, recoveryCurrent);
         if (
           !isProject(project) ||
           project.id !== props.projectId ||
@@ -191,7 +201,7 @@ export function TaskPlanning(props: Props) {
           kind: isClosedProjectStatus(project.status) ? 'closed' : 'historical',
         };
       }
-      if (!live(controller)) return;
+      if (signal.aborted) return;
       setLoad({ kind: 'ready', tasks: listing.tasks, availability });
       if (mode !== 'open') {
         setSelected([]);
@@ -201,27 +211,45 @@ export function TaskPlanning(props: Props) {
         }
       }
       if (
-        live(controller) &&
+        !signal.aborted &&
         (mode !== 'open' || availability.kind !== 'mutable')
       )
-        await props.onReloaded();
+        await callbacks.current.onReloaded();
     } catch {
-      if (live(controller)) setLoad({ kind: 'error' });
+      if (!signal.aborted) setLoad({ kind: 'error' });
+    } finally {
+      if (!signal.aborted) {
+        requestedReadMode.current = null;
+        if (mode === 'confirmed') setMutation({ kind: 'idle' });
+      }
+      operation.release();
     }
   }
+  useEffect(() => {
+    const mode = requestedReadMode.current;
+    if (
+      props.active &&
+      mode &&
+      (expanded || mode === 'confirmed') &&
+      !reads.isPending()
+    )
+      void reload(mode);
+  }, [props.active]);
   async function run(attempt: PlanningAttempt) {
-    commandRequest.current?.abort();
-    const controller = new AbortController();
-    commandRequest.current = controller;
+    if (writes.isPending()) return;
+    const operation = writes.beginLatest();
+    if (!operation) return;
+    const { signal } = operation;
+    const recoveryCurrent = props.captureRecovery();
     setMutation({ kind: 'pending', attempt });
     props.onProtectionChange(true);
     setFeedback(null);
     try {
       const api = await createAuthenticatedApiClient(props.identity);
-      if (!live(controller)) return;
+      if (signal.aborted) return;
       const result = await api.request(attempt.path, {
         companyContextId: props.companyId,
-        signal: controller.signal,
+        signal,
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -229,7 +257,7 @@ export function TaskPlanning(props: Props) {
         },
         body: JSON.stringify(attempt.body),
       });
-      if (!live(controller)) return;
+      if (signal.aborted) return;
       if (result.status === 'conflict' || result.status === 'validation') {
         setFeedback(result.status === 'conflict' ? 'conflict' : 'rejected');
         setMutation({ kind: 'blocked' });
@@ -240,28 +268,41 @@ export function TaskPlanning(props: Props) {
         setMutation({ kind: 'blocked' });
         return;
       }
+      if (result.status === 'unauthorized' || result.status === 'forbidden') {
+        if (recoveryCurrent()) {
+          if (result.status === 'unauthorized')
+            await props.identity.rejectSession().catch(() => undefined);
+          if (!signal.aborted) props.onDenied();
+        }
+        if (!signal.aborted) {
+          setFeedback('rejected');
+          setMutation({ kind: 'blocked' });
+        }
+        return;
+      }
       if (result.status !== 'ok') {
-        if (result.status === 'unauthorized' || result.status === 'forbidden')
-          await value(result, controller);
         throw new Error('Unconfirmed planning.');
       }
       readTaskPlanningReceipt(result.value, scope, attempt);
-      if (!live(controller)) return;
+      if (signal.aborted) return;
       setFeedback('saved');
       setMutation({ kind: 'settling' });
+      setLoad({ kind: 'loading' });
+      setSelected([]);
       // A valid historical receipt confirms the write. Failures of subsequent fresh reads cannot undo that fact.
-      await Promise.allSettled([
-        reload('confirmed'),
-        Promise.resolve().then(() => {
-          if (live(controller)) return props.onConfirmed();
-        }),
-      ]);
-      if (live(controller)) setMutation({ kind: 'idle' });
+      void Promise.resolve()
+        .then(() => {
+          if (!signal.aborted) return callbacks.current.onConfirmed();
+        })
+        .catch(() => undefined);
+      await reloadCurrent.current('confirmed');
     } catch {
-      if (live(controller)) {
+      if (!signal.aborted) {
         setFeedback('uncertain');
         setMutation({ kind: 'uncertain', attempt });
       }
+    } finally {
+      operation.release();
     }
   }
   function submit(event: FormEvent) {
@@ -324,7 +365,10 @@ export function TaskPlanning(props: Props) {
         disabled={props.disabled && !expanded}
         onClick={() => {
           setExpanded(!expanded);
-          if (!expanded && load.kind === 'idle') void reload('open');
+          if (!expanded && !reads.isPending()) {
+            const mode = requestedReadMode.current;
+            if (mode || load.kind === 'idle') void reload(mode ?? 'open');
+          }
         }}
       >
         {copy(expanded ? 'close' : 'open')}

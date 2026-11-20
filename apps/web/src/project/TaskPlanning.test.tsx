@@ -75,6 +75,105 @@ function task(id: string): TaskView {
 }
 afterEach(() => vi.unstubAllGlobals());
 
+it.each([
+  { presentation: 'open', close: false },
+  { presentation: 'collapsed', close: true },
+])(
+  'reconciles a held planning receipt when the panel is $presentation during Project navigation',
+  async ({ close }) => {
+    let currentTask = task('first');
+    let writes = 0;
+    let confirmedReads = 0;
+    let finishPlanning: (response: Response) => void = () => {
+      throw new Error('Expected held planning receipt');
+    };
+    const receipt = new Promise<Response>((resolve) => {
+      finishPlanning = resolve;
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string, options?: RequestInit) => {
+        if (options?.method === 'POST') {
+          writes += 1;
+          return receipt;
+        }
+        if (path === '/api/projects/project/tasks') {
+          if (currentTask.version === 2) confirmedReads += 1;
+          return Response.json({ mutable: true, tasks: [currentTask] });
+        }
+        if (path === '/api/projects/other-project/tasks')
+          return Response.json({ mutable: true, tasks: [] });
+        if (path.endsWith('/eligible-task-assignees'))
+          return Response.json({ members: [] });
+        return new Response(null, { status: 404 });
+      }),
+    );
+    const identity = deterministicBrowserIdentity();
+    const visibleProject = (projectId: string) => (
+      <ProjectTasks
+        actor={actor}
+        identity={identity}
+        projectId={projectId}
+        projectStatus="preparatory"
+      />
+    );
+    const view = render(visibleProject('project'));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Plan selected Tasks' }),
+    );
+    const planning = screen.getByRole('region', {
+      name: 'Grouped Task planning',
+    });
+    fireEvent.click(
+      await within(planning).findByRole('checkbox', {
+        name: currentTask.title,
+      }),
+    );
+    fireEvent.change(
+      within(planning).getByLabelText('Due date — Activity first DEMO'),
+      { target: { value: '2026-11-02' } },
+    );
+    fireEvent.click(
+      within(planning).getByRole('button', { name: 'Save selected planning' }),
+    );
+    await waitFor(() => expect(writes).toBe(1));
+    if (close)
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Close grouped planning' }),
+      );
+    view.rerender(visibleProject('other-project'));
+    if (!close) view.rerender(visibleProject('project'));
+    currentTask = { ...currentTask, dueDate: '2026-11-02', version: 2 };
+    await act(async () => {
+      finishPlanning(
+        Response.json(
+          {
+            schema: 'task-planning/v1',
+            projectId: 'project',
+            tasks: [currentTask],
+          },
+          { status: 201 },
+        ),
+      );
+    });
+    if (close) {
+      view.rerender(visibleProject('project'));
+      await waitFor(() => expect(confirmedReads).toBe(2));
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Plan selected Tasks' }),
+      );
+    }
+    await within(planning).findByText('Selected planning saved.');
+    expect(
+      await within(planning).findByRole('checkbox', {
+        name: currentTask.title,
+      }),
+    ).not.toBeChecked();
+    expect(confirmedReads).toBe(2);
+    expect(writes).toBe(1);
+  },
+);
+
 it('opens grouped planning through native Project Tasks and saves only deliberately selected responsibility and date edits', async () => {
   let tasks = [task('first'), task('second')];
   const writes: { path: string; body: unknown }[] = [];
