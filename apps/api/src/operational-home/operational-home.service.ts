@@ -43,9 +43,7 @@ export class OperationalHomeService {
     // One sampled instant and one snapshot serve every count of this read.
     const today = operationalDate(this.clock.now());
     const counts: Record<CompanySummaryKind, () => Promise<number>> = {
-      active_clients: async () =>
-        (await this.clients.query(actor, { kind: 'active-company-list' }))
-          .length,
+      active_clients: () => this.clients.countActiveCompanyClients(actor),
       open_projects: () => this.projects.countOpen(actor),
       overdue_tasks: async () =>
         (

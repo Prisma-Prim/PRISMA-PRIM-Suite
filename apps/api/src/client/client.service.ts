@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, sql } from 'drizzle-orm';
 import { requireWorkspacePermission } from '../access/access-policy.js';
 import type {
   ActorContext,
@@ -79,10 +79,8 @@ export class ClientService {
     query: ClientQuery,
   ): Promise<ClientAccountView[] | ClientDossierView> {
     switch (query.kind) {
-      case 'active-company-list': {
-        const companyId = requireMinimalClientPermission(actor, 'client.read');
-        return this.listForActiveCompany(actor.workspaceId, companyId);
-      }
+      case 'active-company-list':
+        return this.listForActiveCompany(actor);
       case 'workspace-search': {
         const companyId = requireMinimalClientPermission(actor, 'client.read');
         return this.searchWorkspace(
@@ -102,6 +100,17 @@ export class ClientService {
       default:
         return assertNever(query);
     }
+  }
+
+  /** Counts the active Company directory within the caller's snapshot. */
+  async countActiveCompanyClients(actor: ActorContext): Promise<number> {
+    const directory = this.activeCompanyClientDirectory(actor).as(
+      'active_company_clients',
+    );
+    const [result] = await this.databaseContext.connection
+      .select({ total: count() })
+      .from(directory);
+    return result.total;
   }
 
   async execute(
@@ -232,10 +241,18 @@ export class ClientService {
   }
 
   private async listForActiveCompany(
-    workspaceId: string,
-    companyId: string,
+    actor: ActorContext,
   ): Promise<ClientAccountView[]> {
-    const rows = await this.databaseContext.connection
+    const rows = await this.activeCompanyClientDirectory(actor).orderBy(
+      asc(clientAccounts.displayName),
+      asc(clientAccounts.id),
+    );
+    return rows.map((client) => toSummary(client, true));
+  }
+
+  private activeCompanyClientDirectory(actor: ActorContext) {
+    const companyId = requireMinimalClientPermission(actor, 'client.read');
+    return this.databaseContext.connection
       .select({
         id: clientAccounts.id,
         displayName: clientAccounts.displayName,
@@ -253,14 +270,12 @@ export class ClientService {
       )
       .where(
         and(
-          eq(clientCompanyRelationships.workspaceId, workspaceId),
+          eq(clientCompanyRelationships.workspaceId, actor.workspaceId),
           eq(clientCompanyRelationships.companyId, companyId),
           eq(clientCompanyRelationships.status, 'active'),
           eq(clientAccounts.status, 'active'),
         ),
-      )
-      .orderBy(asc(clientAccounts.displayName), asc(clientAccounts.id));
-    return rows.map((client) => toSummary(client, true));
+      );
   }
 
   private async searchWorkspace(

@@ -569,6 +569,30 @@ describe.skipIf(!databaseUrl)('Operational home REST contract', () => {
     );
   });
 
+  it('counts an empty active Client directory in PostgreSQL without reading directory rows', async () => {
+    const company = string(
+      object(await command('/companies', { displayName: 'Empty Company' })).id,
+    );
+    expect(await read('/clients', { company })).toEqual([]);
+
+    const { value, queries } = await harness.measureApplicationQueries(() =>
+      home({ company }),
+    );
+
+    expect(value).toMatchObject({
+      companyId: company,
+      summaries: [{ kind: 'active_clients', count: 0 }],
+    });
+    const directoryReads = queries.filter((query) =>
+      query.includes(
+        'from "client_company_relationships" inner join "client_accounts"',
+      ),
+    );
+    expect(directoryReads).toEqual([
+      expect.stringMatching(/^select count\(\*\) from /u),
+    ]);
+  });
+
   it('browses all 107 overdue Tasks in fixed ordered pages and refuses exactly as My Tasks', async () => {
     const { projects, tasks } = fixture;
     // Equal due dates and creation times prove the creation and identifier
