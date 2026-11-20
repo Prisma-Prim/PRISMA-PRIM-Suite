@@ -7,7 +7,10 @@ import {
   handleAuthenticatedAccessRejection,
   runLatestAuthenticatedRequest,
 } from './latest-authenticated-request';
-import { useScopedOperation } from './use-scoped-operation';
+import {
+  createOperationScope,
+  useScopedOperation,
+} from './use-scoped-operation';
 
 describe('latest authenticated request', () => {
   afterEach(() => {
@@ -16,29 +19,33 @@ describe('latest authenticated request', () => {
   });
 
   it('aborts an older request owned by the same resource', async () => {
-    const pending: { current: AbortController | undefined } = {
-      current: undefined,
-    };
+    const operations = createOperationScope();
+    const older = operations.beginLatest();
+    if (!older) throw new Error('Expected live work.');
     const first = deferred<string>();
+    const started = vi.fn();
     const firstRun = runLatestAuthenticatedRequest({
-      pending,
+      signal: older.signal,
       identity: deterministicBrowserIdentity(),
       execute: async (_api, signal) => {
+        started();
         await first.promise;
         return signal.aborted ? 'stale' : 'first';
       },
       onResult: vi.fn(),
       onError: vi.fn(),
-    });
-    await vi.waitFor(() => expect(pending.current).toBeDefined());
+    }).finally(older.release);
+    await vi.waitFor(() => expect(started).toHaveBeenCalledOnce());
 
+    const latest = operations.beginLatest();
+    if (!latest) throw new Error('Expected live work.');
     const latestRun = runLatestAuthenticatedRequest({
-      pending,
+      signal: latest.signal,
       identity: deterministicBrowserIdentity(),
       execute: async () => 'latest',
       onResult: vi.fn(),
       onError: vi.fn(),
-    });
+    }).finally(latest.release);
     first.resolve('done');
 
     await expect(latestRun).resolves.toBe('latest');
@@ -46,28 +53,28 @@ describe('latest authenticated request', () => {
   });
 
   it('retains ownership through asynchronous result publication', async () => {
-    const pending: { current: AbortController | undefined } = {
-      current: undefined,
-    };
+    const operations = createOperationScope();
+    const operation = operations.beginLatest();
+    if (!operation) throw new Error('Expected live work.');
     const publication = deferred<string>();
     let ownedDuringPublication = false;
 
     const run = runLatestAuthenticatedRequest({
-      pending,
+      signal: operation.signal,
       identity: deterministicBrowserIdentity(),
       execute: async () => 'result',
       async onResult() {
-        ownedDuringPublication = pending.current !== undefined;
+        ownedDuringPublication = operations.isPending();
         await publication.promise;
       },
       onError: vi.fn(),
-    });
+    }).finally(operation.release);
     await vi.waitFor(() => expect(ownedDuringPublication).toBe(true));
-    expect(pending.current).toBeDefined();
+    expect(operations.isPending()).toBe(true);
 
     publication.resolve('published');
     await expect(run).resolves.toBe('result');
-    expect(pending.current).toBeUndefined();
+    expect(operations.isPending()).toBe(false);
   });
 
   it('lets a scoped operation supersede an older request through the signal it began', async () => {
@@ -144,6 +151,25 @@ describe('latest authenticated request', () => {
     expect(signal.aborted).toBe(true);
     expect(onResult).not.toHaveBeenCalled();
     expect(onError).not.toHaveBeenCalled();
+    expect(onSettled).not.toHaveBeenCalled();
+  });
+
+  it('does not acquire a token for an already retired request', async () => {
+    const getToken = vi.fn(async () => 'test-token');
+    const execute = vi.fn();
+    const onSettled = vi.fn();
+    await expect(
+      runLatestAuthenticatedRequest({
+        signal: AbortSignal.abort(),
+        identity: { ...deterministicBrowserIdentity(), getToken },
+        execute,
+        onResult: vi.fn(),
+        onError: vi.fn(),
+        onSettled,
+      }),
+    ).resolves.toBeUndefined();
+    expect(getToken).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
     expect(onSettled).not.toHaveBeenCalled();
   });
 

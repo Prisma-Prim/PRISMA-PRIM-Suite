@@ -7,49 +7,23 @@ import {
   type ApiResult,
 } from './authenticated-api-client';
 
-/**
- * Who cancels the request. A `signal` from `useScopedOperation().begin()`
- * leaves cancellation to that operation: the request adds no abort path and
- * settles only while the signal is live. The legacy `pending` slot aborts its
- * earlier request and settles while the request still owns the slot.
- */
-type RequestOwner =
-  | { signal: AbortSignal; pending?: never }
-  | { pending: { current: AbortController | undefined }; signal?: never };
-
-function claim(owner: RequestOwner): {
+/** The caller's committed operation owns cancellation and admission. */
+export async function runLatestAuthenticatedRequest<T>({
+  signal,
+  identity,
+  execute,
+  onResult,
+  onError,
+  onSettled,
+}: {
   signal: AbortSignal;
-  release: () => boolean;
-} {
-  if (owner.signal) {
-    const { signal } = owner;
-    return { signal, release: () => !signal.aborted };
-  }
-  const { pending } = owner;
-  pending.current?.abort();
-  const controller = new AbortController();
-  pending.current = controller;
-  return {
-    signal: controller.signal,
-    release() {
-      if (pending.current !== controller) return false;
-      pending.current = undefined;
-      return true;
-    },
-  };
-}
-
-export async function runLatestAuthenticatedRequest<T>(
-  request: RequestOwner & {
-    identity: BrowserIdentity;
-    execute: (api: AuthenticatedApiClient, signal: AbortSignal) => Promise<T>;
-    onResult: (result: T, signal: AbortSignal) => Promise<void> | void;
-    onError: () => void;
-    onSettled?: () => void;
-  },
-): Promise<T | undefined> {
-  const { identity, execute, onResult, onError, onSettled } = request;
-  const { signal, release } = claim(request);
+  identity: BrowserIdentity;
+  execute: (api: AuthenticatedApiClient, signal: AbortSignal) => Promise<T>;
+  onResult: (result: T, signal: AbortSignal) => Promise<void> | void;
+  onError: () => void;
+  onSettled?: () => void;
+}): Promise<T | undefined> {
+  if (signal.aborted) return undefined;
   try {
     const api = await createAuthenticatedApiClient(identity);
     if (signal.aborted) return undefined;
@@ -61,7 +35,7 @@ export async function runLatestAuthenticatedRequest<T>(
     if (!signal.aborted) onError();
     return undefined;
   } finally {
-    if (release()) onSettled?.();
+    if (!signal.aborted) onSettled?.();
   }
 }
 

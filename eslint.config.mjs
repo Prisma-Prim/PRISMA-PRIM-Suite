@@ -20,10 +20,8 @@ const accessOwnedTables = [
 // #1349): before launch nothing is deployed, so data, fixtures and readers
 // move to the new shape and a product variant gets its real name. Import paths
 // are string literals, so `pdfjs-dist/legacy/build` is not an Identifier.
-// Occurrences that predate the rule sit in eslint-suppressions.json (recorded
-// with `--suppress-rule no-restricted-syntax --suppress-rule no-warning-comments`
-// only for these hits); prune it as owners rename them. The restriction is
-// spread into the API and web `no-restricted-syntax` blocks below, because a
+// The restriction is spread into the API and web `no-restricted-syntax`
+// blocks below, because a
 // later block replaces an earlier one's options for the same files.
 const legacyNameRestriction = {
   selector: 'Identifier[name=/legacy/i]',
@@ -107,10 +105,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     // Mechanical part of docs/agents/typescript-discipline.md: no `!` or `as`
-    // to manufacture evidence. Violations that predate these rules are recorded
-    // in eslint-suppressions.json, so only new violations fail. `pnpm lint`
-    // also fails when a recorded violation no longer occurs; run
-    // `pnpm lint --prune-suppressions` and commit the smaller baseline.
+    // to manufacture evidence. `pnpm lint` checks all TypeScript files.
     // Never run `--suppress-all`/`--suppress-rule` to silence a new violation.
     files: ['**/*.{ts,tsx,mts,cts}'],
     rules: {
@@ -203,11 +198,9 @@ export default tseslint.config(
     },
   },
   {
-    // Hand-rolled cancellation races scope changes (#1081, #1119). Existing
-    // controllers are recorded in eslint-suppressions.json, like the `!` and
-    // `as` baseline above: move a caller to the primitive when a feature
-    // touches it, then prune. Extend this block rather than configuring the
-    // rule again for web files.
+    // Hand-rolled cancellation races scope changes (#1081, #1119).
+    // use-scoped-operation.ts owns the only production browser controller.
+    // Extend this block when adding a web syntax restriction.
     files: ['apps/web/src/**/*.{ts,tsx}'],
     ignores: [
       '**/*.{test,spec}.{ts,tsx}',
@@ -221,7 +214,7 @@ export default tseslint.config(
         {
           selector: 'NewExpression[callee.name="AbortController"]',
           message:
-            'Do not hand-roll an AbortController: take the signal from useScopedOperation(scope).begin() (apps/web/src/api/use-scoped-operation.ts), and pass it as `signal` to runLatestAuthenticatedRequest.',
+            'Use useScopedOperation or useScopedOperationGroup from apps/web/src/api/use-scoped-operation.ts and pass the owned signal to the request.',
         },
         legacyNameRestriction,
         ...frameParameterRestrictions,
