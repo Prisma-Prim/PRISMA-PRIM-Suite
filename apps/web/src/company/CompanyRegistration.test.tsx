@@ -120,6 +120,41 @@ describe('Company registration presentation', () => {
     const headers = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
     expect(headers.get('idempotency-key')).toBeTruthy();
   });
+
+  it('admits a new command after identity replacement while the old submission is held', async () => {
+    const pending = deferred<Response>();
+    const fetchMock = vi
+      .fn<(url: string, init?: RequestInit) => Promise<Response>>()
+      .mockImplementationOnce(() => pending.promise)
+      .mockResolvedValueOnce(new Response(null, { status: 400 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const view = render(
+      <CompanyRegistration actor={actor} identity={identity} {...callbacks} />,
+    );
+    fireEvent.change(screen.getByLabelText('Company display name'), {
+      target: { value: 'Draft Company' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Register Company' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+
+    view.rerender(
+      <CompanyRegistration
+        actor={actor}
+        identity={{ ...identity }}
+        {...callbacks}
+      />,
+    );
+    const submit = screen.getByRole('button', { name: 'Register Company' });
+    expect(submit).toBeEnabled();
+    fireEvent.click(submit);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const keys = fetchMock.mock.calls.map(([, init]) =>
+      new Headers(init?.headers).get('idempotency-key'),
+    );
+    expect(new Set(keys).size).toBe(2);
+    await act(async () => pending.resolve(new Response(null, { status: 401 })));
+    expect(submit).toBeEnabled();
+  });
 });
 
 function RegistrationWithFrenchSwitch() {

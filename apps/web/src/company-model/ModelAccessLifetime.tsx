@@ -2,7 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -63,9 +63,11 @@ export function useModelAccessRejection(): Reject {
   const rejection = useContext(Rejection);
   if (!rejection) throw new Error('Company model access lifetime is required.');
   const latest = useRef(rejection);
-  latest.current = rejection;
+  useLayoutEffect(() => {
+    latest.current = rejection;
+  }, [rejection]);
   const live = useRef(true);
-  useEffect(() => {
+  useLayoutEffect(() => {
     live.current = true;
     return () => {
       live.current = false;

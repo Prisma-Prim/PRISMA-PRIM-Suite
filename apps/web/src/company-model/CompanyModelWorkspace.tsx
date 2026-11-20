@@ -2,6 +2,12 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import { useScopedOperation } from '../api/use-scoped-operation';
 import { formatMessage } from '../localization/messages';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import {
@@ -67,6 +73,8 @@ function ScopedCompanyModelWorkspace<
   Kind<Content, Draft> & { authority: CompanyModelAuthority }) {
   const copy = kind.useCopy();
   const heading = useId();
+  const observation = useActorObservation(actor);
+  const captureRecovery = useAuthorityLifetime(String(observation), identity);
   return (
     <section
       className={`company-model-workspace ${kind.rootClass}`}
@@ -97,6 +105,7 @@ function ScopedCompanyModelWorkspace<
           kind={kind}
           identity={identity}
           authority={authority}
+          captureRecovery={captureRecovery}
           heading={heading}
         />
       </ModelAccessLifetime>
@@ -111,10 +120,12 @@ function CompanyModelBody<
   kind,
   identity,
   authority,
+  captureRecovery,
   heading,
 }: Kind<Content, Draft> & {
   identity: BrowserIdentity;
   authority: CompanyModelAuthority;
+  captureRecovery: () => () => boolean;
   heading: string;
 }) {
   const copy = kind.useCopy();
@@ -127,11 +138,18 @@ function CompanyModelBody<
   const [basis, setBasis] = useState('');
   const [invalidDecision, setInvalidDecision] = useState(false);
   const [draft, setDraft] = useState<{ initial: Content | null } | null>(null);
-  const pending = useRef<AbortController | undefined>(undefined);
+  const lifetime = useRequestLifetime(
+    identity,
+    JSON.stringify([kind.path, authority.key]),
+  );
+  const currentModelRead = useScopedOperation(String(lifetime));
   const load = useCallback(() => {
+    const signal = currentModelRead.begin();
+    if (!signal) return;
+    const recoveryCurrent = captureRecovery();
     epoch.current += 1;
     return runLatestAuthenticatedRequest({
-      pending,
+      signal,
       identity,
       execute: (api, signal) =>
         api.request(kind.path, {
@@ -156,7 +174,8 @@ function CompanyModelBody<
           result.status === 'forbidden' ||
           result.status === 'unauthorized'
         ) {
-          rejectAccess(result);
+          if (recoveryCurrent()) rejectAccess(result);
+          else setRead({ kind: 'error' });
         } else setRead({ kind: 'error' });
       },
       onError: () => setRead({ kind: 'error' }),
@@ -166,15 +185,14 @@ function CompanyModelBody<
     identity,
     authority.companyId,
     authority.workspaceId,
+    currentModelRead,
+    captureRecovery,
     rejectAccess,
   ]);
 
   useEffect(() => {
     setRead({ kind: 'loading' });
     void load();
-    return () => {
-      pending.current?.abort();
-    };
   }, [load]);
 
   const command = useCompanyModelCommand({
@@ -183,7 +201,7 @@ function CompanyModelBody<
     authority,
     onStart: () => {
       epoch.current += 1;
-      pending.current?.abort();
+      currentModelRead.retire();
     },
     onConfirmed: () => {
       setHistoryGeneration((value) => value + 1);
@@ -351,6 +369,7 @@ function CompanyModelBody<
       )}
       {read.kind === 'ready' && read.model && (
         <CompanyModelHistory
+          captureRecovery={captureRecovery}
           key={historyGeneration}
           kind={kind}
           identity={identity}
