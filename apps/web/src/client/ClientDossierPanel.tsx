@@ -4,6 +4,7 @@ import {
   type Ref,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -13,6 +14,11 @@ import {
   handleAuthenticatedAccessRejection,
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import {
+  useScopedOperation,
+  useScopedOperationGroup,
+} from '../api/use-scoped-operation';
 import { resolveRetryCommand, type RetryCommand } from './client-command';
 import {
   ClientContactDescription,
@@ -90,6 +96,7 @@ export function ClientDossierPanel({
   companyContextId,
   canUpdate,
   identity,
+  captureRecovery,
   onCompanyContextRejected,
   onActorRevalidated = () => undefined,
   onWorkspaceAccessRejected = () => undefined,
@@ -108,6 +115,7 @@ export function ClientDossierPanel({
   companyContextId: string;
   canUpdate: boolean;
   identity: BrowserIdentity;
+  captureRecovery?: () => () => boolean;
   onCompanyContextRejected: (companyContextId: string) => void;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
@@ -143,22 +151,33 @@ export function ClientDossierPanel({
   const [confirmedVersion, setConfirmedVersion] = useState(0);
   const draftEdited = useRef(false);
   const correctionRetryCommand = useRef<RetryCommand | undefined>(undefined);
-  const pendingDossier = useRef<AbortController | undefined>(undefined);
-  const pendingCorrection = useRef<AbortController | undefined>(undefined);
+  const requestScope = String(
+    useRequestLifetime(
+      identity,
+      JSON.stringify([companyContextId, clientAccountId, canUpdate]),
+    ),
+  );
+  const dossierRead = useScopedOperation(requestScope);
+  const correctionWork = useScopedOperationGroup(requestScope);
   const rejectCompanyContext = useRef(onCompanyContextRejected);
-  rejectCompanyContext.current = onCompanyContextRejected;
   const acceptRevalidatedActor = useRef(onActorRevalidated);
-  acceptRevalidatedActor.current = onActorRevalidated;
   const rejectWorkspaceAccess = useRef(onWorkspaceAccessRejected);
-  rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
+  useLayoutEffect(() => {
+    rejectCompanyContext.current = onCompanyContextRejected;
+    acceptRevalidatedActor.current = onActorRevalidated;
+    rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
+  });
 
   const loadDossier = useCallback(
     async (selectedClientId: string): Promise<void> => {
+      const requestSignal = dossierRead.begin();
+      if (!requestSignal) return;
+      const recoveryCurrent = captureRecovery?.();
       setDossierState({ status: 'loading' });
       setCorrectionState({ status: 'idle' });
       correctionRetryCommand.current = undefined;
       await runLatestAuthenticatedRequest({
-        pending: pendingDossier,
+        signal: requestSignal,
         identity,
         execute: (api, signal) =>
           api.request(`/clients/${encodeURIComponent(selectedClientId)}`, {
@@ -177,6 +196,7 @@ export function ClientDossierPanel({
               acceptRevalidatedActor.current(revalidatedActor),
             onWorkspaceAccessRejected: () => rejectWorkspaceAccess.current(),
             signal,
+            isCurrent: () => !signal.aborted && (recoveryCurrent?.() ?? true),
           });
           if (signal.aborted) return;
           if (rejection) {
@@ -201,12 +221,10 @@ export function ClientDossierPanel({
         onError: () => setDossierState({ status: 'error' }),
       });
     },
-    [companyContextId, identity],
+    [captureRecovery, companyContextId, dossierRead, identity],
   );
 
   useEffect(() => {
-    pendingDossier.current?.abort();
-    pendingCorrection.current?.abort();
     correctionRetryCommand.current = undefined;
     setCorrectionState({ status: 'idle' });
     setCorrectionOpen(false);
@@ -218,10 +236,6 @@ export function ClientDossierPanel({
       return;
     }
     void loadDossier(clientAccountId);
-    return () => {
-      pendingDossier.current?.abort();
-      pendingCorrection.current?.abort();
-    };
   }, [clientAccountId, companyContextId, loadDossier]);
 
   async function correctDossier(event: FormEvent<HTMLFormElement>) {
@@ -261,11 +275,15 @@ export function ClientDossierPanel({
       serializedBody,
       correctionRetryCommand.current,
     );
+    if (correctionWork.isPending()) return;
+    const operation = correctionWork.beginLatest();
+    if (!operation) return;
+    const recoveryCurrent = captureRecovery?.();
     correctionRetryCommand.current = command;
     setCorrectionState({ status: 'submitting' });
 
     await runLatestAuthenticatedRequest({
-      pending: pendingCorrection,
+      signal: operation.signal,
       identity,
       execute: (api, signal) =>
         api.request(`/clients/${encodeURIComponent(correctionClientId)}`, {
@@ -290,6 +308,7 @@ export function ClientDossierPanel({
             acceptRevalidatedActor.current(revalidatedActor),
           onWorkspaceAccessRejected: () => rejectWorkspaceAccess.current(),
           signal,
+          isCurrent: () => !signal.aborted && (recoveryCurrent?.() ?? true),
         });
         if (signal.aborted) return;
         if (rejection) {
@@ -344,10 +363,18 @@ export function ClientDossierPanel({
         setDraft(draftFrom(dossier));
         setDossierState({ status: 'ready', dossier });
         setCorrectionState({ status: 'success' });
-        void onActivityRecorded();
-        await onClientsChanged();
+        operation.release();
+        void Promise.allSettled([
+          Promise.resolve().then(() => {
+            if (!signal.aborted) return onActivityRecorded();
+          }),
+          Promise.resolve().then(() => {
+            if (!signal.aborted) return onClientsChanged();
+          }),
+        ]);
       },
       onError: () => setCorrectionState({ status: 'error' }),
+      onSettled: operation.release,
     });
   }
 
@@ -573,6 +600,7 @@ export function ClientDossierPanel({
         companyContextId={companyContextId}
         canUpdate={canUpdate}
         identity={identity}
+        captureRecovery={captureRecovery}
         onCompanyContextRejected={onCompanyContextRejected}
         onActorRevalidated={onActorRevalidated}
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}
@@ -586,6 +614,7 @@ export function ClientDossierPanel({
         dossierVersion={dossier.version}
         companyContextId={companyContextId}
         identity={identity}
+        captureRecovery={captureRecovery}
         onCompanyContextRejected={onCompanyContextRejected}
         onActorRevalidated={onActorRevalidated}
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}

@@ -1,9 +1,11 @@
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import { grantOf } from '../access/company-grants';
 import {
   type FormEvent,
   type ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -14,6 +16,14 @@ import {
   handleAuthenticatedAccessRejection,
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import {
+  useScopedOperation,
+  useScopedOperationGroup,
+} from '../api/use-scoped-operation';
 import { ClientDossierPanel } from './ClientDossierPanel';
 import { ClientUnionPanel } from './ClientUnionPanel';
 import { useClientUnionConfirmationCopy } from './client-union-confirmation.copy';
@@ -159,16 +169,14 @@ export function ClientWorkspace({
     setSelectedClientId(clientId);
   }
   const retryCommand = useRef<RetryCommand | undefined>(undefined);
-  const pendingList = useRef<AbortController | undefined>(undefined);
-  const pendingCreate = useRef<AbortController | undefined>(undefined);
-  const pendingSearch = useRef<AbortController | undefined>(undefined);
-  const pendingAttach = useRef<AbortController | undefined>(undefined);
   const rejectCompanyContext = useRef(onCompanyContextRejected);
-  rejectCompanyContext.current = onCompanyContextRejected;
   const acceptRevalidatedActor = useRef(onActorRevalidated);
-  acceptRevalidatedActor.current = onActorRevalidated;
   const rejectWorkspaceAccess = useRef(onWorkspaceAccessRejected);
-  rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
+  useLayoutEffect(() => {
+    rejectCompanyContext.current = onCompanyContextRejected;
+    acceptRevalidatedActor.current = onActorRevalidated;
+    rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
+  });
   const activeCompany = actor.activeCompany;
   const clientGrant = grantOf(activeCompany, 'company_director_client_access');
   const clientPermissions: readonly string[] = clientGrant?.permissions ?? [];
@@ -195,6 +203,27 @@ export function ClientWorkspace({
     assignmentId: clientGrant?.assignmentId,
     permissionSetVersion: clientGrant?.permissionSetVersion,
   });
+  const requestScope = String(
+    useRequestLifetime(
+      identity,
+      JSON.stringify([
+        actor.internalUserId,
+        actor.workspaceId,
+        actor.workspaceMembershipId,
+        activeCompany?.id,
+        clientAuthority,
+      ]),
+    ),
+  );
+  const directoryRead = useScopedOperation(requestScope);
+  const searchRead = useScopedOperation(requestScope);
+  const actorObservation = useActorObservation(actor);
+  const captureRecovery = useAuthorityLifetime(
+    String(actorObservation),
+    identity,
+  );
+  const registrationWork = useScopedOperationGroup(requestScope);
+  const attachmentWork = useScopedOperationGroup(requestScope);
 
   useEffect(() => {
     if (requestedClientDossierRequest && canReadClientDossiers)
@@ -206,6 +235,8 @@ export function ClientWorkspace({
       result: ApiResult<unknown>,
       companyContextId: string,
       signal: AbortSignal,
+      recoveryCurrent: () => boolean,
+      ownsDirectory = false,
     ): Promise<boolean> => {
       if (signal.aborted) return true;
       const rejection = await handleAuthenticatedAccessRejection({
@@ -218,12 +249,14 @@ export function ClientWorkspace({
           acceptRevalidatedActor.current(revalidatedActor),
         onWorkspaceAccessRejected: () => rejectWorkspaceAccess.current(),
         signal,
+        isCurrent: () => !signal.aborted && recoveryCurrent(),
       });
       if (signal.aborted) return true;
       if (!rejection) return false;
-      setListState({
-        status: rejection === 'forbidden' ? 'forbidden' : 'error',
-      });
+      if (ownsDirectory || recoveryCurrent())
+        setListState({
+          status: rejection === 'forbidden' ? 'forbidden' : 'error',
+        });
       return true;
     },
     [identity],
@@ -231,8 +264,11 @@ export function ClientWorkspace({
 
   const loadClients = useCallback(
     async (companyContextId: string): Promise<void> => {
+      const requestSignal = directoryRead.begin();
+      if (!requestSignal) return;
+      const recoveryCurrent = captureRecovery();
       await runLatestAuthenticatedRequest({
-        pending: pendingList,
+        signal: requestSignal,
         identity,
         execute: (api, signal) =>
           api.request('/clients', {
@@ -240,7 +276,16 @@ export function ClientWorkspace({
             signal,
           }),
         async onResult(result, signal) {
-          if (await handleAccessRejection(result, companyContextId, signal))
+          if (
+            (await handleAccessRejection(
+              result,
+              companyContextId,
+              signal,
+              recoveryCurrent,
+              true,
+            )) ||
+            signal.aborted
+          )
             return;
           setListState(
             result.status === 'ok'
@@ -254,14 +299,10 @@ export function ClientWorkspace({
         onError: () => setListState({ status: 'error' }),
       });
     },
-    [handleAccessRejection, identity],
+    [captureRecovery, directoryRead, handleAccessRejection, identity],
   );
 
   useEffect(() => {
-    pendingList.current?.abort();
-    pendingCreate.current?.abort();
-    pendingSearch.current?.abort();
-    pendingAttach.current?.abort();
     retryCommand.current = undefined;
     setCreateState({ status: 'idle' });
     setSearchState({ status: 'idle' });
@@ -275,12 +316,6 @@ export function ClientWorkspace({
     setListState({ status: 'loading' });
 
     void loadClients(companyContextId);
-    return () => {
-      pendingList.current?.abort();
-      pendingCreate.current?.abort();
-      pendingSearch.current?.abort();
-      pendingAttach.current?.abort();
-    };
   }, [
     activeCompany?.id,
     actor.internalUserId,
@@ -332,10 +367,14 @@ export function ClientWorkspace({
     });
     const command = resolveRetryCommand(serializedBody, retryCommand.current);
 
+    if (registrationWork.isPending()) return;
+    const operation = registrationWork.beginLatest();
+    if (!operation) return;
+    const recoveryCurrent = captureRecovery();
     retryCommand.current = command;
     setCreateState({ status: 'submitting' });
     await runLatestAuthenticatedRequest({
-      pending: pendingCreate,
+      signal: operation.signal,
       identity,
       execute: (api, signal) =>
         api.request('/clients', {
@@ -349,7 +388,14 @@ export function ClientWorkspace({
           signal,
         }),
       async onResult(result, signal) {
-        if (await handleAccessRejection(result, activeCompany.id, signal)) {
+        if (
+          await handleAccessRejection(
+            result,
+            activeCompany.id,
+            signal,
+            recoveryCurrent,
+          )
+        ) {
           if (!signal.aborted) setCreateState({ status: 'forbidden' });
           return;
         }
@@ -383,10 +429,16 @@ export function ClientWorkspace({
         setContacts([]);
         setBusinessActivity('');
         setCreateState({ status: 'success' });
-        void onActivityRecorded();
-        await loadClients(activeCompany.id);
+        operation.release();
+        void Promise.resolve()
+          .then(() => {
+            if (!signal.aborted) return onActivityRecorded();
+          })
+          .catch(() => undefined);
+        void loadClients(activeCompany.id);
       },
       onError: () => setCreateState({ status: 'error' }),
+      onSettled: operation.release,
     });
   }
 
@@ -398,9 +450,12 @@ export function ClientWorkspace({
       setSearchState({ status: 'validation' });
       return;
     }
+    const requestSignal = searchRead.begin();
+    if (!requestSignal) return;
+    const recoveryCurrent = captureRecovery();
     setSearchState({ status: 'submitting' });
     await runLatestAuthenticatedRequest({
-      pending: pendingSearch,
+      signal: requestSignal,
       identity,
       execute: (api, signal) =>
         api.request(`/clients/search?query=${encodeURIComponent(query)}`, {
@@ -408,7 +463,14 @@ export function ClientWorkspace({
           signal,
         }),
       async onResult(result, signal) {
-        if (await handleAccessRejection(result, activeCompany.id, signal)) {
+        if (
+          await handleAccessRejection(
+            result,
+            activeCompany.id,
+            signal,
+            recoveryCurrent,
+          )
+        ) {
           if (!signal.aborted) setSearchState({ status: 'forbidden' });
           return;
         }
@@ -427,9 +489,13 @@ export function ClientWorkspace({
 
   async function attachClient(clientAccountId: string) {
     if (!activeCompany || !canAttachClients) return;
+    if (attachmentWork.isPending()) return;
+    const operation = attachmentWork.begin();
+    if (!operation) return;
+    const recoveryCurrent = captureRecovery();
     setAttachingClientId(clientAccountId);
     await runLatestAuthenticatedRequest({
-      pending: pendingAttach,
+      signal: operation.signal,
       identity,
       execute: (api, signal) =>
         api.request(
@@ -441,7 +507,14 @@ export function ClientWorkspace({
           },
         ),
       async onResult(result, signal) {
-        if (await handleAccessRejection(result, activeCompany.id, signal)) {
+        if (
+          await handleAccessRejection(
+            result,
+            activeCompany.id,
+            signal,
+            recoveryCurrent,
+          )
+        ) {
           if (!signal.aborted) setSearchState({ status: 'forbidden' });
           return;
         }
@@ -465,7 +538,10 @@ export function ClientWorkspace({
         await loadClients(activeCompany.id);
       },
       onError: () => setSearchState({ status: 'error' }),
-      onSettled: () => setAttachingClientId(undefined),
+      onSettled: () => {
+        operation.release();
+        setAttachingClientId(undefined);
+      },
     });
   }
 
@@ -704,7 +780,7 @@ export function ClientWorkspace({
           type="button"
           disabled={attachingClientId !== undefined}
           onClick={() => {
-            pendingSearch.current?.abort();
+            searchRead.retire();
             setSearchState({ status: 'idle' });
             setSearchQuery('');
           }}
@@ -794,6 +870,7 @@ export function ClientWorkspace({
           key={`${actor.internalUserId}:${actor.workspaceId}:${actor.workspaceMembershipId}`}
           companyContextId={activeCompany.id}
           identity={identity}
+          captureRecovery={captureRecovery}
           canAttach={canAttachClients}
           refreshKey={duplicateReviewRefreshKey}
           authorityGeneration={clientAuthority}
@@ -825,6 +902,7 @@ export function ClientWorkspace({
           companyContextId={activeCompany.id}
           canUpdate={canUpdateClients}
           identity={identity}
+          captureRecovery={captureRecovery}
           onCompanyContextRejected={onCompanyContextRejected}
           onWorkspaceAccessRejected={onWorkspaceAccessRejected}
           onActorRevalidated={onActorRevalidated}
@@ -841,6 +919,7 @@ export function ClientWorkspace({
           clientId={selectedClientId}
           companyContextId={activeCompany.id}
           identity={identity}
+          captureRecovery={captureRecovery}
           canResolve={canResolveDuplicateClients}
           onConfirmed={setConfirmedUnionClientId}
           onCompanyContextRejected={onCompanyContextRejected}

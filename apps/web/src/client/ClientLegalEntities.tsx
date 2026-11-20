@@ -2,6 +2,7 @@ import {
   type FormEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useId,
   useRef,
   useState,
@@ -12,6 +13,11 @@ import {
   handleAuthenticatedAccessRejection,
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import {
+  useScopedOperation,
+  useScopedOperationGroup,
+} from '../api/use-scoped-operation';
 import { resolveRetryCommand, type RetryCommand } from './client-command';
 import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
 import {
@@ -90,6 +96,7 @@ export function ClientLegalEntities({
   companyContextId,
   canUpdate,
   identity,
+  captureRecovery,
   onCompanyContextRejected,
   onActorRevalidated,
   onWorkspaceAccessRejected,
@@ -102,6 +109,7 @@ export function ClientLegalEntities({
   companyContextId: string;
   canUpdate: boolean;
   identity: BrowserIdentity;
+  captureRecovery?: () => () => boolean;
   onCompanyContextRejected: (companyContextId: string) => void;
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected: () => Promise<void> | void;
@@ -122,16 +130,24 @@ export function ClientLegalEntities({
   const heading = useRef<HTMLHeadingElement>(null);
   const fields = useRef<Partial<Record<DraftField, HTMLElement | null>>>({});
   const retryCommand = useRef<RetryCommand | undefined>(undefined);
-  const pendingList = useRef<AbortController | undefined>(undefined);
-  const pendingMutation = useRef<AbortController | undefined>(undefined);
+  const requestScope = String(
+    useRequestLifetime(
+      identity,
+      JSON.stringify([companyContextId, clientAccountId, canUpdate]),
+    ),
+  );
+  const listRead = useScopedOperation(requestScope);
+  const mutationWork = useScopedOperationGroup(requestScope);
   const rejectCompanyContext = useRef(onCompanyContextRejected);
-  rejectCompanyContext.current = onCompanyContextRejected;
   const acceptRevalidatedActor = useRef(onActorRevalidated);
-  acceptRevalidatedActor.current = onActorRevalidated;
   const rejectWorkspaceAccess = useRef(onWorkspaceAccessRejected);
-  rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
   const publishClientVersion = useRef(onClientVersionChanged);
-  publishClientVersion.current = onClientVersionChanged;
+  useLayoutEffect(() => {
+    rejectCompanyContext.current = onCompanyContextRejected;
+    acceptRevalidatedActor.current = onActorRevalidated;
+    rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
+    publishClientVersion.current = onClientVersionChanged;
+  });
 
   const rejectedAccess = useCallback(
     (
@@ -139,6 +155,7 @@ export function ClientLegalEntities({
         typeof handleAuthenticatedAccessRejection
       >[0]['result'],
       signal: AbortSignal,
+      recoveryCurrent: (() => boolean) | undefined,
     ) =>
       handleAuthenticatedAccessRejection({
         result,
@@ -150,6 +167,7 @@ export function ClientLegalEntities({
           acceptRevalidatedActor.current(revalidatedActor),
         onWorkspaceAccessRejected: () => rejectWorkspaceAccess.current(),
         signal,
+        isCurrent: () => !signal.aborted && (recoveryCurrent?.() ?? true),
       }),
     [companyContextId, identity],
   );
@@ -157,9 +175,12 @@ export function ClientLegalEntities({
   /** A quiet refresh keeps the current list visible until the new read. */
   const load = useCallback(
     async ({ quiet }: { quiet: boolean }): Promise<void> => {
+      const requestSignal = listRead.begin();
+      if (!requestSignal) return;
+      const recoveryCurrent = captureRecovery?.();
       if (!quiet) setList({ status: 'loading' });
       await runLatestAuthenticatedRequest({
-        pending: pendingList,
+        signal: requestSignal,
         identity,
         execute: (api, signal) =>
           api.request(
@@ -168,7 +189,11 @@ export function ClientLegalEntities({
           ),
         async onResult(result, signal) {
           if (signal.aborted) return;
-          const rejection = await rejectedAccess(result, signal);
+          const rejection = await rejectedAccess(
+            result,
+            signal,
+            recoveryCurrent,
+          );
           if (signal.aborted) return;
           if (rejection || result.status === 'notFound') {
             setList({ status: 'unavailable' });
@@ -188,15 +213,18 @@ export function ClientLegalEntities({
         onError: () => setList({ status: 'error' }),
       });
     },
-    [clientAccountId, companyContextId, identity, rejectedAccess],
+    [
+      captureRecovery,
+      clientAccountId,
+      companyContextId,
+      identity,
+      listRead,
+      rejectedAccess,
+    ],
   );
 
   useEffect(() => {
     void load({ quiet: false });
-    return () => {
-      pendingList.current?.abort();
-      pendingMutation.current?.abort();
-    };
   }, [load]);
 
   const editorKey =
@@ -247,12 +275,16 @@ export function ClientLegalEntities({
       JSON.stringify(mutation.body),
       retryCommand.current,
     );
+    if (mutationWork.isPending()) return;
+    const operation = mutationWork.begin();
+    if (!operation) return;
+    const recoveryCurrent = captureRecovery?.();
     retryCommand.current = command;
     const confirmedOutcome = editor.mode === 'add' ? 'recorded' : 'corrected';
     setOutcome({ status: 'submitting' });
 
     await runLatestAuthenticatedRequest({
-      pending: pendingMutation,
+      signal: operation.signal,
       identity,
       execute: (api, signal) =>
         api.request(mutation.path, {
@@ -267,7 +299,7 @@ export function ClientLegalEntities({
         }),
       async onResult(result, signal) {
         if (signal.aborted) return;
-        const rejection = await rejectedAccess(result, signal);
+        const rejection = await rejectedAccess(result, signal, recoveryCurrent);
         if (signal.aborted) return;
         if (rejection || result.status === 'notFound') {
           retryCommand.current = undefined;
@@ -316,6 +348,7 @@ export function ClientLegalEntities({
         void onActivityRecorded();
       },
       onError: () => setOutcome({ status: 'uncertain' }),
+      onSettled: operation.release,
     });
   }
 

@@ -3,6 +3,7 @@ import {
   type SetStateAction,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -13,6 +14,11 @@ import {
   handleAuthenticatedAccessRejection,
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import {
+  useScopedOperation,
+  useScopedOperationGroup,
+} from '../api/use-scoped-operation';
 import type { ClientContact } from './ClientContactEditor';
 import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
 import './client-duplicate-review.css';
@@ -75,6 +81,7 @@ type DetailState =
 export function ClientDuplicateReviewPanel({
   companyContextId,
   identity,
+  captureRecovery,
   canAttach,
   refreshKey,
   authorityGeneration,
@@ -86,6 +93,7 @@ export function ClientDuplicateReviewPanel({
 }: {
   companyContextId: string;
   identity: BrowserIdentity;
+  captureRecovery?: () => () => boolean;
   canAttach: boolean;
   refreshKey: number;
   authorityGeneration: string;
@@ -116,18 +124,35 @@ export function ClientDuplicateReviewPanel({
     status: 'idle',
   });
   const [attaching, setAttaching] = useState(false);
-  const pendingList = useRef<AbortController | undefined>(undefined);
-  const pendingDetail = useRef<AbortController | undefined>(undefined);
-  const pendingAttach = useRef<AbortController | undefined>(undefined);
+  const requestScope = String(
+    useRequestLifetime(
+      identity,
+      JSON.stringify([
+        companyContextId,
+        canAttach,
+        authorityGeneration,
+        refreshKey,
+      ]),
+    ),
+  );
+  const listRead = useScopedOperation(requestScope);
+  const detailRead = useScopedOperation(requestScope);
+  const attachmentWork = useScopedOperationGroup(requestScope);
   const rejectCompanyContext = useRef(onCompanyContextRejected);
-  rejectCompanyContext.current = onCompanyContextRejected;
   const acceptRevalidatedActor = useRef(onActorRevalidated);
-  acceptRevalidatedActor.current = onActorRevalidated;
   const rejectWorkspaceAccess = useRef(onWorkspaceAccessRejected);
-  rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
+  useLayoutEffect(() => {
+    rejectCompanyContext.current = onCompanyContextRejected;
+    acceptRevalidatedActor.current = onActorRevalidated;
+    rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
+  });
 
   const handleAccessRejection = useCallback(
-    async (result: ApiResult<unknown>, signal: AbortSignal) => {
+    async (
+      result: ApiResult<unknown>,
+      signal: AbortSignal,
+      recoveryCurrent: (() => boolean) | undefined,
+    ) => {
       const rejection = await handleAuthenticatedAccessRejection({
         result,
         identity,
@@ -137,6 +162,7 @@ export function ClientDuplicateReviewPanel({
         onActorRevalidated: (actor) => acceptRevalidatedActor.current(actor),
         onWorkspaceAccessRejected: () => rejectWorkspaceAccess.current(),
         signal,
+        isCurrent: () => !signal.aborted && (recoveryCurrent?.() ?? true),
       });
       return signal.aborted || rejection !== undefined;
     },
@@ -145,6 +171,9 @@ export function ClientDuplicateReviewPanel({
 
   const requestReviews = useCallback(
     async (cursor: string | undefined) => {
+      const requestSignal = listRead.begin();
+      if (!requestSignal) return;
+      const recoveryCurrent = captureRecovery?.();
       const continuing = cursor !== undefined;
       if (continuing) {
         setListState((current) =>
@@ -159,7 +188,7 @@ export function ClientDuplicateReviewPanel({
         setListState({ status: 'loading' });
       }
       await runLatestAuthenticatedRequest({
-        pending: pendingList,
+        signal: requestSignal,
         identity,
         execute: (api, signal) =>
           api.request(duplicateReviewListPath(cursor), {
@@ -167,10 +196,13 @@ export function ClientDuplicateReviewPanel({
             signal,
           }),
         async onResult(result, signal) {
-          if (await handleAccessRejection(result, signal)) {
+          if (
+            (await handleAccessRejection(result, signal, recoveryCurrent)) ||
+            signal.aborted
+          ) {
             if (!signal.aborted) {
-              pendingDetail.current?.abort();
-              pendingAttach.current?.abort();
+              detailRead.retire();
+              attachmentWork.retire();
               openingTrigger.current = null;
               setDetailState({ status: 'idle' });
               setAttaching(false);
@@ -205,7 +237,15 @@ export function ClientDuplicateReviewPanel({
         onError: () => setDuplicateReviewListFailure(cursor, setListState),
       });
     },
-    [companyContextId, handleAccessRejection, identity],
+    [
+      attachmentWork,
+      captureRecovery,
+      companyContextId,
+      detailRead,
+      handleAccessRejection,
+      identity,
+      listRead,
+    ],
   );
 
   const loadReviews = useCallback(
@@ -214,18 +254,10 @@ export function ClientDuplicateReviewPanel({
   );
 
   useEffect(() => {
-    pendingList.current?.abort();
-    pendingDetail.current?.abort();
-    pendingAttach.current?.abort();
     setDetailState({ status: 'idle' });
     openingTrigger.current = null;
     setAttaching(false);
     void loadReviews();
-    return () => {
-      pendingList.current?.abort();
-      pendingDetail.current?.abort();
-      pendingAttach.current?.abort();
-    };
   }, [
     authorityGeneration,
     canAttach,
@@ -235,11 +267,14 @@ export function ClientDuplicateReviewPanel({
   ]);
 
   async function openReview(reference: string) {
-    if (pendingAttach.current && !pendingAttach.current.signal.aborted) return;
+    if (attachmentWork.isPending()) return;
+    const requestSignal = detailRead.begin();
+    if (!requestSignal) return;
+    const recoveryCurrent = captureRecovery?.();
     openingTrigger.current = document.activeElement;
     setDetailState({ status: 'loading' });
     await runLatestAuthenticatedRequest({
-      pending: pendingDetail,
+      signal: requestSignal,
       identity,
       execute: (api, signal) =>
         api.request(
@@ -247,7 +282,10 @@ export function ClientDuplicateReviewPanel({
           { companyContextId, signal },
         ),
       async onResult(result, signal) {
-        if (await handleAccessRejection(result, signal)) {
+        if (
+          (await handleAccessRejection(result, signal, recoveryCurrent)) ||
+          signal.aborted
+        ) {
           if (!signal.aborted) setDetailState({ status: 'unavailable' });
           return;
         }
@@ -270,10 +308,13 @@ export function ClientDuplicateReviewPanel({
   }
 
   async function attachCandidate(candidateId: string) {
-    if (pendingAttach.current && !pendingAttach.current.signal.aborted) return;
+    if (attachmentWork.isPending()) return;
+    const operation = attachmentWork.begin();
+    if (!operation) return;
+    const recoveryCurrent = captureRecovery?.();
     setAttaching(true);
     await runLatestAuthenticatedRequest({
-      pending: pendingAttach,
+      signal: operation.signal,
       identity,
       execute: (api, signal) =>
         api.request(
@@ -281,7 +322,10 @@ export function ClientDuplicateReviewPanel({
           { method: 'PUT', companyContextId, signal },
         ),
       async onResult(result, signal) {
-        if (await handleAccessRejection(result, signal)) {
+        if (
+          (await handleAccessRejection(result, signal, recoveryCurrent)) ||
+          signal.aborted
+        ) {
           if (!signal.aborted) setDetailState({ status: 'unavailable' });
           return;
         }
@@ -300,7 +344,10 @@ export function ClientDuplicateReviewPanel({
           setDetailState({ status: 'attached', refreshFailed: true });
       },
       onError: () => setDetailState({ status: 'attachmentError' }),
-      onSettled: () => setAttaching(false),
+      onSettled: () => {
+        operation.release();
+        setAttaching(false);
+      },
     });
   }
 
