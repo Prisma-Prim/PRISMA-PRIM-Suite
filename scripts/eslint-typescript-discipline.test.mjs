@@ -5,6 +5,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  readdir,
   rm,
   writeFile,
 } from 'node:fs/promises';
@@ -12,6 +13,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import ts from 'typescript';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const repositoryConfig = path.join(repositoryRoot, 'eslint.config.mjs');
@@ -140,34 +142,53 @@ test('a baseline entry for a fixed violation fails lint until it is pruned', asy
   assert.match(result.output, /--prune-suppressions/);
 });
 
-// `no-restricted-syntax` is baselined for a web AbortController (#1135) and
-// for a `legacy` identifier (#1349) in API and web source. Six remaining
-// native Document family migration calls are recorded by #1212. The API's
-// append-only Activity Log rule is never baselined. `no-warning-comments`
-// is baselined only for `legacy` comments (#1349).
-const webSyntaxRule = 'no-restricted-syntax';
-const legacyCommentRule = 'no-warning-comments';
-const applicationSource = /^apps\/(web|api)\/src\//;
-
-test('the committed baseline records only discipline rules and application migrations for existing files', async () => {
-  const baseline = JSON.parse(
-    await readFile(
-      new URL('../eslint-suppressions.json', import.meta.url),
-      'utf8',
-    ),
+test('the repository lint baseline has been retired', async () => {
+  await assert.rejects(
+    access(new URL('../eslint-suppressions.json', import.meta.url)),
+    { code: 'ENOENT' },
   );
+});
 
-  for (const [file, rules] of Object.entries(baseline)) {
-    assert.doesNotMatch(file, /\\|^[A-Za-z]:|^\//, `${file} must be POSIX`);
-    await access(path.join(repositoryRoot, file));
-    for (const [rule, { count }] of Object.entries(rules)) {
-      assert.ok(
-        [nonNullRule, assertionRule].includes(rule) ||
-          ([webSyntaxRule, legacyCommentRule].includes(rule) &&
-            applicationSource.test(file)),
-        `${file} suppresses ${rule}; the baseline is reserved for discipline rules, web AbortControllers, legacy names and recorded Document family migrations`,
-      );
-      assert.ok(Number.isInteger(count) && count > 0, `${file} ${rule}`);
+test('production browser requests use one controller implementation and no pending-slot callers', async () => {
+  const directory = path.join(repositoryRoot, 'apps/web/src');
+  const files = (await readdir(directory, { recursive: true })).filter(
+    (file) =>
+      /\.tsx?$/u.test(file) &&
+      !/(?:\.(?:test|spec)(?:\.|-)|^test[/\\])/u.test(file),
+  );
+  const controllers = [];
+  const pendingSlots = [];
+  for (const file of files) {
+    const source = ts.createSourceFile(
+      file,
+      await readFile(path.join(directory, file), 'utf8'),
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    function visit(node) {
+      if (
+        ts.isNewExpression(node) &&
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === 'AbortController'
+      ) {
+        controllers.push(file.split(path.sep).join('/'));
+      }
+      if (
+        ts.isCallExpression(node) &&
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === 'runLatestAuthenticatedRequest' &&
+        node.arguments[0] &&
+        ts.isObjectLiteralExpression(node.arguments[0]) &&
+        node.arguments[0].properties.some(
+          (property) => property.name?.getText(source) === 'pending',
+        )
+      ) {
+        pendingSlots.push(file);
+      }
+      ts.forEachChild(node, visit);
     }
+    visit(source);
   }
+  assert.deepEqual(controllers, ['api/use-scoped-operation.ts']);
+  assert.deepEqual(pendingSlots, []);
 });

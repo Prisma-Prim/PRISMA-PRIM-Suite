@@ -1,11 +1,117 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 import {
+  BROWSER_SEQUENCE_CASES,
   browserSequenceReplayCommand,
   readBrowserSequenceOptions,
 } from './browser-sequences.mjs';
+
+function callsTo(root, name) {
+  const calls = [];
+  function visit(node) {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === name
+    )
+      calls.push(node);
+    ts.forEachChild(node, visit);
+  }
+  visit(root);
+  return calls;
+}
+
+test('every generated browser case names its runnable native test and adapter', async () => {
+  assert.deepEqual(BROWSER_SEQUENCE_CASES.map(({ id }) => id).sort(), [
+    'certification-recommendation',
+    'company-context',
+    'contract-signing',
+    'document-pdf',
+    'document-version',
+    'invoice-record',
+    'mission-task-result',
+    'offer-version-owner',
+    'operational-risk',
+    'payment-evidence',
+    'payment-observation',
+    'pricing-snapshot-owner',
+    'profitability-version-owner',
+    'project-task',
+    'working-evidence',
+    'workspace-access',
+  ]);
+  const e2e = new URL('../apps/web/e2e/', import.meta.url);
+  for (const {
+    id,
+    journey,
+    title,
+    fixture,
+    adapter,
+  } of BROWSER_SEQUENCE_CASES) {
+    const specName = `${journey}.acceptance.spec.ts`;
+    const [spec, implementation] = await Promise.all([
+      readFile(new URL(specName, e2e), 'utf8'),
+      readFile(new URL(`${fixture}.ts`, e2e), 'utf8'),
+    ]);
+    const source = ts.createSourceFile(specName, spec, ts.ScriptTarget.Latest);
+    const namedTests = callsTo(source, 'test').filter(
+      ({ arguments: [name] }) =>
+        name && ts.isStringLiteral(name) && name.text === title,
+    );
+    assert.equal(
+      namedTests.length,
+      1,
+      `${id} must have one test named ${title}`,
+    );
+    const callback = namedTests[0].arguments[1];
+    assert.ok(callback, `${id} has no test callback`);
+    const runners = callsTo(callback, 'runBrowserSequences');
+    assert.equal(runners.length, 1, `${id} must run its generated case once`);
+    const [options] = runners[0].arguments;
+    assert.ok(options && ts.isObjectLiteralExpression(options));
+    const adapterOption = options.properties.find(
+      (property) =>
+        ts.isPropertyAssignment(property) &&
+        ts.isIdentifier(property.name) &&
+        property.name.text === 'adapter',
+    );
+    const expression = adapterOption?.initializer;
+    const argument =
+      expression &&
+      ts.isCallExpression(expression) &&
+      ts.isIdentifier(expression.expression) &&
+      expression.expression.text === 'atNativeLocale' &&
+      expression.arguments.length === 1
+        ? expression.arguments[0]
+        : expression;
+    assert.ok(
+      argument && ts.isIdentifier(argument) && argument.text === adapter,
+      `${id} must run ${adapter} in ${title}; found ${expression?.getText(source)}`,
+    );
+    const fixtureImport = source.statements.find(
+      (statement) =>
+        ts.isImportDeclaration(statement) &&
+        ts.isStringLiteral(statement.moduleSpecifier) &&
+        statement.moduleSpecifier.text === `./${fixture}` &&
+        !statement.importClause?.isTypeOnly,
+    );
+    const bindings = fixtureImport?.importClause?.namedBindings;
+    assert.ok(
+      bindings &&
+        ts.isNamedImports(bindings) &&
+        bindings.elements.some(
+          ({ isTypeOnly, name, propertyName }) =>
+            !isTypeOnly && name.text === adapter && !propertyName,
+        ),
+      `${id} must import ${adapter} from ${fixture}`,
+    );
+    assert.match(implementation, new RegExp(`export const ${adapter}\\b`, 'u'));
+  }
+});
 
 test('validates a Project Task replay only for the native Project Task journey', () => {
   const environment = {
