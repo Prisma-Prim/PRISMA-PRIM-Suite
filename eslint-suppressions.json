@@ -156,11 +156,6 @@
       "count": 1
     }
   },
-  "apps/web/src/project/ProjectDocuments.tsx": {
-    "no-restricted-syntax": {
-      "count": 3
-    }
-  },
   "apps/web/src/project/ProjectLifecycle.tsx": {
     "no-restricted-syntax": {
       "count": 3
@@ -174,11 +169,6 @@
   "apps/web/src/project/ProjectNextActionEditor.tsx": {
     "no-restricted-syntax": {
       "count": 2
-    }
-  },
-  "apps/web/src/project/ProjectPdfBundle.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
     }
   },
   "apps/web/src/project/ProjectResponsible.tsx": {

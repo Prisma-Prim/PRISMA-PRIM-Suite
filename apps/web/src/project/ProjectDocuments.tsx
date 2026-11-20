@@ -1,6 +1,12 @@
 import { hasReceivedContractAccess } from '../documents/received-contract-access';
 import { hasMissionDeliverableAccess } from '../documents/mission-deliverable-access';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import type { ActorContext } from '../access-types';
 import { holds } from '../access/company-grants';
 import { companyAuthorityWithoutProjectTemplate } from './project-authority';
@@ -74,9 +80,15 @@ function ProjectDocumentSession({
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [generation, setGeneration] = useState(0);
-  const pending = useRef<AbortController | null>(null);
-  // Only the selector's own read is tracked here, so closing it never touches a command request.
-  const selectorRequest = useRef<AbortController | null>(null);
+  const lifetime = String(useRequestLifetime(identity, String(generation)));
+  const listWork = useScopedOperationGroup(lifetime);
+  const selectorWork = useScopedOperationGroup(lifetime);
+  const commandWork = useScopedOperationGroup(lifetime);
+  const actorObservation = useActorObservation(actor);
+  const captureRecovery = useAuthorityLifetime(
+    String(actorObservation),
+    identity,
+  );
   const companyId = actor.activeCompany?.id;
   const company = actor.activeCompany;
   const canRead =
@@ -100,17 +112,18 @@ function ProjectDocumentSession({
 
   async function fetchListing(
     eligible: boolean,
-    controller: AbortController,
+    signal: AbortSignal,
+    canRejectSession: () => boolean,
   ): Promise<Load> {
     const api = await createAuthenticatedApiClient(identity);
-    if (controller.signal.aborted) return { kind: 'loading' };
+    if (signal.aborted) return { kind: 'loading' };
     const result = await api.request(
       `/projects/${encodeURIComponent(projectId)}/${eligible ? 'eligible-documents' : 'documents'}`,
-      { companyContextId: companyId, signal: controller.signal },
+      { companyContextId: companyId, signal },
     );
-    if (controller.signal.aborted) return { kind: 'loading' };
+    if (signal.aborted) return { kind: 'loading' };
     if (result.status === 'unauthorized') {
-      await identity.rejectSession();
+      if (canRejectSession()) await identity.rejectSession();
       return { kind: 'denied' };
     }
     if (result.status === 'forbidden' || result.status === 'notFound')
@@ -132,67 +145,75 @@ function ProjectDocumentSession({
     };
   }
   useEffect(() => {
-    const controller = new AbortController();
-    pending.current?.abort();
-    pending.current = controller;
     setSelector(null);
     setMutation({ kind: 'idle' });
     if (!canRead || !companyId) {
       setLoad({ kind: 'denied' });
-      return () => controller.abort();
+      return;
     }
+    const request = listWork.beginLatest();
+    if (!request) return;
+    const { signal } = request;
+    const canRejectSession = captureRecovery();
     setLoad({ kind: 'loading' });
-    void fetchListing(false, controller)
+    void fetchListing(false, signal, canRejectSession)
       .then((result) => {
-        if (!controller.signal.aborted) setLoad(result);
+        if (!signal.aborted) setLoad(result);
       })
       .catch(() => {
-        if (!controller.signal.aborted) setLoad({ kind: 'error' });
-      });
-    return () => pending.current?.abort();
-    // Actor and Project changes remount the session; identity changes invalidate requests here.
+        if (!signal.aborted) setLoad({ kind: 'error' });
+      })
+      .finally(request.release);
+    return request.retire;
+    // Actor authority and Project replacement remount this session. Recovery captures the complete Actor separately.
   }, [identity, generation]);
 
   async function choose() {
-    const controller = new AbortController();
-    pending.current?.abort();
-    pending.current = controller;
-    selectorRequest.current = controller;
+    if (commandWork.isPending()) return;
+    const request = selectorWork.beginLatest();
+    if (!request) return;
+    const { signal } = request;
+    const canRejectSession = captureRecovery();
     setSelector({ load: { kind: 'loading' }, query: '' });
     try {
-      const result = await fetchListing(true, controller);
-      if (!controller.signal.aborted) {
-        if (result.kind === 'denied') {
-          setLoad(result);
-          setSelector(null);
-          setMutation({ kind: 'blocked' });
-        } else setSelector({ load: result, query: '' });
-      }
+      const result = await fetchListing(true, signal, canRejectSession);
+      if (signal.aborted) return;
+      if (result.kind === 'denied') {
+        listWork.retire();
+        setLoad(result);
+        setSelector(null);
+        setMutation({ kind: 'blocked' });
+      } else setSelector({ load: result, query: '' });
     } catch {
-      if (!controller.signal.aborted)
-        setSelector({ load: { kind: 'error' }, query: '' });
+      if (!signal.aborted) setSelector({ load: { kind: 'error' }, query: '' });
+    } finally {
+      request.release();
     }
   }
   function closeSelector() {
-    // A closed selector must not be reopened by its own late reply; the command keeps its request.
-    selectorRequest.current?.abort();
-    selectorRequest.current = null;
+    selectorWork.retire();
     setSelector(null);
   }
   async function run(command: Command) {
-    const controller = new AbortController();
-    pending.current?.abort();
-    pending.current = controller;
+    if (commandWork.isPending()) return;
+    const request = commandWork.begin();
+    if (!request) return;
+    selectorWork.retire();
+    setSelector((current) =>
+      current?.load.kind === 'loading' ? null : current,
+    );
+    const { signal } = request;
+    const canRejectSession = captureRecovery();
     setMutation({ kind: 'pending', command });
     setFeedback(null);
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       const result = await api.request(
         `/documents/${encodeURIComponent(command.documentId)}/project-association`,
         {
           companyContextId: companyId,
-          signal: controller.signal,
+          signal,
           method: 'POST',
           headers: {
             'content-type': 'application/json',
@@ -205,15 +226,19 @@ function ProjectDocumentSession({
           }),
         },
       );
-      if (controller.signal.aborted) return;
-      if (result.status === 'unauthorized') {
-        await identity.rejectSession();
-        return;
-      }
-      if (result.status === 'forbidden' || result.status === 'notFound') {
+      if (signal.aborted) return;
+      if (
+        result.status === 'unauthorized' ||
+        result.status === 'forbidden' ||
+        result.status === 'notFound'
+      ) {
+        listWork.retire();
+        selectorWork.retire();
         setLoad({ kind: 'denied' });
         setSelector(null);
         setMutation({ kind: 'blocked' });
+        if (result.status === 'unauthorized' && canRejectSession())
+          await identity.rejectSession();
         return;
       }
       if (result.status === 'conflict' || result.status === 'validation') {
@@ -235,31 +260,35 @@ function ProjectDocumentSession({
         return;
       }
       setFeedback('confirmed');
+      listWork.retire();
+      selectorWork.retire();
       setSelector(null);
       setMutation({ kind: 'blocked' });
       setLoad({ kind: 'loading' });
       // A confirmed command is historical. Only a fresh query describes the current link.
       try {
-        const refreshed = await fetchListing(false, controller);
-        if (!controller.signal.aborted) {
+        const refreshed = await fetchListing(false, signal, canRejectSession);
+        if (!signal.aborted) {
           setLoad(refreshed);
           if (refreshed.kind === 'ready') setMutation({ kind: 'idle' });
         }
       } catch {
-        if (!controller.signal.aborted) setLoad({ kind: 'error' });
+        if (!signal.aborted) setLoad({ kind: 'error' });
       }
-      if (!controller.signal.aborted) {
+      if (!signal.aborted) {
         try {
-          await onActivityRecorded?.();
+          void Promise.resolve(onActivityRecorded?.()).catch(() => undefined);
         } catch {
           /* Relationship confirmation remains valid if Activity Log refresh fails. */
         }
       }
     } catch {
-      if (!controller.signal.aborted) {
+      if (!signal.aborted) {
         setFeedback('uncertain');
         setMutation({ kind: 'uncertain', command });
       }
+    } finally {
+      request.release();
     }
   }
   function change(row: Association, action: Command['action']) {
