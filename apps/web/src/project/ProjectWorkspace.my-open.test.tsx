@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import {
+  act,
   render,
   screen,
   waitFor,
@@ -107,4 +108,79 @@ it('chooses the current-user open directory and returns to the unchanged All dir
   );
   expect(requests.filter((row) => row === 'GET /api/projects')).toHaveLength(2);
   expect(requests.every((row) => row.startsWith('GET '))).toBe(true);
+});
+
+it('resumes the held Mine directory after an equivalent Project grant is replaced', async () => {
+  let allReads = 0;
+  let mineReads = 0;
+  let retiredSignal: AbortSignal | null | undefined;
+  let finishMine: (response: Response) => void = () => {
+    throw new Error('The original Mine read was not held.');
+  };
+  const held = new Promise<Response>((resolve) => {
+    finishMine = resolve;
+  });
+  vi.stubGlobal(
+    'fetch',
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      switch (input.toString()) {
+        case '/api/clients':
+          return Response.json([
+            { id: 'client', displayName: 'Synthetic Client' },
+          ]);
+        case '/api/projects':
+          allReads += 1;
+          return Response.json([mine, colleague]);
+        case '/api/projects?view=mine_open':
+          mineReads += 1;
+          if (mineReads !== 1) return Response.json([mine]);
+          retiredSignal = init?.signal;
+          return held;
+        default:
+          throw new Error(`Unexpected request: ${input.toString()}`);
+      }
+    },
+  );
+  const identity = deterministicBrowserIdentity();
+  const mounted = render(
+    <ProjectWorkspace actor={actor} identity={identity} />,
+  );
+  await screen.findByRole('button', {
+    name: 'Colleague preparation Client: Synthetic Client',
+  });
+  changeValue(
+    screen.getByRole('combobox', { name: 'Project view' }),
+    'mine_open',
+  );
+  await waitFor(() => expect(mineReads).toBe(1));
+
+  mounted.rerender(
+    <ProjectWorkspace
+      actor={{
+        ...actor,
+        activeCompany: {
+          id: 'company',
+          displayName: 'PRISMA-PRIM',
+          grants: companyGrants({
+            bundle: 'company_project_access',
+            version: 'v1',
+            assignmentId: 'new-project-grant',
+          }),
+        },
+      }}
+      identity={identity}
+    />,
+  );
+  await waitFor(() => expect(mineReads).toBe(2));
+  expect(retiredSignal?.aborted).toBe(true);
+  await act(async () => finishMine(new Response(null, { status: 403 })));
+  expect(screen.getByRole('combobox', { name: 'Project view' })).toHaveValue(
+    'mine_open',
+  );
+  expect(
+    await screen.findByRole('button', {
+      name: 'My preparation Client: Synthetic Client',
+    }),
+  ).toBeInTheDocument();
+  expect(allReads).toBe(1);
 });

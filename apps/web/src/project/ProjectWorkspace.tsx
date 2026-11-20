@@ -261,16 +261,17 @@ export function ProjectWorkspace({
     actor.workspaceMembershipId,
     companyId,
     authorized,
-    JSON.stringify([
-      grantOf(actor.activeCompany, 'company_project_access'),
-      clientReadAuthority(actor),
-    ]),
     generation,
   ];
   const searchScope = [...scopeValues, identity];
-  const operationScope = String(
-    useRequestLifetime(identity, JSON.stringify(scopeValues)),
-  );
+  const viewScope = useRequestLifetime(identity, JSON.stringify(scopeValues));
+  // Replacing a consumed grant retires I/O, but equivalent access still owns
+  // the open view and its independently authorized drafts.
+  const operationScope = JSON.stringify([
+    viewScope,
+    grantOf(actor.activeCompany, 'company_project_access'),
+    clientReadAuthority(actor),
+  ]);
   const interactive = useScopedOperationGroup(operationScope);
   const selectedScope = JSON.stringify([operationScope, selected?.project.id]);
   const detailRefresh = useScopedOperationGroup(selectedScope);
@@ -329,6 +330,20 @@ export function ProjectWorkspace({
     },
   });
   const load = directory.load;
+  useLayoutEffect(() => {
+    const current = { retired: false };
+    scope.current = current;
+    registering.current = false;
+    setPending(false);
+    if (retry.current) {
+      retry.current = null;
+      setFeedback(null);
+    }
+    consumedProjectRequest.current = latestProjectRequest.current?.requestId;
+    return () => {
+      current.retired = true;
+    };
+  }, [operationScope]);
   function deny() {
     directory.deny();
   }
@@ -339,22 +354,18 @@ export function ProjectWorkspace({
   // module presents, including the drafts, commands and requested opens
   // started under it. Its search was already cleared during render.
   useEffect(() => {
-    scope.current = { retired: false };
     setSelected(null);
     setResponsibleRead(null);
     lastResponsibleRead.current = null;
     setFeedback(null);
-    setPending(false);
     setTitle('');
     setClientAccountId('');
     setTemplateSelection(null);
     setDeniedTemplateAuthority(null);
-    retry.current = null;
-    consumedProjectRequest.current = latestProjectRequest.current?.requestId;
     directory.reset();
-    return () => {
-      scope.current.retired = true;
-    };
+  }, [viewScope]);
+  useEffect(() => {
+    directory.resumeRetiredRead();
   }, [operationScope]);
   // Dedicated Template authority retires its choices and commands without
   // discarding independently authorized manual Project or Task work.

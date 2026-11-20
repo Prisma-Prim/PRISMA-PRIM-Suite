@@ -49,6 +49,11 @@ export function useProjectDirectory(input: {
     revision.current = clientIdentityRevision;
   }, [input.onDenied, clientIdentityRevision]);
   const request = useScopedOperation(input.operationScope);
+  const inFlight = useRef<{
+    signal: AbortSignal;
+    reason: ReadReason;
+    view: ProjectDirectoryView;
+  } | null>(null);
   const readRevision = useRef<number | undefined>(undefined);
   const reads = useRef(0);
   const confirmations = useRef(
@@ -63,6 +68,7 @@ export function useProjectDirectory(input: {
     setLoad(next);
   }
   function deny(view = current.current.view) {
+    inFlight.current = null;
     request.retire();
     commit({ kind: 'denied', view });
     onDenied.current();
@@ -93,6 +99,7 @@ export function useProjectDirectory(input: {
       deny(view);
       return;
     }
+    inFlight.current = { signal, view, reason: options.reason };
     const retainedClients =
       options.reason !== 'reset' && before.kind === 'ready'
         ? before.clients
@@ -209,6 +216,9 @@ export function useProjectDirectory(input: {
             rows: { kind: 'error' },
           });
         } else commit({ kind: 'error', view });
+      } finally {
+        if (inFlight.current?.signal === signal && !signal.aborted)
+          inFlight.current = null;
       }
     })();
   }
@@ -226,6 +236,11 @@ export function useProjectDirectory(input: {
   function reset() {
     confirmations.current.clear();
     readList({ view: 'all', reason: 'reset' });
+  }
+  function resumeRetiredRead() {
+    const read = inFlight.current;
+    if (read?.signal.aborted)
+      readList({ view: read.view, reason: read.reason });
   }
   function changeView(view: ProjectDirectoryView) {
     if (view === current.current.view) return;
@@ -282,6 +297,7 @@ export function useProjectDirectory(input: {
   return {
     load,
     reset,
+    resumeRetiredRead,
     changeView,
     deny,
     refreshRow,
