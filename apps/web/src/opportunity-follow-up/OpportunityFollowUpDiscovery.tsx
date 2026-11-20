@@ -1,3 +1,4 @@
+import { useRequestLifetime } from '../api/use-actor-requests';
 import { useId, useRef, useState } from 'react';
 import { opportunityFollowUpAuthority } from '../access/opportunity-follow-up-authority';
 import { useInterfaceLocale } from '../localization/interface-locale';
@@ -9,7 +10,6 @@ import {
 } from './follow-up-contract';
 import { useFollowUpCopy } from './follow-up.copy';
 import {
-  useFollowUpLifetime,
   useFollowUpOwner,
   type FollowUpAccessProps,
   type FollowUpAuthority,
@@ -32,8 +32,8 @@ export function OpportunityFollowUpDiscovery(
   props: OpportunityFollowUpDiscoveryProps,
 ) {
   const authority = opportunityFollowUpAuthority(props.actor);
-  const generation = useFollowUpLifetime(
-    props,
+  const generation = useRequestLifetime(
+    props.identity,
     JSON.stringify([
       authority?.key,
       props.clientProjectionAuthority,

@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useId,
   useRef,
   useState,
@@ -8,6 +9,12 @@ import {
 } from 'react';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperation } from '../api/use-scoped-operation';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
@@ -67,12 +74,7 @@ type View<Item> =
   | { kind: 'ready'; page: Page<Item> };
 
 export function PendingDecisionQueue<Item extends Row>(props: Props<Item>) {
-  const generation = useRef({ identity: props.identity, n: 0 });
-  if (generation.current.identity !== props.identity)
-    generation.current = {
-      identity: props.identity,
-      n: generation.current.n + 1,
-    };
+  const generation = useRequestLifetime(props.identity, props.authorityKey);
   if (
     !props.identity.loaded ||
     !props.identity.signedIn ||
@@ -82,7 +84,7 @@ export function PendingDecisionQueue<Item extends Row>(props: Props<Item>) {
     return null;
   return (
     <QueueOwner
-      key={`${props.authorityKey}:${generation.current.n}`}
+      key={generation}
       {...props}
       company={props.actor.activeCompany}
     />
@@ -105,28 +107,36 @@ function QueueOwner<Item extends Row>(
     protectedRef.current = locked;
     setProtectedWork(locked);
   }, []);
-  const pending = useRef<AbortController | undefined>(undefined);
+  const read = useScopedOperation(
+    JSON.stringify([props.company.id, props.endpoint]),
+  );
+  const observation = useActorObservation(props.actor);
+  const captureRecovery = useAuthorityLifetime(
+    String(observation),
+    props.identity,
+  );
   const heading = useRef<HTMLHeadingElement>(null);
   const callbacks = useRef(props);
-  callbacks.current = props;
+  useLayoutEffect(() => {
+    callbacks.current = props;
+  });
   const load = useCallback(
     async (cursor: string | undefined, focus = false) => {
       if (protectedRef.current) return;
-      pending.current?.abort();
-      const controller = new AbortController();
-      pending.current = controller;
+      const signal = read.begin();
+      if (!signal) return;
+      const recoveryCurrent = captureRecovery();
+      const identity = callbacks.current.identity;
       setView({ kind: 'loading' });
       setSelected(undefined);
       try {
-        const api = await createAuthenticatedApiClient(
-          callbacks.current.identity,
-        );
-        if (controller.signal.aborted) return;
+        const api = await createAuthenticatedApiClient(identity);
+        if (signal.aborted) return;
         const result = await api.request(
           `${props.endpoint}${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
-          { companyContextId: props.company.id, signal: controller.signal },
+          { companyContextId: props.company.id, signal },
         );
-        if (controller.signal.aborted) return;
+        if (signal.aborted) return;
         if (
           result.status === 'unauthorized' ||
           result.status === 'forbidden' ||
@@ -135,9 +145,10 @@ function QueueOwner<Item extends Row>(
           setView({ kind: 'denied' });
           await handleAuthenticatedAccessRejection({
             result,
-            identity: callbacks.current.identity,
+            identity,
             companyContextId: props.company.id,
-            signal: controller.signal,
+            signal,
+            isCurrent: () => !signal.aborted && recoveryCurrent(),
             onCompanyContextRejected:
               callbacks.current.onCompanyContextRejected,
             onActorRevalidated:
@@ -156,18 +167,16 @@ function QueueOwner<Item extends Row>(
           page: callbacks.current.parsePage(result.value),
         });
       } catch {
-        if (!controller.signal.aborted) setView({ kind: 'error' });
+        if (!signal.aborted) setView({ kind: 'error' });
       } finally {
-        if (!controller.signal.aborted && focus) heading.current?.focus();
-        if (pending.current === controller) pending.current = undefined;
+        if (!signal.aborted && focus) heading.current?.focus();
       }
     },
-    [props.actor.workspaceId, props.company.id, props.endpoint],
+    [captureRecovery, props.company.id, props.endpoint, read],
   );
   const cursor = cursors.at(-1);
   useEffect(() => {
     void load(undefined);
-    return () => pending.current?.abort();
   }, [load]);
   function move(next: (string | undefined)[]) {
     if (protectedRef.current) return;

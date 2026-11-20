@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type FormEvent,
@@ -11,6 +12,16 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { selectedWorkspaceId } from '../access/workspace-selection';
+import { grantOf } from '../access/company-grants';
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import {
+  useScopedOperation,
+  useScopedOperationGroup,
+} from '../api/use-scoped-operation';
 import { Select } from '../presentation/Select';
 import { useServiceCatalogueCopy } from './service-catalogue.copy';
 import './service-catalogue.css';
@@ -111,20 +122,36 @@ export function ServiceCatalogueWorkspace({
   const [offeringFeedback, setOfferingFeedback] = useState<Feedback>();
   const [pending, setPending] = useState(false);
   const fieldId = useId();
-  const definitionRequest = useRef<AbortController | undefined>(undefined);
-  const offeringRequest = useRef<AbortController | undefined>(undefined);
-  const commandRequest = useRef<AbortController | undefined>(undefined);
   const definitionRetry = useRef<{ payload: string; key: string }>(undefined);
   const offeringRetry = useRef<{ payload: string; key: string }>(undefined);
   const offeringsBootstrap = useRef<string | undefined>(undefined);
   const rejectCompany = useRef(onCompanyContextRejected);
   const acceptActor = useRef(onActorRevalidated);
   const rejectWorkspace = useRef(onWorkspaceAccessRejected);
-  rejectCompany.current = onCompanyContextRejected;
-  acceptActor.current = onActorRevalidated;
-  rejectWorkspace.current = onWorkspaceAccessRejected;
+  useLayoutEffect(() => {
+    rejectCompany.current = onCompanyContextRejected;
+    acceptActor.current = onActorRevalidated;
+    rejectWorkspace.current = onWorkspaceAccessRejected;
+  });
   const companyId = actor.activeCompany?.id;
   const companyName = actor.activeCompany?.displayName ?? actor.workspaceName;
+  const scope = String(
+    useRequestLifetime(
+      identity,
+      JSON.stringify([
+        actor.internalUserId,
+        actor.workspaceId,
+        actor.workspaceMembershipId,
+        companyId,
+        grantOf(actor.activeCompany, 'company_service_catalogue'),
+      ]),
+    ),
+  );
+  const definitionsRead = useScopedOperation(scope);
+  const offeringsRead = useScopedOperation(scope);
+  const commands = useScopedOperationGroup(scope);
+  const observation = useActorObservation(actor);
+  const captureRecovery = useAuthorityLifetime(String(observation), identity);
 
   const request = useCallback(
     async ({
@@ -146,6 +173,7 @@ export function ServiceCatalogueWorkspace({
         const token = identity.requestHeaders
           ? null
           : await identity.getToken();
+        signal.throwIfAborted();
         const workspaceId = selectedWorkspaceId();
         const response = await fetch(
           `${import.meta.env.VITE_API_URL ?? '/api'}${path}`,
@@ -185,9 +213,11 @@ export function ServiceCatalogueWorkspace({
       result: HttpResult,
       companyContextId: string,
       signal: AbortSignal,
+      recoveryCurrent: () => boolean,
     ): Promise<boolean> => {
       if (signal.aborted) return true;
       if (result.status === 401) {
+        if (!recoveryCurrent()) return false;
         await identity.rejectSession();
         return true;
       }
@@ -203,6 +233,7 @@ export function ServiceCatalogueWorkspace({
             acceptActor.current(revalidatedActor),
           onWorkspaceAccessRejected: () => rejectWorkspace.current(),
           signal,
+          isCurrent: () => !signal.aborted && recoveryCurrent(),
         });
       } finally {
         if (!signal.aborted) {
@@ -215,21 +246,21 @@ export function ServiceCatalogueWorkspace({
           setOfferingFeedback(undefined);
           definitionRetry.current = undefined;
           offeringRetry.current = undefined;
-          definitionRequest.current?.abort();
-          offeringRequest.current?.abort();
-          commandRequest.current?.abort();
+          definitionsRead.retire();
+          offeringsRead.retire();
+          commands.retire();
         }
       }
       return true;
     },
-    [identity],
+    [commands, definitionsRead, identity, offeringsRead],
   );
 
   const loadOfferings = useCallback(
     async (companyContextId: string, cursor?: string): Promise<void> => {
-      offeringRequest.current?.abort();
-      const controller = new AbortController();
-      offeringRequest.current = controller;
+      const signal = offeringsRead.begin();
+      if (!signal) return;
+      const recoveryCurrent = captureRecovery();
       setOfferings((current) =>
         startedPage({ current, companyContextId, cursor }),
       );
@@ -239,12 +270,19 @@ export function ServiceCatalogueWorkspace({
             cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''
           }`,
           companyContextId,
-          signal: controller.signal,
+          signal,
         });
-        if (controller.signal.aborted) return;
-        if (await handleAccess(result, companyContextId, controller.signal))
+        if (signal.aborted) return;
+        if (
+          (await handleAccess(
+            result,
+            companyContextId,
+            signal,
+            recoveryCurrent,
+          )) ||
+          signal.aborted
+        )
           return;
-        if (controller.signal.aborted) return;
         const page =
           result.status === 200 && isPage(result.body, isCompanyServiceOffering)
             ? result.body
@@ -253,20 +291,20 @@ export function ServiceCatalogueWorkspace({
           appliedPage({ current, companyContextId, cursor, page }),
         );
       } catch {
-        if (!controller.signal.aborted)
+        if (!signal.aborted)
           setOfferings((current) =>
             appliedPage({ current, companyContextId, cursor, page: undefined }),
           );
       }
     },
-    [handleAccess, request],
+    [captureRecovery, handleAccess, offeringsRead, request],
   );
 
   const loadDefinitions = useCallback(
     async (companyContextId: string, cursor?: string): Promise<void> => {
-      definitionRequest.current?.abort();
-      const controller = new AbortController();
-      definitionRequest.current = controller;
+      const signal = definitionsRead.begin();
+      if (!signal) return;
+      const recoveryCurrent = captureRecovery();
       setDefinitions((current) =>
         startedPage({ current, companyContextId, cursor }),
       );
@@ -276,12 +314,19 @@ export function ServiceCatalogueWorkspace({
             cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''
           }`,
           companyContextId,
-          signal: controller.signal,
+          signal,
         });
-        if (controller.signal.aborted) return;
-        if (await handleAccess(result, companyContextId, controller.signal))
+        if (signal.aborted) return;
+        if (
+          (await handleAccess(
+            result,
+            companyContextId,
+            signal,
+            recoveryCurrent,
+          )) ||
+          signal.aborted
+        )
           return;
-        if (controller.signal.aborted) return;
         const page =
           result.status === 200 && isPage(result.body, isServiceDefinition)
             ? result.body
@@ -297,17 +342,16 @@ export function ServiceCatalogueWorkspace({
           void loadOfferings(companyContextId);
         }
       } catch {
-        if (!controller.signal.aborted)
+        if (!signal.aborted)
           setDefinitions((current) =>
             appliedPage({ current, companyContextId, cursor, page: undefined }),
           );
       }
     },
-    [handleAccess, loadOfferings, request],
+    [captureRecovery, definitionsRead, handleAccess, loadOfferings, request],
   );
 
   useEffect(() => {
-    commandRequest.current?.abort();
     definitionRetry.current = undefined;
     offeringRetry.current = undefined;
     // Definitions first: one denial settles the whole screen before the
@@ -322,23 +366,13 @@ export function ServiceCatalogueWorkspace({
       return;
     }
     void loadDefinitions(companyId);
-    return () => {
-      definitionRequest.current?.abort();
-      offeringRequest.current?.abort();
-      commandRequest.current?.abort();
-    };
-  }, [
-    actor.workspaceId,
-    actor.workspaceMembershipId,
-    companyId,
-    loadDefinitions,
-  ]);
+  }, [companyId, loadDefinitions]);
 
   async function submitDefinition(
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
-    if (!companyId || pending) return;
+    if (!companyId || commands.isPending()) return;
     const code = definitionForm.code.trim();
     const name = definitionForm.name;
     if (
@@ -365,19 +399,27 @@ export function ServiceCatalogueWorkspace({
         ? definitionRetry.current.key
         : crypto.randomUUID();
     definitionRetry.current = { payload, key: idempotencyKey };
-    const controller = startCommand();
+    const operation = commands.begin();
+    if (!operation) return;
+    const { signal } = operation;
+    const recoveryCurrent = captureRecovery();
+    setPending(true);
     setDefinitionFeedback(undefined);
     try {
       const result = await request({
         path: definitionsPath,
         companyContextId: companyId,
-        signal: controller.signal,
+        signal,
         method: 'POST',
         body: payload,
         idempotencyKey,
       });
-      if (controller.signal.aborted) return;
-      if (await handleAccess(result, companyId, controller.signal)) return;
+      if (signal.aborted) return;
+      if (
+        (await handleAccess(result, companyId, signal, recoveryCurrent)) ||
+        signal.aborted
+      )
+        return;
       if (
         (result.status === 200 || result.status === 201) &&
         isDefinitionResult(result.body)
@@ -409,10 +451,11 @@ export function ServiceCatalogueWorkspace({
             },
       );
     } catch {
-      if (!controller.signal.aborted)
+      if (!signal.aborted)
         setDefinitionFeedback({ tone: 'alert', message: 'error' });
     } finally {
-      if (!controller.signal.aborted) setPending(false);
+      operation.release();
+      if (!signal.aborted) setPending(false);
     }
   }
 
@@ -420,7 +463,7 @@ export function ServiceCatalogueWorkspace({
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
-    if (!companyId || pending) return;
+    if (!companyId || commands.isPending()) return;
     const selected =
       definitions.kind === 'ready'
         ? definitions.items.find(
@@ -442,19 +485,27 @@ export function ServiceCatalogueWorkspace({
         ? offeringRetry.current.key
         : crypto.randomUUID();
     offeringRetry.current = { payload, key: idempotencyKey };
-    const controller = startCommand();
+    const operation = commands.begin();
+    if (!operation) return;
+    const { signal } = operation;
+    const recoveryCurrent = captureRecovery();
+    setPending(true);
     setOfferingFeedback(undefined);
     try {
       const result = await request({
         path: offeringsPath,
         companyContextId: companyId,
-        signal: controller.signal,
+        signal,
         method: 'POST',
         body: payload,
         idempotencyKey,
       });
-      if (controller.signal.aborted) return;
-      if (await handleAccess(result, companyId, controller.signal)) return;
+      if (signal.aborted) return;
+      if (
+        (await handleAccess(result, companyId, signal, recoveryCurrent)) ||
+        signal.aborted
+      )
+        return;
       if (
         (result.status === 200 || result.status === 201) &&
         isOfferingResult(result.body)
@@ -490,19 +541,12 @@ export function ServiceCatalogueWorkspace({
             },
       );
     } catch {
-      if (!controller.signal.aborted)
+      if (!signal.aborted)
         setOfferingFeedback({ tone: 'alert', message: 'error' });
     } finally {
-      if (!controller.signal.aborted) setPending(false);
+      operation.release();
+      if (!signal.aborted) setPending(false);
     }
-  }
-
-  function startCommand(): AbortController {
-    commandRequest.current?.abort();
-    const controller = new AbortController();
-    commandRequest.current = controller;
-    setPending(true);
-    return controller;
   }
 
   function feedbackMessage(feedback: Feedback): string {

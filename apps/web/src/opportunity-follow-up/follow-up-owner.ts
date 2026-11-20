@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import type { opportunityFollowUpAuthority } from '../access/opportunity-follow-up-authority';
@@ -8,6 +8,11 @@ import {
   type ApiResult,
 } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
 
 export type FollowUpAccessProps = {
   actor: ActorContext;
@@ -20,98 +25,42 @@ export type FollowUpAuthority = NonNullable<
   ReturnType<typeof opportunityFollowUpAuthority>
 >;
 
-/** Consumed identities retire irreversibly; equivalent Actor reads preserve work. */
-export function useFollowUpLifetime(
-  props: FollowUpAccessProps,
-  scope: string,
-): number {
-  const owner = useRef({
-    identity: props.identity,
-    scope,
-    generation: 0,
-  });
-  if (
-    owner.current.identity !== props.identity ||
-    owner.current.scope !== scope
-  ) {
-    owner.current = {
-      identity: props.identity,
-      scope,
-      generation: owner.current.generation + 1,
-    };
-  }
-  return owner.current.generation;
-}
-
 export function useFollowUpOwner(
   props: FollowUpAccessProps,
   authority: FollowUpAuthority,
 ) {
-  const mounted = useRef(true);
-  const sequence = useRef(0);
-  const pending = useRef<AbortController | undefined>(undefined);
-  const recoveries = useRef(new Set<AbortController>());
-  const recoveryOwner = useRef({ actor: props.actor, generation: 0 });
-  // A recovery publishes the complete Actor, so even an equivalent newer
-  // observation retires that older snapshot without retiring the date command.
-  if (recoveryOwner.current.actor !== props.actor) {
-    recoveryOwner.current = {
-      actor: props.actor,
-      generation: recoveryOwner.current.generation + 1,
-    };
-    for (const controller of recoveries.current) controller.abort();
-    recoveries.current.clear();
-  }
+  const lifetime = useRequestLifetime(props.identity, authority.key);
+  const observation = useActorObservation(props.actor);
+  const work = useScopedOperationGroup(String(lifetime));
+  const recoveryWork = useScopedOperationGroup(
+    JSON.stringify([lifetime, observation]),
+  );
   const latest = useRef(props);
-  latest.current = props;
-  useEffect(() => {
-    mounted.current = true;
-    const activeRecoveries = recoveries.current;
-    return () => {
-      mounted.current = false;
-      sequence.current += 1;
-      pending.current?.abort();
-      for (const controller of activeRecoveries) controller.abort();
-      activeRecoveries.clear();
-    };
-  }, []);
-  function retireRequest() {
-    sequence.current += 1;
-    pending.current?.abort();
-    pending.current = undefined;
-  }
+  useLayoutEffect(() => {
+    latest.current = props;
+  });
   async function request(
     path: string,
     options: ApiRequest = {},
   ): Promise<ApiResult<unknown> | { status: 'retired' }> {
-    retireRequest();
-    const generation = sequence.current;
-    const controller = new AbortController();
-    pending.current = controller;
-    const live = () =>
-      mounted.current &&
-      sequence.current === generation &&
-      pending.current === controller &&
-      !controller.signal.aborted;
+    const operation = work.beginLatest();
+    if (!operation) return { status: 'retired' };
+    const live = () => !operation.signal.aborted;
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!live()) return { status: 'retired' };
       const result = await api.request(path, {
         ...options,
         companyContextId: authority.companyId,
-        signal: controller.signal,
+        signal: operation.signal,
         cache: 'no-store',
       });
       if (!live()) return { status: 'retired' };
       if (result.status === 'forbidden' || result.status === 'unauthorized') {
         // Recovery outlives this request, but never a newer Actor observation.
-        const recovery = new AbortController();
-        const recoveryGeneration = recoveryOwner.current.generation;
-        recoveries.current.add(recovery);
-        const current = () =>
-          mounted.current &&
-          recoveryOwner.current.generation === recoveryGeneration &&
-          !recovery.signal.aborted;
+        const recovery = recoveryWork.begin();
+        if (!recovery) return result;
+        const current = () => !recovery.signal.aborted;
         void handleAuthenticatedAccessRejection({
           result,
           identity: props.identity,
@@ -127,16 +76,14 @@ export function useFollowUpOwner(
             current() ? latest.current.onWorkspaceAccessRejected() : undefined,
         })
           .catch(() => undefined)
-          .finally(() => {
-            recoveries.current.delete(recovery);
-          });
+          .finally(recovery.release);
       }
       return result;
     } catch {
       return live() ? { status: 'error' } : { status: 'retired' };
     } finally {
-      if (live()) pending.current = undefined;
+      operation.release();
     }
   }
-  return { request, retireRequest, isLive: () => mounted.current };
+  return { request, retireRequest: work.retire, isLive: work.isLive };
 }

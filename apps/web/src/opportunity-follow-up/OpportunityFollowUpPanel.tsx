@@ -1,3 +1,4 @@
+import { useRequestLifetime } from '../api/use-actor-requests';
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { opportunityFollowUpAuthority } from '../access/opportunity-follow-up-authority';
 import type { OpportunityOutcomeStatus } from '../commercial-intake/opportunity-outcome';
@@ -16,7 +17,6 @@ import {
 } from './follow-up-contract';
 import { useFollowUpCopy } from './follow-up.copy';
 import {
-  useFollowUpLifetime,
   useFollowUpOwner,
   type FollowUpAccessProps,
   type FollowUpAuthority,
@@ -56,7 +56,7 @@ export function OpportunityFollowUpPanel(props: OpportunityFollowUpPanelProps) {
     props.identity.loaded,
     props.identity.signedIn,
   ]);
-  const generation = useFollowUpLifetime(props, scope);
+  const generation = useRequestLifetime(props.identity, scope);
   if (!authority || !props.identity.loaded || !props.identity.signedIn)
     return null;
   return (
