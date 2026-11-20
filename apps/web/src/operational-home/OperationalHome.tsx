@@ -2,6 +2,8 @@ import { CalendarClock, FolderKanban, Users } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
+import { useRequestLifetime } from '../api/use-actor-requests';
+import { useScopedOperation } from '../api/use-scoped-operation';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import {
   readOperationalHome,
@@ -85,7 +87,13 @@ function CompanySummary({
   const titleId = useId();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [panelOpen, setPanelOpen] = useState(false);
-  const pending = useRef<AbortController | undefined>(undefined);
+  const ownerScope = String(
+    useRequestLifetime(
+      identity,
+      JSON.stringify([company.id, workspaceMembershipId]),
+    ),
+  );
+  const latest = useScopedOperation(ownerScope);
   const overdueCard = useRef<HTMLButtonElement>(null);
   const panelHeading = useRef<HTMLHeadingElement>(null);
   const focusPanel = useRef(false);
@@ -93,9 +101,11 @@ function CompanySummary({
 
   // The latest read supersedes any earlier read still in flight.
   function read() {
+    const requestSignal = latest.begin();
+    if (!requestSignal) return;
     setLoad({ kind: 'loading' });
     void runLatestAuthenticatedRequest({
-      pending,
+      signal: requestSignal,
       identity,
       execute: (api, signal) =>
         api.request('/operational-home', {
@@ -132,8 +142,7 @@ function CompanySummary({
   }
   useEffect(() => {
     read();
-    return () => pending.current?.abort();
-  }, [identity]);
+  }, [ownerScope]);
 
   const overdueShown =
     load.kind === 'ready' &&
