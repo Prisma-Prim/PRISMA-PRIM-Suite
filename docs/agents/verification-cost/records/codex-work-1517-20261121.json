@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-work-1517-20261121",
+  "date": "2026-11-21",
+  "runType": "pull-request-proof",
+  "issue": 1517,
+  "pullRequest": 1519,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": { "estimatedUsd": "not reported", "priceTable": "2026-11-11" },
+  "outcome": {
+    "result": "pass",
+    "findings": { "P0": 0, "P1": 0, "P2": 0, "P3": 0 },
+    "notes": "Codex Work focused script verification. The positive proof failed before adding the Windows job and all 48 checks passed after."
+  }
+}
