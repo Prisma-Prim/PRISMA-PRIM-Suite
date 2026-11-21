@@ -60,7 +60,7 @@ Run a [journey audit](../../.agents/skills/journey-audit/SKILL.md) after a batch
 
 ## CI and merge
 
-CI runs automatically on every pull request update. A ruleset protects `main`: pull request required, squash merge only, required check `quality`, no deletion or force push. No merge queue (owner decision, 2026-11-07): the PR's green `quality` gates the merge; an advancing base needs no refresh, re-verification or SHA binding. Manual `workflow_dispatch` serves diagnosis only and does not count toward a pull request's required check.
+CI runs automatically on every pull request update. A ruleset protects `main`: pull request required, squash merge only, required check `quality`, no deletion or force push. No merge queue (2026-11-07). An advancing base needs no refresh for ordinary PRs. [Coordinate shared CI changes](shared-ci-merge.md) before merging. Manual `workflow_dispatch` serves diagnosis only and does not count toward a pull request's required check.
 
 1. [Prevalidate](acceptance-proof.md#description-preflight), push and open one PR to `main`; use the [template](../../.github/pull_request_template.md) and [PR skill](../../.agents/skills/pr/SKILL.md).
 2. Wait once for the first CI result with a blocking `gh pr checks <n> --watch` or the harness's equivalent, never polling. Open PRs' next actions: `node scripts/pr-status.mjs`.
