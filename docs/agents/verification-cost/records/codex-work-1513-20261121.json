@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-work-1513-20261121",
+  "date": "2026-11-21",
+  "runType": "pull-request-proof",
+  "issue": 1513,
+  "pullRequest": 1522,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 3,
+      "P3": 1
+    },
+    "notes": "Reproduced four defects before changes. Initial 22 selected PostgreSQL tests passed; final rounds passed 8 and 9 tests, including exact attachment visibility, concurrent deadlines, both expiry cases and model-source serialization. Format, lint, types and independent review passed. Usage unavailable."
+  }
+}
