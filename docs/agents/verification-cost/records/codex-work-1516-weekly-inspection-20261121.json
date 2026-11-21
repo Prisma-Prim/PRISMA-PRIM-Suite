@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-work-1516-weekly-inspection-20261121",
+  "date": "2026-11-21",
+  "runType": "pull-request-proof",
+  "issue": 1516,
+  "pullRequest": 1520,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Focused CLI, report, workflow tests and a public Actions REST replay passed. Diff recovery, explicit incomplete scope and duplicate fuzz alert cases verified. Model usage was unavailable."
+  }
+}

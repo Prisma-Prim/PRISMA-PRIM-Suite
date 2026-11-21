@@ -44,8 +44,11 @@
 
 import { execFile as execFileCallback } from 'node:child_process';
 import { resolve } from 'node:path';
+import { setTimeout as wait } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+
+import { weeklyFuzzSummary } from './weekly-fuzz-summary.mjs';
 
 const REPOSITORY = 'Prisma-Prim/PRISMA-PRIM-Suite';
 const DEFAULT_BRANCH = 'main';
@@ -54,6 +57,8 @@ const WINDOW_DAYS = 7;
 const SEARCH_PAGE_SIZE = 10;
 const COMMITS_PAGE_SIZE = 100;
 const FILES_PAGE_SIZE = 100;
+const MAXIMUM_FILE_PAGES = 30;
+const PARALLEL_DIFF_REQUESTS = 6;
 const SHOWN_PER_LIST = 20;
 const TITLE_LENGTH = 90;
 const REQUIRED_CHECK = 'quality';
@@ -152,7 +157,6 @@ const SEARCH_QUERY = `query($q: String!, $after: String) {
       ... on PullRequest {
         number title body url merged mergedAt closedAt
         mergeCommit { oid }
-        files(first: ${FILES_PAGE_SIZE}) { totalCount nodes { path } }
         commits(first: 100) {
           nodes {
             commit {
@@ -195,7 +199,10 @@ const ISSUE_SEARCH_QUERY = `query($q: String!, $after: String) {
 function createGithubClient(execFile) {
   async function request(args) {
     try {
-      const { stdout } = await execFile('gh', args);
+      const { stdout } = await execFile('gh', args, {
+        timeout: 20000,
+        maxBuffer: 10 * 1024 * 1024,
+      });
       return JSON.parse(stdout);
     } catch (failure) {
       if (failure?.code === 'ENOENT') {
@@ -214,6 +221,27 @@ function createGithubClient(execFile) {
       throw new Error(`Could not read from GitHub (gh ${args[0]}): ${detail}`, {
         cause: failure,
       });
+    }
+  }
+
+  // Files are intentionally outside the GraphQL search. An unavailable diff
+  // can otherwise fail the entire page before its independent facts are read.
+  async function requestDiff(path) {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await request(['api', path]);
+      } catch (failure) {
+        if (
+          !/\bHTTP (?:429|5\d\d)\b|secondary rate limit/iu.test(
+            failure.message,
+          ) &&
+          !failure.cause?.killed &&
+          failure.cause?.code !== 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER'
+        )
+          throw failure;
+        if (attempt === 1) return null;
+        await wait(200);
+      }
     }
   }
 
@@ -247,6 +275,14 @@ function createGithubClient(execFile) {
       return nodes.map(normalizePullRequest);
     },
 
+    weeklyFuzz(range) {
+      return weeklyFuzzSummary(
+        (path) => request(['api', `repos/${REPOSITORY}/${path}`]),
+        range,
+        `https://github.com/${REPOSITORY}`,
+      );
+    },
+
     async searchIssues(qualifiers) {
       return search(
         ISSUE_SEARCH_QUERY,
@@ -254,17 +290,18 @@ function createGithubClient(execFile) {
       );
     },
 
-    /** Every changed file, for a pull request past GraphQL's first page. */
     async pullRequestFiles(number) {
       const files = [];
-      for (let page = 1; ; page += 1) {
-        const batch = await request([
-          'api',
+      for (let page = 1; page <= MAXIMUM_FILE_PAGES; page += 1) {
+        const batch = await requestDiff(
           `repos/${REPOSITORY}/pulls/${number}/files?per_page=${FILES_PAGE_SIZE}&page=${page}`,
-        ]);
+        );
+        if (batch === null) break;
         files.push(...batch.map((file) => file.filename));
-        if (batch.length < FILES_PAGE_SIZE) return files;
+        if (batch.length < FILES_PAGE_SIZE)
+          return { files, filesComplete: true };
       }
+      return { files, filesComplete: false };
     },
 
     async listBranchCommits({ since, until }) {
@@ -280,11 +317,20 @@ function createGithubClient(execFile) {
     },
 
     async commitFiles(oid) {
-      const commit = await request([
-        'api',
-        `repos/${REPOSITORY}/commits/${oid}`,
-      ]);
-      return (commit.files ?? []).map((file) => file.filename);
+      const files = [];
+      for (let page = 1; page <= MAXIMUM_FILE_PAGES; page += 1) {
+        const path = `repos/${REPOSITORY}/commits/${oid}`;
+        const commit = await requestDiff(
+          page === 1
+            ? path
+            : `${path}?per_page=${FILES_PAGE_SIZE}&page=${page}`,
+        );
+        if (commit === null) return null;
+        const batch = commit.files ?? [];
+        files.push(...batch.map((file) => file.filename));
+        if (batch.length < FILES_PAGE_SIZE) return files;
+      }
+      return null;
     },
   };
 }
@@ -336,8 +382,6 @@ function normalizePullRequest(node) {
     merged: node.merged,
     mergedAt: node.mergedAt,
     mergeCommit: node.mergeCommit?.oid ?? null,
-    files: node.files.nodes.map((file) => file.path),
-    fileCount: node.files.totalCount,
     commits: commits.map((commit) => ({
       oid: commit.oid,
       authoredDate: commit.authoredDate,
@@ -452,11 +496,15 @@ async function classifyFinding(pullRequest, thread, filesOf) {
   );
   if (answers.some((reply) => FIXED_REPLY.test(reply.body))) return 'fixed';
 
+  let missingFiles = false;
   if (thread.resolved) {
     for (const commit of commitsAfter(pullRequest, finding.createdAt)) {
-      if ((await filesOf(commit.oid)).includes(thread.path)) return 'fixed';
+      const files = await filesOf(commit.oid);
+      if (files?.includes(thread.path)) return 'fixed';
+      if (files === null) missingFiles = true;
     }
   }
+  if (missingFiles) return 'unknown';
 
   const recordedInBody = followUpText(pullRequest.body).includes(thread.path);
   if (answers.some((reply) => FOLLOW_UP.test(reply.body)) || recordedInBody) {
@@ -708,7 +756,9 @@ function followUpsByFolder(merged) {
   for (const pullRequest of [...merged].sort((a, b) => a.number - b.number)) {
     const items = followUpItems(pullRequest.body);
     if (items.length === 0) continue;
-    const folder = mainFolder(pullRequest.files);
+    const folder = pullRequest.filesComplete
+      ? mainFolder(pullRequest.files)
+      : '(unknown folder)';
     groups.set(folder, [
       ...(groups.get(folder) ?? []),
       ...items.map((text) => ({ pullRequest, text })),
@@ -761,22 +811,26 @@ function summarizeCriticalPath(pullRequests) {
 
 export async function collectMetrics(github, { since, until }) {
   const range = `${instant(since)}..${instant(until)}`;
-  const [found, closed, branchCommits, mainRed] = await Promise.all([
+  const [found, closed, branchCommits, mainRed, fuzz] = await Promise.all([
     github.searchPullRequests(`is:merged merged:${range}`),
     github.searchPullRequests(`is:closed is:unmerged closed:${range}`),
     github.listBranchCommits({ since, until }),
     github.searchIssues(`label:${MAIN_RED_LABEL} created:${range}`),
+    github.weeklyFuzz(range),
   ]);
-  const merged = await Promise.all(
-    found.map(async (pullRequest) =>
-      pullRequest.files.length < pullRequest.fileCount
-        ? {
-            ...pullRequest,
-            files: await github.pullRequestFiles(pullRequest.number),
-          }
-        : pullRequest,
-    ),
-  );
+  const merged = [];
+  for (let start = 0; start < found.length; start += PARALLEL_DIFF_REQUESTS) {
+    const batch = found.slice(start, start + PARALLEL_DIFF_REQUESTS);
+    merged.push(
+      ...(await Promise.all(
+        batch.map(async (pullRequest) => ({
+          ...pullRequest,
+          ...(await github.pullRequestFiles(pullRequest.number)),
+        })),
+      )),
+    );
+  }
+  const findings = await summarizeFindings(merged, github.commitFiles);
   return {
     since,
     until,
@@ -784,7 +838,9 @@ export async function collectMetrics(github, { since, until }) {
     closed,
     reverts: findReverts(merged, branchCommits),
     rounds: summarizeReviewRounds(merged),
-    findings: await summarizeFindings(merged, github.commitFiles),
+    findings,
+    missingDiffs: merged.filter((pullRequest) => !pullRequest.filesComplete),
+    fuzz,
     quality: summarizeQuality([...merged, ...closed]),
     inspect: {
       sensitive: sensitiveMerges(merged),
@@ -898,6 +954,13 @@ function renderInspection({
 
 export function renderReport(metrics) {
   const { merged, closed, reverts, rounds, findings, quality } = metrics;
+  const unknownDispositions = [
+    ...new Map(
+      findings.findings
+        .filter(({ outcome }) => outcome === 'unknown')
+        .map(({ pullRequest }) => [pullRequest.number, pullRequest]),
+    ).values(),
+  ];
   const lines = [
     '# Delivery metrics',
     '',
@@ -960,17 +1023,18 @@ export function renderReport(metrics) {
   if (findings.findings.length === 0) {
     lines.push('- none');
   } else {
+    const incomplete = unknownDispositions.length > 0;
     lines.push(
       `${plural(findings.findings.length, 'finding')} in ${plural(findings.pullRequestCount, 'pull request')} (${AUTOMATED_REVIEWER} inline comments on merged pull requests).`,
       '',
-      '| Severity | Total | Fixed | Follow-up | Open |',
-      '| --- | ---: | ---: | ---: | ---: |',
+      `| Severity | Total | Fixed | Follow-up | Open |${incomplete ? ' Unknown |' : ''}`,
+      `| --- | ---: | ---: | ---: | ---: |${incomplete ? ' ---: |' : ''}`,
     );
     for (const [severity, entries] of findings.bySeverity) {
       const count = (outcome) =>
         entries.filter((finding) => finding.outcome === outcome).length;
       lines.push(
-        `| ${severity} | ${entries.length} | ${count('fixed')} | ${count('follow-up')} | ${count('open')} |`,
+        `| ${severity} | ${entries.length} | ${count('fixed')} | ${count('follow-up')} | ${count('open')} |${incomplete ? ` ${count('unknown')} |` : ''}`,
       );
     }
     lines.push(
@@ -990,6 +1054,22 @@ export function renderReport(metrics) {
     }
   }
 
+  if (metrics.missingDiffs.length > 0 || unknownDispositions.length > 0) {
+    lines.push(
+      '',
+      '## Partial scope data',
+      '',
+      ...metrics.missingDiffs.map(
+        (pullRequest) =>
+          `- ${link(`#${pullRequest.number}`, pullRequest.url)}: file inventory incomplete. Sensitive merges lists only observed paths. Follow-ups by folder uses the unknown folder bucket for this pull request.`,
+      ),
+      ...unknownDispositions.map(
+        (pullRequest) =>
+          `- ${link(`#${pullRequest.number}`, pullRequest.url)}: commit file inventory unavailable. Automated reviewer finding dispositions relying on that diff are unknown.`,
+      ),
+    );
+  }
+
   const rate =
     quality.considered === 0
       ? 'n/a'
@@ -1000,6 +1080,8 @@ export function renderReport(metrics) {
     '',
     `- \`${REQUIRED_CHECK}\` first-run pass rate: ${rate}`,
     `- Cancelled \`${REQUIRED_CHECK}\` runs: ${quality.cancelled}`,
+    '',
+    ...metrics.fuzz,
     '',
     ...renderInspection(metrics.inspect),
     '',
