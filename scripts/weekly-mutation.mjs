@@ -19,6 +19,11 @@ const SURVIVOR_LIMIT = 30;
 const LABEL = 'weekly-inspection';
 const ARTIFACT_PREFIX = 'weekly-mutation-';
 const ALLOWLIST = 'scripts/mutation/modules.mjs';
+const API_QUALIFICATION = 'api-qualification';
+const apiQualificationIds = [
+  'external-invoice-captured-grants',
+  'payment-captured-grants',
+];
 const ISSUE_BODY = [
   'Every Monday the weekly inspection posts here: the delivery report of the past 7 days (`.github/workflows/weekly-inspection.yml`) and a mutation run on the sensitive modules changed that week (`.github/workflows/weekly-mutation.yml`).',
   '',
@@ -85,6 +90,19 @@ export function selectChangedModules({ git, now = new Date() }) {
   };
 }
 
+function selectApiQualification() {
+  const targets = mutationTargets();
+  const modules = apiQualificationIds.map((id) =>
+    targets.find((target) => target.id === id && target.project === 'apps/api'),
+  );
+  if (modules.some((target) => target === undefined)) {
+    throw new Error(
+      'The API qualification requires both affected modules in the mutation allowlist.',
+    );
+  }
+  return { since: '', modules };
+}
+
 /** The StrykerJS config of one allowlisted module, relative to its package. */
 export function strykerConfig(id) {
   const entry = mutationModules.find(
@@ -97,6 +115,8 @@ export function strykerConfig(id) {
     entry.runner === 'node:test'
       ? [`${posix.dirname(entry.module)}/**`]
       : ['package.json', 'tsconfig*.json', 'vite*.config.ts', 'src/**'];
+  // The API Vitest configuration loads its setup files before the unit test.
+  if (target.project === 'apps/api') copied.push('test-support/**');
   return {
     testRunner: 'command',
     commandRunner: {
@@ -189,22 +209,33 @@ function windowText(since) {
  * `reports` maps a module id to its parsed JSON report; `run` holds the run
  * URL and each module's artifact URL.
  */
-export function renderComment({ since, modules, reports, run }) {
-  const lines = ['<!-- weekly-mutation -->', '## Weekly mutation run', ''];
+export function renderComment({ selection, since, modules, reports, run }) {
+  const qualification = selection === API_QUALIFICATION;
+  const lines = [
+    '<!-- weekly-mutation -->',
+    qualification ? '## API mutation qualification' : '## Weekly mutation run',
+    '',
+  ];
   if (!Array.isArray(modules)) {
+    const subject = qualification
+      ? 'the API qualification modules'
+      : 'the changed modules';
     lines.push(
-      `The run could not select the changed modules; see [the run](${run.url}).`,
+      `The run could not select ${subject}; see [the run](${run.url}).`,
     );
     return lines.join('\n');
   }
-  if (modules.length === 0) {
+  if (!qualification && modules.length === 0) {
     lines.push(
       `No allowlisted module changed on \`main\` ${windowText(since)}, so no mutation testing ran. Allowlist: \`${ALLOWLIST}\`; [run](${run.url}).`,
     );
     return lines.join('\n');
   }
+  const scope = qualification
+    ? `Manually selected ${modules.length} allowlisted API modules.`
+    : `${modules.length} allowlisted module${modules.length === 1 ? '' : 's'} changed on \`main\` ${windowText(since)}.`;
   lines.push(
-    `${modules.length} allowlisted module${modules.length === 1 ? '' : 's'} changed on \`main\` ${windowText(since)}. Allowlist: \`${ALLOWLIST}\`; [run](${run.url}).`,
+    `${scope} Allowlist: \`${ALLOWLIST}\`; [run](${run.url}).`,
     '',
     "Each mutant ran the module's whole unit test file, so none is counted as uncovered. Surviving mutants are candidate test gaps to triage.",
   );
@@ -294,6 +325,7 @@ export async function postWeeklyComment({ api, body, log = console.log }) {
  * its run artifact. `readReport(target)` returns a parsed report or undefined.
  */
 export async function reportWeeklyMutation({
+  selection,
   modules,
   since,
   readReport,
@@ -321,6 +353,7 @@ export async function reportWeeklyMutation({
     if (report) reports[target.id] = report;
   }
   const body = renderComment({
+    selection,
     since,
     modules,
     reports,
@@ -375,25 +408,37 @@ function readReportFrom(directory) {
 }
 
 async function main(command) {
+  const selection = process.env.MUTATION_SELECTION || 'changed';
+  if (selection !== 'changed' && selection !== API_QUALIFICATION) {
+    throw new Error(`Unknown mutation selection: ${selection}`);
+  }
   if (command === 'select') {
-    const { since, modules } = selectChangedModules({
-      git: (args) =>
-        execFileSync('git', args, {
-          encoding: 'utf8',
-          maxBuffer: 16 * 1024 * 1024,
-        }),
-    });
+    const { since, modules } =
+      selection === API_QUALIFICATION
+        ? selectApiQualification()
+        : selectChangedModules({
+            git: (args) =>
+              execFileSync('git', args, {
+                encoding: 'utf8',
+                maxBuffer: 16 * 1024 * 1024,
+              }),
+          });
     const output = `modules=${JSON.stringify(modules)}\nsince=${since}\n`;
     if (process.env.GITHUB_OUTPUT) {
       appendFileSync(process.env.GITHUB_OUTPUT, output);
+      const scope =
+        selection === API_QUALIFICATION
+          ? 'API qualification modules'
+          : `Changed allowlisted modules since ${since}`;
       console.log(
-        `Changed allowlisted modules since ${since}: ${modules.map((target) => target.module).join(', ') || 'none'}.`,
+        `${scope}: ${modules.map((target) => target.module).join(', ') || 'none'}.`,
       );
     } else process.stdout.write(output);
     return;
   }
   if (command === 'report') {
     await reportWeeklyMutation({
+      selection,
       modules: selectedTargets(process.env.MUTATION_MODULES),
       since: process.env.MUTATION_SINCE ?? '',
       readReport: readReportFrom(process.env.MUTATION_REPORTS ?? ''),
