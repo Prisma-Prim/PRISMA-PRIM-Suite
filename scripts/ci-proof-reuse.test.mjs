@@ -34,10 +34,12 @@ test('the proof fixture matches the jobs and static matrices in CI', async () =>
   );
   const [, jobSection] = workflow.replaceAll('\r\n', '\n').split('\njobs:\n');
   assert.ok(jobSection, 'CI workflow needs a jobs section');
-  const headers = [...jobSection.matchAll(/^ {2}([a-z_][a-z_0-9]*):$/gmu)];
+  const headers = [...jobSection.matchAll(/^ {2}([^#\s][^\n]*)$/gmu)];
   const workflowNames = [];
   for (const [index, header] of headers.entries()) {
-    const [, job] = header;
+    const definition = /^([a-z_][a-z_0-9-]*):[ \t]*(?:#.*)?$/iu.exec(header[1]);
+    assert.ok(definition, `Update the fixture for ${header[1]}`);
+    const [, job] = definition;
     if (job === 'flaky_guard') continue; // Variable, checked separately.
     const block = jobSection.slice(header.index, headers[index + 1]?.index);
     assert.doesNotMatch(block, /^ {4}name:/mu, `Update the fixture for ${job}`);
