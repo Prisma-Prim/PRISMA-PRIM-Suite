@@ -19,6 +19,7 @@ import {
 } from './CertificationExchanges';
 import {
   IDLE,
+  retryUncertainCommand,
   reuse,
   blockedUntilReload,
   refusedWith,
@@ -118,7 +119,7 @@ export function useCertificationExchangeRegister(
     });
   }
   function retry(kind: ExchangeMutationKind, feedback: Feedback) {
-    if (feedback.status === 'uncertain') void execute(kind, feedback.intent);
+    retryUncertainCommand(feedback, (intent) => execute(kind, intent));
   }
   /** Records an Exchange Record, or corrects one with a reason. */
   function submitExchange(event: FormEvent) {

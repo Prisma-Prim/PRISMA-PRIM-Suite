@@ -1,3 +1,14 @@
+import type { ApiResult } from '../api/authenticated-api-client';
+import type { ScopedOperation } from '../api/use-scoped-operation';
+import type { ReactNode } from 'react';
+import type { ActorContext } from '../access-types';
+import type { certificationAuthority } from './certification-access';
+import type {
+  CaseDetail,
+  CaseTimeline,
+  DocumentRegister,
+} from './certification-response';
+import type { useCertificationCopy } from './certification.copy';
 import type { CertificationMessageKey } from './certification.copy';
 import type { DecisionPrecondition } from './certification-decision';
 import type { ConsistencyRule } from './certification-consistency';
@@ -37,6 +48,14 @@ export function reuse(feedback: Feedback, next: Omit<Intent, 'key'>): Intent {
     : { ...next, key: crypto.randomUUID() };
 }
 
+/** Replays the exact intent retained for an unanswered command. */
+export function retryUncertainCommand(
+  feedback: Feedback,
+  execute: (intent: Intent) => Promise<void>,
+): void {
+  if (feedback.status === 'uncertain') void execute(feedback.intent);
+}
+
 export function blockedUntilReload(feedback: Feedback): boolean {
   return feedback.status === 'refused' && feedback.reload;
 }
@@ -60,4 +79,45 @@ export function refusedWith(
   reload = false,
 ): Feedback {
   return { status: 'refused', message, reload };
+}
+
+export type CertificationCaseView = {
+  caseDetail: CaseDetail;
+  timeline: CaseTimeline;
+  register: DocumentRegister;
+};
+export type CertificationCommand<Kind extends string> = {
+  kind: Kind;
+  intent: Intent;
+  setFeedback: (next: Feedback) => void;
+  confirmed: () => void;
+};
+
+export interface CertificationWorkflowContext<Kind extends string> {
+  view: CertificationCaseView | undefined;
+  actor: ActorContext;
+  authority: ReturnType<typeof certificationAuthority>;
+  prefix: string;
+  copy: ReturnType<typeof useCertificationCopy>;
+  commit: (command: CertificationCommand<Kind>) => Promise<void>;
+  renderFeedback: (presentation: {
+    kind: Kind;
+    feedback: Feedback;
+    id: string;
+    retry: () => void;
+  }) => ReactNode;
+}
+
+export type CertificationAccess =
+  'certification' | 'documents' | 'administration';
+export type CertificationQuery = (
+  slot: ScopedOperation,
+  signal: AbortSignal,
+  path: string,
+  post?: { body: string; key?: string },
+  access?: CertificationAccess,
+) => Promise<ApiResult<unknown>>;
+
+export function unexpected(value: never): never {
+  throw new Error(`Unexpected Certification state: ${String(value)}`);
 }

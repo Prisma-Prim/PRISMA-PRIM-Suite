@@ -23,6 +23,7 @@ import {
 } from './CertificationStageViews';
 import {
   IDLE,
+  retryUncertainCommand,
   blockedUntilReload,
   clearReloadedFeedback,
   describedFeedbackId,
@@ -171,10 +172,8 @@ export function useCertificationStages({
       kind,
       feedback,
       id: feedbackIds[kind],
-      retry: () => {
-        if (feedback.status === 'uncertain')
-          void execute(kind, feedback.intent);
-      },
+      retry: () =>
+        retryUncertainCommand(feedback, (intent) => execute(kind, intent)),
     });
   }
 

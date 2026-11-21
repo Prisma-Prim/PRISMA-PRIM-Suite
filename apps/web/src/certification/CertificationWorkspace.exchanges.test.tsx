@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -1072,6 +1073,131 @@ describe('Exchanges and deadlines region', () => {
         name: 'Configure the procedure deadlines',
       }),
     ).toBeNull();
+  });
+
+  it('does not reopen a Case retired during a pending procedure deadline save', async () => {
+    const { server, actor } = serve({ manager: true, administrator: true });
+    const { caseId } = plannedCase(server, 'CERT-ADMIN-RETIRED');
+    server.install();
+    renderWorkspace(actor);
+    const heading = await openSeededCase('CERT-ADMIN-RETIRED');
+    fireEvent.click(
+      within(region()).getByRole('button', {
+        name: 'Configure the procedure deadlines',
+      }),
+    );
+    const panel = await within(region()).findByRole('form', {
+      name: 'Procedure deadline configuration',
+    });
+    change(
+      within(panel).getByLabelText(
+        'Stage plan sent to the client, in calendar days',
+      ),
+      '10',
+    );
+    let refuseList: ((response: Response) => void) | undefined;
+    let confirmDeadlines: ((response: Response) => void) | undefined;
+    server.interceptions.push(
+      {
+        match: (request) =>
+          request.method === 'GET' &&
+          request.path.endsWith('/certification-cases'),
+        respond: () =>
+          new Promise((resolve) => {
+            refuseList = resolve;
+          }),
+      },
+      {
+        match: (request) =>
+          request.method === 'POST' &&
+          request.path.endsWith('/certification-procedure-deadlines'),
+        respond: () =>
+          new Promise((resolve) => {
+            confirmDeadlines = resolve;
+          }),
+      },
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Refresh Certification Cases' }),
+    );
+    await waitFor(() => expect(refuseList).toBeDefined());
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Save the deadlines' }),
+    );
+    await waitFor(() => expect(confirmDeadlines).toBeDefined());
+    const details = () =>
+      server.requests.filter(
+        (request) =>
+          request.method === 'GET' &&
+          request.path === `/api/certification-cases/${caseId}`,
+      );
+    const before = details().length;
+    await act(async () => {
+      refuseList?.(new Response(null, { status: 403 }));
+    });
+    expect(heading).not.toBeInTheDocument();
+
+    server.seedDeadlineSet(FICTIONAL);
+    await act(async () => {
+      confirmDeadlines?.(Response.json(server.deadlineSets[0]));
+    });
+    expect(details()).toHaveLength(before);
+    expect(
+      screen.queryByRole('heading', {
+        name: 'Certification Case CERT-ADMIN-RETIRED',
+      }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Refresh Certification Cases' }),
+    );
+    await openSeededCase('CERT-ADMIN-RETIRED');
+    expect(
+      within(region()).getByRole('button', {
+        name: 'Configure the procedure deadlines',
+      }),
+    ).toBeVisible();
+  });
+
+  it('requires a fresh deadline read after the administration grant is restored', async () => {
+    const { server, actor } = serve({ manager: true, administrator: true });
+    plannedCase(server, 'CERT-ADMIN-RESTORED');
+    server.seedDeadlineSet(FICTIONAL);
+    server.install();
+    const workspace = (currentActor: ActorContext) => (
+      <CertificationWorkspace
+        actor={currentActor}
+        identity={certificationIdentity}
+        projectId={certificationIds.project}
+      />
+    );
+    const { rerender } = render(workspace(actor));
+    await openSeededCase('CERT-ADMIN-RESTORED');
+    const openDeadlines = () =>
+      fireEvent.click(
+        within(region()).getByRole('button', {
+          name: 'Configure the procedure deadlines',
+        }),
+      );
+    const planDays = 'Stage plan sent to the client, in calendar days';
+    openDeadlines();
+    const first = await within(region()).findByLabelText(planDays);
+    expect(first).toHaveValue('10');
+    change(first, '99');
+
+    rerender(
+      workspace({
+        ...actor,
+        workspacePermissions: actor.workspacePermissions.filter(
+          (permission) => permission !== 'company.assignment.manage',
+        ),
+      }),
+    );
+    expect(within(region()).queryByLabelText(planDays)).not.toBeInTheDocument();
+    server.seedDeadlineSet({ ...FICTIONAL, stage_plan_sent: 12 });
+    rerender(workspace(actor));
+    expect(within(region()).queryByLabelText(planDays)).not.toBeInTheDocument();
+    openDeadlines();
+    expect(await within(region()).findByLabelText(planDays)).toHaveValue('12');
   });
 
   it('is available in Romanian, Russian, French and English', async () => {

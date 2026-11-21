@@ -6,6 +6,7 @@ import {
 import type { ActorContext } from '../access/access.types.js';
 import { requireUuid } from '../access/access-command-validation.js';
 import { CertificationService } from '../certification/certification.service.js';
+import { CertificationAuditService } from '../certification/certification-audit.service.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { FIELDS } from '../dossier-analysis-engine/index.js';
 import { DossierRunService } from './run.service.js';
@@ -36,6 +37,7 @@ export class DossierDraftPreparationService {
   constructor(
     private readonly database: DatabaseContext,
     private readonly certification: CertificationService,
+    private readonly audit: CertificationAuditService,
     private readonly runs: DossierRunService,
     private readonly suggestions: DossierSuggestionService,
   ) {}
@@ -73,7 +75,7 @@ export class DossierDraftPreparationService {
     return this.database.transaction(
       async () => {
         const target = query.step
-          ? await this.certification.stageDraftContextWithinTransaction({
+          ? await this.audit.stageDraftContextWithinTransaction({
               actor: input.actor,
               projectId,
               ...query,
