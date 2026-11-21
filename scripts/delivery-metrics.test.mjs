@@ -372,6 +372,7 @@ function stubGh({
   files = { c2: ['src/a.ts', 'README.md'] },
   issues = [],
   pullRequestFiles = {},
+  diffErrors = {},
   pageSize = 100,
 } = {}) {
   const calls = [];
@@ -379,6 +380,12 @@ function stubGh({
     calls.push({ file, args });
     assert.equal(file, 'gh');
     const [command, target] = args;
+    if (diffErrors[target] > 0) {
+      diffErrors[target] -= 1;
+      throw new Error(
+        'gh: Sorry, this diff is temporarily unavailable (HTTP 500)',
+      );
+    }
     assert.equal(command, 'api');
 
     if (target === 'graphql') {
@@ -427,7 +434,11 @@ function stubGh({
         target,
       );
     if (changedFiles) {
-      const all = pullRequestFiles[changedFiles[1]] ?? [];
+      const all =
+        pullRequestFiles[changedFiles[1]] ??
+        merged
+          .find(({ number }) => number === Number(changedFiles[1]))
+          .files.nodes.map(({ path }) => path);
       const start = (Number(changedFiles[2]) - 1) * 100;
       return {
         stdout: JSON.stringify(
@@ -435,6 +446,10 @@ function stubGh({
         ),
       };
     }
+    if (/\/(?:issues|actions)\//u.test(target) || /\/issues\?/u.test(target))
+      throw new Error(
+        'Optional fuzz evidence unavailable in the delivery fixture.',
+      );
     throw new Error(`Unexpected gh call: ${args.join(' ')}`);
   };
   return { execFile, calls };
@@ -856,6 +871,7 @@ test('a merged pull request with more than 100 changed files is read in full', a
       .filter((target) => /\/pulls\//u.test(target)),
     [
       `repos/${REPOSITORY}/pulls/401/files?per_page=100&page=1`,
+      `repos/${REPOSITORY}/pulls/402/files?per_page=100&page=1`,
       `repos/${REPOSITORY}/pulls/401/files?per_page=100&page=2`,
     ],
   );
@@ -1171,4 +1187,39 @@ test('the posted report mentions nobody: an @name in a title or follow-up stays 
       `${inert}Dan-Popescu decides; mail ops@example.com.`,
     ),
   );
+});
+
+test('an unavailable diff recovers on the second attempt without altering healthy metrics', async () => {
+  const path = `repos/${REPOSITORY}/pulls/101/files?per_page=100&page=1`;
+  const github = stubGh({ diffErrors: { [path]: 1 } });
+  const { code, out, err } = await run([], github);
+  assert.equal(code, 0, err);
+  assert.equal(github.calls.filter(({ args }) => args[1] === path).length, 2);
+  assert.match(out, /#101.*apps\/api\/src\/access\//);
+  assert.doesNotMatch(out, /Partial scope data/);
+});
+
+test('persistent PR and commit diff failures publish independent metrics and mark dependent results', async () => {
+  const path = `repos/${REPOSITORY}/pulls/101/files?per_page=100&page=1`;
+  const github = stubGh({
+    merged: mergedPullRequests.map((pr) =>
+      pr.number === 101
+        ? { ...pr, body: 'Follow-ups: verify sensitive queries.' }
+        : pr,
+    ),
+    diffErrors: { [path]: 9, [`repos/${REPOSITORY}/commits/c2`]: 9 },
+  });
+  const { code, out, err } = await run([], github);
+  assert.equal(code, 0, err);
+  assert.equal(github.calls.filter(({ args }) => args[1] === path).length, 2);
+  assert.match(out, /## Partial scope data/);
+  assert.match(out, /#101.*Sensitive merges.*Follow-ups by folder/);
+  assert.match(out, /#101.*Automated reviewer finding dispositions/);
+  assert.match(
+    out,
+    /\| Severity \| Total \| Fixed \| Follow-up \| Open \| Unknown \|/,
+  );
+  assert.match(out, /\(unknown folder\)/);
+  assert.match(out, /- Merged: 5/u);
+  assert.match(out, /first-run pass rate: 3\/4/u);
 });
