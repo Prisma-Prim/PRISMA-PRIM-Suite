@@ -342,12 +342,12 @@ export class OfferService {
       )
       .for('update');
     if (!offer) throw new NotFoundException();
-    const { version } = await this.requireOfferById(
-      input.actor,
+    const version = await this.requireVersionInOffer({
+      actor: input.actor,
       companyId,
-      offer.id,
-      input.offerVersionId,
-    );
+      offerId: offer.id,
+      offerVersionId: input.offerVersionId,
+    });
     if (version.provenance !== 'COMPANY_MODEL_ESTIMATE')
       throw namedConflict(
         'OFFER_MODEL_CONTRACT_SOURCE_REQUIRED',
@@ -450,12 +450,12 @@ export class OfferService {
       );
     const [offer] = input.lock ? await query.for('share') : await query;
     if (!offer) throw new NotFoundException();
-    const { version } = await this.requireOfferById(
-      input.actor,
+    const version = await this.requireVersionInOffer({
+      actor: input.actor,
       companyId,
-      offer.id,
-      input.offerVersionId,
-    );
+      offerId: offer.id,
+      offerVersionId: input.offerVersionId,
+    });
     if (version.provenance === 'COMPANY_MODEL_ESTIMATE')
       throw namedConflict(
         'OFFER_MODEL_CONTRACT_UNSUPPORTED',
@@ -511,12 +511,12 @@ export class OfferService {
       );
     const [offer] = input.lock ? await query.for('share') : await query;
     if (!offer) throw new NotFoundException();
-    const { version } = await this.requireOfferById(
-      input.actor,
+    const version = await this.requireVersionInOffer({
+      actor: input.actor,
       companyId,
-      offer.id,
-      input.offerVersionId,
-    );
+      offerId: offer.id,
+      offerVersionId: input.offerVersionId,
+    });
     if (version.provenance === 'COMPANY_MODEL_ESTIMATE')
       throw namedConflict(
         'OFFER_MODEL_CONTRACT_UNSUPPORTED',
@@ -574,6 +574,7 @@ export class OfferService {
       clientRequestId: offer.clientRequestId,
       pricingSnapshotId: illustrativeSnapshotId(version),
       recipient: offerRecipientCopy(version),
+      pendingValidUntil: accepted ? null : version.validUntil,
       scopeNote: version.scopeNote,
       commercialConditions: version.commercialConditions,
     };
@@ -2737,6 +2738,28 @@ export class OfferService {
         ),
       );
     if (!offer) throw new NotFoundException();
+    return {
+      offer,
+      version: await this.requireVersionInOffer({
+        actor,
+        companyId,
+        offerId: offer.id,
+        offerVersionId,
+      }),
+    };
+  }
+
+  private async requireVersionInOffer({
+    actor,
+    companyId,
+    offerId,
+    offerVersionId,
+  }: {
+    actor: ActorContext;
+    companyId: string;
+    offerId: string;
+    offerVersionId: string | number | undefined;
+  }): Promise<OfferVersionRow> {
     const [version] = await this.databaseContext.connection
       .select()
       .from(offerVersions)
@@ -2744,7 +2767,7 @@ export class OfferService {
         and(
           eq(offerVersions.workspaceId, actor.workspaceId),
           eq(offerVersions.companyId, companyId),
-          eq(offerVersions.offerId, offer.id),
+          eq(offerVersions.offerId, offerId),
           typeof offerVersionId === 'number'
             ? eq(offerVersions.versionNumber, offerVersionId)
             : offerVersionId
@@ -2755,7 +2778,7 @@ export class OfferService {
       .orderBy(desc(offerVersions.versionNumber))
       .limit(1);
     if (!version) throw new NotFoundException();
-    return { offer, version };
+    return version;
   }
 
   private lockCommand(
@@ -2868,6 +2891,21 @@ function offerRecipientCopy(row: OfferVersionRow): OfferRecipientCopy {
     };
   }
   throw new Error('The stored Offer recipient is invalid.');
+}
+
+/** Checks a pending source against the exact instant the Contract will record. */
+export function requirePendingOfferValidAt({
+  validUntil,
+  recordedAt,
+}: {
+  validUntil: Date | null;
+  recordedAt: Date;
+}) {
+  if (validUntil && recordedAt >= validUntil)
+    throw namedConflict(
+      'OFFER_NOT_PREPARABLE',
+      'The pending Offer Version expired before the Contract was recorded.',
+    );
 }
 
 function namedConflict(code: string, message: string): ConflictException {

@@ -725,6 +725,80 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     expect(await clientVersion()).toBe(fence);
   });
 
+  it('keeps the correct fiftieth dated Activity event when Task timestamps tie', async () => {
+    await grant('task');
+    await harness.pool.query(`
+      CREATE FUNCTION probe_tie_task_events() RETURNS trigger LANGUAGE plpgsql AS $$
+      DECLARE task_title text;
+      BEGIN
+        SELECT title INTO task_title FROM tasks WHERE id = NEW.task_id;
+        IF task_title = 'Entrant at the page boundary' THEN
+          NEW.occurred_at := '2098-01-02T12:00:00.000Z'::timestamptz;
+          NEW.id := '00000000-0000-4000-8000-000000000099'::uuid;
+        ELSIF task_title = 'Earlier source' THEN
+          NEW.occurred_at := '2097-01-02T12:00:00.000Z'::timestamptz;
+          NEW.id := '00000000-0000-4000-8000-000000000098'::uuid;
+        ELSIF task_title = 'Edit at the page boundary' THEN
+          NEW.occurred_at := '2098-01-02T12:00:00.000Z'::timestamptz;
+          NEW.id := '00000000-0000-4000-8000-000000000049'::uuid;
+        ELSE
+          NEW.occurred_at := '2099-01-02T12:00:00.000Z'::timestamptz + NEW.version * interval '1 second';
+        END IF;
+        RETURN NEW;
+      END $$;
+      CREATE TRIGGER probe_tie_task_events BEFORE INSERT ON task_events
+      FOR EACH ROW EXECUTE FUNCTION probe_tie_task_events()`);
+    try {
+      const boundaryEntrant = string(
+        (await create({ title: 'Entrant at the page boundary' })).id,
+      );
+      const boundaryEdit = string(
+        (await create({ title: 'Earlier source' })).id,
+      );
+      await edit(boundaryEdit, {
+        expectedVersion: 1,
+        title: 'Edit at the page boundary',
+      });
+      const newer = string((await create({ title: 'Newer event 0' })).id);
+      for (let version = 1; version <= 48; version++) {
+        await edit(newer, {
+          expectedVersion: version,
+          title: `Newer event ${version}`,
+        });
+      }
+      const native = (
+        await Promise.all([
+          history(boundaryEntrant),
+          history(boundaryEdit),
+          history(newer),
+        ])
+      ).flat();
+      const listed = await taskEvents();
+      const tied = native.filter(
+        (event) => event.occurredAt === '2098-01-02T12:00:00.000Z',
+      );
+      expect(native).toHaveLength(52);
+      expect(tied).toHaveLength(2);
+      expect(listed).toHaveLength(50);
+      const entrant = native.find(
+        (event) => object(event.target).taskId === boundaryEntrant,
+      );
+      const tiedEdit = tied.find(
+        (event) => object(event.target).taskId === boundaryEdit,
+      );
+      expect((await history(boundaryEdit)).map((event) => event.id)).toEqual([
+        '00000000-0000-4000-8000-000000000098',
+        '00000000-0000-4000-8000-000000000049',
+      ]);
+      expect(listed[49]?.id).toBe(entrant?.id);
+      expect(listed.map((event) => event.id)).not.toContain(tiedEdit?.id);
+    } finally {
+      await harness.pool.query(
+        'DROP TRIGGER probe_tie_task_events ON task_events; DROP FUNCTION probe_tie_task_events()',
+      );
+    }
+  }, 30000);
+
   it('keeps complete native text history while excluding prose and text-only corrections before generic Activity selection', async () => {
     await grant('task');
     const created = await create({

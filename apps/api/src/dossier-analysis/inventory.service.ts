@@ -96,23 +96,48 @@ export class DossierInventoryService {
       ReturnType<CertificationService['dossierDocumentsWithinTransaction']>
     > = [];
     try {
-      attached = await this.certification.dossierDocumentsWithinTransaction({
-        actor,
-        projectId,
-        lock: write,
-      });
+      attached = await this.certification.dossierDocumentsWithinTransaction(
+        write
+          ? { actor, projectId, lock: true }
+          : { actor, snapshotProject: project, lock: false },
+      );
     } catch (error) {
       if (!(error instanceof ForbiddenException)) throw error;
     }
+    // These observations live only in this read snapshot. The write path
+    // continues to qualify source facts under its existing lock order.
+    const visibleDocuments = new Map<
+      string,
+      typeof workingDocuments.$inferSelect | null
+    >();
+    const readDocument = async (documentId: string) => {
+      const observed = visibleDocuments.get(documentId);
+      if (observed !== undefined) return observed;
+      try {
+        const document = await this.access.inventoryDocument(
+          actor,
+          project,
+          documentId,
+        );
+        visibleDocuments.set(documentId, document);
+        return document;
+      } catch (error) {
+        if (
+          !(error instanceof NotFoundException) &&
+          !(error instanceof ForbiddenException)
+        )
+          throw error;
+        visibleDocuments.set(documentId, null);
+        return null;
+      }
+    };
     const documents = new Map<string, { documentId: string; title: string }>();
     for (const documentId of new Set(direct.map((row) => row.documentId))) {
       try {
-        const document = await this.access.directDocument(
-          actor,
-          projectId,
-          documentId,
-          write,
-        );
+        const document = write
+          ? await this.access.directDocument(actor, projectId, documentId, true)
+          : await readDocument(documentId);
+        if (document?.projectId !== projectId) continue;
         documents.set(document.id, {
           documentId: document.id,
           title: document.title,
@@ -138,6 +163,13 @@ export class DossierInventoryService {
         attachmentId: row.id,
       })),
     ];
+    const versions = write
+      ? undefined
+      : await this.readVersions(
+          actor,
+          project.companyId,
+          tuples.flatMap(({ versionId }) => (versionId ? [versionId] : [])),
+        );
     const items: {
       documentId: string;
       documentTitle: string;
@@ -155,27 +187,42 @@ export class DossierInventoryService {
     for (const tuple of tuples) {
       if (!tuple.versionId) continue;
       try {
-        const live = await this.access.direct(actor, {
-          projectId,
-          documentId: tuple.documentId,
-          versionId: tuple.versionId,
-          representationId: null,
-          caseId: tuple.caseId,
-          attachmentId: tuple.attachmentId,
-          write,
-          ...(tuple.caseId === null ? {} : { caseAttachments: attached }),
-        });
-        documents.set(live.document.id, {
-          documentId: live.document.id,
-          title: live.document.title,
+        const live = versions
+          ? {
+              document: await readDocument(tuple.documentId),
+              version: versions.get(tuple.versionId),
+            }
+          : await this.access.direct(actor, {
+              projectId,
+              documentId: tuple.documentId,
+              versionId: tuple.versionId,
+              representationId: null,
+              caseId: tuple.caseId,
+              attachmentId: tuple.attachmentId,
+              write: true,
+              ...(tuple.caseId === null ? {} : { caseAttachments: attached }),
+            });
+        const { document, version } = live;
+        // Case attachments have already been qualified by their owner above.
+        // Direct links still require this exact Project and every Version
+        // must belong to the corresponding authorized Document.
+        if (
+          !document ||
+          version?.documentId !== document.id ||
+          (tuple.caseId === null && document.projectId !== projectId)
+        )
+          continue;
+        documents.set(document.id, {
+          documentId: document.id,
+          title: document.title,
         });
         const common = {
-          documentId: live.document.id,
-          documentTitle: live.document.title,
-          documentType: live.document.type,
-          documentVersionId: live.version.id,
-          versionNumber: live.version.number,
-          versionStatus: live.version.status,
+          documentId: document.id,
+          documentTitle: document.title,
+          documentType: document.type,
+          documentVersionId: version.id,
+          versionNumber: version.number,
+          versionStatus: version.status,
           caseId: tuple.caseId,
           attachmentId: tuple.attachmentId,
         };
@@ -220,5 +267,31 @@ export class DossierInventoryService {
         a.documentId.localeCompare(b.documentId),
       ),
     };
+  }
+
+  private async readVersions(
+    actor: ActorContext,
+    companyId: string,
+    versionIds: readonly string[],
+  ) {
+    const ids = [...new Set(versionIds)];
+    const rows = ids.length
+      ? await this.database.connection
+          .select({
+            id: documentVersions.id,
+            documentId: documentVersions.documentId,
+            number: documentVersions.number,
+            status: documentVersions.status,
+          })
+          .from(documentVersions)
+          .where(
+            and(
+              eq(documentVersions.workspaceId, actor.workspaceId),
+              eq(documentVersions.companyId, companyId),
+              inArray(documentVersions.id, ids),
+            ),
+          )
+      : [];
+    return new Map(rows.map((row) => [row.id, row]));
   }
 }

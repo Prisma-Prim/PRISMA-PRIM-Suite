@@ -205,6 +205,69 @@ describe.skipIf(!databaseUrl)(
       await scanner?.close();
     });
 
+    it('reuses the Project snapshot and exact Versions as its evidence inventory grows', async () => {
+      const measured = async () => {
+        const result = await harness.measureApplicationQueries(async () => {
+          const response = await call(`${prefix}/inventory`);
+          expect(response.status).toBe(200);
+          return object(await response.json());
+        });
+        const count = (table: string) =>
+          result.queries.filter((query) => query.includes(`from "${table}"`))
+            .length;
+        return {
+          response: result.value,
+          total: result.queryCount,
+          projects: count('projects'),
+          documents: count('working_documents'),
+          versions: count('document_versions'),
+        };
+      };
+      const before = await measured();
+      const document = object(
+        await (await call(`/documents/${documentId}`)).json(),
+      );
+      const addedIds: string[] = [];
+      const after = await (async () => {
+        try {
+          for (let index = 0; index < 5; index++) {
+            const added = await command('/documents', {
+              clientId: string(document.clientId),
+              title: `Synthetic additional reference ${index}`,
+              purpose: 'Inventory architecture test',
+              url: `https://example.test/additional/${index}`,
+            });
+            const addedId = string(added.id);
+            await command(`/documents/${addedId}/project-association`, {
+              action: 'link',
+              projectId,
+              expectedRevision: 0,
+            });
+            addedIds.push(addedId);
+          }
+          return await measured();
+        } finally {
+          for (const id of addedIds) {
+            await command(`/documents/${id}/project-association`, {
+              action: 'unlink',
+              projectId,
+              expectedRevision: 1,
+            });
+          }
+        }
+      })();
+      expect(array(after.response.items)).toHaveLength(
+        array(before.response.items).length + 5,
+      );
+      expect(array(after.response.items)).toEqual(
+        expect.arrayContaining(array(before.response.items)),
+      );
+      expect(after.projects).toBe(before.projects);
+      expect(after.documents - before.documents).toBe(5);
+      expect(after.versions).toBe(before.versions);
+      expect(after.total - before.total).toBeLessThanOrEqual(30);
+    }, 30000);
+
     it('preserves the native source, ties evidence to its page, and keeps runs immutable after a native association change', async () => {
       const initialResponse = await call(prefix);
       expect(initialResponse.status, await initialResponse.clone().text()).toBe(
