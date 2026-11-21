@@ -1403,6 +1403,8 @@ describe('Certification Findings and nonconformity follow-up', () => {
           read === '/documents'
             ? Response.json({
                 caseId,
+                atRevision: stored.revision,
+                nextAfterRevision: null,
                 items: [
                   ...stored.attachments,
                   {
@@ -1416,6 +1418,8 @@ describe('Certification Findings and nonconformity follow-up', () => {
               })
             : Response.json({
                 caseId,
+                atRevision: stored.revision,
+                nextAfterRevision: null,
                 entries: stored.steps.map((step, index, steps) =>
                   index === steps.length - 1
                     ? { ...step, caseRevision: 12 }

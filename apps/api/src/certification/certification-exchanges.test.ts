@@ -33,7 +33,7 @@ function facts(overrides: Partial<DeadlineCaseFacts> = {}): DeadlineCaseFacts {
       { stage: 'stage_2', startDate: S2_START, documentId: 'plan-2' },
     ],
     stage2End: S2,
-    stage2ReportDocumentId: 'report-2',
+    stage2ReportAttachmentIds: new Set(['report-2-v1']),
     decision: { date: D, firstRevision: 40 },
     ...overrides,
   };
@@ -52,7 +52,7 @@ function sent(
     itemKind: 'stage_plan',
     counterpartKind: 'client',
     businessDate,
-    documentIds: [],
+    attachments: [],
     ...overrides,
   };
 }
@@ -76,8 +76,12 @@ function states(
 describe('Procedure deadline states (PRD §9.2, fixed clock)', () => {
   it('meets the Stage 1 plan deadline when it is sent on S1 − 12, and meets the Stage 2 plan late when sent 7 days before', () => {
     const found = states([
-      sent(1, addDays(S1, -12), { documentIds: ['plan-1'] }),
-      sent(2, addDays(S2_START, -7), { documentIds: ['plan-2'] }),
+      sent(1, addDays(S1, -12), {
+        attachments: [{ id: 'plan-1-attachment', documentId: 'plan-1' }],
+      }),
+      sent(2, addDays(S2_START, -7), {
+        attachments: [{ id: 'plan-2-attachment', documentId: 'plan-2' }],
+      }),
     ]);
     expect(found.filter((entry) => entry.kind === 'stage_plan_sent')).toEqual([
       {
@@ -160,7 +164,7 @@ describe('Procedure deadline states (PRD §9.2, fixed clock)', () => {
         (entry) => entry.kind === 'stage_2_report_released',
       );
     const report = {
-      documentIds: ['report-2'],
+      attachments: [{ id: 'report-2-v1', documentId: 'report-2' }],
       itemKind: 'stage_report' as const,
     };
     expect(release([sent(1, '2026-11-01', report)])).toMatchObject({

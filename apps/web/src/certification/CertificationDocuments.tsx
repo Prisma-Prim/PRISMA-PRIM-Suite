@@ -18,12 +18,13 @@ import {
 import {
   CERTIFICATION_LIMITS,
   parseEligibleDocuments,
+  sourceKey,
   type CaseDetail,
   type CertificationAttachment,
   type DocumentRegister,
   type EligibleDocuments,
 } from './certification-response';
-import { AttachForm } from './CertificationDocumentForms';
+import { AttachForm, type EligibleView } from './CertificationDocumentForms';
 import {
   DossierRegister,
   RegisterPdfAction,
@@ -50,12 +51,12 @@ import type {
   CertificationQuery,
   CertificationAccess,
 } from './certification-command';
-import { refusal, type View } from './certification-case-view';
+import { refusal } from './certification-case-view';
 /** The eligible PDFs of one Case, read under the Document rights captured. */
 type Eligible = {
   caseId: string;
   rights: string;
-  view: View<EligibleDocuments>;
+  view: EligibleView;
 };
 /** The download of one attachment, under the Document rights it began with. */
 type Download =
@@ -132,40 +133,65 @@ export function useCertificationDocuments({
   }
 
   /** The Client's frozen received PDFs, read under the current Document rights. */
-  async function loadEligible(caseId: string) {
+  async function loadEligible(caseId: string, previous?: EligibleDocuments) {
     if (!documentRights) return;
     const rights = documentRights;
+    const cursor = previous?.nextCursor;
     const signal = eligibleOperation.begin();
     if (!signal) return;
-    setEligible({ caseId, rights, view: { status: 'loading' } });
+    const show = (view: EligibleView) => setEligible({ caseId, rights, view });
+    const failed = () =>
+      show(
+        previous
+          ? { status: 'ready', value: previous, olderPage: 'error' }
+          : { status: 'error' },
+      );
+    show(
+      previous
+        ? { status: 'ready', value: previous, olderPage: 'loading' }
+        : { status: 'loading' },
+    );
+    const path = `/certification-cases/${encodeURIComponent(caseId)}/eligible-documents`;
     try {
       const result = await query(
         eligibleOperation,
         signal,
-        `/certification-cases/${encodeURIComponent(caseId)}/eligible-documents`,
+        cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path,
         undefined,
         'documents',
       );
       if (signal.aborted) return;
-      setEligible({
-        caseId,
-        rights,
-        view:
-          result.status === 'ok'
-            ? {
-                status: 'ready',
-                value: parseEligibleDocuments(result.value, caseId),
-              }
-            : { status: refusal(result) },
+      if (result.status !== 'ok') {
+        const status = refusal(result);
+        if (previous && status === 'error') failed();
+        else show({ status });
+        return;
+      }
+      const page = parseEligibleDocuments(result.value, caseId);
+      if (!previous) {
+        show({ status: 'ready', value: page });
+        return;
+      }
+      if (page.nextCursor === cursor)
+        throw new Error('Unchanged document cursor.');
+      const seen = new Set(previous.items.map(sourceKey));
+      show({
+        status: 'ready',
+        value: {
+          ...page,
+          items: [
+            ...previous.items,
+            ...page.items.filter((item) => !seen.has(sourceKey(item))),
+          ],
+        },
       });
     } catch {
-      if (!signal.aborted)
-        setEligible({ caseId, rights, view: { status: 'error' } });
+      if (!signal.aborted) failed();
     }
   }
 
   /** The eligible read of this Case under the current rights, if any. */
-  function eligibleFor(caseId: string): View<EligibleDocuments> | undefined {
+  function eligibleFor(caseId: string): EligibleView | undefined {
     return eligible?.caseId === caseId && eligible.rights === documentRights
       ? eligible.view
       : undefined;
@@ -424,6 +450,7 @@ export function useCertificationDocuments({
             setAttachFeedback(IDLE);
           }}
           onReloadEligible={() => void loadEligible(current.id)}
+          onLoadOlder={(page) => void loadEligible(current.id, page)}
         />
       );
     }

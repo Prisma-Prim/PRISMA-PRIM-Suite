@@ -312,7 +312,7 @@ const keys = [
   'eligibleLoading',
   'eligibleUnavailable',
   'eligibleEmpty',
-  'eligibleTruncated',
+  'eligibleMore',
   'selectDocumentRole',
   'attachSubmit',
   'attachValidation',
@@ -1234,7 +1234,7 @@ export const certificationMessages = defineMessages(keys, {
       'The Client’s received PDFs could not be loaded. Try again.',
     eligibleEmpty:
       'No received PDF of this Client can be attached yet. In the Documents workspace, register the signed original as a received audit source of this Client, upload its PDF and designate that version official. It then appears here.',
-    eligibleTruncated: 'Only the 25 most recently registered PDFs are listed.',
+    eligibleMore: 'Show older PDFs',
     selectDocumentRole: 'Select a role',
     attachSubmit: 'Attach the document',
     attachValidation:
@@ -2361,8 +2361,7 @@ export const certificationMessages = defineMessages(keys, {
       'Les PDF reçus du Client n’ont pas pu être chargés. Réessayez.',
     eligibleEmpty:
       'Aucun PDF reçu de ce Client ne peut encore être joint. Dans l’espace Documents, enregistrez l’original signé comme source d’audit reçue de ce Client, téléversez son PDF et désignez cette version comme officielle. Il apparaît alors ici.',
-    eligibleTruncated:
-      'Seuls les 25 PDF enregistrés le plus récemment sont listés.',
+    eligibleMore: 'Afficher les PDF plus anciens',
     selectDocumentRole: 'Sélectionnez un rôle',
     attachSubmit: 'Joindre le document',
     attachValidation:
@@ -3512,8 +3511,7 @@ export const certificationMessages = defineMessages(keys, {
       'PDF-urile primite de la Client nu au putut fi încărcate. Reîncercați.',
     eligibleEmpty:
       'Niciun PDF primit de la acest Client nu poate fi încă atașat. În spațiul Documente, înregistrați originalul semnat ca sursă de audit primită de la acest Client, încărcați PDF-ul lui și desemnați acea versiune ca oficială. Apoi apare aici.',
-    eligibleTruncated:
-      'Sunt listate doar cele mai recente 25 de PDF-uri înregistrate.',
+    eligibleMore: 'Afișați PDF-urile mai vechi',
     selectDocumentRole: 'Selectați un rol',
     attachSubmit: 'Atașați documentul',
     attachValidation:
@@ -4656,7 +4654,7 @@ export const certificationMessages = defineMessages(keys, {
       'Не удалось загрузить PDF, полученные от Клиента. Повторите попытку.',
     eligibleEmpty:
       'Пока нельзя приложить ни один PDF, полученный от этого Клиента. В разделе «Документы» зарегистрируйте подписанный оригинал как полученный от этого Клиента источник аудита, загрузите его PDF и назначьте эту версию официальной. После этого он появится здесь.',
-    eligibleTruncated: 'Показаны только 25 последних зарегистрированных PDF.',
+    eligibleMore: 'Показать более ранние PDF',
     selectDocumentRole: 'Выберите роль',
     attachSubmit: 'Приложить выбранный документ',
     attachValidation:

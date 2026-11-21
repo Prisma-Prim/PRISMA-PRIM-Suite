@@ -30,6 +30,11 @@ const scope = {
   projectId: certificationIds.project,
 };
 const caseId = '11310000-0000-4000-8000-100000000001';
+const completeHistory = { atRevision: 1_000, nextAfterRevision: null };
+const readTimeline = (value: Record<string, unknown>, id: string) =>
+  parseTimeline({ ...completeHistory, ...value }, id);
+const readDocumentRegister = (value: Record<string, unknown>, id: string) =>
+  parseDocumentRegister({ ...completeHistory, ...value }, id);
 const by = { workspaceMembershipId: 'member', displayName: 'Ana Demo' };
 const application = {
   id: 'step-1',
@@ -304,7 +309,7 @@ describe('Certification response parsers', () => {
     expect(parsed.nextStep).toBe('agreement');
     expect(parsed.duration?.value).toEqual(determination);
     expect(
-      parseTimeline(
+      readTimeline(
         { caseId, entries: [application, review, duration] },
         caseId,
       ).entries.map((entry) => entry.step),
@@ -482,10 +487,10 @@ describe('Certification response parsers', () => {
       ),
     ).toThrow();
     expect(() =>
-      parseTimeline({ caseId, entries: [review, application] }, caseId),
+      readTimeline({ caseId, entries: [review, application] }, caseId),
     ).toThrow();
     expect(
-      parseTimeline({ caseId, entries: [application, review] }, caseId).entries,
+      readTimeline({ caseId, entries: [application, review] }, caseId).entries,
     ).toHaveLength(2);
   });
 });
@@ -556,7 +561,7 @@ describe('Certification signed originals and agreement parsers', () => {
       attachmentId,
     });
     expect(
-      parseTimeline(
+      readTimeline(
         { caseId, entries: [application, review, duration, agreement] },
         caseId,
       ).entries.at(-1),
@@ -653,7 +658,7 @@ describe('Certification signed originals and agreement parsers', () => {
   });
 
   it('reads the register in attachment order with its exact facts', () => {
-    const register = parseDocumentRegister(
+    const register = readDocumentRegister(
       { caseId, items: [attachmentRow(), questionnaireRow] },
       caseId,
     );
@@ -667,7 +672,7 @@ describe('Certification signed originals and agreement parsers', () => {
       sha256: 'a'.repeat(64),
       attachedBy: by,
     });
-    expect(parseDocumentRegister({ caseId, items: [] }, caseId).items).toEqual(
+    expect(readDocumentRegister({ caseId, items: [] }, caseId).items).toEqual(
       [],
     );
   });
@@ -725,36 +730,71 @@ describe('Certification signed originals and agreement parsers', () => {
     ],
     ['a blank note', { caseId, items: [attachmentRow({ note: '  ' })] }],
   ])('fails closed on a register with %s', (_name, value) => {
-    expect(() => parseDocumentRegister(value, caseId)).toThrow();
+    expect(() => readDocumentRegister(value, caseId)).toThrow();
+  });
+
+  it('rejects history and eligible PDF responses without pagination metadata', () => {
+    expect(() => parseTimeline({ caseId, entries: [] }, caseId)).toThrow();
+    expect(() =>
+      parseDocumentRegister({ caseId, items: [] }, caseId),
+    ).toThrow();
+    expect(() =>
+      parseEligibleDocuments({ caseId, items: [], truncated: false }, caseId),
+    ).toThrow();
   });
 
   it('reads the eligible received PDFs and their truncation', () => {
     expect(
       parseEligibleDocuments(
-        { caseId, items: [eligibleRow], truncated: false },
+        { caseId, items: [eligibleRow], truncated: false, nextCursor: null },
         caseId,
       ),
-    ).toEqual({ caseId, items: [eligibleRow], truncated: false });
+    ).toEqual({
+      caseId,
+      items: [eligibleRow],
+      truncated: false,
+      nextCursor: null,
+    });
     const page = Array.from({ length: 25 }, (_, index) => ({
       ...eligibleRow,
       representationId: `representation-${index}`,
     }));
     expect(
-      parseEligibleDocuments({ caseId, items: page, truncated: true }, caseId)
-        .truncated,
+      parseEligibleDocuments(
+        {
+          caseId,
+          items: page,
+          truncated: true,
+          nextCursor: '11310000-0000-4000-8000-100000000001:1',
+        },
+        caseId,
+      ).truncated,
     ).toBe(true);
   });
 
   it.each([
-    ['another Case', { caseId: 'other-case', items: [], truncated: false }],
+    [
+      'another Case',
+      { caseId: 'other-case', items: [], truncated: false, nextCursor: null },
+    ],
     ['no truncation flag', { caseId, items: [eligibleRow] }],
     [
       'a truncated short page',
-      { caseId, items: [eligibleRow], truncated: true },
+      {
+        caseId,
+        items: [eligibleRow],
+        truncated: true,
+        nextCursor: '11310000-0000-4000-8000-100000000001:1',
+      },
     ],
     [
       'the same exact PDF twice',
-      { caseId, items: [eligibleRow, eligibleRow], truncated: false },
+      {
+        caseId,
+        items: [eligibleRow, eligibleRow],
+        truncated: false,
+        nextCursor: null,
+      },
     ],
     [
       'a version zero',
@@ -762,6 +802,7 @@ describe('Certification signed originals and agreement parsers', () => {
         caseId,
         items: [{ ...eligibleRow, versionNumber: 0 }],
         truncated: false,
+        nextCursor: null,
       },
     ],
     [
@@ -770,6 +811,7 @@ describe('Certification signed originals and agreement parsers', () => {
         caseId,
         items: [{ ...eligibleRow, sourceTitle: 'T'.repeat(201) }],
         truncated: false,
+        nextCursor: null,
       },
     ],
   ])('fails closed on eligible PDFs with %s', (_name, value) => {
@@ -914,7 +956,7 @@ describe('Certification audit team and decision parsers', () => {
       independenceAttested: true,
     });
     expect(
-      parseTimeline(
+      readTimeline(
         {
           caseId,
           entries: [
@@ -1322,7 +1364,7 @@ describe('Certification Stage plan and report parsers', () => {
 
   it('reads every Stage version of the timeline in order', () => {
     expect(
-      parseTimeline(
+      readTimeline(
         {
           caseId,
           entries: [
@@ -1589,7 +1631,7 @@ describe('Certification Stage plan and report parsers', () => {
       approvedFirst,
     ];
     expect(() =>
-      parseTimeline(
+      readTimeline(
         {
           caseId,
           entries: [...entries, { ...stage1Planned, step: 'stage_plan' }],
@@ -1598,7 +1640,7 @@ describe('Certification Stage plan and report parsers', () => {
       ),
     ).toThrow();
     expect(() =>
-      parseTimeline(
+      readTimeline(
         {
           caseId,
           entries: [
@@ -2774,7 +2816,7 @@ describe('Certification recommendation, decision and Certificate parsers', () =>
       },
       { version: 2, reason: 'Basis completed after the closing meeting.' },
     );
-    const entries = parseTimeline(
+    const entries = readTimeline(
       {
         caseId,
         entries: [
@@ -2800,7 +2842,7 @@ describe('Certification recommendation, decision and Certificate parsers', () =>
       'Basis completed after the closing meeting.',
     );
     expect(
-      parseDocumentRegister(
+      readDocumentRegister(
         {
           caseId,
           items: [
@@ -3321,7 +3363,7 @@ describe('Certification acts on behalf and impartiality parsers', () => {
       value: { decision: 'granted', grantedTexts: [CERTIFICATE_TEXTS[0]] },
     });
     expect(
-      parseTimeline(
+      readTimeline(
         { caseId, entries: [decided, agreedData, correctedDecision] },
         caseId,
       ).entries.map((entry) => [entry.step, entry.version]),
@@ -3334,7 +3376,7 @@ describe('Certification acts on behalf and impartiality parsers', () => {
 
   it('fails closed on a timeline whose correction changes the decided outcome', () => {
     expect(() =>
-      parseTimeline(
+      readTimeline(
         {
           caseId,
           entries: [

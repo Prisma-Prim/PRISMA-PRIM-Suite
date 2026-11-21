@@ -611,6 +611,60 @@ withPostgres('Certification Case public REST boundary', () => {
     expect(foreign.status).toBe(404);
   });
 
+  it('serves the 501st step version on a continuation pinned to the observed Case revision', async () => {
+    const caseId = text((await openCase()).id);
+    const base = `/certification-cases/${caseId}`;
+    async function saveApplication(version: number) {
+      return created(
+        await call(OWNER, `${base}/application`, {
+          method: 'POST',
+          body: {
+            expectedRevision: version,
+            facts: facts({ totalHeadcount: 40 + (version % 2) }),
+            ...(version > 1
+              ? { reason: `Fictional correction ${version}` }
+              : {}),
+          },
+        }),
+      );
+    }
+    await saveApplication(1);
+    for (let version = 2; version <= 500; version += 1)
+      await saveApplication(version);
+    const latest = await saveApplication(501);
+    const current = await call(READER, base);
+    expect(await current.json()).toMatchObject({
+      revision: 502,
+      application: { id: record(latest.application).id, version: 501 },
+    });
+
+    const pagePath = `${base}/timeline?atRevision=502`;
+    const first = await call(READER, pagePath);
+    expect(first.status).toBe(200);
+    const firstPage = record(await first.json());
+    expect(firstPage.entries).toHaveLength(500);
+    expect(firstPage).toMatchObject({
+      atRevision: 502,
+      nextAfterRevision: 501,
+    });
+
+    await saveApplication(502);
+    const nextPath = `${pagePath}&afterRevision=${String(firstPage.nextAfterRevision)}`;
+    const next = await call(READER, nextPath);
+    expect(next.status).toBe(200);
+    expect(await next.json()).toMatchObject({
+      atRevision: 502,
+      nextAfterRevision: null,
+      entries: [
+        { id: record(latest.application).id, version: 501, caseRevision: 502 },
+      ],
+    });
+    expect((await call(OUTSIDER, nextPath)).status).toBe(403);
+    expect((await call(READER, `${base}/timeline?atRevision=abc`)).status).toBe(
+      400,
+    );
+  }, 180_000);
+
   it('lets a reader consult but not mutate, and denies members without the reader grant', async () => {
     const caseId = text((await openCase()).id);
     const list = await call(

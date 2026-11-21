@@ -23,7 +23,11 @@ import {
 /** The eligible-PDF read behind the attach form. */
 export type EligibleView =
   | { status: 'loading' }
-  | { status: 'ready'; value: EligibleDocuments }
+  | {
+      status: 'ready';
+      value: EligibleDocuments;
+      olderPage?: 'loading' | 'error';
+    }
   | { status: 'error' | 'denied' | 'unavailable' };
 
 export type AttachFormProps = {
@@ -41,6 +45,7 @@ export type AttachFormProps = {
   onSubmit: (event: FormEvent) => void;
   onCancel: () => void;
   onReloadEligible: () => void;
+  onLoadOlder: (page: EligibleDocuments) => void;
 };
 
 /**
@@ -61,6 +66,7 @@ export function AttachForm({
   onSubmit,
   onCancel,
   onReloadEligible,
+  onLoadOlder,
 }: AttachFormProps) {
   const copy = useCertificationCopy();
   const id = (name: string) => `${idPrefix}-${name}`;
@@ -92,9 +98,6 @@ export function AttachForm({
       {eligible.status === 'ready' && items.length === 0 && (
         <p className="certification-note">{copy('eligibleEmpty')}</p>
       )}
-      {eligible.status === 'ready' && eligible.value.truncated && (
-        <p className="certification-note">{copy('eligibleTruncated')}</p>
-      )}
       <label htmlFor={id('source')}>{copy('eligibleDocument')}</label>
       <Select
         id={id('source')}
@@ -123,6 +126,21 @@ export function AttachForm({
         })}
         onValueChange={(source) => onChange({ ...draft, source })}
       />
+      {eligible.status === 'ready' && eligible.value.nextCursor && (
+        <button
+          type="button"
+          disabled={disabled || eligible.olderPage === 'loading'}
+          onClick={() => onLoadOlder(eligible.value)}
+        >
+          {copy('eligibleMore')}
+        </button>
+      )}
+      {eligible.status === 'ready' && eligible.olderPage === 'loading' && (
+        <p role="status">{copy('eligibleLoading')}</p>
+      )}
+      {eligible.status === 'ready' && eligible.olderPage === 'error' && (
+        <p role="alert">{copy('eligibleUnavailable')}</p>
+      )}
       <label htmlFor={id('role')}>{copy('documentRole')}</label>
       <Select
         id={id('role')}

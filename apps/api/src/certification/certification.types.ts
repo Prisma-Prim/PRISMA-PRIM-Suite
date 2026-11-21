@@ -237,12 +237,17 @@ export interface CertificationAttachment {
   attachedAt: string;
 }
 
-export interface CertificationDocumentRegister {
+interface CertificationCaseHistoryPage {
   caseId: string;
+  atRevision: number;
+  nextAfterRevision: number | null;
+}
+
+export interface CertificationDocumentRegister extends CertificationCaseHistoryPage {
   items: CertificationAttachment[];
 }
 
-export interface CertificationEligibleDocuments {
+export type CertificationEligibleDocuments = {
   caseId: string;
   items: {
     documentId: string;
@@ -251,8 +256,10 @@ export interface CertificationEligibleDocuments {
     representationId: string;
     sourceTitle: string;
   }[];
-  truncated: boolean;
-}
+} & (
+  | { truncated: false; nextCursor: null }
+  | { truncated: true; nextCursor: string }
+);
 
 /** The next step a programme manager can record, or none once closed. */
 export type CertificationNextStep =
@@ -349,8 +356,7 @@ export interface CertificationCaseList {
   total: number;
 }
 
-export interface CertificationTimeline {
-  caseId: string;
+export interface CertificationTimeline extends CertificationCaseHistoryPage {
   entries: CertificationStepVersion[];
 }
 

@@ -6,7 +6,16 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, count, desc, eq, getTableColumns } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  gt,
+  lte,
+} from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import {
   requireIdempotencyKey,
@@ -22,7 +31,10 @@ import {
   certificationStepVersions,
 } from '../database/schema/certification.js';
 import { clientLegalEntities } from '../database/schema/client-legal-entity.js';
-import { workingDocuments } from '../database/schema/documents.js';
+import {
+  MAXIMUM_DOCUMENT_VERSIONS,
+  workingDocuments,
+} from '../database/schema/index.js';
 import { ProjectService } from '../project/project.service.js';
 import { DocumentWorkingEvidenceReferenceService } from '../documents/document-working-evidence-reference.service.js';
 import {
@@ -53,6 +65,7 @@ import type {
 import {
   attachCommand,
   applicationCommand,
+  certificationHistoryQuery,
   openCommand,
   reviewCommand,
 } from './certification.validation.js';
@@ -68,7 +81,7 @@ import {
 
 const CASE_LIST_LIMIT = 100;
 
-const TIMELINE_LIMIT = 500;
+const HISTORY_PAGE_SIZE = 500;
 
 /** Owns Case intake, document access and public Case reads. */
 @Injectable()
@@ -504,13 +517,17 @@ export class CertificationService {
   documents({
     actor,
     caseId,
+    query,
   }: {
     actor: ActorContext;
     caseId: string;
+    query?: unknown;
   }): Promise<CertificationDocumentRegister> {
     const targetId = requireUuid(caseId);
     return this.transactions.read(actor, 'reader', async (companyId) => {
-      await this.repository.visibleCase(actor, companyId, targetId);
+      const row = await this.repository.visibleCase(actor, companyId, targetId);
+      const position = certificationHistoryQuery(query ?? {});
+      const atRevision = historyAtRevision(row.revision, position.atRevision);
       const rows = await this.database.connection
         .select()
         .from(certificationCaseDocuments)
@@ -519,11 +536,22 @@ export class CertificationService {
             eq(certificationCaseDocuments.workspaceId, actor.workspaceId),
             eq(certificationCaseDocuments.companyId, companyId),
             eq(certificationCaseDocuments.caseId, targetId),
+            gt(
+              certificationCaseDocuments.caseRevision,
+              position.afterRevision ?? 0,
+            ),
+            lte(certificationCaseDocuments.caseRevision, atRevision),
           ),
         )
         .orderBy(asc(certificationCaseDocuments.caseRevision))
-        .limit(TIMELINE_LIMIT);
-      return { caseId: targetId, items: rows.map(attachment) };
+        .limit(HISTORY_PAGE_SIZE + 1);
+      const page = historyPage(rows);
+      return {
+        caseId: targetId,
+        atRevision,
+        nextAfterRevision: page.nextAfterRevision,
+        items: page.items.map(attachment),
+      };
     });
   }
 
@@ -572,15 +600,17 @@ export class CertificationService {
   eligibleDocuments({
     actor,
     caseId,
+    cursor,
   }: {
     actor: ActorContext;
     caseId: string;
+    cursor?: unknown;
   }): Promise<CertificationEligibleDocuments> {
     const targetId = requireUuid(caseId);
     return this.transactions.read(
       actor,
       'programme_manager',
-      async (companyId) => {
+      async (companyId): Promise<CertificationEligibleDocuments> => {
         const row = await this.repository.visibleCase(
           actor,
           companyId,
@@ -589,9 +619,14 @@ export class CertificationService {
         const rows = await this.sources.eligibleWithinReadTransaction({
           actor,
           context: { companyId, originalClientId: row.clientAccountId },
-          after: null,
+          after: eligibleDocumentPosition(cursor),
           limit: 26,
         });
+        const last = rows[24];
+        const nextCursor =
+          rows.length > 25 && last
+            ? `${last.documentId}:${last.versionNumber}`
+            : null;
         return {
           caseId: targetId,
           items: rows.slice(0, 25).map((item) => ({
@@ -601,7 +636,9 @@ export class CertificationService {
             representationId: item.representationId,
             sourceTitle: item.sourceTitle,
           })),
-          truncated: rows.length > 25,
+          ...(nextCursor === null
+            ? { truncated: false, nextCursor }
+            : { truncated: true, nextCursor }),
         };
       },
     );
@@ -801,13 +838,17 @@ export class CertificationService {
   timeline({
     actor,
     caseId,
+    query,
   }: {
     actor: ActorContext;
     caseId: string;
+    query?: unknown;
   }): Promise<CertificationTimeline> {
     const targetId = requireUuid(caseId);
     return this.transactions.read(actor, 'reader', async (companyId) => {
-      await this.repository.visibleCase(actor, companyId, targetId);
+      const row = await this.repository.visibleCase(actor, companyId, targetId);
+      const position = certificationHistoryQuery(query ?? {});
+      const atRevision = historyAtRevision(row.revision, position.atRevision);
       const rows = await this.database.connection
         .select()
         .from(certificationStepVersions)
@@ -816,11 +857,22 @@ export class CertificationService {
             eq(certificationStepVersions.workspaceId, actor.workspaceId),
             eq(certificationStepVersions.companyId, companyId),
             eq(certificationStepVersions.caseId, targetId),
+            gt(
+              certificationStepVersions.caseRevision,
+              position.afterRevision ?? 0,
+            ),
+            lte(certificationStepVersions.caseRevision, atRevision),
           ),
         )
         .orderBy(asc(certificationStepVersions.caseRevision))
-        .limit(TIMELINE_LIMIT);
-      return { caseId: targetId, entries: rows.map(stepVersion) };
+        .limit(HISTORY_PAGE_SIZE + 1);
+      const page = historyPage(rows);
+      return {
+        caseId: targetId,
+        atRevision,
+        nextAfterRevision: page.nextAfterRevision,
+        entries: page.items.map(stepVersion),
+      };
     });
   }
 
@@ -842,11 +894,10 @@ export class CertificationService {
     const language = registerLanguage(query);
     // One snapshot: a command committing meanwhile cannot mix two revisions.
     // Not read only: the authority recheck locks its grants FOR SHARE.
-    const source = await this.transactions.read(
+    const source = await this.transactions.readSnapshot(
       actor,
       'reader',
       (companyId) => this.repository.registerSource(actor, companyId, targetId),
-      { isolationLevel: 'repeatable read' },
     );
     return {
       bytes: await renderCertificationRegister(
@@ -906,4 +957,36 @@ function differsFromProposal(
   return pairs.some(
     ([value, proposed]) => cents(value) !== cents(roundToHundredths(proposed)),
   );
+}
+
+function historyAtRevision(
+  currentRevision: number,
+  requested?: number,
+): number {
+  if (requested !== undefined && requested > currentRevision)
+    throw new BadRequestException('Invalid certification history revision.');
+  return requested ?? currentRevision;
+}
+
+function historyPage<T extends { caseRevision: number }>(rows: T[]) {
+  const items = rows.slice(0, HISTORY_PAGE_SIZE);
+  return {
+    items,
+    nextAfterRevision:
+      rows.length > HISTORY_PAGE_SIZE
+        ? (items.at(-1)?.caseRevision ?? null)
+        : null,
+  };
+}
+
+function eligibleDocumentPosition(cursor: unknown) {
+  if (cursor === undefined) return null;
+  const position =
+    typeof cursor === 'string' && /^([^:]{36}):([1-9][0-9]*)$/u.exec(cursor);
+  if (!position || Number(position[2]) > MAXIMUM_DOCUMENT_VERSIONS)
+    throw new BadRequestException('Invalid document cursor.');
+  return {
+    documentId: requireUuid(position[1]),
+    versionNumber: Number(position[2]),
+  };
 }

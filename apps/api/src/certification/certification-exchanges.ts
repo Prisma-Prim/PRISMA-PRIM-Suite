@@ -143,8 +143,8 @@ export interface DeadlineCaseFacts {
   plans: { stage: AuditStage; startDate: string; documentId: string | null }[];
   /** S2: the last day of Stage 2, once its plan is recorded. */
   stage2End: string | null;
-  /** The Document of the recorded Stage 2 report, if any. */
-  stage2ReportDocumentId: string | null;
+  /** Exact attachments named by recorded versions of the Stage 2 report. */
+  stage2ReportAttachmentIds: ReadonlySet<string>;
   /** D, and the Case revision at which the first decision version was recorded. */
   decision: { date: string; firstRevision: number } | null;
 }
@@ -162,8 +162,8 @@ export interface DeadlineExchange {
   itemKind: ExchangeItemKind;
   counterpartKind: ExchangeCounterpartKind;
   businessDate: string;
-  /** The Documents of its exchanged Versions. */
-  documentIds: string[];
+  /** Exact exchanged attachments and their source Documents. */
+  attachments: Pick<CertificationAttachment, 'id' | 'documentId'>[];
 }
 
 export interface DeadlineRecordReference {
@@ -214,7 +214,9 @@ export function deadlineStates(input: {
               (exchange) =>
                 exchange.direction === 'sent' &&
                 exchange.counterpartKind === 'client' &&
-                exchange.documentIds.includes(documentId),
+                exchange.attachments.some(
+                  (attachment) => attachment.documentId === documentId,
+                ),
             );
       entries.push(
         dueBy({
@@ -279,6 +281,7 @@ export function deadlineStates(input: {
 /** A sending of the Stage 2 report to the client and whether it was early. */
 export interface Stage2Release {
   exchange: DeadlineExchange;
+  attachmentId: string;
   early: boolean;
   /**
    * Recorded while no decision existed: early whatever the decision's date
@@ -298,29 +301,30 @@ export function stage2Releases(
   exchanges: readonly DeadlineExchange[],
   releaseDays: number,
 ): Stage2Release[] {
-  const documentId = facts.stage2ReportDocumentId;
-  if (documentId === null) return [];
+  if (facts.stage2ReportAttachmentIds.size === 0) return [];
   const decision = facts.decision;
   const earliestOn = decision ? addDays(decision.date, releaseDays) : null;
-  return exchanges
-    .filter(
-      (exchange) =>
-        exchange.direction === 'sent' &&
-        exchange.counterpartKind === 'client' &&
-        exchange.documentIds.includes(documentId),
-    )
-    .map((exchange) => {
-      const recordedBeforeDecision =
-        decision === null || exchange.caseRevision < decision.firstRevision;
-      return {
+  return exchanges.flatMap((exchange) => {
+    if (exchange.direction !== 'sent' || exchange.counterpartKind !== 'client')
+      return [];
+    const attachment = exchange.attachments.find(({ id }) =>
+      facts.stage2ReportAttachmentIds.has(id),
+    );
+    if (!attachment) return [];
+    const recordedBeforeDecision =
+      decision === null || exchange.caseRevision < decision.firstRevision;
+    return [
+      {
         exchange,
+        attachmentId: attachment.id,
         recordedBeforeDecision,
         earliestOn,
         early:
           recordedBeforeDecision ||
           (earliestOn !== null && exchange.businessDate < earliestOn),
-      };
-    });
+      },
+    ];
+  });
 }
 
 /** The anchors of a Case's deadlines, from its recorded versions. */
@@ -333,7 +337,7 @@ export function deadlineFacts(
       ?.documentId ?? null;
   const plans: DeadlineCaseFacts['plans'] = [];
   let stage2End: string | null = null;
-  let stage2ReportDocumentId: string | null = null;
+  const stage2ReportAttachmentIds = new Set<string>();
   let decision: DeadlineCaseFacts['decision'] = null;
   let firstDecision: number | null = null;
   for (const version of steps)
@@ -353,7 +357,7 @@ export function deadlineFacts(
         break;
       }
       case 'stage_2_report':
-        stage2ReportDocumentId = documentOf(version.value.reportAttachmentId);
+        stage2ReportAttachmentIds.add(version.value.reportAttachmentId);
         break;
       case 'decision':
         firstDecision ??= version.caseRevision;
@@ -365,7 +369,7 @@ export function deadlineFacts(
       default:
         break;
     }
-  return { plans, stage2End, stage2ReportDocumentId, decision };
+  return { plans, stage2End, stage2ReportAttachmentIds, decision };
 }
 
 /** The current Exchange Records as the deadlines read them. */
@@ -381,9 +385,11 @@ export function deadlineExchanges(
     itemKind: exchange.itemKind,
     counterpartKind: exchange.counterpart.kind,
     businessDate: exchange.businessDate,
-    documentIds: exchange.attachmentIds.flatMap((attachmentId) => {
+    attachments: exchange.attachmentIds.flatMap((attachmentId) => {
       const attachment = attachments.find((entry) => entry.id === attachmentId);
-      return attachment ? [attachment.documentId] : [];
+      return attachment
+        ? [{ id: attachment.id, documentId: attachment.documentId }]
+        : [];
     }),
   }));
 }

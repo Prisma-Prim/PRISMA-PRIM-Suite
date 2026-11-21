@@ -73,6 +73,7 @@ import {
   type MutationKind,
 } from './certification-command-feedback';
 import {
+  loadCaseHistory,
   timelineMatches,
   registerMatches,
   refusal,
@@ -427,43 +428,51 @@ function CertificationRegistry(
     setDetail({ status: 'loading' });
     const casePath = `/certification-cases/${encodeURIComponent(caseId)}`;
     try {
-      const [record, history, documents] = await Promise.all([
-        query(detailOperation, signal, casePath),
-        query(detailOperation, signal, `${casePath}/timeline`),
-        query(detailOperation, signal, `${casePath}/documents`),
-      ]);
+      const record = await query(detailOperation, signal, casePath);
       if (signal.aborted) return;
-      if (
-        record.status === 'ok' &&
-        history.status === 'ok' &&
-        documents.status === 'ok'
-      ) {
-        const caseDetail = parseCaseDetail(record.value, {
-          companyId,
-          projectId,
-          caseId,
-        });
-        const timeline = parseTimeline(history.value, caseId);
-        const register = parseDocumentRegister(documents.value, caseId);
-        if (
-          !timelineMatches(caseDetail, timeline) ||
-          !registerMatches(caseDetail, timeline, register)
-        )
-          throw new Error('The Certification Case changed during the read.');
-        setDetail({
-          status: 'ready',
-          value: { caseDetail, timeline, register },
-        });
+      if (record.status !== 'ok') {
+        const status = refusal(record);
+        if (status !== 'denied') setDetail({ status });
         return;
       }
-      const status = refusal(
-        record.status !== 'ok'
-          ? record
-          : history.status !== 'ok'
-            ? history
-            : documents,
-      );
-      if (status !== 'denied') setDetail({ status });
+      const caseDetail = parseCaseDetail(record.value, {
+        companyId,
+        projectId,
+        caseId,
+      });
+      const read = (path: string) => query(detailOperation, signal, path);
+      const [history, documents] = await Promise.all([
+        loadCaseHistory(
+          read,
+          `${casePath}/timeline`,
+          caseDetail.revision,
+          (value) => {
+            const timeline = parseTimeline(value, caseId);
+            return { items: timeline.entries, page: timeline.page };
+          },
+        ),
+        loadCaseHistory(
+          read,
+          `${casePath}/documents`,
+          caseDetail.revision,
+          (value) => parseDocumentRegister(value, caseId),
+        ),
+      ]);
+      if (signal.aborted) return;
+      if (history.status !== 'ok' || documents.status !== 'ok') {
+        const status =
+          history.status !== 'ok' ? history.status : documents.status;
+        if (status !== 'denied' && status !== 'ok') setDetail({ status });
+        return;
+      }
+      const timeline = { caseId, entries: history.items };
+      const register = { caseId, items: documents.items };
+      if (
+        !timelineMatches(caseDetail, timeline) ||
+        !registerMatches(caseDetail, timeline, register)
+      )
+        throw new Error('The Certification Case changed during the read.');
+      setDetail({ status: 'ready', value: { caseDetail, timeline, register } });
     } catch {
       if (!signal.aborted) setDetail({ status: 'error' });
     }

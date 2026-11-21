@@ -4,7 +4,9 @@ import { type ActAttribution } from './certification-attribution';
 import { recordEvidence } from './certification-findings';
 import { slotRoles, stageAttachmentReferences } from './certification-stages';
 import {
+  sourceKey,
   type CaseDetail,
+  type CaseHistoryPage,
   type CaseTimeline,
   type CertificationDocumentRole,
   type DocumentRegister,
@@ -15,6 +17,46 @@ export type View<T> =
   | { status: 'loading' }
   | { status: 'ready'; value: T }
   | { status: 'error' | 'denied' | 'unavailable' };
+/** Reads every immutable history page through the revision observed in the detail. */
+export async function loadCaseHistory<
+  T extends { id: string; caseRevision: number },
+>(
+  read: (path: string) => Promise<ApiResult<unknown>>,
+  path: string,
+  revision: number,
+  parse: (value: unknown) => {
+    items: T[];
+    page: CaseHistoryPage;
+  },
+): Promise<
+  { status: 'ok'; items: T[] } | { status: ReturnType<typeof refusal> }
+> {
+  const items: T[] = [];
+  const seen = new Set<string>();
+  let afterRevision = 0;
+  for (;;) {
+    const query = new URLSearchParams({ atRevision: String(revision) });
+    if (afterRevision > 0) query.set('afterRevision', String(afterRevision));
+    const result = await read(`${path}?${query}`);
+    if (result.status !== 'ok') return { status: refusal(result) };
+    const { items: batch, page } = parse(result.value);
+    if (page.atRevision !== revision)
+      throw new Error('Unexpected Certification Case history revision.');
+    for (const item of batch) {
+      if (
+        seen.has(item.id) ||
+        item.caseRevision <= afterRevision ||
+        item.caseRevision > revision
+      )
+        throw new Error('Unexpected Certification Case history entry.');
+      seen.add(item.id);
+      items.push(item);
+    }
+    if (page.nextAfterRevision === null) return { status: 'ok', items };
+    afterRevision = page.nextAfterRevision;
+  }
+}
+
 /**
  * The detail and its timeline must describe the same recorded versions, and
  * no Finding record shares the revision of a step version.
@@ -55,6 +97,11 @@ export function timelineMatches(detail: CaseDetail, timeline: CaseTimeline) {
     }) &&
     detail.findings.every((finding) =>
       finding.records.every((record) => !steps.has(record.caseRevision)),
+    ) &&
+    timeline.entries.every(
+      (entry) =>
+        entry.step !== 'decision' ||
+        entry.value.decision === detail.decision?.value.decision,
     ) &&
     (detail.application === null ||
       recorded(detail.application.id, detail.application.version)) &&
@@ -129,6 +176,7 @@ export function registerMatches(
     ...findingRecords.map((record) => record.caseRevision),
   ]);
   return (
+    new Set(register.items.map(sourceKey)).size === register.items.length &&
     findingRecords.every((record) =>
       recordEvidence(record).every((attachmentId) =>
         register.items.some(
