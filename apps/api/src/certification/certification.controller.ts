@@ -20,6 +20,9 @@ import {
 } from '../access/actor-context.adapter.js';
 import { CertificationProcedureService } from './certification-procedure.service.js';
 import { CertificationService } from './certification.service.js';
+import { CertificationAuditService } from './certification-audit.service.js';
+import { CertificationDecisionService } from './certification-decision.service.js';
+import { CertificationDossierService } from './certification-dossier.service.js';
 import type { AuditStage } from './certification-stages.js';
 
 const FINDING_UPDATES = {
@@ -52,6 +55,9 @@ function auditStage(value: string): AuditStage {
 export class CertificationController {
   constructor(
     private readonly certification: CertificationService,
+    private readonly audit: CertificationAuditService,
+    private readonly decision: CertificationDecisionService,
+    private readonly dossier: CertificationDossierService,
     private readonly procedure: CertificationProcedureService,
   ) {}
 
@@ -62,7 +68,7 @@ export class CertificationController {
     @Param('caseId') caseId: string,
     @Query() query: unknown,
   ) {
-    return this.certification.teamCandidates({
+    return this.audit.teamCandidates({
       actor: requireActorContext(request),
       caseId,
       query,
@@ -95,7 +101,7 @@ export class CertificationController {
     @Param('caseId') caseId: string,
     @Query() query: unknown,
   ) {
-    return this.certification.exchanges({
+    return this.dossier.exchanges({
       actor: requireActorContext(request),
       caseId,
       query,
@@ -109,7 +115,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.recordExchange({
+    return this.dossier.recordExchange({
       actor: requireActorContext(request),
       caseId,
       body,
@@ -125,7 +131,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.recordExchange({
+    return this.dossier.recordExchange({
       actor: requireActorContext(request),
       caseId,
       sequence,
@@ -141,7 +147,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.addReverificationItem({
+    return this.dossier.addReverificationItem({
       actor: requireActorContext(request),
       caseId,
       body,
@@ -157,7 +163,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.withdrawReverificationItem({
+    return this.dossier.withdrawReverificationItem({
       actor: requireActorContext(request),
       caseId,
       itemId,
@@ -374,7 +380,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.planStage({
+    return this.audit.planStage({
       actor: requireActorContext(request),
       caseId,
       stage: auditStage(stage),
@@ -391,7 +397,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.reportStage({
+    return this.audit.reportStage({
       actor: requireActorContext(request),
       caseId,
       stage: auditStage(stage),
@@ -407,7 +413,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.recordFinding({
+    return this.audit.recordFinding({
       actor: requireActorContext(request),
       caseId,
       body,
@@ -424,7 +430,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.recordFindingUpdate({
+    return this.audit.recordFindingUpdate({
       actor: requireActorContext(request),
       caseId,
       findingId,
@@ -441,7 +447,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.recordRecommendation({
+    return this.decision.recordRecommendation({
       actor: requireActorContext(request),
       caseId,
       body,
@@ -456,7 +462,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.reviewDossier({
+    return this.decision.reviewDossier({
       actor: requireActorContext(request),
       caseId,
       body,
@@ -471,7 +477,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.decide({
+    return this.decision.decide({
       actor: requireActorContext(request),
       caseId,
       body,
@@ -486,7 +492,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.recordCertificateData({
+    return this.decision.recordCertificateData({
       actor: requireActorContext(request),
       caseId,
       body,
@@ -501,7 +507,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.recordDiscrepancy({
+    return this.dossier.recordDiscrepancy({
       actor: requireActorContext(request),
       caseId,
       body,
@@ -516,7 +522,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.resolveDiscrepancy({
+    return this.dossier.resolveDiscrepancy({
       actor: requireActorContext(request),
       caseId,
       body,
@@ -531,7 +537,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.recordCertificateDraft({
+    return this.decision.recordCertificateDraft({
       actor: requireActorContext(request),
       caseId,
       body,
@@ -546,7 +552,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.recordClientOpinion({
+    return this.decision.recordClientOpinion({
       actor: requireActorContext(request),
       caseId,
       body,
@@ -561,7 +567,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.approveCertificateDraft({
+    return this.decision.approveCertificateDraft({
       actor: requireActorContext(request),
       caseId,
       body,
@@ -576,7 +582,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.recordCertificateRevision({
+    return this.decision.recordCertificateRevision({
       actor: requireActorContext(request),
       caseId,
       body,
@@ -591,7 +597,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.recordCertificate({
+    return this.decision.recordCertificate({
       actor: requireActorContext(request),
       caseId,
       body,
@@ -606,7 +612,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.proposeTeam({
+    return this.audit.proposeTeam({
       actor: requireActorContext(request),
       caseId,
       body,
@@ -621,7 +627,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.decideTeam({
+    return this.audit.decideTeam({
       actor: requireActorContext(request),
       caseId,
       body,
@@ -636,7 +642,7 @@ export class CertificationController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
   ) {
-    return this.certification.recordAgreement({
+    return this.audit.recordAgreement({
       actor: requireActorContext(request),
       caseId,
       body,

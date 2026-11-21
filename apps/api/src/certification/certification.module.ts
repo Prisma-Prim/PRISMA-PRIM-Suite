@@ -7,6 +7,11 @@ import { DocumentsModule } from '../documents/documents.module.js';
 import { ProjectModule } from '../project/project.module.js';
 import { CertificationProcedureService } from './certification-procedure.service.js';
 import { CertificationService } from './certification.service.js';
+import { CertificationAuditService } from './certification-audit.service.js';
+import { CertificationDecisionService } from './certification-decision.service.js';
+import { CertificationDossierService } from './certification-dossier.service.js';
+import { CertificationCaseReadModel } from './certification-case-read-model.js';
+import { CertificationCaseTransactions } from './certification-case-transactions.js';
 
 @Module({
   imports: [
@@ -17,7 +22,21 @@ import { CertificationService } from './certification.service.js';
     ProjectModule,
     ServerClockModule,
   ],
-  providers: [CertificationService, CertificationProcedureService],
-  exports: [CertificationService, CertificationProcedureService],
+  providers: [
+    CertificationService,
+    CertificationProcedureService,
+    CertificationAuditService,
+    CertificationDecisionService,
+    CertificationDossierService,
+    CertificationCaseReadModel,
+    CertificationCaseTransactions,
+  ],
+  exports: [
+    CertificationService,
+    CertificationProcedureService,
+    CertificationAuditService,
+    CertificationDecisionService,
+    CertificationDossierService,
+  ],
 })
 export class CertificationModule {}
