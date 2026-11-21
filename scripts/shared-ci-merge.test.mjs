@@ -45,6 +45,12 @@ test('shared workflow changes hold affected PRs before merge and resume only aft
   assert.match(verify, /fresh PR CI/u);
   assert.match(verify, /successful `quality`/u);
   assert.match(verify, /CI_CHECKOUT/u);
+  assert.match(
+    verify,
+    /If `CI_CHECKOUT` is absent[^\n]+`checks` job[^\n]+`Check out repository`[^\n]+`git log -1 --format=%H`/u,
+  );
+  assert.match(verify, /40-character SHA on the next log line/u);
+  assert.match(verify, /missing or ambiguous checkout SHA/u);
   assert.match(verify, /first parent is the tested base/u);
   assert.match(verify, /contains the shared squash SHA/u);
   assert.match(verify, /second parent equals the current PR head/u);
