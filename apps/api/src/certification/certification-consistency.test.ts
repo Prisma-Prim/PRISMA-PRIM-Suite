@@ -1521,6 +1521,38 @@ describe('Exchange register rules (PRD §8.1 vectors R06, R07, R15, R16)', () =>
     expect(only(checkConsistency(builder.snapshot()), 'R16')).toEqual([]);
   });
 
+  it('R16 accepts a correction naming a different PDF Version of the previous report Document', () => {
+    const builder = reportedCase();
+    builder.deadlineDays = FICTIONAL;
+    const exchange = {
+      itemKind: 'stage_report',
+      businessDate: '2026-10-25',
+    } as const;
+    builder.exchange({ ...exchange, attachmentIds: ['report-2-v1'] });
+    const replacement = builder.attach('report', 'replacement-report');
+    const otherVersion = builder.attach('other', 'report-2', 2);
+    const latest = builder.steps.findLast(
+      (step) => step.step === 'stage_2_report',
+    );
+    if (latest?.step !== 'stage_2_report')
+      throw new Error('Expected Stage 2 report.');
+    builder.record({
+      step: 'stage_2_report',
+      value: { ...latest.value, reportAttachmentId: replacement },
+    });
+    expect(only(checkConsistency(builder.snapshot()), 'R16')).toHaveLength(1);
+
+    builder.exchange(
+      {
+        ...exchange,
+        itemKind: 'other',
+        attachmentIds: [otherVersion],
+      },
+      1,
+    );
+    expect(only(checkConsistency(builder.snapshot()), 'R16')).toEqual([]);
+  });
+
   it('R16 is not raised while the deadline is not configured', () => {
     const builder = reportedCase();
     builder.deadlineDays = { ...FICTIONAL, stage_2_report_released: null };

@@ -1414,6 +1414,8 @@ describe('Certification recommendation, decision and Certificate', () => {
         respond: () =>
           Response.json({
             caseId,
+            atRevision: stored.revision,
+            nextAfterRevision: null,
             entries: stored.steps.filter((entry) => entry.step !== omitted),
           }),
       });

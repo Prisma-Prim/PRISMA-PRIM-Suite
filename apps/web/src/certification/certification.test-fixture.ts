@@ -1240,7 +1240,12 @@ export class FakeCertificationServer {
       case undefined:
         return Response.json(this.detail(stored));
       case '/timeline':
-        return Response.json({ caseId: stored.id, entries: stored.steps });
+        return Response.json({
+          caseId: stored.id,
+          atRevision: stored.revision,
+          nextAfterRevision: null,
+          entries: stored.steps,
+        });
       case '/application':
         return this.recordApplication(stored, request.body);
       case '/application-review':
@@ -1252,20 +1257,40 @@ export class FakeCertificationServer {
       case '/documents':
         return request.method === 'POST'
           ? this.attachDocument(stored, request.body)
-          : Response.json({ caseId: stored.id, items: stored.attachments });
-      case '/eligible-documents':
+          : Response.json({
+              caseId: stored.id,
+              atRevision: stored.revision,
+              nextAfterRevision: null,
+              items: stored.attachments,
+            });
+      case '/eligible-documents': {
         if (!this.documentAccess) return new Response(null, { status: 403 });
+        const cursor = new URLSearchParams(request.search).get('cursor');
+        const position = (source: FakeSource) =>
+          `${source.documentId}:${source.versionNumber}`;
+        const first =
+          cursor === null
+            ? 0
+            : this.sources.findIndex((source) => position(source) === cursor) +
+              1;
+        if (cursor !== null && first === 0)
+          return new Response(null, { status: 400 });
+        const next = first + 25;
+        const truncated = this.sources.length > next;
+        const last = this.sources[next - 1];
         return Response.json({
           caseId: stored.id,
-          items: this.sources.slice(0, 25).map((source) => ({
+          items: this.sources.slice(first, next).map((source) => ({
             documentId: source.documentId,
             versionId: source.versionId,
             versionNumber: source.versionNumber,
             representationId: source.representationId,
             sourceTitle: source.sourceTitle,
           })),
-          truncated: this.sources.length > 25,
+          truncated,
+          nextCursor: truncated && last ? position(last) : null,
         });
+      }
       case '/agreement':
         return this.recordAgreement(stored, request.body);
       case '/team':

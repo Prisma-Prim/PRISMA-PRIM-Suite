@@ -1332,7 +1332,12 @@ describe('Certification Stage 1 and Stage 2 audits', () => {
     server.interceptions.push({
       match: (request) => request.path.endsWith('/timeline'),
       respond: () =>
-        Response.json({ caseId, entries: stored.steps.slice(0, -1) }),
+        Response.json({
+          caseId,
+          atRevision: stored.revision,
+          nextAfterRevision: null,
+          entries: stored.steps.slice(0, -1),
+        }),
     });
     server.install();
     renderWorkspace(actor);

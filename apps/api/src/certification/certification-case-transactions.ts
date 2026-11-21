@@ -8,7 +8,6 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
-import type { PgTransactionConfig } from 'drizzle-orm/pg-core';
 import type { ActorContext } from '../access/access.types.js';
 import {
   requireIdempotencyKey,
@@ -24,6 +23,7 @@ import {
   runIdempotentCommand,
 } from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
+import { readConsistently } from '../database/consistent-read.js';
 import {
   certificationNumberObservations,
   certificationCases,
@@ -498,12 +498,22 @@ export class CertificationCaseTransactions {
     actor: ActorContext,
     role: CertificationRole,
     work: (companyId: string) => Promise<T>,
-    config?: PgTransactionConfig,
   ): Promise<T> {
     return this.protect(() =>
-      this.database.transaction(
-        async () => work(await this.authorize(actor, role)),
-        config,
+      this.database.transaction(async () =>
+        work(await this.authorize(actor, role)),
+      ),
+    );
+  }
+
+  readSnapshot<T>(
+    actor: ActorContext,
+    role: CertificationRole,
+    work: (companyId: string) => Promise<T>,
+  ): Promise<T> {
+    return this.protect(() =>
+      readConsistently(this.database, async () =>
+        work(await this.authorize(actor, role)),
       ),
     );
   }

@@ -592,6 +592,66 @@ describe('Certification Case workspace', () => {
     expect(retried?.body).toEqual(lost?.body);
   });
 
+  it('opens the Case when the current application is on the second timeline page', async () => {
+    const server = new FakeCertificationServer();
+    const caseId = server.seed({
+      orderReference: 'CERT-LONG-TIMELINE',
+      application: true,
+    });
+    for (let version = 2; version <= 501; version += 1)
+      server.correctAsColleague(caseId, `Fictional correction ${version}`);
+    const stored = server.cases.get(caseId);
+    if (!stored) throw new Error('Expected a seeded Case.');
+    server.interceptions.push(
+      {
+        match: (request) => request.path.endsWith('/timeline'),
+        respond: () =>
+          Response.json({
+            caseId,
+            entries: stored.steps.slice(0, 500),
+            atRevision: 502,
+            nextAfterRevision: 501,
+          }),
+      },
+      {
+        match: (request) =>
+          request.path.endsWith('/timeline') &&
+          new URLSearchParams(request.search).get('afterRevision') === '501',
+        respond: () =>
+          Response.json({
+            caseId,
+            entries: stored.steps.slice(500),
+            atRevision: 502,
+            nextAfterRevision: null,
+          }),
+      },
+    );
+    server.install();
+    renderWorkspace();
+    await openSeededCase('CERT-LONG-TIMELINE');
+    const reads = server.requests
+      .filter(
+        (request) =>
+          request.path.endsWith('/timeline') ||
+          request.path.endsWith('/documents'),
+      )
+      .map((request) => [request.path.split('/').at(-1), request.search]);
+    expect(reads).toEqual(
+      expect.arrayContaining([
+        ['timeline', '?atRevision=502'],
+        ['timeline', '?atRevision=502&afterRevision=501'],
+        ['documents', '?atRevision=502'],
+      ]),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Correct the application' }),
+    ).toBeVisible();
+    await expectInRegion(
+      'Application',
+      /Correction reason: Fictional correction 501/u,
+    );
+  });
+
   it('keeps a confirmed save visible when the following refresh fails', async () => {
     const server = new FakeCertificationServer();
     const caseId = server.seed({ orderReference: 'CERT-REFRESH' });

@@ -708,14 +708,16 @@ class Facts {
   /** The current version of an Exchange Record, with the exchanged PDF shown. */
   exchangeSource(
     exchange: ExchangeRecordVersion,
-    documentId: string | null = null,
+    match?: { kind: 'document' | 'attachment'; id: string },
   ): DiscrepancySource {
     const attachmentId =
-      exchange.attachmentIds.find(
-        (id) =>
-          documentId === null ||
-          this.attachments.get(id)?.documentId === documentId,
-      ) ?? null;
+      match?.kind === 'attachment'
+        ? match.id
+        : (exchange.attachmentIds.find(
+            (id) =>
+              match === undefined ||
+              this.attachments.get(id)?.documentId === match.id,
+          ) ?? null);
     return {
       kind: 'exchange',
       sequence: exchange.sequence,
@@ -1434,7 +1436,10 @@ function planSendings(facts: Facts): RuleDiscrepancy[] {
           side({ kind: 'date', date: sentOn }, source),
           side(
             { kind: 'date', date: first.businessDate },
-            facts.exchangeSource(first, planned.documentId),
+            facts.exchangeSource(first, {
+              kind: 'document',
+              id: planned.documentId,
+            }),
           ),
         ),
       );
@@ -1462,7 +1467,10 @@ function planSendings(facts: Facts): RuleDiscrepancy[] {
             side({ kind: 'version', version: planned.versionNumber }, source),
             side(
               { kind: 'version', version: latest.attachment.versionNumber },
-              facts.exchangeSource(latest.exchange, planned.documentId),
+              facts.exchangeSource(latest.exchange, {
+                kind: 'document',
+                id: planned.documentId,
+              }),
             ),
           ),
         );
@@ -1552,7 +1560,10 @@ function earlyReleases(facts: Facts): RuleDiscrepancy[] {
         },
         side(
           { kind: 'date', date: exchange.businessDate },
-          facts.exchangeSource(exchange, anchors.stage2ReportDocumentId),
+          facts.exchangeSource(exchange, {
+            kind: 'attachment',
+            id: release.attachmentId,
+          }),
         ),
         release.recordedBeforeDecision || release.earliestOn === null
           ? side({ kind: 'state', state: 'not_recorded' }, null)

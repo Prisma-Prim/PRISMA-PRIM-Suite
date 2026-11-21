@@ -283,6 +283,24 @@ function subcategory(value: unknown): FoodChainSubcategory {
   return match;
 }
 
+export function certificationHistoryQuery(value: unknown) {
+  const query = inputObject(value, ['atRevision', 'afterRevision']);
+  const atRevision = historyRevision(query.atRevision);
+  const afterRevision = historyRevision(query.afterRevision);
+  if (
+    afterRevision !== undefined &&
+    (atRevision === undefined || afterRevision > atRevision)
+  )
+    invalid();
+  return { atRevision, afterRevision };
+}
+
+function historyRevision(value: unknown): number | undefined {
+  if (value === undefined) return value;
+  if (typeof value !== 'string' || !/^[1-9][0-9]{0,9}$/u.test(value)) invalid();
+  return integer(Number(value), 1, MAX_REVISION + 1);
+}
+
 function revision(value: unknown): number {
   if (
     typeof value !== 'number' ||

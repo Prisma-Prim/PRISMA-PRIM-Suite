@@ -983,6 +983,77 @@ withPostgres(
       });
     });
 
+    it('keeps an early Stage 2 report sending blocking when the report is corrected on a different Document', async () => {
+      await configureFictional();
+      const { caseId, base, report2, plan2 } = await lactisCase();
+      const sent = await step(
+        CERTIFICATION_OWNER,
+        base,
+        '/exchanges',
+        exchange([report2], {
+          itemKind: 'stage_report',
+          businessDate: '2026-10-28',
+        }),
+      );
+      const r16 = records(record(sent.consistency).open).find(
+        (entry) => entry.rule === 'R16',
+      );
+      expect(r16).toMatchObject({ blocks: 'decision' });
+      const replacement = await attach(caseId, 'report');
+      await step(CERTIFICATION_AUDITOR, base, '/stages/stage-2/report', {
+        reportDate: '2026-10-21',
+        summary: 'Fictional Stage 2 report with corrected wording.',
+        reportAttachmentId: replacement,
+        reason: 'The revised PDF is stored as a distinct Document.',
+      });
+      await dossierReady(caseId, base);
+
+      const refused = await post(CERTIFICATION_APPROVER, `${base}/decision`, {
+        expectedRevision: await revision(base),
+        ...decision(),
+      });
+      expect(await refusal(refused)).toMatchObject({
+        status: 409,
+        code: 'CERTIFICATION_DECISION_PRECONDITIONS',
+        discrepancies: [{ id: r16?.id, rule: 'R16', verdict: 'error' }],
+      });
+      const current = await read(CERTIFICATION_OWNER, base);
+      expect(records(record(current.consistency).open)).toContainEqual(
+        expect.objectContaining({ id: r16?.id, blocks: 'decision' }),
+      );
+      expect(
+        records(record(section(current).deadlines).entries),
+      ).toContainEqual(
+        expect.objectContaining({
+          kind: 'stage_2_report_released',
+          state: 'sent_too_early',
+          record: { sequence: 1, version: 1, businessDate: '2026-10-28' },
+        }),
+      );
+
+      const correctedExchange = await step(
+        CERTIFICATION_OWNER,
+        base,
+        '/exchanges/1',
+        {
+          ...exchange([plan2], { businessDate: '2026-10-28' }),
+          reason: 'The outgoing message contained the plan PDF.',
+        },
+      );
+      expect(
+        records(record(correctedExchange.consistency).resolved).find(
+          (entry) => entry.id === r16?.id,
+        ),
+      ).toMatchObject({ resolution: { kind: 'corrected' } });
+      const decided = await step(
+        CERTIFICATION_APPROVER,
+        base,
+        '/decision',
+        decision(),
+      );
+      expect(decided).toMatchObject({ nextStep: 'certificate' });
+    });
+
     it('records exchanges on certified and refused Cases', async () => {
       const certified = await lactisCase();
       await dossierReady(certified.caseId, certified.base);

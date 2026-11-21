@@ -151,6 +151,49 @@ function installDownload() {
 }
 
 describe('Certification signed originals and agreement', () => {
+  it('loads older eligible PDFs and attaches an exact Version from the next page', async () => {
+    const { server, actor } = serve({ manager: true, documents: true });
+    const caseId = server.seed({ orderReference: 'CERT-PAGED-PDFS' });
+    const oldest = server.addSource('Oldest required original');
+    for (let index = 1; index <= 25; index += 1)
+      server.addSource(`Other eligible original ${index}`);
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase('CERT-PAGED-PDFS');
+
+    const form = await openAttachForm();
+    const pdf = within(form).getByLabelText('Received PDF');
+    expect(selectOptionLabels(pdf)).not.toContain(
+      'Oldest required original — version 1',
+    );
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Show older PDFs' }),
+    );
+    await waitFor(() =>
+      expect(selectOptionLabels(pdf)).toContain(
+        'Oldest required original — version 1',
+      ),
+    );
+    selectOptionByLabel(pdf, 'Oldest required original — version 1');
+    selectOptionByLabel(
+      within(form).getByLabelText('Role'),
+      'Certification agreement',
+    );
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Attach the document' }),
+    );
+
+    await expectAttached('Oldest required original — version 1');
+    expect(server.mutations().at(-1)).toMatchObject({
+      path: `/api/certification-cases/${caseId}/documents`,
+      body: {
+        documentId: oldest.documentId,
+        versionId: oldest.versionId,
+        representationId: oldest.representationId,
+      },
+    });
+  });
+
   it('shows a reader the document archive, the recorded agreement and its version without any form', async () => {
     const { server, actor } = serve({ manager: false, documents: false });
     const { caseId, agreementId, signed } = agreementCase(

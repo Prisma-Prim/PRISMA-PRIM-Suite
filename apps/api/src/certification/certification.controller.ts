@@ -225,10 +225,12 @@ export class CertificationController {
   timeline(
     @Req() request: ActorContextRequest,
     @Param('caseId') caseId: string,
+    @Query() query: unknown,
   ) {
     return this.certification.timeline({
       actor: requireActorContext(request),
       caseId,
+      query,
     });
   }
 
@@ -297,10 +299,12 @@ export class CertificationController {
   documents(
     @Req() request: ActorContextRequest,
     @Param('caseId') caseId: string,
+    @Query() query: unknown,
   ) {
     return this.certification.documents({
       actor: requireActorContext(request),
       caseId,
+      query,
     });
   }
 
@@ -365,10 +369,12 @@ export class CertificationController {
   eligibleDocuments(
     @Req() request: ActorContextRequest,
     @Param('caseId') caseId: string,
+    @Query('cursor') cursor: unknown,
   ) {
     return this.certification.eligibleDocuments({
       actor: requireActorContext(request),
       caseId,
+      cursor,
     });
   }
 

@@ -69,6 +69,71 @@ withPostgres(
       await fixture?.close();
     });
 
+    it('lists a later page and attaches the older eligible original from it', async () => {
+      const caseId = await caseReadyForAgreement();
+      const oldest = await fixture.receivedSource('Oldest required original');
+      for (let index = 1; index <= 25; index += 1)
+        await fixture.receivedSource(`Other eligible original ${index}`);
+
+      const path = `/certification-cases/${caseId}/eligible-documents`;
+      const first = await fixture.call(CERTIFICATION_OWNER, path);
+      expect(first.status).toBe(200);
+      const firstPage = record(await first.json());
+      expect(firstPage.items).toHaveLength(25);
+      expect(firstPage.items).not.toContainEqual(
+        expect.objectContaining(oldest),
+      );
+      expect(firstPage).toMatchObject({
+        truncated: true,
+        nextCursor: expect.any(String),
+      });
+
+      const cursor = text(firstPage.nextCursor);
+      const nextPath = `${path}?cursor=${encodeURIComponent(cursor)}`;
+      const next = await fixture.call(CERTIFICATION_OWNER, nextPath);
+      expect(next.status).toBe(200);
+      expect(await next.json()).toMatchObject({
+        truncated: false,
+        nextCursor: null,
+        items: [expect.objectContaining(oldest)],
+      });
+      expect((await fixture.call(CERTIFICATION_READER, nextPath)).status).toBe(
+        403,
+      );
+      expect(
+        (await fixture.call(CERTIFICATION_OWNER, `${path}?cursor=bad`)).status,
+      ).toBe(400);
+
+      const attached = await fixture.call(
+        CERTIFICATION_OWNER,
+        `/certification-cases/${caseId}/documents`,
+        {
+          method: 'POST',
+          body: { expectedRevision: 4, role: 'agreement', ...oldest },
+        },
+      );
+      expect(attached.status).toBe(201);
+    });
+
+    it('reads the document archive at the same Case revision as the timeline', async () => {
+      const caseId = await caseReadyForAgreement();
+      const base = `/certification-cases/${caseId}`;
+      await fixture.attach(caseId, 'agreement', 4);
+      await fixture.attach(caseId, 'questionnaire', 5);
+      const archived = await fixture.call(
+        CERTIFICATION_READER,
+        `${base}/documents?atRevision=5`,
+      );
+      expect(archived.status).toBe(200);
+      const archive = record(await archived.json());
+      expect(archive.items).toHaveLength(1);
+      expect(archive).toMatchObject({
+        atRevision: 5,
+        nextAfterRevision: null,
+        items: [{ caseRevision: 5, role: 'agreement' }],
+      });
+    });
+
     it('attaches an exact signed original, lists it, opens its bytes and records the agreement', async () => {
       const caseId = await caseReadyForAgreement();
       const source = await fixture.receivedSource(

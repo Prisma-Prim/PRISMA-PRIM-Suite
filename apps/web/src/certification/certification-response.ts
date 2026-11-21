@@ -412,17 +412,23 @@ export interface EligibleDocument {
   sourceTitle: string;
 }
 
-export interface EligibleDocuments {
+export type EligibleDocuments = {
   caseId: string;
   items: EligibleDocument[];
-  /** More PDFs exist than the server lists. */
-  truncated: boolean;
-}
+} & (
+  | { truncated: false; nextCursor: null }
+  | { truncated: true; nextCursor: string }
+);
 
 export interface CaseList {
   projectId: string;
   cases: CaseSummary[];
   total: number;
+}
+
+export interface CaseHistoryPage {
+  atRevision: number;
+  nextAfterRevision: number | null;
 }
 
 export interface CaseTimeline {
@@ -631,7 +637,7 @@ function certificateDataVersion(value: unknown): CertificateDataVersion {
 export function parseDocumentRegister(
   value: unknown,
   caseId: string,
-): DocumentRegister {
+): DocumentRegister & { page: CaseHistoryPage } {
   const body = object(value);
   if (
     body.caseId !== caseId ||
@@ -651,7 +657,8 @@ export function parseDocumentRegister(
     new Set(items.map(sourceKey)).size !== items.length
   )
     invalid();
-  return { caseId, items };
+  const page = historyPage(body, items.at(-1)?.caseRevision);
+  return { caseId, items, page };
 }
 
 /** The frozen received PDFs of the Case's Client, at most one page. */
@@ -683,7 +690,11 @@ export function parseEligibleDocuments(
     new Set(items.map(sourceKey)).size !== items.length
   )
     invalid();
-  return { caseId, items, truncated: body.truncated };
+  const { nextCursor } = body;
+  if (nextCursor === null && !body.truncated)
+    return { caseId, items, truncated: false, nextCursor };
+  if (!body.truncated) invalid();
+  return { caseId, items, truncated: true, nextCursor: text(nextCursor, 39) };
 }
 
 /** The exact source of a PDF: its Document, Version and Representation. */
@@ -709,7 +720,10 @@ export function isCalendarDate(value: string): boolean {
   );
 }
 
-export function parseTimeline(value: unknown, caseId: string): CaseTimeline {
+export function parseTimeline(
+  value: unknown,
+  caseId: string,
+): CaseTimeline & { page: CaseHistoryPage } {
   const body = object(value);
   if (
     body.caseId !== caseId ||
@@ -733,7 +747,24 @@ export function parseTimeline(value: unknown, caseId: string): CaseTimeline {
     ),
   );
   if (outcomes.size > 1) invalid();
-  return { caseId, entries };
+  const page = historyPage(body, entries.at(-1)?.caseRevision);
+  return { caseId, entries, page };
+}
+
+function historyPage(
+  body: Record<string, unknown>,
+  lastRevision: number | undefined,
+): CaseHistoryPage {
+  const atRevision = positive(body.atRevision);
+  const nextAfterRevision =
+    body.nextAfterRevision === null ? null : positive(body.nextAfterRevision);
+  if (
+    (lastRevision !== undefined && lastRevision > atRevision) ||
+    (nextAfterRevision !== null &&
+      (nextAfterRevision !== lastRevision || nextAfterRevision >= atRevision))
+  )
+    invalid();
+  return { atRevision, nextAfterRevision };
 }
 
 export function parseLegalEntityOptions(

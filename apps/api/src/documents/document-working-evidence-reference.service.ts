@@ -43,7 +43,6 @@ export interface QualifiedWorkingEvidenceSource extends WorkingEvidenceSourceBin
   bytes: Buffer;
 }
 export interface WorkingEvidenceSourcePosition {
-  createdAt: string;
   documentId: string;
   versionNumber: number;
 }
