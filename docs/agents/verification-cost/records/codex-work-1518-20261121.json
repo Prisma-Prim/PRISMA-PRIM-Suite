@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-work-1518-20261121",
+  "date": "2026-11-21",
+  "runType": "pull-request-proof",
+  "issue": 1518,
+  "pullRequest": "not reported",
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "2026-11-21T15:11:04.000Z",
+    "end": "2026-11-21T15:14:12.000Z",
+    "durationSeconds": 188
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "ChatGPT Work verification: affected documentation contracts, retrospective CI evidence, format, lint and type checks."
+  }
+}
