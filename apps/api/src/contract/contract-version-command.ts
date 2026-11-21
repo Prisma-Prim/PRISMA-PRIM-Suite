@@ -15,7 +15,10 @@ import type { AccountabilityService } from '../accountability/accountability.ser
 import type { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import type { CommercialIntakeService } from '../commercial-intake/commercial-intake.service.js';
 import type { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
-import type { OfferService } from '../offer/offer.service.js';
+import {
+  requirePendingOfferValidAt,
+  type OfferService,
+} from '../offer/offer.service.js';
 import type { DatabaseContext } from '../database/database-context.js';
 import type { ServerClock } from '../clock/server-clock.js';
 import {
@@ -265,6 +268,10 @@ export async function createContractVersion(
         .limit(1);
       if (executed) throw conflict('CONTRACT_EXECUTED');
       const createdAt = dependencies.clock.now();
+      requirePendingOfferValidAt({
+        validUntil: earlySource?.pendingValidUntil ?? null,
+        recordedAt: createdAt,
+      });
       const revision = current.contract.revision + 1;
       const [version] = await dependencies.databaseContext.connection
         .insert(contractVersions)

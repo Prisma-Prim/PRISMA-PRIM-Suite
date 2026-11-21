@@ -109,6 +109,13 @@ const STAGE_STEPS: readonly StepRow['step'][] = [
 ];
 
 const REGISTER_DOCUMENT_LIMIT = 1000;
+type CertificateRow = typeof certificationCertificates.$inferSelect;
+type CaseDocumentRow = typeof certificationCaseDocuments.$inferSelect;
+type ConsistencyObservations = {
+  certificate: CertificateRow | null;
+  deadlines: DeadlineSetVersion | null;
+  documents?: readonly CaseDocumentRow[];
+};
 
 /** Reads the stored Case facts and builds current projections inside the caller’s transaction. */
 @Injectable()
@@ -125,14 +132,57 @@ export class CertificationCaseReadModel {
     row: CaseRow,
     steps: readonly StepRow[],
   ) {
-    return certificateRelease({
-      steps: steps.map(stepVersion),
-      certificate: await this.certificate(actor, companyId, row.id),
-      revisions: await this.certificateRevisions(actor, companyId, row.id),
-      exchanges: await this.exchangeVersions(actor, companyId, row.id),
-      discrepanciesOpen:
-        (await this.blocking(actor, companyId, row, steps)).length > 0,
+    const issued = await this.issuedCertificate({
+      actor,
+      companyId,
+      caseId: row.id,
+    });
+    const certificate = certificateRecord(issued);
+    const input = await this.consistencyInput(
+      actor,
+      companyId,
+      row,
+      steps,
+      await this.findings(actor, companyId, row.id, steps),
+      {
+        certificate: issued,
+        deadlines: await this.deadlineSet(actor, companyId),
+      },
+    );
+    return this.releaseFromFacts({
+      actor,
+      companyId,
+      caseId: row.id,
+      certificate,
+      input,
       today: this.clock.now().toISOString().slice(0, 10),
+    });
+  }
+
+  private async releaseFromFacts({
+    actor,
+    companyId,
+    caseId,
+    certificate,
+    input,
+    today,
+  }: {
+    actor: ActorContext;
+    companyId: string;
+    caseId: string;
+    certificate: CertificateRecord | null;
+    input: ConsistencyInput;
+    today: string;
+  }) {
+    return certificateRelease({
+      steps: input.steps,
+      certificate,
+      revisions: await this.certificateRevisions(actor, companyId, caseId),
+      exchanges: input.exchanges,
+      discrepanciesOpen:
+        blockingDiscrepancies(input, input.manual, input.resolutions).length >
+        0,
+      today,
     });
   }
 
@@ -183,6 +233,20 @@ export class CertificationCaseReadModel {
     companyId: string,
     caseId: string,
   ): Promise<CertificateRecord | null> {
+    return certificateRecord(
+      await this.issuedCertificate({ actor, companyId, caseId }),
+    );
+  }
+
+  private async issuedCertificate({
+    actor,
+    companyId,
+    caseId,
+  }: {
+    actor: ActorContext;
+    companyId: string;
+    caseId: string;
+  }): Promise<CertificateRow | null> {
     const [row] = await this.database.connection
       .select()
       .from(certificationCertificates)
@@ -193,29 +257,7 @@ export class CertificationCaseReadModel {
           eq(certificationCertificates.caseId, caseId),
         ),
       );
-    if (!row) return null;
-    const texts = persisted(() => certificateTexts(row.texts));
-    return {
-      id: row.id,
-      number: row.number,
-      issuedOn: row.issuedOn,
-      approvedDraftVersionId: row.approvedDraftVersionId,
-      validFrom: row.validFrom,
-      validUntil: row.validUntil,
-      firstSurveillanceBy: row.firstSurveillanceBy,
-      texts,
-      signedBy: row.signedBy,
-      signedByFunction: row.signedByFunction,
-      independenceAttested: persisted(() =>
-        requireIndependenceAttestation(row.independenceAttested),
-      ),
-      attachmentId: row.attachmentId,
-      recordedBy: {
-        workspaceMembershipId: row.actorMembershipId,
-        displayName: row.actorDisplayName,
-      },
-      recordedAt: row.recordedAt.toISOString(),
-    };
+    return row ?? null;
   }
 
   async issuedCompanyNumbers(
@@ -329,6 +371,15 @@ export class CertificationCaseReadModel {
     const signed = latest(steps, 'agreement');
     const team = latest(steps, 'team');
     const decided = latest(steps, 'team_decision');
+    const { certificate, release, ...sections } = await this.caseSections({
+      actor,
+      companyId,
+      row,
+      steps,
+      findings,
+      issued: await this.issuedCertificate({ actor, companyId, caseId }),
+      paged: true,
+    });
     return {
       ...summary,
       companyId: row.companyId,
@@ -356,48 +407,77 @@ export class CertificationCaseReadModel {
         'certificate_data',
         certificateDataVersion,
       ),
-      certificate: await this.certificate(actor, companyId, caseId),
-      release: await this.release(actor, companyId, row, steps),
+      certificate,
+      release,
       stages: STAGE_STEPS.flatMap((step) => {
         const row = latest(steps, step);
         return row ? [stageStepVersion(row)] : [];
       }),
-      ...(await this.checkedSections(
-        actor,
-        companyId,
-        row,
-        steps,
-        findings,
-        true,
-      )),
+      ...sections,
     };
   }
 
-  /** The Dossier Consistency Check and the exchange register, read together. */
-  private async checkedSections(
-    actor: ActorContext,
-    companyId: string,
-    row: CaseRow,
-    steps: readonly StepRow[],
-    findings: readonly FindingView[],
+  /** One projection uses one captured procedure and the same Case facts in every section. */
+  private async caseSections({
+    actor,
+    companyId,
+    row,
+    steps,
+    findings,
+    issued,
+    documents,
     paged = false,
-  ): Promise<Pick<CertificationCaseDetail, 'consistency' | 'exchanges'>> {
+  }: {
+    actor: ActorContext;
+    companyId: string;
+    row: CaseRow;
+    steps: readonly StepRow[];
+    findings: readonly FindingView[];
+    issued: CertificateRow | null;
+    documents?: readonly CaseDocumentRow[];
+    paged?: boolean;
+  }): Promise<
+    Pick<
+      CertificationCaseDetail,
+      'certificate' | 'release' | 'consistency' | 'exchanges'
+    >
+  > {
+    // The Case lock cannot freeze an administrator's independent Company procedure update.
+    const deadlines = await this.deadlineSet(actor, companyId);
     const input = await this.consistencyInput(
       actor,
       companyId,
       row,
       steps,
       findings,
+      {
+        certificate: issued,
+        deadlines,
+        ...(documents ? { documents } : {}),
+      },
     );
-    const certificate = await this.certificate(actor, companyId, row.id);
+    const certificate = certificateRecord(issued);
+    const today = this.clock.now().toISOString().slice(0, 10);
+    const release = await this.releaseFromFacts({
+      actor,
+      companyId,
+      caseId: row.id,
+      certificate,
+      input,
+      today,
+    });
     const exchanges = await this.exchangeSection(actor, {
       companyId,
       caseId: row.id,
       input,
       findings,
       firstSurveillanceBy: certificate?.firstSurveillanceBy ?? null,
+      deadlines,
+      today,
     });
     return {
+      certificate,
+      release,
       consistency: consistencySection(input),
       exchanges: paged
         ? {
@@ -420,11 +500,11 @@ export class CertificationCaseReadModel {
     row: CaseRow,
     steps: readonly StepRow[],
     findings: readonly FindingView[],
+    captured?: ConsistencyObservations,
   ): Promise<ConsistencyInput> {
     const scope = <
       T extends
         | typeof certificationCaseDocuments
-        | typeof certificationCertificates
         | typeof certificationManualDiscrepancies
         | typeof certificationDiscrepancyResolutions,
     >(
@@ -435,15 +515,16 @@ export class CertificationCaseReadModel {
         eq(table.companyId, companyId),
         eq(table.caseId, row.id),
       );
-    const documents = await this.database.connection
-      .select()
-      .from(certificationCaseDocuments)
-      .where(scope(certificationCaseDocuments))
-      .orderBy(asc(certificationCaseDocuments.caseRevision));
-    const [issued] = await this.database.connection
-      .select()
-      .from(certificationCertificates)
-      .where(scope(certificationCertificates));
+    const documents =
+      captured?.documents ??
+      (await this.database.connection
+        .select()
+        .from(certificationCaseDocuments)
+        .where(scope(certificationCaseDocuments))
+        .orderBy(asc(certificationCaseDocuments.caseRevision)));
+    const issued = captured
+      ? captured.certificate
+      : await this.issuedCertificate({ actor, companyId, caseId: row.id });
     const certificate: ConsistencyCertificate | null = issued
       ? {
           number: issued.number,
@@ -498,7 +579,11 @@ export class CertificationCaseReadModel {
       manual: manual.map(manualDiscrepancyRecord),
       resolutions: resolutions.map(resolutionRecord),
       exchanges: await this.exchangeVersions(actor, companyId, row.id),
-      deadlineDays: (await this.deadlineSet(actor, companyId))?.days ?? null,
+      deadlineDays:
+        (captured
+          ? captured.deadlines
+          : await this.deadlineSet(actor, companyId)
+        )?.days ?? null,
     };
   }
 
@@ -550,6 +635,8 @@ export class CertificationCaseReadModel {
       input,
       findings,
       firstSurveillanceBy,
+      deadlines,
+      today,
     }: {
       companyId: string;
       caseId: string;
@@ -557,6 +644,8 @@ export class CertificationCaseReadModel {
       input: ConsistencyInput;
       findings: readonly FindingView[];
       firstSurveillanceBy: string | null;
+      deadlines: DeadlineSetVersion | null;
+      today: string;
     },
   ): Promise<CertificationCaseDetail['exchanges']> {
     const scope = <
@@ -585,8 +674,8 @@ export class CertificationCaseReadModel {
         steps: input.steps,
         attachments: input.attachments,
         versions: input.exchanges,
-        set: await this.deadlineSet(actor, companyId),
-        today: this.clock.now().toISOString().slice(0, 10),
+        set: deadlines,
+        today,
       }),
       reverification: reverificationSection({
         findings,
@@ -704,24 +793,21 @@ export class CertificationCaseReadModel {
         };
       }),
     ];
-    const certificate = await this.certificate(actor, companyId, caseId);
-    if (certificate) {
-      const [issuance] = await this.database.connection
-        .select({ caseRevision: certificationCertificates.caseRevision })
-        .from(certificationCertificates)
-        .where(
-          and(
-            eq(certificationCertificates.workspaceId, actor.workspaceId),
-            eq(certificationCertificates.companyId, companyId),
-            eq(certificationCertificates.caseId, caseId),
-          ),
-        );
-      if (!issuance) throw new InternalServerErrorException();
+    const issued = await this.issuedCertificate({ actor, companyId, caseId });
+    const { certificate, ...sections } = await this.caseSections({
+      actor,
+      companyId,
+      row,
+      steps,
+      issued,
+      documents,
+      findings: await this.findings(actor, companyId, caseId, steps),
+    });
+    if (issued && certificate)
       ordered.push({
-        order: [issuance.caseRevision, 0, 0, 0],
+        order: [issued.caseRevision, 0, 0, 0],
         entry: { kind: 'certificate', certificate },
       });
-    }
     ordered.sort((left, right) => {
       for (const [index, value] of left.order.entries()) {
         const difference = value - (right.order[index] ?? 0);
@@ -741,14 +827,7 @@ export class CertificationCaseReadModel {
       revisedAt: (revised?.occurredAt ?? row.openedAt).toISOString(),
       entries: ordered.map((item) => item.entry),
       documents: documents.map(attachment),
-      release: await this.release(actor, companyId, row, steps),
-      ...(await this.checkedSections(
-        actor,
-        companyId,
-        row,
-        steps,
-        await this.findings(actor, companyId, caseId, steps),
-      )),
+      ...sections,
     };
   }
 
@@ -921,6 +1000,34 @@ export class CertificationCaseReadModel {
       )
       .orderBy(asc(certificationStepVersions.caseRevision));
   }
+}
+
+function certificateRecord(
+  row: CertificateRow | null,
+): CertificateRecord | null {
+  if (!row) return null;
+  const texts = persisted(() => certificateTexts(row.texts));
+  return {
+    id: row.id,
+    number: row.number,
+    issuedOn: row.issuedOn,
+    approvedDraftVersionId: row.approvedDraftVersionId,
+    validFrom: row.validFrom,
+    validUntil: row.validUntil,
+    firstSurveillanceBy: row.firstSurveillanceBy,
+    texts,
+    signedBy: row.signedBy,
+    signedByFunction: row.signedByFunction,
+    independenceAttested: persisted(() =>
+      requireIndependenceAttestation(row.independenceAttested),
+    ),
+    attachmentId: row.attachmentId,
+    recordedBy: {
+      workspaceMembershipId: row.actorMembershipId,
+      displayName: row.actorDisplayName,
+    },
+    recordedAt: row.recordedAt.toISOString(),
+  };
 }
 
 function nextStep(

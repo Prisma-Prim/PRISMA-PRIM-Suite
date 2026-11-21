@@ -50,32 +50,32 @@ export class DossierSourceAccess {
       ],
     });
     const initialProject = await this.projectService.read(actor, projectId);
-    if (write) {
-      const lockKey = JSON.stringify([
-        'dossier-analysis-project',
-        actor.workspaceId,
-        companyId,
-        projectId,
-      ]);
-      await this.database.connection.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
-      );
-      await this.clients.lockReadableProjectReferences(actor, [
-        initialProject.clientAccountId,
-      ]);
-      const [locked] = await this.database.connection
-        .select({ id: projects.id })
-        .from(projects)
-        .where(
-          and(
-            eq(projects.workspaceId, actor.workspaceId),
-            eq(projects.companyId, companyId),
-            eq(projects.id, projectId),
-          ),
-        )
-        .for('share');
-      if (!locked) throw new NotFoundException();
-    }
+    if (initialProject.companyId !== companyId) throw new NotFoundException();
+    if (!write) return initialProject;
+    const lockKey = JSON.stringify([
+      'dossier-analysis-project',
+      actor.workspaceId,
+      companyId,
+      projectId,
+    ]);
+    await this.database.connection.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
+    );
+    await this.clients.lockReadableProjectReferences(actor, [
+      initialProject.clientAccountId,
+    ]);
+    const [locked] = await this.database.connection
+      .select({ id: projects.id })
+      .from(projects)
+      .where(
+        and(
+          eq(projects.workspaceId, actor.workspaceId),
+          eq(projects.companyId, companyId),
+          eq(projects.id, projectId),
+        ),
+      )
+      .for('share');
+    if (!locked) throw new NotFoundException();
     const project = await this.projectService.read(actor, projectId);
     if (
       project.companyId !== companyId ||
@@ -94,6 +94,37 @@ export class DossierSourceAccess {
     }
   }
 
+  /** Reuse the native Document row within the inventory's read snapshot. */
+  async inventoryDocument(
+    actor: ActorContext,
+    project: { companyId: string; clientAccountId: string },
+    documentId: string,
+  ) {
+    const document = await this.readableDocument(actor, documentId, false);
+    if (
+      document.companyId !== project.companyId ||
+      document.clientId !== project.clientAccountId
+    )
+      throw new NotFoundException();
+    return document;
+  }
+
+  private async readableDocument(
+    actor: ActorContext,
+    documentId: string,
+    lock: boolean,
+  ) {
+    const { document } = await this.visible(() =>
+      this.boundary.requireVisible(actor, documentId, { lockFamily: lock }),
+    );
+    await this.visible(() =>
+      this.family.requireFamilyAccess(actor, document.type, 'content-read', {
+        lock,
+      }),
+    );
+    return document;
+  }
+
   async directDocument(
     actor: ActorContext,
     projectId: string,
@@ -101,17 +132,7 @@ export class DossierSourceAccess {
     write: boolean,
   ) {
     const project = await this.project(actor, projectId, write);
-    const visible = await this.visible(() =>
-      this.boundary.requireVisible(actor, documentId, { lockFamily: write }),
-    );
-    await this.visible(() =>
-      this.family.requireFamilyAccess(
-        actor,
-        visible.document.type,
-        'content-read',
-        { lock: write },
-      ),
-    );
+    const visible = await this.readableDocument(actor, documentId, write);
     const query = this.database.connection
       .select()
       .from(workingDocuments)
@@ -127,7 +148,7 @@ export class DossierSourceAccess {
       !document ||
       document.projectId !== projectId ||
       document.clientId !== project.clientAccountId ||
-      document.type !== visible.document.type
+      document.type !== visible.type
     )
       throw new NotFoundException();
     return document;
@@ -166,18 +187,10 @@ export class DossierSourceAccess {
     },
   ) {
     const project = await this.project(actor, input.projectId, input.write);
-    const visible = await this.visible(() =>
-      this.boundary.requireVisible(actor, input.documentId, {
-        lockFamily: input.write,
-      }),
-    );
-    await this.visible(() =>
-      this.family.requireFamilyAccess(
-        actor,
-        visible.document.type,
-        'content-read',
-        { lock: input.write },
-      ),
+    const visible = await this.readableDocument(
+      actor,
+      input.documentId,
+      input.write,
     );
     const documentQuery = this.database.connection
       .select()
@@ -194,7 +207,7 @@ export class DossierSourceAccess {
       : await documentQuery;
     if (
       !document ||
-      document.type !== visible.document.type ||
+      document.type !== visible.type ||
       document.clientId !== project.clientAccountId
     )
       throw new NotFoundException();

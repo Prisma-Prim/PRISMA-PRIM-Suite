@@ -951,13 +951,12 @@ export class AccountabilityService {
             ? undefined
             : sql`NOT (${taskEvents.meaning}->>'action' = 'task.updated' AND (${taskEvents.meaning}->'metadata'->'changes') ? 'description' AND ((${taskEvents.meaning}->'metadata'->'changes') - 'description') = '{}'::jsonb)`,
         ),
-      )
-      .orderBy(
-        taskId ? asc(taskEvents.version) : desc(taskEvents.occurredAt),
-        desc(taskEvents.version),
-        desc(taskEvents.id),
       );
-    return taskId ? await query : await query.limit(INITIAL_PAGE_SIZE);
+    if (taskId) return query.orderBy(asc(taskEvents.version));
+    // Select the dated page with the same tie-break as the merged Activity Log.
+    return query
+      .orderBy(desc(taskEvents.occurredAt), desc(taskEvents.id))
+      .limit(INITIAL_PAGE_SIZE);
   }
   /** Immutable publication is its one Activity event, in the caller's transaction. */
   async recordMissionPlanVersionCreated(input: {

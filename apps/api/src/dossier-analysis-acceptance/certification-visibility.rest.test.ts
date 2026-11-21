@@ -52,10 +52,13 @@ describe.skipIf(!databaseUrl)(
       const documentId = text(attachment.documentId);
       const documentVersionId = text(attachment.versionId);
       const prefix = `/projects/${fixture.projectId}/dossier-analysis`;
-      const inventory = await fixture.call(
-        CERTIFICATION_OWNER,
-        `${prefix}/inventory`,
+      const observed = await fixture.measureApplicationQueries(() =>
+        fixture.call(CERTIFICATION_OWNER, `${prefix}/inventory`),
       );
+      expect(
+        observed.queries.filter((query) => query.includes('from "projects"')),
+      ).toHaveLength(1);
+      const inventory = observed.value;
       expect(inventory.status).toBe(200);
       const items = record(await inventory.json()).items;
       if (!Array.isArray(items)) throw new Error('Expected inventory');

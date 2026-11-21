@@ -1,5 +1,6 @@
+import { CertificationCaseReadModel } from './certification-case-read-model.js';
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   compactPdfText,
   inspectCommercialPdf,
@@ -72,6 +73,20 @@ function records(value: unknown): Record<string, unknown>[] {
   if (!Array.isArray(value)) throw new Error('Expected a list.');
   const items: unknown[] = value;
   return items.map(record);
+}
+
+function deferred() {
+  let complete: (() => void) | undefined;
+  const promise = new Promise<void>((resolve) => {
+    complete = resolve;
+  });
+  return {
+    promise,
+    resolve() {
+      if (!complete) throw new Error('Expected an initialized test barrier.');
+      complete();
+    },
+  };
 }
 
 withPostgres(
@@ -777,6 +792,85 @@ withPostgres(
         ).toBe(403);
       expect(await fixture.eventCount(caseId)).toBe(before + 1);
     });
+
+    it('keeps one procedure deadline across a Case read during a concurrent configuration update', async () => {
+      const disabled = { ...FICTIONAL, stage_2_report_released: null };
+      await configure(disabled);
+      const { base, caseId, report2 } = await lactisCase();
+      await step(
+        CERTIFICATION_OWNER,
+        base,
+        '/exchanges',
+        exchange([report2], {
+          itemKind: 'stage_report',
+          businessDate: '2026-10-28',
+        }),
+      );
+      const observation = (view: Record<string, unknown>) => ({
+        revision: view.revision,
+        rule: records(record(view.consistency).open).some(
+          (row) => row.rule === 'R16',
+        ),
+        releaseBlock: (() => {
+          const { approvalBlockers } = record(view.release);
+          if (!Array.isArray(approvalBlockers))
+            throw new Error('Expected approval blockers.');
+          return approvalBlockers.includes('discrepancies_open');
+        })(),
+        deadline:
+          records(record(section(view).deadlines).entries).find(
+            (row) => row.kind === 'stage_2_report_released',
+          )?.state ?? null,
+      });
+      const before = observation(await read(CERTIFICATION_READER, base));
+      expect(before.rule).toBe(false);
+      expect(before.releaseBlock).toBe(false);
+      expect(before.deadline).not.toBe('sent_too_early');
+      const ready = deferred();
+      const resume = deferred();
+      const original = CertificationCaseReadModel.prototype.consistencyInput;
+      let inputs = 0;
+      const pause = vi
+        .spyOn(CertificationCaseReadModel.prototype, 'consistencyInput')
+        .mockImplementation(async function (
+          this: CertificationCaseReadModel,
+          ...args: Parameters<typeof original>
+        ) {
+          const input = await original.apply(this, args);
+          if (args[2].id === caseId && ++inputs === 1) {
+            ready.resolve();
+            await resume.promise;
+          }
+          return input;
+        });
+      const inFlight = read(CERTIFICATION_READER, base);
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          ready.promise,
+          new Promise<never>((_resolve, reject) => {
+            timeout = setTimeout(
+              () =>
+                reject(new Error('The read did not capture its deadlines.')),
+              10000,
+            );
+          }),
+        ]);
+        await configure(FICTIONAL);
+      } finally {
+        clearTimeout(timeout);
+        resume.resolve();
+        pause.mockRestore();
+      }
+      const interleaved = observation(await inFlight);
+      const after = observation(await read(CERTIFICATION_READER, base));
+      expect(interleaved.revision).toBe(before.revision);
+      expect(after.revision).toBe(before.revision);
+      expect(interleaved).toEqual(before);
+      expect(after.releaseBlock).toBe(true);
+      expect(after.rule).toBe(true);
+      expect(after.deadline).toBe('sent_too_early');
+    }, 45000);
 
     it('raises R16 for the Stage 2 report sent before any decision and blocks the decision until an approver outside the team accepts it', async () => {
       await configureFictional();

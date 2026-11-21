@@ -31,7 +31,10 @@ import {
   contractReferenceCounters,
   contractQualityRuns,
 } from '../database/schema/index.js';
-import { OfferService } from '../offer/offer.service.js';
+import {
+  OfferService,
+  requirePendingOfferValidAt,
+} from '../offer/offer.service.js';
 import type { OfferRecipientCopy } from '../offer/offer.types.js';
 import { commandFingerprint } from '../command/idempotent-command.js';
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
@@ -157,7 +160,10 @@ export class ContractService {
                 ...selected,
                 allowAccepted: false,
               })
-            : await this.offers.resolveAcceptedContractSource(selected);
+            : {
+                ...(await this.offers.resolveAcceptedContractSource(selected)),
+                pendingValidUntil: null,
+              };
           const selection =
             source.recipient.kind === 'PRIMARY'
               ? { kind: 'PRIMARY' as const }
@@ -265,6 +271,10 @@ export class ContractService {
             'A Precontract can be prepared only before the Contract.',
           );
         const createdAt = this.clock.now();
+        requirePendingOfferValidAt({
+          validUntil: source.pendingValidUntil,
+          recordedAt: createdAt,
+        });
         const [counter] = await this.databaseContext.connection
           .insert(contractReferenceCounters)
           .values({

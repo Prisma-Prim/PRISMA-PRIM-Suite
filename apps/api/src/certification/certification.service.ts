@@ -698,21 +698,33 @@ export class CertificationService {
   }
 
   /** Exact native evidence relations; the caller owns the transaction. */
-  async dossierDocumentsWithinTransaction(input: {
-    actor: ActorContext;
-    projectId: string;
-    lock: boolean;
-  }) {
+  async dossierDocumentsWithinTransaction(
+    input: { actor: ActorContext } & (
+      | { projectId: string; lock: boolean }
+      | {
+          /** The same Actor's Project read in the caller's read-only snapshot. */
+          snapshotProject: Pick<
+            Awaited<ReturnType<ProjectService['read']>>,
+            'id' | 'companyId' | 'clientAccountId'
+          >;
+          lock: false;
+        }
+    ),
+  ) {
     const { actor, lock } = input;
-    const projectId = requireUuid(input.projectId);
     const companyId = await this.transactions.authorize(actor, 'reader', {
       lock,
     });
-    const project = await this.projects.missionContextWithinTransaction({
-      actor,
-      projectId,
-      lock,
-    });
+    const project =
+      'snapshotProject' in input
+        ? input.snapshotProject
+        : await this.projects.missionContextWithinTransaction({
+            actor,
+            projectId: requireUuid(input.projectId),
+            lock,
+          });
+    if (project.companyId !== companyId) throw new NotFoundException();
+    const projectId = project.id;
     // Case attachments are received audit sources. Establish their native
     // family/content and original-Client visibility before bounded discovery.
     await this.sources.requireCurrentAuthority({
