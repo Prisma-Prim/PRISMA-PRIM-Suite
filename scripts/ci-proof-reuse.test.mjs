@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { chooseReuse } from './ci-proof-reuse.mjs';
 
@@ -23,7 +24,39 @@ const names = [
   'build',
   'packaging',
   'quality',
+  'worktree_windows',
 ];
+
+test('the proof fixture matches the jobs and static matrices in CI', async () => {
+  const workflow = await readFile(
+    new URL('../.github/workflows/ci.yml', import.meta.url),
+    'utf8',
+  );
+  const [, jobSection] = workflow.replaceAll('\r\n', '\n').split('\njobs:\n');
+  assert.ok(jobSection, 'CI workflow needs a jobs section');
+  const headers = [...jobSection.matchAll(/^ {2}([a-z_][a-z_0-9]*):$/gmu)];
+  const workflowNames = [];
+  for (const [index, header] of headers.entries()) {
+    const [, job] = header;
+    if (job === 'flaky_guard') continue; // Variable, checked separately.
+    const block = jobSection.slice(header.index, headers[index + 1]?.index);
+    assert.doesNotMatch(block, /^ {4}name:/mu, `Update the fixture for ${job}`);
+    if (!/^ {6}matrix:/mu.test(block)) {
+      workflowNames.push(job);
+      continue;
+    }
+    // CI uses one inline axis per static matrix. A new shape needs an explicit
+    // fixture update so it cannot silently change which jobs qualify as proof.
+    const axis = /^ {6}matrix:\n {8}\w+: \[([^\n]+)\]\n(?= {0,6}\S|$)/mu.exec(
+      block,
+    );
+    assert.ok(axis, `Update the fixture for the ${job} matrix`);
+    for (const value of axis[1].split(',')) {
+      workflowNames.push(`${job} (${value.trim().replaceAll("'", '')})`);
+    }
+  }
+  assert.deepEqual(workflowNames.sort(), [...names].sort());
+});
 function fixture() {
   const run = {
     id: 12,
@@ -48,7 +81,7 @@ function fixture() {
       workflow_runs: [run],
     },
     'actions/runs/12/jobs?filter=latest&per_page=100': {
-      total_count: 16,
+      total_count: jobs.length,
       jobs,
     },
     'actions/jobs/2/logs': `2026-10-17T09:00:01Z CI_CHECKOUT=${sha}\n2026-10-17T09:00:02Z CI_ENVIRONMENT=ubuntu24/20261010/node24\n`,
@@ -247,9 +280,16 @@ for (const [label, alter] of [
     },
   ],
   [
-    'missing job',
+    'missing Windows job',
     (f) => {
       f.jobs.pop();
+    },
+  ],
+  [
+    'failed Windows job',
+    (f) => {
+      f.jobs.find((job) => job.name === 'worktree_windows').conclusion =
+        'failure';
     },
   ],
   [
@@ -556,11 +596,12 @@ function apiReuseFixture() {
   // Actual GitHub response: the job condition skips the entire matrix before
   // expansion, so a single unassigned parent replaces all four API children.
   f.data['actions/runs/12/jobs?filter=latest&per_page=100'] = {
-    total_count: 13,
+    total_count:
+      f.jobs.filter((job) => !job.name.startsWith('api (')).length + 1,
     jobs: [
       ...f.jobs.filter((job) => !job.name.startsWith('api (')),
       {
-        id: 17,
+        id: 99,
         name: 'api',
         status: 'completed',
         conclusion: 'skipped',
@@ -574,7 +615,7 @@ function apiReuseFixture() {
     '2026-10-17T09:00:03Z reuse_all=false\n2026-10-17T09:00:03Z reuse_api=true\n2026-10-17T09:00:03Z proof_run=11\n';
   f.data['actions/runs/11'] = apiRun;
   f.data['actions/runs/11/jobs?filter=latest&per_page=100'] = {
-    total_count: 16,
+    total_count: apiJobs.length,
     jobs: apiJobs.map((j) => ({ ...j, id: j.id + 100 })),
   };
   const apiSha = 'e'.repeat(40);

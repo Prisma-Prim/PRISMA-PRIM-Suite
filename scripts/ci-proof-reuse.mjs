@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const fullJobs = [
   'checks',
+  'worktree_windows',
   'scope',
   'postgres_image',
   'api (1/3)',
