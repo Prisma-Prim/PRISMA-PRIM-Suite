@@ -9,6 +9,14 @@ on:
   schedule:
     - cron: '35 3 * * 1'
   workflow_dispatch:
+    inputs:
+      selection:
+        description: 'Source changes from the last week or the two affected API modules'
+        type: choice
+        default: changed
+        options:
+          - changed
+          - api-qualification
 
 permissions:
   contents: read
@@ -34,8 +42,10 @@ jobs:
         with:
           node-version-file: .node-version
 
-      - name: Select the allowlisted modules changed on main this week
+      - name: Select allowlisted mutation targets
         id: select
+        env:
+          MUTATION_SELECTION: ${{ inputs.selection || 'changed' }}
         run: node scripts/weekly-mutation.mjs select
 
   mutate:
@@ -117,6 +127,7 @@ jobs:
       - name: Post the weekly mutation comment
         env:
           GH_TOKEN: ${{ github.token }}
+          MUTATION_SELECTION: ${{ inputs.selection || 'changed' }}
           MUTATION_MODULES: ${{ needs.select.outputs.modules }}
           MUTATION_SINCE: ${{ needs.select.outputs.since }}
           MUTATION_REPORTS: ${{ runner.temp }}/mutation-reports

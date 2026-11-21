@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-work-1515-mutation-20261121",
+  "date": "2026-11-21",
+  "runType": "pull-request-proof",
+  "issue": 1515,
+  "pullRequest": "not reported",
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": 49
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Local Stryker 10.1.1 mutation wall times (30s External Invoice plus 19s Payment). Setup and tooling checks outside this window. Models, tokens and price unavailable."
+  }
+}

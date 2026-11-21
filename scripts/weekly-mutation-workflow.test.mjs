@@ -33,7 +33,11 @@ test('the weekly mutation run starts on Mondays after the weekly report, or by h
   const workflow = await readWorkflow();
   assert.match(
     workflow,
-    /\non:\n {2}schedule:\n {4}- cron: '35 3 \* \* 1'\n {2}workflow_dispatch:\n\n/,
+    /\non:\n {2}schedule:\n {4}- cron: '35 3 \* \* 1'\n {2}workflow_dispatch:\n {4}inputs:\n {6}selection:\n/,
+  );
+  assert.match(
+    workflow,
+    /^ {8}type: choice\n {8}default: changed\n {8}options:\n {10}- changed\n {10}- api-qualification$/m,
   );
   // Nothing it reports can gate a pull request or a merge.
   assert.doesNotMatch(
@@ -56,11 +60,12 @@ test('the weekly mutation run starts on Mondays after the weekly report, or by h
 test('selection reads the full main history and feeds the module matrix', async () => {
   const { select, mutate } = jobsIn(await readWorkflow());
   assert.match(select, /\n {8}with:\n {10}fetch-depth: 0\n/);
-  const step = stepBody(
-    select,
-    'Select the allowlisted modules changed on main this week',
-  );
+  const step = stepBody(select, 'Select allowlisted mutation targets');
   assert.match(step, /\n {8}id: select\n/);
+  assert.match(
+    step,
+    /MUTATION_SELECTION: \$\{\{ inputs\.selection \|\| 'changed' \}\}/,
+  );
   assert.match(
     step.trimEnd(),
     /\n {8}run: node scripts\/weekly-mutation\.mjs select$/,
@@ -138,6 +143,10 @@ test('only the report job writes issues, and it posts after every finished run',
   assert.match(download, /merge-multiple: true\n/);
   const post = stepBody(report, 'Post the weekly mutation comment');
   assert.match(post, /GH_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(
+    post,
+    /MUTATION_SELECTION: \$\{\{ inputs\.selection \|\| 'changed' \}\}/,
+  );
   assert.match(
     post,
     /MUTATION_MODULES: \$\{\{ needs\.select\.outputs\.modules \}\}/,

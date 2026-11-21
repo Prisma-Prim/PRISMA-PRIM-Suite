@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  globSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { mutationModules } from './mutation/modules.mjs';
@@ -127,6 +137,47 @@ test('only the allowlisted modules changed on main in the last 7 days are select
   );
 });
 
+test('manual qualification selects only both affected API targets without reading recent changes', () => {
+  const result = spawnSync(
+    process.execPath,
+    [fileURLToPath(repository('scripts/weekly-mutation.mjs')), 'select'],
+    {
+      cwd: tmpdir(),
+      env: {
+        ...process.env,
+        GITHUB_OUTPUT: '',
+        MUTATION_SELECTION: 'api-qualification',
+      },
+      encoding: 'utf8',
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  const [modules, sinceOutput] = result.stdout.split('\n');
+  assert.deepEqual(
+    JSON.parse(modules.slice('modules='.length)).map((target) => target.id),
+    ['external-invoice-captured-grants', 'payment-captured-grants'],
+  );
+  assert.equal(sinceOutput, 'since=');
+});
+
+test('the mutation selector refuses other manual selections', () => {
+  const result = spawnSync(
+    process.execPath,
+    [fileURLToPath(repository('scripts/weekly-mutation.mjs')), 'select'],
+    {
+      cwd: tmpdir(),
+      env: {
+        ...process.env,
+        GITHUB_OUTPUT: '',
+        MUTATION_SELECTION: 'everything',
+      },
+      encoding: 'utf8',
+    },
+  );
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Unknown mutation selection: everything/u);
+});
+
 test('every Stryker config uses the command runner on the module and its unit test only', () => {
   const guard = strykerConfig('destructive-migrations');
   assert.equal(guard.testRunner, 'command');
@@ -162,6 +213,7 @@ test('every Stryker config uses the command runner on the module and its unit te
     '!/tsconfig*.json',
     '!/vite*.config.ts',
     '!/src/**',
+    '!/test-support/**',
   ]);
   assert.deepEqual(grants.jsonReporter, {
     fileName: 'coverage/mutation/external-invoice-captured-grants.json',
@@ -175,6 +227,50 @@ test('every Stryker config uses the command runner on the module and its unit te
     assert.equal(config.thresholds?.break ?? null, null, 'never fails a run');
   }
   assert.throws(() => strykerConfig('unknown'), /unknown/u);
+});
+
+test('both API qualification baselines run with the real Vitest setup in a copied sandbox', (t) => {
+  const project = fileURLToPath(repository('apps/api'));
+  const sandbox = mkdtempSync(join(tmpdir(), 'api-mutation-'));
+  t.after(() => rmSync(sandbox, { recursive: true, force: true }));
+  symlinkSync(
+    join(project, 'node_modules'),
+    join(sandbox, 'node_modules'),
+    'junction',
+  );
+
+  const modules = [
+    'external-invoice-captured-grants',
+    'payment-captured-grants',
+  ];
+  const config = strykerConfig(modules[0]);
+  const patterns = config.ignorePatterns
+    .filter((pattern) => pattern.startsWith('!/'))
+    .map((pattern) => pattern.slice(2));
+  for (const file of globSync(patterns, {
+    cwd: project,
+    withFileTypes: true,
+  })) {
+    if (!file.isFile()) continue;
+    const destination = join(
+      sandbox,
+      relative(project, file.parentPath),
+      file.name,
+    );
+    mkdirSync(dirname(destination), { recursive: true });
+    copyFileSync(join(file.parentPath, file.name), destination);
+  }
+
+  for (const id of modules) {
+    const [, ...args] = strykerConfig(id).commandRunner.command.split(' ');
+    const result = spawnSync(process.execPath, args, {
+      cwd: sandbox,
+      env: { ...process.env, GITHUB_ACTIONS: 'true' },
+      encoding: 'utf8',
+      timeout: 30_000,
+    });
+    assert.equal(result.status, 0, `${id}\n${result.stdout}\n${result.stderr}`);
+  }
 });
 
 test('a report is summarized with its score, counts and surviving mutants in source order', () => {
@@ -245,6 +341,32 @@ test('the comment reports a failed selection instead of claiming nothing changed
   assert.match(body, /could not select the changed modules/u);
   assert.doesNotMatch(body, /no mutation testing ran/u);
   assert.ok(body.includes(run.url));
+});
+
+test('manual qualification reports its scores and shows an API setup failure as missing proof', () => {
+  const modules = mutationTargets().filter((target) =>
+    ['external-invoice-captured-grants', 'payment-captured-grants'].includes(
+      target.id,
+    ),
+  );
+  const body = renderComment({
+    selection: 'api-qualification',
+    modules,
+    reports: {
+      'external-invoice-captured-grants': report('src/access/grants.ts', [
+        mutant(1, 'Killed', 3),
+      ]),
+    },
+    run,
+  });
+  assert.match(body, /## API mutation qualification/u);
+  assert.match(body, /Manually selected 2 allowlisted API modules/u);
+  assert.doesNotMatch(body, /changed on `main`/u);
+  assert.match(body, /Score 100\.0%/u);
+  assert.match(
+    body,
+    /payment-captured-grants\.ts`\n\nNo report: its mutation job failed/u,
+  );
 });
 
 test('the comment gives each module its score, counts, capped survivors and artifact link', () => {
