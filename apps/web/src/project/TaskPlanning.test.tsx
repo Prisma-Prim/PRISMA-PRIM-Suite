@@ -270,7 +270,7 @@ function installHttp(
     write?: (body: unknown, options: RequestInit) => Promise<Response>;
     listing?: () => Response;
     members?: () => Response | Promise<Response>;
-    project?: () => Response;
+    project?: () => Response | Promise<Response>;
   } = {},
 ) {
   const writes: { body: unknown; path: string; key: string | null }[] = [];
@@ -1021,6 +1021,286 @@ it('keeps a confirmed native Task and its refresh during a Client identity chang
   ).toBeVisible();
   expect(screen.getByText('Task change recorded.')).toBeVisible();
   expect(posts).toBe(1);
+});
+
+it.each([
+  'older listing',
+  'native read failure',
+  'grouped read failure',
+  'superseded members failure',
+])(
+  'keeps the native list current when grouped planning overlaps a native result read (%s)',
+  async (nativeReply) => {
+    const pendingNativeRead = deferred<Response>();
+    const original = task('first');
+    const planned = { ...original, version: 2, dueDate: '2026-11-02' };
+    const created = { ...task('created'), title: 'Native creation DEMO' };
+    let nativeCreated = false;
+    let groupSaved = false;
+    let nativeReadHeld = false;
+    let groupedReadFailed = false;
+    const projectRefreshed = vi.fn();
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init: RequestInit = {}) => {
+        const path = new URL(url, window.location.href).pathname;
+        if (
+          path === '/api/projects/project/tasks/planning' &&
+          init.method === 'POST'
+        ) {
+          groupSaved = true;
+          return Response.json(
+            {
+              schema: 'task-planning/v1',
+              projectId: 'project',
+              tasks: [planned],
+            },
+            { status: 201 },
+          );
+        }
+        if (path === '/api/projects/project/tasks') {
+          if (init.method === 'POST') {
+            nativeCreated = true;
+            return Response.json(created, { status: 201 });
+          }
+          if (
+            nativeCreated &&
+            !nativeReadHeld &&
+            nativeReply !== 'superseded members failure'
+          ) {
+            nativeReadHeld = true;
+            return pendingNativeRead.promise;
+          }
+          if (
+            groupSaved &&
+            nativeReply === 'grouped read failure' &&
+            !groupedReadFailed
+          ) {
+            groupedReadFailed = true;
+            return new Response(null, { status: 503 });
+          }
+          return Response.json({
+            mutable: true,
+            tasks: [
+              groupSaved ? planned : original,
+              ...(nativeCreated ? [created] : []),
+            ],
+          });
+        }
+        if (path === '/api/tasks/created')
+          return Response.json({ mutable: true, task: created });
+        if (path === '/api/tasks/created/history')
+          return Response.json({ events: [] });
+        if (path.endsWith('/eligible-task-assignees')) {
+          if (
+            nativeCreated &&
+            !nativeReadHeld &&
+            nativeReply === 'superseded members failure'
+          ) {
+            nativeReadHeld = true;
+            return pendingNativeRead.promise;
+          }
+          return Response.json({ members: [] });
+        }
+        throw new Error('Unexpected request: ' + path);
+      }),
+    );
+
+    render(
+      <ProjectTasks
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        projectId="project"
+        projectStatus="preparatory"
+        onProjectChanged={projectRefreshed}
+      />,
+    );
+    const nativeTitle = await screen.findByRole('textbox', {
+      name: 'Task title',
+    });
+    await waitFor(() => expect(nativeTitle).toBeEnabled());
+    const region = await openPlanning();
+    fireEvent.change(
+      within(region).getByLabelText('Due date — Activity first DEMO'),
+      {
+        target: { value: planned.dueDate },
+      },
+    );
+    fireEvent.change(nativeTitle, { target: { value: created.title } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Task' }));
+    await waitFor(() => expect(nativeReadHeld).toBe(true));
+
+    const groupedSave = within(region).getByRole('button', {
+      name: 'Save selected planning',
+    });
+    expect(groupedSave).toBeEnabled();
+    fireEvent.click(groupedSave);
+    await within(region).findByText('Selected planning saved.');
+    if (nativeReply === 'grouped read failure')
+      await within(region).findByRole('alert');
+    else await waitFor(() => expect(projectRefreshed).toHaveBeenCalledOnce());
+    await act(async () => {
+      pendingNativeRead.resolve(
+        nativeReply === 'native read failure' ||
+          nativeReply === 'superseded members failure'
+          ? new Response(null, { status: 503 })
+          : Response.json({ mutable: true, tasks: [original, created] }),
+      );
+    });
+    await screen.findByRole('heading', { name: created.title });
+    await waitFor(() => {
+      const nativeTask = screen
+        .getByRole('button', { name: original.title })
+        .closest('li');
+      expect(nativeTask?.querySelector('time')?.dateTime ?? null).toBe(
+        planned.dueDate,
+      );
+    });
+    expect(screen.getByText('Task change recorded.')).toBeVisible();
+  },
+);
+
+it('keeps a native conflict message when a Client revision refreshes grouped planning', async () => {
+  const original = task('first');
+  const replaced = {
+    ...original,
+    title: 'Externally edited Task DEMO',
+    version: 2,
+  };
+  let newer = false;
+  let historical = false;
+  const requestProject = () =>
+    Response.json({
+      id: 'project',
+      companyId: 'company',
+      clientAccountId: 'client',
+      clientDisplayName: 'Client DEMO',
+      title: 'Project DEMO',
+      status: 'preparatory',
+      createdAt: '2026-10-28T00:00:00.000Z',
+    });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init: RequestInit = {}) => {
+      const path = new URL(url, window.location.href).pathname;
+      const current = newer ? replaced : original;
+      if (path === '/api/projects/project/tasks') {
+        return Response.json({ mutable: !historical, tasks: [current] });
+      }
+      if (path === '/api/tasks/first') {
+        if (init.method === 'PATCH') return new Response(null, { status: 409 });
+        return Response.json({ mutable: !historical, task: current });
+      }
+      if (path === '/api/tasks/first/history')
+        return Response.json({ events: [] });
+      if (path.endsWith('/eligible-task-assignees'))
+        return Response.json({ members: [] });
+      if (path === '/api/projects/project') return requestProject();
+      throw new Error('Unexpected request: ' + path);
+    }),
+  );
+  const identity = deterministicBrowserIdentity();
+  const project = (revision: number) => (
+    <ProjectTasks
+      actor={actor}
+      identity={identity}
+      projectId="project"
+      projectStatus="preparatory"
+      clientIdentityRevision={revision}
+    />
+  );
+  const view = render(project(0));
+  fireEvent.click(await screen.findByRole('button', { name: original.title }));
+  const title = await screen.findByRole('textbox', { name: 'Task title' });
+  await waitFor(() => expect(title).toBeEnabled());
+  await openPlanning();
+  fireEvent.change(title, { target: { value: 'Native draft DEMO' } });
+  newer = true;
+  fireEvent.click(screen.getByRole('button', { name: 'Save Task' }));
+  const conflictMessage =
+    'This Task or its permissions changed. Reload the Task before making another change.';
+  await screen.findByText(conflictMessage);
+
+  historical = true;
+  await act(async () => view.rerender(project(1)));
+  await screen.findByRole('heading', { name: replaced.title });
+  expect(screen.queryByText(conflictMessage)?.textContent ?? null).toBe(
+    conflictMessage,
+  );
+});
+it('keeps requested Task focus during an automatic planning refresh', async () => {
+  let historical = false;
+  let nativeRequested: AbortSignal | null | undefined;
+  const requestedDetail = deferred<Response>();
+  const projectReason = deferred<Response>();
+  const item = task('first');
+  const http = installHttp({
+    listing: () => Response.json({ mutable: !historical, tasks: [item] }),
+    project: () => projectReason.promise,
+  });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init: RequestInit = {}) => {
+      const path = new URL(url, window.location.href).pathname;
+      if (path === '/api/tasks/first') {
+        if (!nativeRequested) {
+          nativeRequested = init.signal;
+          return requestedDetail.promise;
+        }
+        return Response.json({ mutable: !historical, task: item });
+      }
+      if (path === '/api/tasks/first/history')
+        return Response.json({ events: [] });
+      return http.fetcher(url, init);
+    }),
+  );
+  const identity = deterministicBrowserIdentity();
+  const project = (revision: number, request = false) => (
+    <ProjectTasks
+      actor={actor}
+      identity={identity}
+      projectId="project"
+      projectStatus="preparatory"
+      clientIdentityRevision={revision}
+      requestedTask={
+        request ? { taskId: 'first', requestId: 1, focus: 'task' } : undefined
+      }
+    />
+  );
+  const view = render(project(0));
+  await openPlanning();
+  historical = true;
+  view.rerender(project(1));
+  await act(async () => view.rerender(project(1, true)));
+  await waitFor(() => expect(nativeRequested).toBeDefined());
+  await act(async () =>
+    projectReason.resolve(
+      Response.json({
+        id: 'project',
+        companyId: 'company',
+        clientAccountId: 'client',
+        clientDisplayName: 'Client DEMO',
+        title: 'Project DEMO',
+        status: 'preparatory',
+        createdAt: '2026-10-28T00:00:00.000Z',
+      }),
+    ),
+  );
+  await act(async () =>
+    requestedDetail.resolve(Response.json({ mutable: false, task: item })),
+  );
+  const heading = await screen.findByRole('heading', { name: item.title });
+  await act(
+    async () =>
+      new Promise<void>((resolve) =>
+        window.requestAnimationFrame(() => resolve()),
+      ),
+  );
+  expect({
+    focused: document.activeElement === heading,
+    originalReadAborted: nativeRequested?.aborted,
+  }).toEqual({ focused: true, originalReadAborted: false });
 });
 
 it('preserves the native draft and explicit recovery after a historical original-Client command refusal', async () => {

@@ -37,7 +37,7 @@ type Props = {
   nativeReadOnly: boolean;
   onProtectionChange: (protectedIntent: boolean) => void;
   onConfirmed: () => void | Promise<void>;
-  onReloaded: () => void | Promise<void>;
+  onReloaded: (mode: Exclude<ReadMode, 'revalidate'>) => void | Promise<void>;
   onDenied: () => void;
 };
 type Load =
@@ -61,7 +61,8 @@ type Mutation =
   | { kind: 'pending' | 'uncertain'; attempt: PlanningAttempt };
 type Feedback =
   'saved' | 'uncertain' | 'conflict' | 'validation' | 'rejected' | 'missing';
-type ReadMode = 'open' | 'reload' | 'confirmed';
+type ReadMode = 'open' | 'revalidate' | 'reload' | 'confirmed';
+type ReadRequest = { mode: ReadMode; clientIdentityRevision: number };
 
 /** The native Project/Task authority key owns this consumer; each identity change also permanently retires its I/O. */
 export function TaskPlanning(props: Props) {
@@ -84,7 +85,7 @@ export function TaskPlanning(props: Props) {
   );
   const writes = useScopedOperationGroup(ownerScope);
   const reloadCurrent = useRef(reload);
-  const requestedReadMode = useRef<ReadMode | null>(null);
+  const requestedRead = useRef<ReadRequest | null>(null);
   const callbacks = useRef({
     onReloaded: props.onReloaded,
     onConfirmed: props.onConfirmed,
@@ -117,7 +118,7 @@ export function TaskPlanning(props: Props) {
     setSelected([]);
     setMutation({ kind: 'idle' });
     setFeedback(null);
-    requestedReadMode.current = null;
+    requestedRead.current = null;
     props.onProtectionChange(false);
   }, [ownerScope]);
   useEffect(() => {
@@ -132,8 +133,17 @@ export function TaskPlanning(props: Props) {
       heading.current?.focus();
   }, [expanded]);
 
+  function resumeRead() {
+    const previous = requestedRead.current;
+    const mode = previous?.mode ?? 'open';
+    const revisionChanged = previous
+      ? previous.clientIdentityRevision !== clientIdentityRevision
+      : staleRead;
+    return reload(mode === 'open' && revisionChanged ? 'revalidate' : mode);
+  }
+
   async function reload(mode: ReadMode) {
-    requestedReadMode.current = mode;
+    requestedRead.current = { mode, clientIdentityRevision };
     if (!props.active) return;
     const operation = reads.beginLatest();
     if (!operation) return;
@@ -167,7 +177,8 @@ export function TaskPlanning(props: Props) {
         availability,
         clientIdentityRevision: read.revision,
       });
-      if (mode === 'open') {
+      const passive = mode === 'open' || mode === 'revalidate';
+      if (passive) {
         // A Client identity refresh keeps only selections with the exact Task version.
         setSelected((selected) =>
           selected.filter(({ task }) =>
@@ -184,13 +195,15 @@ export function TaskPlanning(props: Props) {
           setFeedback(null);
         }
       }
+      // Native Tasks already own their Client revision refresh, including navigation and feedback.
       if (
         read.current() &&
+        mode !== 'revalidate' &&
         (mode !== 'open' ||
           availability.kind === 'closed' ||
           availability.kind === 'historical')
       )
-        await callbacks.current.onReloaded();
+        await callbacks.current.onReloaded(mode);
     } catch (error) {
       if (read.current()) {
         if (error instanceof ProjectTaskReadFailure && error.kind === 'denied')
@@ -199,21 +212,21 @@ export function TaskPlanning(props: Props) {
       }
     } finally {
       if (read.current()) {
-        requestedReadMode.current = null;
+        requestedRead.current = null;
         if (mode === 'confirmed') setMutation({ kind: 'idle' });
       }
       operation.release();
     }
   }
   useEffect(() => {
-    const mode = requestedReadMode.current;
+    const mode = requestedRead.current?.mode;
     if (
       props.active &&
       !reads.isPending() &&
       ((mode && (expanded || mode === 'confirmed')) ||
         (expanded && staleRead && mutation.kind === 'idle'))
     )
-      void reload(mode ?? 'open');
+      void resumeRead();
   }, [props.active, clientIdentityRevision]);
   async function run(attempt: PlanningAttempt) {
     if (writes.isPending()) return;
@@ -346,13 +359,12 @@ export function TaskPlanning(props: Props) {
         onClick={() => {
           setExpanded(!expanded);
           if (!expanded && !reads.isPending()) {
-            const mode = requestedReadMode.current;
             if (
-              mode ||
+              requestedRead.current ||
               load.kind === 'idle' ||
               (staleRead && mutation.kind === 'idle')
             )
-              void reload(mode ?? 'open');
+              void resumeRead();
           }
         }}
       >
