@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-certification-finding-history-pr-1525",
+  "date": "2026-11-24",
+  "runType": "pull-request-proof",
+  "issue": "not reported",
+  "pullRequest": 1525,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 2,
+      "P3": 0
+    },
+    "notes": "Reproduced the 501st Finding and the 501st Finding record before correcting them. Validated exact replay, the initial revision pair, restricted and malformed reads, and reconstruction of 501 distinct Findings through three real HTTP pages on disposable PostgreSQL."
+  }
+}

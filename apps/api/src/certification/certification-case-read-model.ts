@@ -11,7 +11,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, desc, eq, ne } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, lte, ne } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { requireUuid } from '../access/access-command-validation.js';
 import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
@@ -878,6 +878,7 @@ export class CertificationCaseReadModel {
     companyId: string,
     caseId: string,
     steps: readonly StepRow[],
+    selection?: { findingIds: string[]; atRevision: number },
   ): Promise<FindingView[]> {
     const rows = await this.database.connection
       .select()
@@ -887,6 +888,7 @@ export class CertificationCaseReadModel {
           eq(certificationFindings.workspaceId, actor.workspaceId),
           eq(certificationFindings.companyId, companyId),
           eq(certificationFindings.caseId, caseId),
+          selection && inArray(certificationFindings.id, selection.findingIds),
         ),
       )
       .orderBy(asc(certificationFindings.sequence));
@@ -899,6 +901,13 @@ export class CertificationCaseReadModel {
           eq(certificationFindingRecords.workspaceId, actor.workspaceId),
           eq(certificationFindingRecords.companyId, companyId),
           eq(certificationFindingRecords.caseId, caseId),
+          selection &&
+            inArray(
+              certificationFindingRecords.findingId,
+              selection.findingIds,
+            ),
+          selection &&
+            lte(certificationFindingRecords.caseRevision, selection.atRevision),
         ),
       )
       .orderBy(
@@ -906,6 +915,12 @@ export class CertificationCaseReadModel {
         asc(certificationFindingRecords.kind),
         asc(certificationFindingRecords.version),
       );
+    const byFinding = new Map<string, typeof records>();
+    for (const record of records) {
+      const group = byFinding.get(record.findingId);
+      if (group) group.push(record);
+      else byFinding.set(record.findingId, [record]);
+    }
     const today = this.clock.now().toISOString().slice(0, 10);
     return rows.map((row) => {
       const plan = latest(
@@ -920,9 +935,7 @@ export class CertificationCaseReadModel {
           sequence: row.sequence,
           stageEnd: stagePlanVersion(plan).value.endDate,
           today,
-          records: records
-            .filter((record) => record.findingId === row.id)
-            .map(findingRecordView),
+          records: (byFinding.get(row.id) ?? []).map(findingRecordView),
         }),
       );
     });

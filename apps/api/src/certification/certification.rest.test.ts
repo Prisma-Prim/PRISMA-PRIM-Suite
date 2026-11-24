@@ -695,6 +695,7 @@ withPostgres('Certification Case public REST boundary', () => {
       `/projects/${projectId}/certification-cases`,
       `/certification-cases/${caseId}`,
       `/certification-cases/${caseId}/timeline`,
+      `/certification-cases/${caseId}/finding-history`,
     ])
       expect((await call(OUTSIDER, path)).status).toBe(403);
     expect(await eventCount(caseId)).toBe(1);
@@ -775,7 +776,7 @@ withPostgres('Certification Case public REST boundary', () => {
       { method: 'POST', body, key },
     );
     expect(replay.status).toBe(403);
-    for (const suffix of ['', '/timeline']) {
+    for (const suffix of ['', '/timeline', '/finding-history']) {
       const hidden = await call(
         MANAGER,
         `/certification-cases/${caseId}${suffix}`,

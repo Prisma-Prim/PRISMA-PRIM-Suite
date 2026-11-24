@@ -82,6 +82,144 @@ withPostgres(
       await fixture?.close();
     });
 
+    it('pages Finding records at the Case revision and replays the complete command receipt', async () => {
+      const caseId = await stage1Planned();
+      const path = `/certification-cases/${caseId}`;
+      const statement = {
+        clause: '7.5',
+        area: 'Document control',
+        statement: 'Fictional area of concern.',
+        evidenceAttachmentIds: [],
+      };
+      const command = {
+        stage: 'stage_1',
+        classification: 'area_of_concern',
+        ...statement,
+      };
+      const initial = await ok(CERTIFICATION_AUDITOR, `${path}/findings`, {
+        expectedRevision: 10,
+        ...command,
+      });
+      const [first] = findings(initial);
+      const findingId = text(first?.id);
+      // Use the real first statement as the seed. The next two writes use REST.
+      await fixture.databasePool.query(
+        `
+        INSERT INTO certification_finding_records
+          (workspace_id, company_id, case_id, finding_id, kind, version,
+           case_revision, payload, reason, actor_membership_id,
+           actor_internal_user_id, actor_display_name, recorded_at)
+        SELECT workspace_id, company_id, case_id, finding_id, kind, n,
+               case_revision + n - 1,
+               jsonb_set(payload, '{statement}', to_jsonb('Fictional statement ' || n)),
+               'Fictional correction.', actor_membership_id,
+               actor_internal_user_id, actor_display_name, recorded_at
+        FROM certification_finding_records CROSS JOIN generate_series(2, 498) AS series(n)
+        WHERE finding_id = $1 AND kind = 'statement' AND version = 1
+      `,
+        [findingId],
+      );
+      await fixture.databasePool.query(
+        'UPDATE certification_cases SET revision = 508 WHERE id = $1',
+        [caseId],
+      );
+      const createSecond = () =>
+        fixture.call(CERTIFICATION_AUDITOR, `${path}/findings`, {
+          method: 'POST',
+          key: 'certification-finding-history-second',
+          body: { expectedRevision: 508, ...command },
+        });
+      const receipt = await fixture.created(await createSecond());
+      const [original, second] = findings(receipt);
+      expect(original?.records).toHaveLength(499);
+      expect(second?.records).toHaveLength(2);
+      expect(receipt.revision).toBe(509);
+
+      const compact = await fixture.call(
+        CERTIFICATION_OWNER,
+        `${path}?findingHistory=paged`,
+      );
+      expect(compact.status).toBe(200);
+      const overview = record(await compact.json());
+      expect(overview).toMatchObject({
+        revision: 509,
+        findingRecordCount: 501,
+      });
+      expect(overview).not.toHaveProperty('findings');
+
+      const firstPage = await fixture.call(
+        CERTIFICATION_OWNER,
+        `${path}/finding-history?atRevision=509`,
+      );
+      expect(firstPage.status).toBe(200);
+      const page = record(await firstPage.json());
+      expect(page).toMatchObject({
+        caseId,
+        atRevision: 509,
+        nextAfterRevision: 508,
+      });
+      expect(page.items).toHaveLength(499);
+      expect(page.items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'statement',
+            version: 1,
+            finding: expect.objectContaining({ id: findingId, sequence: 1 }),
+          }),
+        ]),
+      );
+      for (const query of [
+        'afterRevision=508',
+        'atRevision=invalid',
+        'atRevision=510',
+      ]) {
+        expect(
+          (
+            await fixture.call(
+              CERTIFICATION_OWNER,
+              `${path}/finding-history?${query}`,
+            )
+          ).status,
+        ).toBe(400);
+      }
+      await ok(
+        CERTIFICATION_AUDITOR,
+        `${path}/findings/${findingId}/correction`,
+        {
+          expectedRevision: 509,
+          reason: 'Fictional correction.',
+          ...statement,
+          statement: 'A later statement after the page was read.',
+        },
+      );
+      const continuation = await fixture.call(
+        CERTIFICATION_OWNER,
+        `${path}/finding-history?atRevision=509&afterRevision=508`,
+      );
+      expect(continuation.status).toBe(200);
+      const end = record(await continuation.json());
+      expect(end).toMatchObject({
+        caseId,
+        atRevision: 509,
+        nextAfterRevision: null,
+      });
+      expect(end.items).toEqual([
+        expect.objectContaining({
+          findingId: second?.id,
+          caseRevision: 509,
+          kind: 'classification',
+          finding: null,
+        }),
+        expect.objectContaining({
+          findingId: second?.id,
+          caseRevision: 509,
+          kind: 'statement',
+          finding: expect.objectContaining({ id: second?.id, sequence: 2 }),
+        }),
+      ]);
+      expect(record(await (await createSecond()).json())).toEqual(receipt);
+    });
+
     it('follows a Stage 1 nonconformity to verification before Stage 2, then a major one before the recommendation', async () => {
       const caseId = await stage1Planned();
       const evidence1 = await fixture.attach(caseId, 'evidence', 10);

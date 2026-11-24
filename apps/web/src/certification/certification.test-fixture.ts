@@ -1231,14 +1231,76 @@ export class FakeCertificationServer {
         : this.reportStage(staged, which, request.body);
     }
     const match =
-      /^\/api\/certification-cases\/([^/]+)(\/timeline|\/application|\/application-review|\/duration-proposal|\/duration|\/documents|\/eligible-documents|\/agreement|\/team|\/team-decision|\/recommendation|\/dossier-review|\/decision|\/certificate-data|\/certificate|\/certificate-revisions|\/certificate-draft|\/client-opinion|\/certificate-draft-approval|\/discrepancies|\/discrepancy-resolutions)?$/u.exec(
+      /^\/api\/certification-cases\/([^/]+)(\/timeline|\/finding-history|\/application|\/application-review|\/duration-proposal|\/duration|\/documents|\/eligible-documents|\/agreement|\/team|\/team-decision|\/recommendation|\/dossier-review|\/decision|\/certificate-data|\/certificate|\/certificate-revisions|\/certificate-draft|\/client-opinion|\/certificate-draft-approval|\/discrepancies|\/discrepancy-resolutions)?$/u.exec(
         request.path,
       );
     const stored = match?.[1] ? this.cases.get(match[1]) : undefined;
     if (!match || !stored) return new Response(null, { status: 404 });
     switch (match[2]) {
-      case undefined:
-        return Response.json(this.detail(stored));
+      case undefined: {
+        const detail = this.detail(stored);
+        const { findings, ...overview } = detail;
+        const findingRecordCount = findings.reduce(
+          (total, finding) => total + finding.records.length,
+          0,
+        );
+        if (
+          new URLSearchParams(request.search).get('findingHistory') !==
+            'paged' ||
+          findingRecordCount <= 500
+        )
+          return Response.json(detail);
+        return Response.json({ ...overview, findingRecordCount });
+      }
+      case '/finding-history': {
+        const query = new URLSearchParams(request.search);
+        const atRevision = Number(query.get('atRevision') ?? stored.revision);
+        const afterRevision = Number(query.get('afterRevision') ?? 0);
+        const snapshot = {
+          ...stored,
+          revision: atRevision,
+          steps: stored.steps.filter((step) => step.caseRevision <= atRevision),
+        };
+        const records = stored.findings
+          .flatMap((finding) => {
+            const records = finding.records.filter(
+              (record) => record.caseRevision <= atRevision,
+            );
+            if (records.length === 0) return [];
+            const { records: history, ...summary } = this.findingView(
+              snapshot,
+              { ...finding, records },
+            );
+            return history
+              .filter((record) => record.caseRevision > afterRevision)
+              .map((record) => ({
+                ...record,
+                findingId: finding.id,
+                finding:
+                  record.kind === 'statement' && record.version === 1
+                    ? summary
+                    : null,
+              }));
+          })
+          .sort(
+            (left, right) =>
+              left.caseRevision - right.caseRevision ||
+              left.kind.localeCompare(right.kind),
+          );
+        const items = records.slice(0, 500);
+        if (
+          records.length > 500 &&
+          records[500]?.caseRevision === items.at(-1)?.caseRevision
+        )
+          items.pop();
+        return Response.json({
+          caseId: stored.id,
+          atRevision,
+          nextAfterRevision:
+            items.length < records.length ? items.at(-1)?.caseRevision : null,
+          items,
+        });
+      }
       case '/timeline':
         return Response.json({
           caseId: stored.id,

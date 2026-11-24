@@ -5,7 +5,10 @@ import type {
   CertificateRelease,
 } from './certification-release.js';
 import type { AuditTeam, TeamDecision } from './certification-team.js';
-import type { FindingView } from './certification-findings.js';
+import type {
+  FindingRecordView,
+  FindingView,
+} from './certification-findings.js';
 import type {
   CertificateData,
   CertificationDecision,
@@ -242,6 +245,19 @@ interface CertificationCaseHistoryPage {
   atRevision: number;
   nextAfterRevision: number | null;
 }
+
+export interface CertificationFindingHistory extends CertificationCaseHistoryPage {
+  items: (FindingRecordView & {
+    findingId: string;
+    finding: Omit<FindingView, 'records'> | null;
+  })[];
+}
+
+export type CertificationCaseDetailRead =
+  | CertificationCaseDetail
+  | (Omit<CertificationCaseDetail, 'findings'> & {
+      findingRecordCount: number;
+    });
 
 export interface CertificationDocumentRegister extends CertificationCaseHistoryPage {
   items: CertificationAttachment[];

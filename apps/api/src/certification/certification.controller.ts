@@ -213,10 +213,29 @@ export class CertificationController {
 
   @Header('Cache-Control', 'private, no-store')
   @Get('certification-cases/:caseId')
-  detail(@Req() request: ActorContextRequest, @Param('caseId') caseId: string) {
+  detail(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Query('findingHistory') findingHistory: unknown,
+  ) {
     return this.certification.detail({
       actor: requireActorContext(request),
       caseId,
+      findingHistory,
+    });
+  }
+
+  @Header('Cache-Control', 'private, no-store')
+  @Get('certification-cases/:caseId/finding-history')
+  findingHistory(
+    @Req() request: ActorContextRequest,
+    @Param('caseId') caseId: string,
+    @Query() query: unknown,
+  ) {
+    return this.certification.findingHistory({
+      actor: requireActorContext(request),
+      caseId,
+      query,
     });
   }
 
