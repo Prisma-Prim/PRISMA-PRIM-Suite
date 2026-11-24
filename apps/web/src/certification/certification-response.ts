@@ -443,7 +443,7 @@ export interface LegalEntityOption {
 }
 
 const MAX_LISTED = 100;
-const MAX_TIMELINE = 500;
+const MAX_HISTORY_PAGE_SIZE = 500;
 const MAX_ELIGIBLE = 25;
 
 export function parseCaseList(value: unknown, projectId: string): CaseList {
@@ -465,11 +465,57 @@ export function parseCaseList(value: unknown, projectId: string): CaseList {
   return { projectId, cases, total };
 }
 
-export function parseCaseDetail(
+type CaseDetailScope = {
+  companyId: string;
+  projectId: string;
+  caseId?: string;
+};
+type FindingHistoryRecord = FindingRecord & {
+  findingId: string;
+  finding: Record<string, unknown> | null;
+};
+
+type CaseDetailRead =
+  | { kind: 'complete'; detail: CaseDetail }
+  | {
+      kind: 'paged';
+      revision: number;
+      complete(history: readonly FindingHistoryRecord[]): CaseDetail;
+    };
+
+/** The large read carries its validated scope into the history assembly. */
+export function parseCaseDetailRead(
   value: unknown,
-  scope: { companyId: string; projectId: string; caseId?: string },
-): CaseDetail {
+  scope: CaseDetailScope,
+): CaseDetailRead {
   const body = object(value);
+  const summary = scopedCaseSummary(body, scope);
+  if (!('findingRecordCount' in body)) {
+    return {
+      kind: 'complete',
+      detail: caseDetail(body, scope, summary, findingList(body.findings)),
+    };
+  }
+  if ('findings' in body) invalid();
+  const count = positive(body.findingRecordCount);
+  return {
+    kind: 'paged',
+    revision: summary.revision,
+    complete(history) {
+      return caseDetail(
+        body,
+        scope,
+        summary,
+        findingsFromHistory(history, count),
+      );
+    },
+  };
+}
+
+function scopedCaseSummary(
+  body: Record<string, unknown>,
+  scope: CaseDetailScope,
+) {
   const summary = parseCaseSummary(body);
   if (
     body.companyId !== scope.companyId ||
@@ -477,6 +523,25 @@ export function parseCaseDetail(
     (scope.caseId !== undefined && summary.id !== scope.caseId)
   )
     invalid();
+  return summary;
+}
+
+export function parseCaseDetail(
+  value: unknown,
+  scope: CaseDetailScope,
+): CaseDetail {
+  const body = object(value);
+  const summary = scopedCaseSummary(body, scope);
+  if ('findingRecordCount' in body) invalid();
+  return caseDetail(body, scope, summary, findingList(body.findings));
+}
+
+function caseDetail(
+  body: Record<string, unknown>,
+  scope: CaseDetailScope,
+  summary: CaseSummary,
+  findings: Finding[],
+): CaseDetail {
   const detail: CaseDetail = {
     ...summary,
     companyId: scope.companyId,
@@ -496,7 +561,7 @@ export function parseCaseDetail(
         ? null
         : teamDecisionVersion(body.teamDecision),
     ...stageVersions(body.stages),
-    findings: findingList(body.findings),
+    findings,
     recommendation:
       body.recommendation === null
         ? null
@@ -642,7 +707,7 @@ export function parseDocumentRegister(
   if (
     body.caseId !== caseId ||
     !Array.isArray(body.items) ||
-    body.items.length > MAX_TIMELINE
+    body.items.length > MAX_HISTORY_PAGE_SIZE
   )
     invalid();
   const items = body.items.map(attachment);
@@ -728,7 +793,7 @@ export function parseTimeline(
   if (
     body.caseId !== caseId ||
     !Array.isArray(body.entries) ||
-    body.entries.length > MAX_TIMELINE
+    body.entries.length > MAX_HISTORY_PAGE_SIZE
   )
     invalid();
   const entries = body.entries.map(parseStepVersion);
@@ -749,6 +814,32 @@ export function parseTimeline(
   if (outcomes.size > 1) invalid();
   const page = historyPage(body, entries.at(-1)?.caseRevision);
   return { caseId, entries, page };
+}
+
+export function parseFindingHistory(value: unknown, caseId: string) {
+  const body = object(value);
+  if (body.caseId !== caseId) invalid();
+  const items = list(body.items, 0, MAX_HISTORY_PAGE_SIZE).map(
+    (value): FindingHistoryRecord => {
+      const row = object(value);
+      const record = findingRecord(row);
+      const findingId = text(row.findingId);
+      const finding = row.finding === null ? null : object(row.finding);
+      const opensFinding = record.kind === 'statement' && record.version === 1;
+      if (
+        (finding !== null) !== opensFinding ||
+        (finding && (finding.id !== findingId || 'records' in finding))
+      )
+        invalid();
+      return { ...record, findingId, finding };
+    },
+  );
+  let previousRevision = 0;
+  for (const item of items) {
+    if (item.caseRevision < previousRevision) invalid();
+    previousRevision = item.caseRevision;
+  }
+  return { items, page: historyPage(body, items.at(-1)?.caseRevision) };
 }
 
 function historyPage(
@@ -1482,9 +1573,38 @@ function stage2ReportValue(value: unknown): Stage2Report {
   };
 }
 
+function findingsFromHistory(
+  history: readonly FindingHistoryRecord[],
+  count: number,
+): Finding[] {
+  if (count !== history.length) invalid();
+  const byFinding = new Map<string, FindingRecord[]>();
+  const summaries: Record<string, unknown>[] = [];
+  for (const { findingId, finding, ...record } of history) {
+    if (finding) summaries.push(finding);
+    const records = byFinding.get(findingId);
+    if (records) records.push(record);
+    else byFinding.set(findingId, [record]);
+  }
+  const findings = findingList(summaries, byFinding);
+  if (findings.length !== byFinding.size) invalid();
+  return findings;
+}
+
 /** Every Finding in sequence order: 1, 2, 3… as the server numbers them. */
-function findingList(value: unknown): Finding[] {
-  const findings = list(value, 0, MAX_TIMELINE).map(findingValue);
+function findingList(
+  value: unknown,
+  history?: ReadonlyMap<string, FindingRecord[]>,
+): Finding[] {
+  const findings = list(value, 0).map((value) => {
+    const row = object(value);
+    const id = text(row.id);
+    if (history === undefined)
+      return findingValue(row, id, list(row.records, 2).map(findingRecord));
+    const records = history.get(id);
+    if (!records || 'records' in row) invalid();
+    return findingValue(row, id, records);
+  });
   if (
     findings.some((finding, index) => finding.sequence !== index + 1) ||
     new Set(findings.map((finding) => finding.id)).size !== findings.length
@@ -1500,11 +1620,13 @@ function findingList(value: unknown): Finding[] {
  * statement. The server's dates are read as given: present exactly for the
  * nonconformities it dates, and overdue only before a verified effect.
  */
-function findingValue(value: unknown): Finding {
-  const row = object(value);
+function findingValue(
+  row: Record<string, unknown>,
+  id: string,
+  records: FindingRecord[],
+): Finding {
   const stage =
     row.stage === 'stage_1' || row.stage === 'stage_2' ? row.stage : invalid();
-  const records = list(row.records, 2, MAX_TIMELINE).map(findingRecord);
   if (!recordsInOrder(records)) invalid();
   const replay = replayFinding(records) ?? invalid();
   const statement = findingStatement(row.statement);
@@ -1532,7 +1654,7 @@ function findingValue(value: unknown): Finding {
   )
     invalid();
   return {
-    id: text(row.id),
+    id,
     stage,
     sequence: positive(row.sequence),
     statement,
@@ -2182,7 +2304,11 @@ function object(value: unknown): Record<string, unknown> {
   return Object.fromEntries(Object.entries(value));
 }
 
-function list(value: unknown, minimum: number, maximum: number): unknown[] {
+function list(
+  value: unknown,
+  minimum: number,
+  maximum = Number.MAX_SAFE_INTEGER,
+): unknown[] {
   if (!Array.isArray(value) || value.length < minimum || value.length > maximum)
     invalid();
   return value;

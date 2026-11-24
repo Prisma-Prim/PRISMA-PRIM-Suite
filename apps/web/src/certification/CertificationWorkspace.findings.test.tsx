@@ -253,6 +253,54 @@ function reportStage2(server: FakeCertificationServer, caseId: string) {
 }
 
 describe('Certification Findings and nonconformity follow-up', () => {
+  it('confirms the 501st Finding record and reopens the Case with its history', async () => {
+    const { server, actor } = serve({ manager: false, auditor: true });
+    const reference = 'CERT-LONG-FINDING';
+    const { caseId } = stage1Planned(server, {
+      reference,
+      leader: certificationIds.member,
+    });
+    const findingId = server.recordFindingAsColleague(caseId, {
+      stage: 'stage_1',
+      classification: 'opportunity_for_improvement',
+    });
+    for (let version = 2; version <= 499; version += 1)
+      server.recordFindingUpdateAsColleague(
+        caseId,
+        findingId,
+        'statement',
+        findingStatement({ statement: `Fictional statement ${version}` }),
+        'Fictional correction.',
+      );
+    server.install();
+    renderWorkspace(actor);
+    await openSeededCase(reference);
+    const label = 'Correct the statement of Finding 1';
+    click(finding(STAGE_1_FINDINGS, 1), label);
+    const correction = form(STAGE_1_FINDINGS, label);
+    change(
+      within(correction).getByLabelText('Statement'),
+      'Final fictional statement.',
+    );
+    change(
+      within(correction).getByLabelText('Correction reason'),
+      'Fictional correction.',
+    );
+    click(correction, 'Record the correction');
+    expect(await screen.findByText(SAVED)).toBeVisible();
+    await waitFor(() => {
+      const saved = finding(STAGE_1_FINDINGS, 1);
+      expect(definition(saved, 'Statement')).toBe('Final fictional statement.');
+      expect(historyTitles(saved)).toHaveLength(501);
+    });
+    expect(
+      server.requests
+        .filter(({ path }) => path.endsWith('/finding-history'))
+        .map(({ search }) => search),
+    ).toEqual(['?atRevision=511', '?atRevision=511&afterRevision=510']);
+    expect(server.mutations()).toHaveLength(1);
+  });
+
   it('records a Stage 1 nonconformity with its evidence and follows it to a verified effective correction', async () => {
     const { server, actor } = serve({ manager: false, auditor: true });
     const { caseId, evidence } = stage1Planned(server, {

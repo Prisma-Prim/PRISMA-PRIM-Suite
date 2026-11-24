@@ -28,6 +28,7 @@ import { DatabaseContext } from '../database/database-context.js';
 import {
   certificationCaseDocuments,
   certificationCases,
+  certificationFindingRecords,
   certificationStepVersions,
 } from '../database/schema/certification.js';
 import { clientLegalEntities } from '../database/schema/client-legal-entity.js';
@@ -56,7 +57,8 @@ import type {
   CertificationDocumentRegister,
   CertificationEligibleDocuments,
   DurationDetermination,
-  CertificationCaseDetail,
+  CertificationCaseDetailRead,
+  CertificationFindingHistory,
   CertificationCaseList,
   CertificationCaseSummary,
   CertificationLegalEntityOptions,
@@ -71,12 +73,14 @@ import {
 } from './certification.validation.js';
 import { CertificationCaseTransactions } from './certification-case-transactions.js';
 import { CertificationCaseReadModel } from './certification-case-read-model.js';
+import { findingRecordView } from './certification-findings.js';
 import {
   requireUndecided,
   latest,
   stepConflict,
   attachment,
   stepVersion,
+  persisted,
 } from './certification-case-versions.js';
 
 const CASE_LIST_LIMIT = 100;
@@ -695,14 +699,93 @@ export class CertificationService {
   detail({
     actor,
     caseId,
+    findingHistory,
   }: {
     actor: ActorContext;
     caseId: string;
-  }): Promise<CertificationCaseDetail> {
+    findingHistory?: unknown;
+  }): Promise<CertificationCaseDetailRead> {
     const targetId = requireUuid(caseId);
-    return this.transactions.read(actor, 'reader', (companyId) =>
-      this.repository.present(actor, companyId, targetId),
-    );
+    if (findingHistory !== undefined && findingHistory !== 'paged')
+      throw new BadRequestException('Invalid Finding history mode.');
+    return this.transactions.read(actor, 'reader', async (companyId) => {
+      const detail = await this.repository.present(actor, companyId, targetId);
+      if (findingHistory !== 'paged') return detail;
+      const { findings, ...caseDetail } = detail;
+      const findingRecordCount = findings.reduce(
+        (total, finding) => total + finding.records.length,
+        0,
+      );
+      return findingRecordCount <= HISTORY_PAGE_SIZE
+        ? detail
+        : { ...caseDetail, findingRecordCount };
+    });
+  }
+
+  findingHistory({
+    actor,
+    caseId,
+    query,
+  }: {
+    actor: ActorContext;
+    caseId: string;
+    query: unknown;
+  }): Promise<CertificationFindingHistory> {
+    const targetId = requireUuid(caseId);
+    return this.transactions.read(actor, 'reader', async (companyId) => {
+      const row = await this.repository.visibleCase(actor, companyId, targetId);
+      const position = certificationHistoryQuery(query);
+      const atRevision = historyAtRevision(row.revision, position.atRevision);
+      const records = certificationFindingRecords;
+      const rows = await this.database.connection
+        .select()
+        .from(records)
+        .where(
+          and(
+            eq(records.workspaceId, actor.workspaceId),
+            eq(records.companyId, companyId),
+            eq(records.caseId, targetId),
+            gt(records.caseRevision, position.afterRevision ?? 0),
+            lte(records.caseRevision, atRevision),
+          ),
+        )
+        .orderBy(asc(records.caseRevision), asc(records.kind))
+        .limit(HISTORY_PAGE_SIZE + 1);
+      const page = historyPage(rows);
+      const openedFindings = page.items
+        .filter((record) => record.kind === 'statement' && record.version === 1)
+        .map((record) => record.findingId);
+      const snapshots = openedFindings.length
+        ? await this.repository.findings(
+            actor,
+            companyId,
+            targetId,
+            (await this.repository.steps(actor, companyId, targetId)).filter(
+              (step) => step.caseRevision <= atRevision,
+            ),
+            { findingIds: openedFindings, atRevision },
+          )
+        : [];
+      const summaries = new Map(
+        snapshots.map(({ records, ...finding }) => {
+          const initial = records.find(
+            (record) => record.kind === 'statement' && record.version === 1,
+          );
+          if (!initial) throw new InternalServerErrorException();
+          return [initial.id, finding] as const;
+        }),
+      );
+      return {
+        caseId: targetId,
+        atRevision,
+        nextAfterRevision: page.nextAfterRevision,
+        items: page.items.map((record) => ({
+          ...persisted(() => findingRecordView(record)),
+          findingId: record.findingId,
+          finding: summaries.get(record.id) ?? null,
+        })),
+      };
+    });
   }
 
   /** Working draft preparation only; the caller owns the read transaction. */
@@ -970,6 +1053,12 @@ function historyAtRevision(
 
 function historyPage<T extends { caseRevision: number }>(rows: T[]) {
   const items = rows.slice(0, HISTORY_PAGE_SIZE);
+  // A Finding's initial statement and classification share one revision.
+  if (
+    rows.length > HISTORY_PAGE_SIZE &&
+    rows[HISTORY_PAGE_SIZE]?.caseRevision === items.at(-1)?.caseRevision
+  )
+    items.pop();
   return {
     items,
     nextAfterRevision:

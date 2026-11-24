@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   parseCaseDetail,
+  parseCaseDetailRead,
+  parseFindingHistory,
   parseCaseList,
   parseDocumentRegister,
   parseDurationResult,
@@ -1836,6 +1838,67 @@ const reclassified = {
 };
 
 describe('Certification Finding parsers', () => {
+  it('reads 501 Findings from a complete receipt or from the same Case revision in pages', () => {
+    const timestamp = { recordedAt: '2026-11-07T10:11:00.000Z' };
+    const history = Array.from({ length: 501 }, (_, index) => ({
+      ...opportunity,
+      id: `finding-${index + 1}`,
+      sequence: index + 1,
+      records: [
+        findingRecord('statement', index + 11, opportunityStatement, timestamp),
+        findingRecord(
+          'classification',
+          index + 11,
+          classified('opportunity_for_improvement'),
+          timestamp,
+        ),
+      ],
+    }));
+    const { findings, ...detailWithoutFindings } = stage1Findings(history, {
+      revision: 511,
+    });
+    const parsed = parseCaseDetail(
+      { ...detailWithoutFindings, findings },
+      { ...scope, caseId },
+    );
+    expect(parsed.findings).toHaveLength(501);
+    expect(parsed.findings.at(-1)?.id).toBe('finding-501');
+
+    const records = history.flatMap(({ records, ...finding }) =>
+      records.map((record) => ({
+        ...record,
+        findingId: finding.id,
+        finding: record.kind === 'statement' ? finding : null,
+      })),
+    );
+    const read = parseCaseDetailRead(
+      { ...detailWithoutFindings, findingRecordCount: 1002 },
+      { ...scope, caseId },
+    );
+    expect(read).toMatchObject({ kind: 'paged', revision: 511 });
+    if (read.kind !== 'paged') throw new Error('Expected a paged Case.');
+    const pages = [
+      records.slice(0, 500),
+      records.slice(500, 1000),
+      records.slice(1000),
+    ];
+    const complete = pages.flatMap(
+      (items, index) =>
+        parseFindingHistory(
+          {
+            caseId,
+            atRevision: 511,
+            nextAfterRevision:
+              index < pages.length - 1 ? items.at(-1)?.caseRevision : null,
+            items,
+          },
+          caseId,
+        ).items,
+    );
+    expect(read.complete(complete)).toEqual(parsed);
+    expect(() => read.complete(complete.slice(0, -1))).toThrow();
+  });
+
   it('reads every Finding with its exact statement, evidence, dates and records', () => {
     const parsed = parseCaseDetail(foundDetail([minor, major]), {
       ...scope,

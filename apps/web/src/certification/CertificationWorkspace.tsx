@@ -32,6 +32,8 @@ import {
   parseCaseDetail,
   parseCaseList,
   parseDocumentRegister,
+  parseCaseDetailRead,
+  parseFindingHistory,
   parseLegalEntityOptions,
   parseTimeline,
   type CaseDetail,
@@ -428,19 +430,36 @@ function CertificationRegistry(
     setDetail({ status: 'loading' });
     const casePath = `/certification-cases/${encodeURIComponent(caseId)}`;
     try {
-      const record = await query(detailOperation, signal, casePath);
+      const read = (path: string) => query(detailOperation, signal, path);
+      const record = await read(`${casePath}?findingHistory=paged`);
       if (signal.aborted) return;
       if (record.status !== 'ok') {
         const status = refusal(record);
         if (status !== 'denied') setDetail({ status });
         return;
       }
-      const caseDetail = parseCaseDetail(record.value, {
+      const detailRead = parseCaseDetailRead(record.value, {
         companyId,
         projectId,
         caseId,
       });
-      const read = (path: string) => query(detailOperation, signal, path);
+      let caseDetail: CaseDetail;
+      if (detailRead.kind === 'complete') caseDetail = detailRead.detail;
+      else {
+        const findingHistory = await loadCaseHistory(
+          read,
+          `${casePath}/finding-history`,
+          detailRead.revision,
+          (value) => parseFindingHistory(value, caseId),
+        );
+        if (signal.aborted) return;
+        if (findingHistory.status !== 'ok') {
+          if (findingHistory.status !== 'denied')
+            setDetail({ status: findingHistory.status });
+          return;
+        }
+        caseDetail = detailRead.complete(findingHistory.items);
+      }
       const [history, documents] = await Promise.all([
         loadCaseHistory(
           read,
