@@ -21,7 +21,6 @@ import { canReadTasks } from './MyTasks';
 import {
   conflictCode,
   createAuthenticatedApiClient,
-  type ApiResult,
 } from '../api/authenticated-api-client';
 import {
   isClosedProjectStatus,
@@ -29,11 +28,8 @@ import {
 } from './project-lifecycle-response';
 import {
   isOpenTaskState,
-  readAssignees,
   readTask,
-  readTaskDetail,
-  readTaskHistory,
-  readTaskList,
+  type readTaskList,
   taskMoves,
   taskStates,
   validTaskDate,
@@ -47,6 +43,10 @@ import {
   type TaskView,
 } from './task-response';
 import { useProjectTaskCopy } from './task.copy';
+import {
+  ProjectTaskReadFailure,
+  useProjectTaskReads,
+} from './project-task-reads';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
 import './task.css';
@@ -347,11 +347,6 @@ function TaskProjects(props: Props) {
     </div>
   ));
 }
-class ReadFailure extends Error {
-  constructor(readonly kind: 'denied' | 'error' | 'missing') {
-    super(kind);
-  }
-}
 function TaskProject({
   active,
   actor,
@@ -366,6 +361,7 @@ function TaskProject({
   const copy = useProjectTaskCopy();
   const { locale } = useInterfaceLocale();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
+  const [readOnlyRevision, setReadOnlyRevision] = useState<number | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
@@ -385,10 +381,6 @@ function TaskProject({
   const drafts = useRef(
     new Map<string, { version: number | null; draft: Draft }>(),
   );
-  const clientReadRevision = useRef(clientIdentityRevision);
-  useLayoutEffect(() => {
-    clientReadRevision.current = clientIdentityRevision;
-  }, [clientIdentityRevision]);
   const refreshedClientRevision = useRef(clientIdentityRevision);
   /** The latest requested open already applied. */
   const consumedTaskRequest = useRef<number | undefined>(undefined);
@@ -398,6 +390,11 @@ function TaskProject({
   const focusedTaskRequest = useRef<number | undefined>(undefined);
   const companyId = actor.activeCompany?.id ?? '';
   const scope = { companyId, projectId };
+  const taskReads = useProjectTaskReads({
+    identity,
+    scope,
+    clientIdentityRevision,
+  });
   const ownerScope = String(
     useRequestLifetime(identity, JSON.stringify(scope)),
   );
@@ -478,21 +475,6 @@ function TaskProject({
       setDateFilter({ kind: 'range', from: openBound, through: openBound });
   }
 
-  async function resultValue(
-    result: ApiResult<unknown>,
-    recoveryCurrent: () => boolean,
-    notFound: 'denied' | 'missing' = 'denied',
-  ): Promise<unknown> {
-    if (result.status === 'unauthorized') {
-      if (!recoveryCurrent()) throw new ReadFailure('error');
-      await identity.rejectSession();
-      throw new ReadFailure('denied');
-    }
-    if (result.status === 'forbidden') throw new ReadFailure('denied');
-    if (result.status === 'notFound') throw new ReadFailure(notFound);
-    if (result.status !== 'ok') throw new ReadFailure('error');
-    return result.value;
-  }
   function deny() {
     reads.retire();
     writes.retire();
@@ -510,56 +492,26 @@ function TaskProject({
     recoveryCurrent: () => boolean,
     read: { requestedOpenId?: number; onTargetReady?: () => void } = {},
   ) {
-    const startedUnder = clientReadRevision.current;
-    const live = () =>
-      !signal.aborted && clientReadRevision.current === startedUnder;
-    const api = await createAuthenticatedApiClient(identity);
-    if (!live()) return false;
-    const options = { companyContextId: companyId, signal };
-    const listingResult = await api.request(
-      `/projects/${encodeURIComponent(projectId)}/tasks`,
-      options,
-    );
-    if (!live()) return false;
-    const listingValue = await resultValue(listingResult, recoveryCurrent);
-    if (!live()) return false;
-    const listing = readTaskList(listingValue, scope);
+    const taskRead = taskReads.capture({ signal, recoveryCurrent });
+    const listing = await taskRead.listing();
+    if (!listing) return false;
+    if (!listing.mutable) setReadOnlyRevision(taskRead.revision);
     let nextDetail: Detail | null = null;
     if (taskId) {
-      const [taskResult, historyResult] = await Promise.all([
-        api.request(`/tasks/${encodeURIComponent(taskId)}`, options),
-        api.request(`/tasks/${encodeURIComponent(taskId)}/history`, options),
-      ]);
-      if (!live()) return false;
-      try {
-        const taskValue = await resultValue(
-          taskResult,
-          recoveryCurrent,
-          'missing',
-        );
-        if (!live()) return false;
-        const historyValue = await resultValue(
-          historyResult,
-          recoveryCurrent,
-          'missing',
-        );
-        if (!live()) return false;
-        const task = readTaskDetail(taskValue, scope, taskId);
-        const events = readTaskHistory(historyValue, scope, taskId);
-        nextDetail = {
-          kind: 'ready',
-          ...task,
-          events,
-          requestedOpenId: read.requestedOpenId,
-        };
-      } catch (error: unknown) {
-        if (!live()) return false;
-        if (!(error instanceof ReadFailure) || error.kind !== 'missing')
-          throw error;
-        nextDetail = { kind: 'missing' };
-      }
+      const result = await taskRead.detail(taskId);
+      if (!result) return false;
+      nextDetail =
+        result.kind === 'ready'
+          ? { ...result, requestedOpenId: read.requestedOpenId }
+          : result;
     }
-    if (!live()) return false;
+    if (!taskRead.current()) return false;
+    // A transport failure cannot undo a read-only observation at the current revision.
+    setReadOnlyRevision(
+      !listing.mutable || (nextDetail?.kind === 'ready' && !nextDetail.mutable)
+        ? taskRead.revision
+        : null,
+    );
     // Stable target facts are resolved here. An auxiliary member lookup stays
     // under this owner's authority and must not prolong the originating preview.
     read.onTargetReady?.();
@@ -610,27 +562,12 @@ function TaskProject({
       listing.mutable &&
       (!nextDetail || (nextDetail.kind === 'ready' && nextDetail.mutable))
     ) {
-      try {
-        const result = await api.request(
-          `/projects/${encodeURIComponent(projectId)}/eligible-task-assignees`,
-          options,
-        );
-        if (!live()) return false;
-        if (result.status === 'forbidden' || result.status === 'notFound') {
-          setFeedback('membersError');
-          return true;
-        }
-        const membersValue = await resultValue(result, recoveryCurrent);
-        if (!live()) return false;
-        setMembers(readAssignees(membersValue));
-      } catch (error: unknown) {
-        if (!live()) return false;
-        if (error instanceof ReadFailure && error.kind === 'denied')
-          throw error;
-        if (!signal.aborted) setFeedback('membersError');
-      }
+      const eligible = await taskRead.eligibleMembers();
+      if (!taskRead.current()) return false;
+      if (eligible === null) setFeedback('membersError');
+      else setMembers(eligible);
     }
-    return live();
+    return taskRead.current();
   }
   async function open(
     taskId: string | null,
@@ -690,7 +627,8 @@ function TaskProject({
       });
     } catch (error: unknown) {
       if (signal.aborted) return;
-      if (error instanceof ReadFailure && error.kind === 'denied') deny();
+      if (error instanceof ProjectTaskReadFailure && error.kind === 'denied')
+        deny();
       else {
         setLoad({ kind: 'error' });
         setDetail(taskId ? { kind: 'error' } : null);
@@ -723,6 +661,7 @@ function TaskProject({
     readIdentity.current = identity;
     previousReadLifetime.current = reads.capture();
     drafts.current.clear();
+    setReadOnlyRevision(null);
     setMutation({ kind: 'idle' });
     void open(null);
   }, [identity, reads]);
@@ -893,7 +832,8 @@ function TaskProject({
         }
       } catch (error: unknown) {
         if (signal.aborted || readSignal.aborted) return;
-        if (error instanceof ReadFailure && error.kind === 'denied') deny();
+        if (error instanceof ProjectTaskReadFailure && error.kind === 'denied')
+          deny();
         else {
           setLoad({ kind: 'error' });
           setDetail({ kind: 'error' });
@@ -1067,20 +1007,24 @@ function TaskProject({
       </header>
       {canManage && load.kind !== 'denied' && (
         <TaskPlanning
-          identity={identity}
           active={active}
           captureRecovery={captureActiveRecovery}
-          companyId={companyId}
-          projectId={projectId}
           disabled={
             mutation.kind === 'pending' || mutation.kind === 'uncertain'
           }
           projectClosed={projectClosed}
+          taskReads={taskReads}
+          nativeReadOnly={readOnlyRevision === clientIdentityRevision}
           onProtectionChange={setPlanningProtected}
           onDenied={deny}
           onReloaded={() =>
             Promise.all([
-              open(selected, { preserveReasonDraft: true }),
+              settlingRead.current && !settlingRead.current.aborted
+                ? undefined
+                : open(selected, {
+                    preserveReasonDraft: true,
+                    preserveFeedback: feedback === 'confirmed',
+                  }),
               onProjectChanged?.(),
             ]).then(() => undefined)
           }

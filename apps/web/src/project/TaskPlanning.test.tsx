@@ -269,6 +269,7 @@ function installHttp(
     mutable?: boolean;
     write?: (body: unknown, options: RequestInit) => Promise<Response>;
     listing?: () => Response;
+    members?: () => Response | Promise<Response>;
     project?: () => Response;
   } = {},
 ) {
@@ -287,7 +288,7 @@ function installHttp(
         : new Response(null, { status: 503 });
     }
     if (path.endsWith('/eligible-task-assignees'))
-      return Response.json({ members: [] });
+      return options.members?.() ?? Response.json({ members: [] });
     if (path.endsWith('/tasks')) {
       if (options.listing) return options.listing();
       const companyId =
@@ -768,6 +769,259 @@ it.each([401, 403])(
     expect(rejectSession).toHaveBeenCalledTimes(status === 401 ? 1 : 0);
   },
 );
+
+it('disables grouped planning when the original Client becomes historical', async () => {
+  let historical = false;
+  const http = installHttp({
+    listing: () =>
+      Response.json({ mutable: !historical, tasks: [task('first')] }),
+  });
+  const identity = deterministicBrowserIdentity();
+  const project = (clientIdentityRevision: number) => (
+    <ProjectTasks
+      actor={actor}
+      identity={identity}
+      projectId="project"
+      projectStatus="preparatory"
+      clientIdentityRevision={clientIdentityRevision}
+    />
+  );
+  const view = render(project(0));
+  const region = await openPlanning();
+  const save = () =>
+    within(region).getByRole('button', { name: 'Save selected planning' });
+  expect(save()).toBeEnabled();
+
+  historical = true;
+  view.rerender(project(1));
+  await screen.findAllByText(
+    'Read-only: the original Client has been superseded. Task history remains available.',
+  );
+  expect(
+    await within(region).findByRole('button', {
+      name: 'Save selected planning',
+    }),
+  ).toBeDisabled();
+  fireEvent.click(save());
+  expect(http.writes).toHaveLength(0);
+  expect(
+    screen.getByRole('button', { name: 'Activity first DEMO' }),
+  ).toBeVisible();
+});
+
+it('keeps readable Tasks and a native draft when grouped planning cannot load eligible members', async () => {
+  const response = deferred<Response>();
+  let planningOpen = false;
+  let planningMembersRequested = false;
+  const http = installHttp({
+    tasks: [task('first')],
+    members: () => {
+      if (!planningOpen) return Response.json({ members: [] });
+      planningMembersRequested = true;
+      return response.promise;
+    },
+  });
+  render(
+    <ProjectTasks
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+      projectId="project"
+      projectStatus="preparatory"
+    />,
+  );
+  const native = await screen.findByRole('textbox', { name: 'Task title' });
+  await waitFor(() => expect(native).toBeEnabled());
+  fireEvent.change(native, { target: { value: 'Independent native draft' } });
+
+  planningOpen = true;
+  fireEvent.click(screen.getByRole('button', { name: 'Plan selected Tasks' }));
+  const region = screen.getByRole('region', { name: 'Grouped Task planning' });
+  await waitFor(() => expect(planningMembersRequested).toBe(true));
+  await act(async () => response.resolve(new Response(null, { status: 404 })));
+
+  expect(await within(region).findByRole('alert')).toBeVisible();
+  expect(
+    screen.getByRole('button', { name: 'Activity first DEMO' }),
+  ).toBeVisible();
+  expect(screen.getByRole('textbox', { name: 'Task title' })).toHaveValue(
+    'Independent native draft',
+  );
+  expect(
+    within(region).getByRole('button', { name: 'Save selected planning' }),
+  ).toBeDisabled();
+  expect(http.writes).toHaveLength(0);
+});
+
+it('keeps grouped Save disabled when a native refresh fails after establishing read-only Tasks', async () => {
+  let historical = false;
+  let readFails = false;
+  const http = installHttp({
+    listing: () =>
+      readFails
+        ? new Response(null, { status: 503 })
+        : Response.json({ mutable: !historical, tasks: [task('first')] }),
+  });
+  render(
+    <ProjectTasks
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+      projectId="project"
+      projectStatus="preparatory"
+    />,
+  );
+  const region = await openPlanning();
+  const save = () =>
+    within(region).getByRole('button', { name: 'Save selected planning' });
+  const nativeReload = () =>
+    screen.getByRole('button', { name: 'Reload Tasks' });
+  expect(save()).toBeEnabled();
+
+  historical = true;
+  fireEvent.click(nativeReload());
+  await screen.findAllByText(
+    'Read-only: the original Client has been superseded. Task history remains available.',
+  );
+  expect(save()).toBeDisabled();
+
+  readFails = true;
+  await act(async () => fireEvent.click(nativeReload()));
+  expect(save()).toBeDisabled();
+  fireEvent.click(save());
+  expect(http.writes).toHaveLength(0);
+});
+
+it('ignores a late eligibility denial from before the Client identity changed', async () => {
+  const reply = deferred<Response>();
+  let historical = false;
+  let inspectPlanning = false;
+  let requested = false;
+  const rejectSession = vi.fn(async () => undefined);
+  const identity = { ...deterministicBrowserIdentity(), rejectSession };
+  const http = installHttp({
+    listing: () =>
+      Response.json({ mutable: !historical, tasks: [task('first')] }),
+    members: () => {
+      if (!inspectPlanning) return Response.json({ members: [] });
+      requested = true;
+      return reply.promise;
+    },
+  });
+  const project = (clientIdentityRevision: number) => (
+    <ProjectTasks
+      actor={actor}
+      identity={identity}
+      projectId="project"
+      projectStatus="preparatory"
+      clientIdentityRevision={clientIdentityRevision}
+    />
+  );
+  const view = render(project(0));
+  const native = await screen.findByRole('textbox', { name: 'Task title' });
+  await waitFor(() => expect(native).toBeEnabled());
+  inspectPlanning = true;
+  fireEvent.click(screen.getByRole('button', { name: 'Plan selected Tasks' }));
+  const region = screen.getByRole('region', { name: 'Grouped Task planning' });
+  await waitFor(() => expect(requested).toBe(true));
+
+  historical = true;
+  view.rerender(project(1));
+  await within(region).findByText(
+    'Read-only: the original Client has been superseded. Task history remains available.',
+  );
+  await act(async () => reply.resolve(new Response(null, { status: 401 })));
+
+  expect(rejectSession).not.toHaveBeenCalled();
+  expect(
+    screen.getByRole('button', { name: 'Activity first DEMO' }),
+  ).toBeVisible();
+  expect(
+    within(region).getByRole('button', { name: 'Save selected planning' }),
+  ).toBeDisabled();
+  expect(http.writes).toHaveLength(0);
+});
+
+it('keeps a confirmed native Task and its refresh during a Client identity change', async () => {
+  const receipt = { ...task('written'), title: 'Confirmed native Task' };
+  const pendingList = deferred<Response>();
+  let nativeSaved = false;
+  let historical = false;
+  let pendingSignal: AbortSignal | undefined;
+  let posts = 0;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init: RequestInit = {}) => {
+      const path = new URL(url, window.location.href).pathname;
+      if (path === '/api/projects/project/tasks') {
+        if (init.method === 'POST') {
+          posts += 1;
+          nativeSaved = true;
+          return Response.json(receipt, { status: 201 });
+        }
+        if (nativeSaved && !historical) {
+          pendingSignal = init.signal ?? undefined;
+          return pendingList.promise;
+        }
+        return Response.json({
+          mutable: !historical,
+          tasks: nativeSaved ? [task('first'), receipt] : [task('first')],
+        });
+      }
+      if (path === '/api/tasks/written')
+        return Response.json({ mutable: !historical, task: receipt });
+      if (path === '/api/tasks/written/history')
+        return Response.json({ events: [] });
+      if (path.endsWith('/eligible-task-assignees'))
+        return Response.json({ members: [] });
+      if (path === '/api/projects/project')
+        return Response.json({
+          id: 'project',
+          companyId: 'company',
+          clientAccountId: 'client',
+          clientDisplayName: 'Client DEMO',
+          title: 'Project DEMO',
+          status: 'preparatory',
+          createdAt: '2026-10-28T00:00:00.000Z',
+        });
+      return new Response(null, { status: 404 });
+    }),
+  );
+  const identity = deterministicBrowserIdentity();
+  const project = (clientIdentityRevision: number) => (
+    <ProjectTasks
+      actor={actor}
+      identity={identity}
+      projectId="project"
+      projectStatus="preparatory"
+      clientIdentityRevision={clientIdentityRevision}
+    />
+  );
+  const view = render(project(0));
+  const native = await screen.findByRole('textbox', { name: 'Task title' });
+  await waitFor(() => expect(native).toBeEnabled());
+  const region = await openPlanning();
+  fireEvent.change(native, { target: { value: receipt.title } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create Task' }));
+  await waitFor(() => expect(pendingSignal).toBeDefined());
+  await screen.findByText('Task change recorded.');
+
+  historical = true;
+  view.rerender(project(1));
+  await within(region).findByText(
+    'Read-only: the original Client has been superseded. Task history remains available.',
+  );
+  expect(pendingSignal?.aborted).toBe(false);
+  expect(screen.getByText('Task change recorded.')).toBeVisible();
+  await act(async () =>
+    pendingList.resolve(
+      Response.json({ mutable: true, tasks: [task('first'), receipt] }),
+    ),
+  );
+  expect(
+    await screen.findByRole('button', { name: receipt.title }),
+  ).toBeVisible();
+  expect(screen.getByText('Task change recorded.')).toBeVisible();
+  expect(posts).toBe(1);
+});
 
 it('preserves the native draft and explicit recovery after a historical original-Client command refusal', async () => {
   let historical = false;

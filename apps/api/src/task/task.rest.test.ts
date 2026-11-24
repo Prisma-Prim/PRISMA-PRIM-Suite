@@ -1986,6 +1986,7 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     expect(await history(id)).toEqual(events);
     expect(await taskEvents()).toEqual(genericFacts(events));
     for (const response of [
+      await request(`/projects/${projectId}/eligible-task-assignees`),
       await request(`/projects/${projectId}/tasks`, {
         method: 'POST',
         value: { title: 'New forbidden notes' },
