@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "runId": "codex-task-planning-coordination-pr-1527",
+  "date": "2026-11-24",
+  "runType": "pull-request-proof",
+  "issue": "not reported",
+  "pullRequest": 1527,
+  "harness": "codex-cloud",
+  "figuresSource": "self-reported",
+  "time": {
+    "start": "not reported",
+    "end": "not reported",
+    "durationSeconds": "not reported"
+  },
+  "tokens": {
+    "input": "not reported",
+    "output": "not reported",
+    "cacheCreation": "not reported",
+    "cacheRead": "not reported"
+  },
+  "models": [],
+  "price": {
+    "estimatedUsd": "not reported",
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 2
+    },
+    "notes": "Reproduced the three audited native Task regressions. Verified receipt-driven refresh, retained conflict guidance and explicit focus. Tested overlapping read failures and both Chromium viewports."
+  }
+}
