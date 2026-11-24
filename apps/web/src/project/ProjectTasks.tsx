@@ -406,7 +406,10 @@ function TaskProject({
   );
   const activeProject = useRef(active);
   const reloadOnReturn = useRef(false);
-  const settlingRead = useRef<AbortSignal | null>(null);
+  const settlingRead = useRef<{
+    signal: AbortSignal;
+    refreshRequested: boolean;
+  } | null>(null);
   // The hidden Project keeps its authorized Task cache. Shared recovery
   // requires the exact committed visible Project.
   useLayoutEffect(() => {
@@ -490,11 +493,16 @@ function TaskProject({
     taskId: string | null,
     signal: AbortSignal,
     recoveryCurrent: () => boolean,
-    read: { requestedOpenId?: number; onTargetReady?: () => void } = {},
+    read: {
+      requestedOpenId?: number;
+      onTargetReady?: () => void;
+      isSuperseded?: () => boolean;
+    } = {},
   ) {
     const taskRead = taskReads.capture({ signal, recoveryCurrent });
+    const canPublish = () => taskRead.current() && !read.isSuperseded?.();
     const listing = await taskRead.listing();
-    if (!listing) return false;
+    if (!listing || !canPublish()) return false;
     if (!listing.mutable) setReadOnlyRevision(taskRead.revision);
     let nextDetail: Detail | null = null;
     if (taskId) {
@@ -505,7 +513,7 @@ function TaskProject({
           ? { ...result, requestedOpenId: read.requestedOpenId }
           : result;
     }
-    if (!taskRead.current()) return false;
+    if (!canPublish()) return false;
     // A transport failure cannot undo a read-only observation at the current revision.
     setReadOnlyRevision(
       !listing.mutable || (nextDetail?.kind === 'ready' && !nextDetail.mutable)
@@ -563,11 +571,11 @@ function TaskProject({
       (!nextDetail || (nextDetail.kind === 'ready' && nextDetail.mutable))
     ) {
       const eligible = await taskRead.eligibleMembers();
-      if (!taskRead.current()) return false;
+      if (!canPublish()) return false;
       if (eligible === null) setFeedback('membersError');
       else setMembers(eligible);
     }
-    return taskRead.current();
+    return canPublish();
   }
   async function open(
     taskId: string | null,
@@ -638,11 +646,24 @@ function TaskProject({
       operation.release();
     }
   }
+  function refreshNativeAfterPlanning() {
+    const settling = settlingRead.current;
+    if (settling && !settling.signal.aborted) {
+      // Its listing may predate the grouped save. Re-read under the same native command owner.
+      settling.refreshRequested = true;
+      return;
+    }
+    return open(selected, {
+      preserveReasonDraft: true,
+      preserveFeedback: feedback === 'confirmed',
+    });
+  }
+
   useLayoutEffect(() => {
     if (refreshedClientRevision.current === clientIdentityRevision) return;
     refreshedClientRevision.current = clientIdentityRevision;
     // Dossier projections changed; the native immutable target and exact commands remain owned here.
-    if (settlingRead.current && !settlingRead.current.aborted) return;
+    if (settlingRead.current && !settlingRead.current.signal.aborted) return;
     reads.retire();
     if (mutation.kind !== 'pending' && mutation.kind !== 'uncertain')
       void open(selected, {
@@ -817,29 +838,40 @@ function TaskProject({
       const settlement = reads.beginLatest();
       if (!settlement) return;
       const readSignal = settlement.signal;
-      settlingRead.current = readSignal;
+      const reconciliation = { signal: readSignal, refreshRequested: false };
+      settlingRead.current = reconciliation;
       try {
-        // A union/reversal can retire a read while preserving this committed command.
-        // Settle only a current native read; never resubmit or rebase the saved command.
-        while (
-          !signal.aborted &&
-          !readSignal.aborted &&
-          !(await refresh(receipt.id, readSignal, captureActiveRecovery(), {
-            onTargetReady: () => setMutation({ kind: 'idle' }),
-          }))
-        ) {
-          // The next read captures the newest Client projection revision.
-        }
-      } catch (error: unknown) {
-        if (signal.aborted || readSignal.aborted) return;
-        if (error instanceof ProjectTaskReadFailure && error.kind === 'denied')
-          deny();
-        else {
-          setLoad({ kind: 'error' });
-          setDetail({ kind: 'error' });
+        while (!signal.aborted && !readSignal.aborted) {
+          reconciliation.refreshRequested = false;
+          try {
+            const current = await refresh(
+              receipt.id,
+              readSignal,
+              captureActiveRecovery(),
+              {
+                onTargetReady: () => setMutation({ kind: 'idle' }),
+                isSuperseded: () => reconciliation.refreshRequested,
+              },
+            );
+            if (current && !reconciliation.refreshRequested) break;
+          } catch (error: unknown) {
+            if (signal.aborted || readSignal.aborted) break;
+            if (
+              error instanceof ProjectTaskReadFailure &&
+              error.kind === 'denied'
+            ) {
+              deny();
+              break;
+            }
+            if (reconciliation.refreshRequested) continue;
+            setLoad({ kind: 'error' });
+            setDetail({ kind: 'error' });
+            break;
+          }
         }
       } finally {
-        if (settlingRead.current === readSignal) settlingRead.current = null;
+        if (settlingRead.current === reconciliation)
+          settlingRead.current = null;
         settlement.release();
       }
     } catch {
@@ -1017,18 +1049,18 @@ function TaskProject({
           nativeReadOnly={readOnlyRevision === clientIdentityRevision}
           onProtectionChange={setPlanningProtected}
           onDenied={deny}
-          onReloaded={() =>
+          onReloaded={(mode) =>
             Promise.all([
-              settlingRead.current && !settlingRead.current.aborted
-                ? undefined
-                : open(selected, {
-                    preserveReasonDraft: true,
-                    preserveFeedback: feedback === 'confirmed',
-                  }),
+              mode === 'confirmed' ? undefined : refreshNativeAfterPlanning(),
               onProjectChanged?.(),
             ]).then(() => undefined)
           }
-          onConfirmed={() => onActivityRecorded?.()}
+          onConfirmed={async () => {
+            await Promise.all([
+              refreshNativeAfterPlanning(),
+              onActivityRecorded?.(),
+            ]);
+          }}
         />
       )}
       {load.kind !== 'ready' && (
