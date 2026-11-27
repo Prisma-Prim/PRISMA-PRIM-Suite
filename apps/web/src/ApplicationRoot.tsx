@@ -10,6 +10,10 @@ import { InterfaceLocaleProvider } from './localization/interface-locale';
 import { InterfaceLocaleSelect } from './localization/InterfaceLocaleSelect';
 import { PublicWelcome } from './welcome/PublicWelcome';
 import { ChatGptCallback } from './dossier-analysis/ChatGptCallback';
+import {
+  InterfacePreferenceProvider,
+  useInterfacePreference,
+} from './clarte/InterfacePreferenceProvider';
 
 const PrismaCertUiBaseline = lazy(async () => {
   const module = await import('./ui-baseline/PrismaCertUiBaseline');
@@ -45,14 +49,22 @@ export function ApplicationRoot({ pathname, identity }: ApplicationRootProps) {
     );
   return (
     <InterfaceLocaleProvider>
-      <InterfaceLocaleSelect />
-      {pathname === '/chatgpt/callback' ? (
-        <ChatGptCallback />
-      ) : (
-        <ProductionApplicationRoot pathname={pathname} identity={identity} />
-      )}
+      <InterfacePreferenceProvider>
+        <FloatingInterfaceLocaleSelect />
+        {pathname === '/chatgpt/callback' ? (
+          <ChatGptCallback />
+        ) : (
+          <ProductionApplicationRoot pathname={pathname} identity={identity} />
+        )}
+      </InterfacePreferenceProvider>
     </InterfaceLocaleProvider>
   );
+}
+
+/** The floating language selector, unless the Clarté frame offers the language. */
+function FloatingInterfaceLocaleSelect() {
+  const { frameOffersLanguage } = useInterfacePreference();
+  return frameOffersLanguage ? null : <InterfaceLocaleSelect />;
 }
 
 function ProductionApplicationRoot({

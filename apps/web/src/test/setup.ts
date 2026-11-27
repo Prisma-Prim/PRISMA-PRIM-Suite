@@ -12,6 +12,9 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
-  if (typeof localStorage !== 'undefined')
+  if (typeof localStorage !== 'undefined') {
     localStorage.removeItem('prisma-prim.interface-locale');
+    // A Clarté test leaves no interface choice for the next test.
+    localStorage.removeItem('prisma-prim.interface');
+  }
 });

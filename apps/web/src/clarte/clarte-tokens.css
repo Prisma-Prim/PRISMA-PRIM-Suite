@@ -1,0 +1,164 @@
+/*
+ * Clarté design tokens (#1530). Light background only. Every rule is scoped
+ * to the Clarté frame, so the current interface renders exactly as before.
+ * The font families carry Clarté-owned names and files under
+ * public/clarte/fonts, independent of Prisme & lumière.
+ */
+@font-face {
+  font-family: 'Clarte DM Sans';
+  src: url('/clarte/fonts/dm-sans.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Clarte Manrope';
+  src: url('/clarte/fonts/manrope.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+.clarte-frame {
+  /* Surfaces and ink */
+  --clarte-bg: #f6f8fc;
+  --clarte-surface: #ffffff;
+  --clarte-surface-muted: #f9fafd;
+  --clarte-surface-sunken: #f1f4f9;
+  --clarte-ink: #15233b;
+  --clarte-ink-soft: #3b4a63;
+  --clarte-muted: #5f6e86;
+  --clarte-faint: #9aa6b8;
+  --clarte-line: #e6eaf1;
+  --clarte-line-soft: #eef1f6;
+
+  /* The one accent colour, reserved for primary actions and selection */
+  --clarte-accent: #6b4eff;
+  --clarte-accent-strong: #5a3ff0;
+  --clarte-accent-ink: #ffffff;
+  --clarte-accent-soft: #f1eeff;
+  --clarte-accent-line: #d9d1ff;
+  /* Accent text on soft accent surfaces keeps at least 4.5:1 contrast */
+  --clarte-accent-text: #5a3ff0;
+
+  /* Status tones; each text colour keeps 4.5:1 on its soft surface */
+  --clarte-success: #087155;
+  --clarte-success-soft: #e5f6ef;
+  --clarte-warning: #9a5a00;
+  --clarte-warning-soft: #fff3dc;
+  --clarte-danger: #c4303f;
+  --clarte-danger-soft: #fdebed;
+  --clarte-info: #2559c9;
+  --clarte-info-soft: #e9f0ff;
+
+  /* The prism sequence, reserved for the seven affaire stages */
+  --clarte-stage-1: #7c5cff;
+  --clarte-stage-2: #9d5bf0;
+  --clarte-stage-3: #c455e3;
+  --clarte-stage-4: #e851ae;
+  --clarte-stage-5: #f7657d;
+  --clarte-stage-6: #fb8a4a;
+  --clarte-stage-7: #f2b035;
+  --clarte-spectrum: linear-gradient(
+    90deg,
+    var(--clarte-stage-1),
+    var(--clarte-stage-2),
+    var(--clarte-stage-3),
+    var(--clarte-stage-4),
+    var(--clarte-stage-5),
+    var(--clarte-stage-6),
+    var(--clarte-stage-7)
+  );
+
+  /* Shape, depth and rhythm */
+  --clarte-radius-lg: 16px;
+  --clarte-radius-md: 12px;
+  --clarte-radius-sm: 10px;
+  --clarte-radius-xs: 7px;
+  --clarte-shadow: 0 1px 2px rgb(21 35 59 / 4%), 0 6px 20px rgb(21 35 59 / 5%);
+  --clarte-shadow-raised:
+    0 24px 70px rgb(15 23 42 / 22%), 0 2px 8px rgb(15 23 42 / 8%);
+  --clarte-focus: 0 0 0 4px var(--clarte-accent-soft);
+  --clarte-touch-target: 44px;
+
+  /* Type */
+  --clarte-font-body: 'Clarte DM Sans', 'Segoe UI', system-ui, sans-serif;
+  --clarte-font-heading:
+    'Clarte Manrope', 'Clarte DM Sans', 'Segoe UI', system-ui, sans-serif;
+
+  min-height: 100vh;
+  color: var(--clarte-ink);
+  background: var(--clarte-bg);
+  font-family: var(--clarte-font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The shared Select and its body portal adopt Clarté while the frame is shown. */
+:root:has(.clarte-frame) {
+  --shell-navy: #15233b;
+  --shell-navy-deep: #15233b;
+  --shell-ink: #15233b;
+  --shell-muted: #5f6e86;
+  --shell-line: #e6eaf1;
+  --shell-surface: #ffffff;
+  --shell-canvas: #f6f8fc;
+  --shell-blue: #6b4eff;
+  --shell-focus: #6b4eff;
+  --shell-danger: #c4303f;
+}
+
+body:has(.clarte-frame) {
+  background: #f6f8fc;
+}
+
+/* A destination scrolled into view stays clear of the sticky top bar. */
+html:has(.clarte-frame) {
+  scroll-padding-top: 88px;
+}
+
+/* Screens not migrated yet keep their structure and take the Clarté type. */
+.clarte-frame h1,
+.clarte-frame h2,
+.clarte-frame h3,
+.clarte-frame h4 {
+  font-family: var(--clarte-font-heading);
+  letter-spacing: -0.01em;
+}
+
+.clarte-frame :where(button, input, select, textarea) {
+  font: inherit;
+  color: inherit;
+}
+
+.clarte-frame :focus-visible {
+  outline: 2px solid var(--clarte-accent);
+  outline-offset: 2px;
+}
+
+.clarte-frame ::selection {
+  background: var(--clarte-accent-soft);
+}
+
+.clarte-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clarte-frame *,
+  .clarte-frame *::before,
+  .clarte-frame *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
