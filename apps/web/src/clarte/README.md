@@ -1,6 +1,6 @@
 # Clarté interface
 
-[#1530](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1530) lays the foundation of the Clarté interface chosen in [#1528](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1528): the tester switch, the design tokens and base components, and the frame that reaches every existing section. The current interface stays the default until the switch-over [#1548](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1548).
+[#1530](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1530) lays the foundation of the Clarté interface chosen in [#1528](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1528): the tester switch, the design tokens and base components, and the frame that reaches every existing section. [ADR 0011](../../../../docs/adr/0011-clarte-interface-replaces-prisme-lumiere.md) records the decision. The current interface stays the default until the switch-over [#1548](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1548).
 
 ## Rules for every Clarté slice
 
