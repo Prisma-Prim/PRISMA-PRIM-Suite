@@ -12,7 +12,8 @@ import { listJourneys } from './verify-journey.mjs';
 // reaches each screen (#1341); a stale anchor sends an agent to the wrong one.
 const root = fileURLToPath(new URL('..', import.meta.url));
 const map = '.agents/skills/journey-audit/journey-map.md';
-const shell = 'apps/web/src/production-shell/ApplicationShell.tsx';
+// The section union that both the current and the Clarté frame receive.
+const shell = 'apps/web/src/production-shell/application-section.ts';
 
 const backticked = (cell) => [...cell.matchAll(/`([^`]+)`/gu)].map((m) => m[1]);
 
