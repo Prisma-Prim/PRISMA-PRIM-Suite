@@ -15,7 +15,7 @@ Use the Client dossier as the central operational view, keep Workspace and Compa
 
 Deliver responsive web, WCAG 2.2 AA intent, localization from Release 1, stable internal semantics, bounded typed configuration, durable event-derived notifications and governed dashboard metrics.
 
-The accepted Prisme & lumière direction in [#225](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/225) is the preferred evolving visual reference for its production slices. Atlas Blue in /ui-baseline remains a recoverable synthetic snapshot. Neither reference proves implemented behaviour or freezes the final design.
+New UI work follows the Clarté interface recorded in [ADR 0011](../adr/0011-clarte-interface-replaces-prisme-lumiere.md), which supersedes the Prisme & lumière direction of [#225](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/225). Prisme & lumière stays the default interface until the switch-over [#1548](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1548) merges. Atlas Blue in /ui-baseline remains a recoverable synthetic snapshot. Neither reference proves implemented behaviour or freezes the final design.
 
 On 2026-09-26, Dan confirmed Prisme as the current application design and removed the user-facing Classic rollback option (#426). On 2026-11-14 he retired the Classic frame (#1343, #1355): Prisme is the only frame, and a `?frame=classic` URL opens Prisme like any other. This does not remove business owners, existing regression coverage or the recoverable /ui-baseline snapshot.
 
@@ -80,8 +80,8 @@ with the owning feature, ready for localization, while the shared control owns
 the visible listbox, keyboard and typeahead behaviour, form participation,
 focus handling, and viewport-safe placement.
 
-Production slices use a custom presentation consistent with the accepted Prisme
-controls and tokens, including buttons, checkboxes and single-choice fields.
+Production slices use a custom presentation consistent with the current Prisme
+controls and tokens until the switch-over, and with Clarté afterwards ([ADR 0011](../adr/0011-clarte-interface-replaces-prisme-lumiere.md)), including buttons, checkboxes and single-choice fields.
 Preserve semantic controls, keyboard operation, visible focus, validation and
 clear disabled states; decoration never replaces accessible behaviour. Inspect
 actual desktop and narrow screenshots for hierarchy, spacing, readable labels and
@@ -128,7 +128,7 @@ Configuration is typed and bounded. Workspace defaults and Company overrides are
 Tenant names never appear in conditional code.
 
 The [bounded Company consulting Contract model configuration (§29.8)](release-3-commercial-29-company-contract-model.md#298-interface-and-safe-asynchronous-work)
-uses the accepted Prisme Company configuration and ordinary explicit assignment
+uses the current Prisme Company configuration and ordinary explicit assignment
 controls. Full literal content/review, independent pending/active approval,
 history, identical uncertain retry and scope/access retirement share one owner;
 locale changes neither replace that owner nor translate saved business text.
@@ -162,7 +162,7 @@ Bulk work is permission-checked per target, previewable, partially failure-aware
 
 ## 12. Implementation decisions
 
-- evolve the #225 production slices from the accepted Prisme & lumière reference;
+- build new UI work to the Clarté decision in [ADR 0011](../adr/0011-clarte-interface-replaces-prisme-lumiere.md); Prisme & lumière stays the default interface until the switch-over [#1548](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1548);
 - preserve /ui-baseline as a recoverable synthetic snapshot;
 - keep user-facing text localization-ready;
 - centralize semantic design primitives without building a universal design platform;
