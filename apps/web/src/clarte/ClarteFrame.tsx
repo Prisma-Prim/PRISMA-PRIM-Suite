@@ -8,7 +8,6 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
-import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
 import {
   RecentChanges,
   type RecentChangesProps,
@@ -19,6 +18,7 @@ import {
 } from '../production-shell/application-section';
 import { SectionVisibility } from '../production-shell/section-visibility';
 import { ClarteJumpList, type ClarteJumpDestination } from './ClarteJumpList';
+import { ClarteLanguageChoice } from './ClarteLanguageChoice';
 import { ClarteMark } from './ClarteMark';
 import {
   clarteEntries,
@@ -212,8 +212,6 @@ export function ClarteFrame({
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
-      // The shared Select renders its options in a body portal.
-      if (target.closest('.shared-select__portal')) return;
       if (!area.current?.contains(target)) setOpenMenu(undefined);
     };
     document.addEventListener('pointerdown', onPointerDown);
@@ -222,7 +220,7 @@ export function ClarteFrame({
 
   useEffect(() => {
     if (!openMenu) return;
-    // A control that handles Escape itself, like an open Select, stops it first.
+    // A control that handles Escape itself stops it before it reaches here.
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') dismissMenu();
     };
@@ -467,7 +465,7 @@ export function ClarteFrame({
                   <strong>{user.name}</strong>
                   <span>{user.email}</span>
                 </p>
-                <InterfaceLocaleSelect />
+                <ClarteLanguageChoice />
                 <div className="clarte-user-actions">
                   <button
                     type="button"

@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApplicationSection } from '../production-shell/application-section';
-import { selectOption } from '../test/select-option';
 import {
   act,
   fireEvent,
@@ -306,22 +305,30 @@ describe('Clarté navigation', () => {
     }
   });
 
-  it('closes the language list before the user menu on Escape', () => {
+  it('keeps the user menu open while the language changes, then closes it on Escape', () => {
     renderFrame();
     const userMenu = screen.getByRole('button', { name: 'User menu' });
+    userMenu.focus();
     fireEvent.click(userMenu);
-    const language = screen.getByRole('combobox', {
-      name: 'Interface language',
-    });
-    fireEvent.click(language);
-    expect(screen.getByRole('listbox')).toBeVisible();
+    const languages = screen.getByRole('group', { name: 'Interface language' });
 
-    fireEvent.keyDown(language, { key: 'Escape' });
+    expect(
+      within(languages)
+        .getAllByRole('radio')
+        .map((radio) => radio.closest('label')?.textContent),
+    ).toEqual(['Română', 'Русский', 'Français', 'English']);
+    expect(
+      within(languages).getByRole('radio', { name: 'English' }),
+    ).toBeChecked();
+    fireEvent.click(within(languages).getByRole('radio', { name: 'Français' }));
 
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     expect(userMenu).toHaveAttribute('aria-expanded', 'true');
-    fireEvent.keyDown(language, { key: 'Escape' });
+    expect(screen.getByRole('radio', { name: 'Français' })).toBeChecked();
+    fireEvent.keyDown(screen.getByRole('radio', { name: 'Français' }), {
+      key: 'Escape',
+    });
     expect(userMenu).toHaveAttribute('aria-expanded', 'false');
+    expect(userMenu).toHaveFocus();
   });
 
   it('offers the phone bar entries and the remaining entries under More', () => {
@@ -450,10 +457,7 @@ describe('Clarté user menu', () => {
 
     expect(within(menu).getByText('Ada Ionescu')).toBeInTheDocument();
     expect(within(menu).getByText('ada@example.test')).toBeInTheDocument();
-    selectOption(
-      within(menu).getByRole('combobox', { name: 'Interface language' }),
-      'ru',
-    );
+    fireEvent.click(within(menu).getByRole('radio', { name: 'Русский' }));
     expect(
       within(
         screen.getByRole('navigation', { name: 'Основная навигация' }),

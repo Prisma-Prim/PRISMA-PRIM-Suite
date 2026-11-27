@@ -603,19 +603,16 @@ describe('Clarté top bar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'User menu' }));
     const menu = screen.getByRole('group', { name: 'User menu' });
     expect(within(menu).getByText('ada@example.test')).toBeInTheDocument();
-    selectOption(
-      within(menu).getByRole('combobox', { name: 'Interface language' }),
-      'ru',
-    );
+    fireEvent.click(within(menu).getByRole('radio', { name: 'Русский' }));
     expect(
       within(
         screen.getByRole('navigation', { name: 'Основная навигация' }),
       ).getByRole('link', { name: 'Сегодня' }),
     ).toHaveAttribute('aria-current', 'page');
-    selectOption(
-      within(menu).getByRole('combobox', { name: 'Язык интерфейса' }),
-      'en',
-    );
+    expect(
+      within(menu).getByRole('group', { name: 'Язык интерфейса' }),
+    ).toBeInTheDocument();
+    fireEvent.click(within(menu).getByRole('radio', { name: 'English' }));
     fireEvent.click(within(menu).getByRole('button', { name: 'Sign out' }));
 
     expect(signOut).toHaveBeenCalledOnce();
@@ -640,17 +637,20 @@ describe('Clarté top bar', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Meniul utilizatorului' }),
     );
-    const language = screen.getByRole('combobox', {
-      name: 'Limba interfeței',
-    });
-    expect(language).toHaveTextContent('Română');
-    selectOption(language, 'fr');
+    const languages = screen.getByRole('group', { name: 'Limba interfeței' });
+    expect(
+      within(languages).getByRole('radio', { name: 'Română' }),
+    ).toBeChecked();
+    fireEvent.click(within(languages).getByRole('radio', { name: 'Français' }));
     expect(
       screen.getByRole('heading', { level: 1, name: 'Aujourd’hui' }),
     ).toBeInTheDocument();
     expect(
-      screen.getAllByRole('combobox', { name: 'Langue de l’interface' }),
+      screen.getAllByRole('group', { name: 'Langue de l’interface' }),
     ).toHaveLength(1);
+    expect(
+      screen.queryByRole('combobox', { name: 'Langue de l’interface' }),
+    ).not.toBeInTheDocument();
   });
 
   it('changes the active Company with the same remount and draft rules', async () => {

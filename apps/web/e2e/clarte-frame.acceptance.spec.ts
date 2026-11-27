@@ -276,10 +276,10 @@ test('opens the latest changes from the bell and switches the interface language
   ).toBeFocused();
 
   await page.getByRole('button', { name: 'User menu' }).click();
-  await selectOption(
-    page.getByRole('combobox', { name: 'Interface language' }),
-    'ru',
-  );
+  const languages = page.getByRole('group', { name: 'Interface language' });
+  await expect(languages.getByRole('radio', { name: 'English' })).toBeChecked();
+  await screenshot(page, 'clarte-user-menu-today');
+  await languages.getByRole('radio', { name: 'Русский' }).check();
   await expect(screenTitle(page)).toHaveText('Сегодня');
   await page.keyboard.press('Escape');
   await page

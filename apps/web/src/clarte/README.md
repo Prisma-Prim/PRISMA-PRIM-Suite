@@ -49,7 +49,7 @@ describe.each(appInterfaces)('Clients in the %s interface', (appInterface) => {
 });
 ```
 
-Until the switch-over, an App-level test of your functions runs in both interfaces; the switch-over removes `current` from `appInterfaces`. What differs in Clarté: the left menu `Primary navigation` lists entries, not sections; a screen with several views has a `<Entry> views` navigation; "Sign out" and the interface language are inside the `User menu` disclosure; the jump list opens with Ctrl K and is a dialog named "Go to a screen". A URL fragment (`/#clients`) selects a section in both interfaces.
+Until the switch-over, an App-level test of your functions runs in both interfaces; the switch-over removes `current` from `appInterfaces`. What differs in Clarté: the left menu `Primary navigation` lists entries, not sections; a screen with several views has a `<Entry> views` navigation; "Sign out" and the interface language (a group of four radio buttons, not the floating Select) are inside the `User menu` disclosure; the jump list opens with Ctrl K and is a dialog named "Go to a screen". A URL fragment (`/#clients`) selects a section in both interfaces.
 
 ## Open Clarté in a Playwright journey
 
