@@ -15,6 +15,7 @@ import { clarteEntries } from './clarte-entries';
 const sectionLabels = {
   payments: 'Payment Observations',
   'invoice-records': 'Invoice Records',
+  'payment-proofs': 'Payment proofs',
   'knowledge-evidence': 'Knowledge items',
   'internal-tasks': 'Internal Tasks',
   ideas: 'Ideas',
@@ -47,15 +48,18 @@ function section(
   options: Partial<ApplicationSection> = {},
 ): ApplicationSection {
   const label = sectionLabels[id];
+  const screen = (
+    <section id={id} tabIndex={-1} aria-label={`${label} screen`}>
+      {label} content
+    </section>
+  );
+  // A migrated tab renders the Clarté screen; both stand for the same section.
   return {
     id,
     label,
     description: `${label} description`,
-    content: (
-      <section id={id} tabIndex={-1} aria-label={`${label} screen`}>
-        {label} content
-      </section>
-    ),
+    content: screen,
+    clarteContent: screen,
     ...options,
   };
 }
@@ -140,7 +144,10 @@ describe('Clarté entries and tabs', () => {
         ],
       ],
       ['Documents', ['Working Documents', 'Knowledge items']],
-      ['Finance', ['Invoice Records', 'Payment Observations']],
+      [
+        'Finance',
+        ['Invoice Records', 'Payment Observations', 'Payment proofs'],
+      ],
       ['Improvement', ['Ideas', 'Operational Risks']],
       [
         'Settings',

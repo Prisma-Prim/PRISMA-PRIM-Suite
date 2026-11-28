@@ -8,6 +8,7 @@ import type { ReactNode } from 'react';
 export interface ApplicationSection {
   id:
     | 'payments'
+    | 'payment-proofs'
     | 'invoice-records'
     | 'knowledge-evidence'
     | 'internal-tasks'
@@ -51,6 +52,7 @@ export interface ApplicationSection {
 export const sectionsOwningFocusTarget: ReadonlySet<ApplicationSection['id']> =
   new Set([
     'payments',
+    'payment-proofs',
     'invoice-records',
     'knowledge-evidence',
     'internal-tasks',

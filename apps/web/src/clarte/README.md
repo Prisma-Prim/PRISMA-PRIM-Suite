@@ -33,6 +33,8 @@
 
 Today is not an App section: pass your screen as `clarteOverview` to `ClarteFrame` in App, then set the `overview` tab to `renderClarteScreen`.
 
+A view that exists only in Clarté, such as Finance › Payment proofs (#1544), is a section App pushes only while the preference is `clarte`, with `content: null`, its own id in `ApplicationSection['id']` and a tab in its entry. The current interface never receives it.
+
 The frame keeps the screen title, the row of views, mounting (hidden sections stay mounted, `mountWhenSelected` and `retainAfterSelection` as today), focus on the destination, Escape, the jump list and the protected-write hold. The section's `id` is the URL fragment and the focus destination, as in the current shell.
 
 ## Render App in Clarté in a test

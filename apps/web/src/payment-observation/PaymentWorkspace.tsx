@@ -27,7 +27,7 @@ import { PaymentSources } from './PaymentSources';
 import { PaymentDownload } from './PaymentDownload';
 import { PaymentRevisionView, PaymentSummaryView, paymentCopy } from './ui';
 
-type Props = ActorRequestProps & {
+export type PaymentWorkspaceProps = ActorRequestProps & {
   onProtectedWorkChange: (active: boolean) => void;
   onOpenClient?: (id: string) => void;
   onOpenDocument?: (
@@ -36,7 +36,14 @@ type Props = ActorRequestProps & {
   ) => void;
   projectionAuthority: string;
 };
-export function PaymentWorkspace(props: Props) {
+type Props = PaymentWorkspaceProps;
+/**
+ * The Payment read owner a view may mount: its authority and the lifetime
+ * that keys it. Both interfaces use the same gate.
+ */
+export function usePaymentWorkspaceGate(
+  props: Props,
+): { authority: PaymentAuthority; lifetime: number } | undefined {
   const authority = paymentAuthority(props.actor);
   const lifetime = useRequestLifetime(
     props.identity,
@@ -50,8 +57,19 @@ export function PaymentWorkspace(props: Props) {
       : 'unavailable',
   );
   if (!authority || !props.identity.loaded || !props.identity.signedIn)
-    return null;
-  return <PaymentReadOwner key={lifetime} {...props} authority={authority} />;
+    return undefined;
+  return { authority, lifetime };
+}
+export function PaymentWorkspace(props: Props) {
+  const gate = usePaymentWorkspaceGate(props);
+  if (!gate) return null;
+  return (
+    <PaymentReadOwner
+      key={gate.lifetime}
+      {...props}
+      authority={gate.authority}
+    />
+  );
 }
 type Editor = {
   action: PaymentAction;
@@ -61,10 +79,15 @@ type Editor = {
   predecessor: string | null;
   target: string | null;
 };
-function PaymentReadOwner(props: Props & { authority: PaymentAuthority }) {
-  const { locale } = useInterfaceLocale(),
-    copy = paymentCopy[locale],
-    visible = useContext(SectionVisibility),
+/**
+ * One Payment read owner: inventory, selected observation, source chooser,
+ * command editor, protection and conflict recovery. Views lay it out; every
+ * read, command, retirement and hold stays here.
+ */
+export function usePaymentReadOwner(
+  props: Props & { authority: PaymentAuthority },
+) {
+  const visible = useContext(SectionVisibility),
     a = props.authority;
   const readGeneration = useRequestLifetime(props.identity, a.readKey);
   const owner = useActorRequests({
@@ -345,6 +368,143 @@ function PaymentReadOwner(props: Props & { authority: PaymentAuthority }) {
     current?.clientProjection === clientProjectionGeneration
       ? detail?.client
       : undefined;
+  function back() {
+    if (protectedWork) return;
+    setSelected(undefined);
+    setCurrent(undefined);
+    setHistory(undefined);
+    setEditor(undefined);
+    setChooser(undefined);
+    void load();
+  }
+  function reload() {
+    void load(selected, undefined, Boolean(conflict && !activeEditor));
+  }
+  function newObservation() {
+    setEditor(undefined);
+    setChooser({ generation: sourceGeneration, predecessor: null });
+  }
+  function startReplacement(predecessor: string) {
+    setChooser({ generation: sourceGeneration, predecessor });
+  }
+  function denyDownload() {
+    setCurrent((value) =>
+      value
+        ? {
+            ...value,
+            value: {
+              ...value.value,
+              liveSource: { kind: 'UNAVAILABLE' },
+            },
+          }
+        : value,
+    );
+  }
+  function chooserReady() {
+    const recovering = conflictOwner.current;
+    if (recovering && chooser?.recovery === recovering.generation) {
+      releaseConflict(recovering);
+      setEditor(undefined);
+      setProtection(false);
+    }
+  }
+  function reloadSources() {
+    if (
+      activeEditor?.action === 'CREATE' &&
+      conflictOwner.current &&
+      a.createKey
+    )
+      setChooser({
+        generation: sourceGeneration,
+        predecessor: activeEditor.predecessor,
+        recovery: conflictOwner.current.generation,
+      });
+  }
+  function closeEditor() {
+    setEditor(undefined);
+    setProtection(false);
+  }
+  /** Leaves an unprotected source choice or creation without a command. */
+  function cancelCreation() {
+    if (protectedWork) return;
+    setEditor(undefined);
+    setChooser(undefined);
+    setProtection(false);
+  }
+  return {
+    authority: a,
+    heading,
+    status,
+    selected,
+    detail,
+    liveInventory,
+    history,
+    source,
+    client,
+    chooser:
+      chooser && chooser.generation === sourceGeneration && a.createKey
+        ? chooser
+        : undefined,
+    activeEditor,
+    conflict,
+    protectedWork,
+    historyPending: pending.current,
+    sourceGeneration,
+    downloadGeneration,
+    load,
+    open,
+    start,
+    saved,
+    moreHistory,
+    markConflict,
+    protect,
+    back,
+    reload,
+    newObservation,
+    startReplacement,
+    denyDownload,
+    chooserReady,
+    reloadSources,
+    closeEditor,
+    cancelCreation,
+  };
+}
+function PaymentReadOwner(props: Props & { authority: PaymentAuthority }) {
+  const { locale } = useInterfaceLocale(),
+    copy = paymentCopy[locale];
+  const {
+    authority: a,
+    heading,
+    status,
+    selected,
+    detail,
+    liveInventory,
+    history,
+    source,
+    client,
+    chooser,
+    activeEditor,
+    conflict,
+    protectedWork,
+    historyPending,
+    sourceGeneration,
+    downloadGeneration,
+    load,
+    open,
+    start,
+    saved,
+    moreHistory,
+    markConflict,
+    protect,
+    back,
+    reload,
+    newObservation,
+    startReplacement,
+    denyDownload,
+    chooserReady,
+    reloadSources,
+    closeEditor,
+  } = usePaymentReadOwner(props);
   return (
     <section className="payment-observation" aria-label={copy.title}>
       <h2 ref={heading} tabIndex={-1}>
@@ -354,19 +514,7 @@ function PaymentReadOwner(props: Props & { authority: PaymentAuthority }) {
       <p>{copy.allocationNotice}</p>
       <div className="payment-observation-actions">
         {selected && (
-          <button
-            type="button"
-            disabled={protectedWork}
-            onClick={() => {
-              if (protectedWork) return;
-              setSelected(undefined);
-              setCurrent(undefined);
-              setHistory(undefined);
-              setEditor(undefined);
-              setChooser(undefined);
-              void load();
-            }}
-          >
+          <button type="button" disabled={protectedWork} onClick={back}>
             {copy.back}
           </button>
         )}
@@ -376,9 +524,7 @@ function PaymentReadOwner(props: Props & { authority: PaymentAuthority }) {
             (protectedWork && !(!activeEditor && conflict)) ||
             (status === 'loading' && !conflict)
           }
-          onClick={() =>
-            void load(selected, undefined, Boolean(conflict && !activeEditor))
-          }
+          onClick={reload}
         >
           {copy.reload}
         </button>
@@ -386,10 +532,7 @@ function PaymentReadOwner(props: Props & { authority: PaymentAuthority }) {
           <button
             type="button"
             disabled={protectedWork}
-            onClick={() => {
-              setEditor(undefined);
-              setChooser({ generation: sourceGeneration, predecessor: null });
-            }}
+            onClick={newObservation}
           >
             {copy.newObservation}
           </button>
@@ -488,19 +631,7 @@ function PaymentReadOwner(props: Props & { authority: PaymentAuthority }) {
                     recordId={detail.payment.id}
                     authority={a.downloadKey}
                     source={source}
-                    onDenied={() =>
-                      setCurrent((value) =>
-                        value
-                          ? {
-                              ...value,
-                              value: {
-                                ...value.value,
-                                liveSource: { kind: 'UNAVAILABLE' },
-                              },
-                            }
-                          : value,
-                      )
-                    }
+                    onDenied={denyDownload}
                   />
                 )}
               </div>
@@ -562,12 +693,7 @@ function PaymentReadOwner(props: Props & { authority: PaymentAuthority }) {
                 <button
                   type="button"
                   disabled={protectedWork}
-                  onClick={() =>
-                    setChooser({
-                      generation: sourceGeneration,
-                      predecessor: detail.payment.id,
-                    })
-                  }
+                  onClick={() => startReplacement(detail.payment.id)}
                 >
                   {copy.replace}
                 </button>
@@ -586,7 +712,7 @@ function PaymentReadOwner(props: Props & { authority: PaymentAuthority }) {
             {history?.nextCursor && (
               <button
                 type="button"
-                disabled={protectedWork || pending.current}
+                disabled={protectedWork || historyPending}
                 onClick={() => void moreHistory()}
               >
                 {copy.loadMore}
@@ -595,7 +721,7 @@ function PaymentReadOwner(props: Props & { authority: PaymentAuthority }) {
           </section>
         </>
       )}
-      {chooser && chooser.generation === sourceGeneration && a.createKey && (
+      {chooser && a.createKey && (
         <PaymentSources
           key={sourceGeneration}
           {...props}
@@ -603,14 +729,7 @@ function PaymentReadOwner(props: Props & { authority: PaymentAuthority }) {
           capture={a.readCapture}
           authority={a.createKey}
           disabled={protectedWork && chooser.recovery === undefined}
-          onReady={() => {
-            const recovering = conflictOwner.current;
-            if (recovering && chooser.recovery === recovering.generation) {
-              releaseConflict(recovering);
-              setEditor(undefined);
-              setProtection(false);
-            }
-          }}
+          onReady={chooserReady}
           onSelect={(source) => start('CREATE', source, chooser.predecessor)}
         />
       )}
@@ -632,22 +751,8 @@ function PaymentReadOwner(props: Props & { authority: PaymentAuthority }) {
           predecessor={activeEditor.predecessor}
           onProtected={protect}
           onConflict={markConflict}
-          onReloadSources={() => {
-            if (
-              activeEditor.action === 'CREATE' &&
-              conflictOwner.current &&
-              a.createKey
-            )
-              setChooser({
-                generation: sourceGeneration,
-                predecessor: activeEditor.predecessor,
-                recovery: conflictOwner.current.generation,
-              });
-          }}
-          onClose={() => {
-            setEditor(undefined);
-            setProtection(false);
-          }}
+          onReloadSources={reloadSources}
+          onClose={closeEditor}
           onReload={(id) => load(id, undefined, true)}
           onSaved={saved}
         />
