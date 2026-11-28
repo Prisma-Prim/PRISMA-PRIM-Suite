@@ -7,6 +7,9 @@ import {
   within,
 } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { appInterfaces, renderInInterface } from './test/app-interface';
+import { showProjectList } from './test/project-interface';
+import type { InterfacePreference } from './clarte/interface-preference';
 import { App } from './App';
 import {
   isLifecycleRead,
@@ -17,16 +20,6 @@ import type { ActorContext } from './access-types';
 import { taskCopy } from './project/task.copy';
 import { operationalHomeCopy as homeCopy } from './operational-home/operational-home.copy';
 import { companyGrants } from './access/company-grants.test-fixture';
-import type { InterfacePreference } from './clarte/interface-preference';
-import { appInterfaces, renderInInterface } from './test/app-interface';
-import { navigateIn } from './test/task-views-interface';
-
-/** The interface of the running case; `describe.each` below sets it. */
-let appInterface: InterfacePreference = 'current';
-const render = (
-  ui: Parameters<typeof renderInInterface>[1],
-  options?: Parameters<typeof renderInInterface>[2],
-) => renderInInterface(appInterface, ui, options);
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -327,10 +320,70 @@ function installServer({
   };
 }
 
+/** The interface the running parameterized test renders. */
+let shown: InterfacePreference = 'current';
 function navigateTo(label: string) {
-  navigateIn(appInterface, label);
+  if (shown === 'clarte') {
+    // Clarté's jump list reaches any section; the overview is Today.
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    const field = screen.getByRole('combobox', { name: 'Screen name' });
+    fireEvent.change(field, {
+      target: { value: label === 'Overview' ? 'Today' : label },
+    });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    return;
+  }
+  fireEvent.click(
+    within(
+      screen.getByRole('navigation', { name: 'Primary navigation' }),
+    ).getByRole('link', { name: label }),
+  );
 }
 const projectsRegion = () => screen.getByRole('region', { name: 'Projects' });
+/** The listed Projects; Clarté keeps its table mounted, hidden, beside an opened Project. */
+const projectList = () =>
+  within(projectsRegion()).getByRole(shown === 'current' ? 'list' : 'table', {
+    name: 'Projects',
+    hidden: shown === 'clarte',
+  });
+function expectListed(list: HTMLElement, name: string) {
+  const button = within(list).getByRole('button', {
+    name,
+    hidden: shown === 'clarte',
+  });
+  if (shown === 'current') expect(button).toBeVisible();
+  else expect(button).toBeInTheDocument();
+}
+/** Chooses the All or open-only view: a select, or two buttons in Clarté. */
+function chooseView(view: 'all' | 'mine_open') {
+  if (shown === 'current') {
+    changeValue(
+      within(projectsRegion()).getByRole('combobox', { name: 'Project view' }),
+      view,
+    );
+    return;
+  }
+  showProjectList(shown, projectsRegion());
+  fireEvent.click(
+    within(projectsRegion()).getByRole('button', {
+      name: view === 'all' ? 'All Projects' : 'My open Projects',
+    }),
+  );
+}
+/** Whether the named view is the chosen one. */
+function expectView(label: string) {
+  if (shown === 'current')
+    expect(
+      within(projectsRegion()).getByRole('combobox', { name: 'Project view' }),
+    ).toHaveTextContent(label);
+  else
+    expect(
+      within(projectsRegion()).getByRole('button', {
+        name: label,
+        hidden: true,
+      }),
+    ).toHaveAttribute('aria-pressed', 'true');
+}
 const myTasksRegion = () =>
   screen.getByRole('region', { name: taskCopy.myTasks.title });
 const projectDetail = () =>
@@ -386,8 +439,13 @@ function openedTask(task: { dueDate: string }) {
   });
 }
 /** Waits for a Project row of the currently mounted Projects owner. */
-const projectRow = (row: string) =>
-  waitFor(() => within(projectsRegion()).getByRole('button', { name: row }));
+const projectRow = (row: string) => {
+  const region = screen.queryByRole('region', { name: 'Projects' });
+  if (region) showProjectList(shown, region);
+  return waitFor(() =>
+    within(projectsRegion()).getByRole('button', { name: row }),
+  );
+};
 async function chooseProjectRow(row: string) {
   fireEvent.click(await projectRow(row));
 }
@@ -412,462 +470,462 @@ const scrollable: {
 } = Element.prototype;
 const nativeScrollIntoView = scrollable.scrollIntoView;
 
-describe.each(appInterfaces)(
-  'My Task navigation in the %s interface',
-  (chosen) => {
+describe.each(appInterfaces)('in the %s interface', (appInterface) => {
+  describe('Opening an assigned Task from My Tasks through App', () => {
     beforeEach(() => {
-      appInterface = chosen;
+      shown = appInterface;
+      localStorage.clear();
+      sessionStorage.clear();
+      scrollable.scrollIntoView = vi.fn();
     });
-    describe('Opening an assigned Task from My Tasks through App', () => {
-      beforeEach(() => {
-        localStorage.clear();
-        sessionStorage.clear();
-        scrollable.scrollIntoView = vi.fn();
-      });
-      afterEach(() => {
-        vi.restoreAllMocks();
-        vi.unstubAllGlobals();
-        scrollable.scrollIntoView = nativeScrollIntoView;
-        window.history.replaceState(null, '', '/');
-      });
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+      scrollable.scrollIntoView = nativeScrollIntoView;
+      window.history.replaceState(null, '', '/');
+    });
 
-      it.each([{ strict: false }, { strict: true }])(
-        'opens the first exact Task and its history cold with root StrictMode=$strict',
-        async ({ strict }) => {
-          window.history.replaceState(null, '', '/#my-tasks');
-          const server = installServer();
-          render(<App identity={deterministicBrowserIdentity()} />, {
-            reactStrictMode: strict,
-          });
-          fireEvent.click(await openAction(betaTask));
-          await openedProject(beta);
-          const tasks = await openedTask(betaTask);
-          expect(taskTitleField()).toHaveValue(taskTitle);
-          expect(
-            within(tasks).getByRole('region', { name: taskCopy.history }),
-          ).toBeVisible();
-          expect(server.count(betaProjectRead)).toBe(1);
-          expect(server.count(taskRead(betaTask))).toBe(1);
-          expect(server.count(`${taskRead(betaTask)}/history`)).toBe(1);
-          expect(server.count(taskRead(atelierTask))).toBe(0);
-          expect(server.commands()).toEqual([]);
-        },
-      );
-
-      it('preserves Mine through the real App exact outside-Project Task intent', async () => {
-        window.history.replaceState(null, '', '/#projects');
+    it.each([{ strict: false }, { strict: true }])(
+      'opens the first exact Task and its history cold with root StrictMode=$strict',
+      async ({ strict }) => {
+        window.history.replaceState(null, '', '/#my-tasks');
         const server = installServer();
-        render(<App identity={deterministicBrowserIdentity()} />);
-        await projectRow(atelierRow);
-        const view = within(projectsRegion()).getByRole('combobox', {
-          name: 'Project view',
-        });
-        const closed = within(projectsRegion()).getByRole('checkbox', {
-          name: 'Include closed Projects',
-        });
-        fireEvent.click(closed);
-        expect(closed).toBeChecked();
-        changeValue(view, 'mine_open');
-        await waitFor(() => {
-          const list = within(projectsRegion()).getByRole('list', {
-            name: 'Projects',
-          });
-          expect(within(list).getAllByRole('button')).toHaveLength(1);
-          expect(
-            within(list).getByRole('button', { name: atelierRow }),
-          ).toBeVisible();
-          expect(
-            within(list).queryByRole('button', {
-              name: `${sharedTitle} Client: ${beta.displayName}`,
-            }),
-          ).toBeNull();
-        });
-        const allReads = server.count('GET /api/projects');
-        navigateTo(taskCopy.myTasks.title);
+        renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+          {
+            reactStrictMode: strict,
+          },
+        );
         fireEvent.click(await openAction(betaTask));
         await openedProject(beta);
-        await openedTask(betaTask);
-        expect(view).toHaveTextContent('My open Projects');
-        expect(server.count('GET /api/projects')).toBe(allReads);
-        const list = within(projectsRegion()).getByRole('list', {
-          name: 'Projects',
-        });
-        expect(within(list).getAllByRole('button')).toHaveLength(1);
-        expect(
-          within(list).getByRole('button', { name: atelierRow }),
-        ).toBeVisible();
-        expect(server.count(betaProjectRead)).toBe(1);
-        expect(server.count(taskRead(betaTask))).toBe(1);
-        expect(server.commands()).toEqual([]);
-        changeValue(view, 'all');
-        await waitFor(() => expect(view).toHaveTextContent('All Projects'));
-        expect(
-          within(projectsRegion()).getByRole('checkbox', {
-            name: 'Include closed Projects',
-          }),
-        ).toBeChecked();
-      });
-
-      it.each(['all', 'mine_open'] as const)(
-        'reads each repeated exact activation once from %s and preserves its directory semantics',
-        async (selectedView) => {
-          window.history.replaceState(null, '', '/#projects');
-          const server = installServer();
-          render(<App identity={deterministicBrowserIdentity()} />);
-          await projectRow(atelierRow);
-          const view = within(projectsRegion()).getByRole('combobox', {
-            name: 'Project view',
-          });
-          fireEvent.click(
-            within(projectsRegion()).getByRole('checkbox', {
-              name: 'Include closed Projects',
-            }),
-          );
-          if (selectedView === 'mine_open') {
-            changeValue(view, selectedView);
-            await waitFor(() =>
-              expect(
-                within(projectsRegion()).queryByRole('button', {
-                  name: `${sharedTitle} Client: ${beta.displayName}`,
-                }),
-              ).toBeNull(),
-            );
-          }
-          const allReads = server.count('GET /api/projects');
-          const mineReads = server.count('GET /api/projects?view=mine_open');
-          for (const activation of [1, 2]) {
-            navigateTo(taskCopy.myTasks.title);
-            fireEvent.click(await openAction(betaTask));
-            await openedProject(beta);
-            await openedTask(betaTask);
-            await waitFor(() =>
-              expect(server.count(taskRead(betaTask))).toBe(activation),
-            );
-            expect(server.count(betaProjectRead)).toBe(activation);
-            expect(view).toHaveTextContent(
-              selectedView === 'all' ? 'All Projects' : 'My open Projects',
-            );
-          }
-          expect(server.count('GET /api/projects')).toBe(allReads);
-          expect(server.count('GET /api/projects?view=mine_open')).toBe(
-            mineReads,
-          );
-          if (selectedView === 'mine_open') changeValue(view, 'all');
-          expect(
-            await within(projectsRegion()).findByRole('checkbox', {
-              name: 'Include closed Projects',
-            }),
-          ).toHaveProperty('checked', selectedView === 'mine_open');
-          expect(server.commands()).toEqual([]);
-        },
-      );
-
-      it('preserves Mine and focuses the exact overdue Task outside its directory through App', async () => {
-        window.history.replaceState(null, '', '/#projects');
-        const server = installServer({ showOverdue: true });
-        vi.stubGlobal(
-          'matchMedia',
-          vi.fn(
-            (query: string) =>
-              ({
-                matches: true,
-                media: query,
-                onchange: null,
-                addListener: vi.fn(),
-                removeListener: vi.fn(),
-                addEventListener: vi.fn(),
-                removeEventListener: vi.fn(),
-                dispatchEvent: vi.fn(() => false),
-              }) satisfies MediaQueryList,
-          ),
-        );
-        render(<App identity={deterministicBrowserIdentity()} />);
-        await projectRow(atelierRow);
-        const view = within(projectsRegion()).getByRole('combobox', {
-          name: 'Project view',
-        });
-        changeValue(view, 'mine_open');
-        await waitFor(() => {
-          const list = within(projectsRegion()).getByRole('list', {
-            name: 'Projects',
-          });
-          expect(within(list).getAllByRole('button')).toHaveLength(1);
-          expect(
-            within(list).getByRole('button', { name: atelierRow }),
-          ).toBeVisible();
-          expect(
-            within(list).queryByRole('button', {
-              name: `${sharedTitle} Client: ${beta.displayName}`,
-            }),
-          ).toBeNull();
-        });
-        const allReads = server.count('GET /api/projects');
-        const mineReads = server.count('GET /api/projects?view=mine_open');
-        navigateTo('Overview');
-        fireEvent.click(
-          await screen.findByRole('button', {
-            name: homeCopy.cardName({
-              ...homeCopy.summaries.overdue_tasks,
-              count: '2',
-            }),
-          }),
-        );
-        const overdue = await screen.findByRole('region', {
-          name: homeCopy.overdue.title({ company: companyA.displayName }),
-        });
-        fireEvent.click(
-          await within(overdue).findByRole('button', {
-            name: homeCopy.overdue.openTask({
-              task: taskTitle,
-              project: sharedTitle,
-              client: beta.displayName,
-            }),
-          }),
-        );
-        await openedProject(beta);
         const tasks = await openedTask(betaTask);
-        await frames();
-        expect(projectsRegion()).toBeVisible();
-        expect(document.activeElement).toBe(
-          within(tasks).getByRole('heading', { name: taskTitle }),
-        );
-        expect(view).toHaveTextContent('My open Projects');
-        const list = within(projectsRegion()).getByRole('list', {
-          name: 'Projects',
-        });
-        expect(within(list).getAllByRole('button')).toHaveLength(1);
-        expect(
-          within(list).getByRole('button', { name: atelierRow }),
-        ).toBeVisible();
-        expect(
-          within(list).queryByRole('button', {
-            name: `${sharedTitle} Client: ${beta.displayName}`,
-          }),
-        ).toBeNull();
-        expect(server.count('GET /api/projects')).toBe(allReads);
-        expect(server.count('GET /api/projects?view=mine_open')).toBe(
-          mineReads,
-        );
-        expect(server.count('GET /api/overdue-tasks?offset=0')).toBe(1);
-        expect(server.count(betaProjectRead)).toBe(1);
-        expect(server.count(taskRead(betaTask))).toBe(1);
-        expect(server.count(taskRead(atelierTask))).toBe(0);
-        expect(server.commands()).toEqual([]);
-      });
-
-      it('opens the exact Project and Task of a same-titled row by their own reads and keeps another Project’s Task draft', async () => {
-        window.history.replaceState(null, '', '/#projects');
-        const server = installServer();
-        render(<App identity={deterministicBrowserIdentity()} />);
-        await chooseProjectRow(atelierRow);
-        await openedProject(atelier);
-        fireEvent.click(
-          await waitFor(() =>
-            within(visibleTasks()).getByRole('button', { name: taskTitle }),
-          ),
-        );
-        await openedTask(atelierTask);
-        changeValue(taskTitleField(), taskDraft);
-
-        navigateTo(taskCopy.myTasks.title);
-        const open = await openAction(betaTask);
-        expect(open).toHaveTextContent(taskCopy.myTasks.open);
-        fireEvent.click(open);
-
-        // The Projects section is shown and focused; later replies keep focus.
-        await frames();
-        expect(document.activeElement).toBe(projectsRegion());
-        expect(projectsRegion()).toBeVisible();
-        await openedProject(beta);
-        const tasks = await openedTask(betaTask);
-        await frames();
-        expect(document.activeElement).toBe(projectsRegion());
         expect(taskTitleField()).toHaveValue(taskTitle);
         expect(
           within(tasks).getByRole('region', { name: taskCopy.history }),
         ).toBeVisible();
-        expect(screen.getByRole('tab', { name: 'Tasks' })).toHaveAttribute(
-          'aria-selected',
-          'true',
-        );
-        // One fresh Project read and one completed Task open cycle; My Tasks is
-        // not re-read and nothing is sent.
         expect(server.count(betaProjectRead)).toBe(1);
-        expect(server.count(`${betaProjectRead}/tasks`)).toBe(1);
         expect(server.count(taskRead(betaTask))).toBe(1);
         expect(server.count(`${taskRead(betaTask)}/history`)).toBe(1);
-        expect(server.count(`${betaProjectRead}/eligible-task-assignees`)).toBe(
-          1,
-        );
-        expect(server.count('GET /api/assigned-tasks')).toBe(1);
+        expect(server.count(taskRead(atelierTask))).toBe(0);
         expect(server.commands()).toEqual([]);
-        // Nothing identifies the target outside its owners' reads.
-        expect(
-          within(projectsRegion()).queryByText(titleReadWithMyTasks, {
-            exact: false,
-          }),
-        ).not.toBeInTheDocument();
-        for (const id of [betaProject.id, betaTask.id]) {
-          expect(window.location.href).not.toContain(id);
-          expect(JSON.stringify(window.history.state ?? null)).not.toContain(
-            id,
-          );
-          expect(document.body.textContent).not.toContain(id);
-        }
+      },
+    );
 
-        await chooseProjectRow(atelierRow);
-        await openedTask(atelierTask);
-        expect(taskTitleField()).toHaveValue(taskDraft);
-        expect(server.count(taskRead(atelierTask))).toBe(1);
+    it('preserves Mine through the real App exact outside-Project Task intent', async () => {
+      window.history.replaceState(null, '', '/#projects');
+      const server = installServer();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await projectRow(atelierRow);
+      const closed = within(projectsRegion()).getByRole('checkbox', {
+        name: 'Include closed Projects',
+        hidden: shown === 'clarte',
       });
+      fireEvent.click(closed);
+      expect(closed).toBeChecked();
+      chooseView('mine_open');
+      await waitFor(() => {
+        const list = projectList();
+        expect(
+          within(list).getAllByRole('button', { hidden: shown === 'clarte' }),
+        ).toHaveLength(1);
+        expectListed(list, atelierRow);
+        expect(
+          within(list).queryByRole('button', {
+            name: `${sharedTitle} Client: ${beta.displayName}`,
+            hidden: shown === 'clarte',
+          }),
+        ).toBeNull();
+      });
+      const allReads = server.count('GET /api/projects');
+      navigateTo(taskCopy.myTasks.title);
+      fireEvent.click(await openAction(betaTask));
+      await openedProject(beta);
+      await openedTask(betaTask);
+      expectView('My open Projects');
+      expect(server.count('GET /api/projects')).toBe(allReads);
+      const list = projectList();
+      expect(
+        within(list).getAllByRole('button', { hidden: shown === 'clarte' }),
+      ).toHaveLength(1);
+      expectListed(list, atelierRow);
+      expect(server.count(betaProjectRead)).toBe(1);
+      expect(server.count(taskRead(betaTask))).toBe(1);
+      expect(server.commands()).toEqual([]);
+      chooseView('all');
+      await waitFor(() => expectView('All Projects'));
+      expect(
+        within(projectsRegion()).getByRole('checkbox', {
+          name: 'Include closed Projects',
+          hidden: shown === 'clarte',
+        }),
+      ).toBeChecked();
+    });
 
-      it.each([
-        {
-          change: 'completed',
-          current: {
-            ...betaTask,
-            status: 'done',
-            completion: {
-              actor: attribution,
-              occurredAt: '2026-09-24T10:00:00.000Z',
-            },
-            version: 2,
-          },
-          shows: (tasks: HTMLElement) => {
-            expect(
-              within(tasks).getByText(/Completion declared by Coordinator/),
-            ).toBeVisible();
-            expect(
-              within(tasks).getByRole('button', {
-                name: taskCopy.moves.reopen,
-              }),
-            ).toBeVisible();
-          },
-        },
-        {
-          change: 'reassigned',
-          current: { ...betaTask, assignee: colleague, version: 2 },
-          shows: (tasks: HTMLElement) =>
-            expect(
-              within(tasks).getByText(colleague.displayLabel, {
-                selector: 'dd',
-              }),
-            ).toBeVisible(),
-        },
-      ])(
-        'opens a Task $change since My Tasks was read in its current state, leaving My Tasks unchanged until Refresh',
-        async ({ current, shows }) => {
-          window.history.replaceState(null, '', '/#my-tasks');
-          const server = installServer();
-          render(<App identity={deterministicBrowserIdentity()} />);
-          const open = await openAction(betaTask);
-          server.change(current, false);
-
-          fireEvent.click(open);
-          await openedProject(beta);
-          shows(await openedTask(betaTask));
-          navigateTo(taskCopy.myTasks.title);
-          expect(within(myTasksRegion()).getAllByRole('listitem')).toHaveLength(
-            2,
-          );
-          expect(server.count('GET /api/assigned-tasks')).toBe(1);
-
-          fireEvent.click(
-            within(myTasksRegion()).getByRole('button', {
-              name: taskCopy.myTasks.refresh,
-            }),
-          );
+    it.each(['all', 'mine_open'] as const)(
+      'reads each repeated exact activation once from %s and preserves its directory semantics',
+      async (selectedView) => {
+        window.history.replaceState(null, '', '/#projects');
+        const server = installServer();
+        renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+        );
+        await projectRow(atelierRow);
+        fireEvent.click(
+          within(projectsRegion()).getByRole('checkbox', {
+            name: 'Include closed Projects',
+            hidden: shown === 'clarte',
+          }),
+        );
+        if (selectedView === 'mine_open') {
+          chooseView(selectedView);
           await waitFor(() =>
             expect(
-              within(myTasksRegion()).getAllByRole('listitem'),
-            ).toHaveLength(1),
+              within(projectsRegion()).queryByRole('button', {
+                name: `${sharedTitle} Client: ${beta.displayName}`,
+              }),
+            ).toBeNull(),
           );
-          expect(server.count('GET /api/assigned-tasks')).toBe(2);
-          expect(server.commands()).toEqual([]);
-        },
-      );
-
-      // A Task read already under way stays in its own Project's hidden panel,
-      // exactly as after choosing that Project and Task by hand.
-      it.each([
-        {
-          held: 'its Project read',
-          route: atelierProjectRead,
-          earlierAborted: true,
-          atelierTaskReads: 0,
-        },
-        {
-          held: 'its Task read',
-          route: taskRead(atelierTask),
-          earlierAborted: false,
-          atelierTaskReads: 1,
-        },
-      ])(
-        'renders only the latest of two quick activations when the earlier one waits on $held',
-        async ({ route, earlierAborted, atelierTaskReads }) => {
-          window.history.replaceState(null, '', '/#my-tasks');
-          const server = installServer();
-          render(<App identity={deterministicBrowserIdentity()} />);
-          server.hold(route);
-          fireEvent.click(await openAction(atelierTask));
-          const earlier = await server.requested(route);
-
-          // Prisme shows the opened Project; the second activation returns to My Tasks.
+        }
+        const allReads = server.count('GET /api/projects');
+        const mineReads = server.count('GET /api/projects?view=mine_open');
+        for (const activation of [1, 2]) {
           navigateTo(taskCopy.myTasks.title);
           fireEvent.click(await openAction(betaTask));
           await openedProject(beta);
           await openedTask(betaTask);
-          expect(earlier.signal?.aborted).toBe(earlierAborted);
-          await server.release(route);
-
-          await openedProject(beta);
-          const tasks = await openedTask(betaTask);
-          expect(
-            tasks.querySelector(
-              `.task-facts time[datetime="${atelierTask.dueDate}"]`,
-            ),
-          ).not.toBeInTheDocument();
-          expect(screen.getAllByRole('article')).toHaveLength(1);
-          expect(server.count(taskRead(atelierTask))).toBe(atelierTaskReads);
-          expect(server.count(taskRead(betaTask))).toBe(1);
-        },
-      );
-
-      it.each([
-        { held: 'its Project read', route: betaProjectRead, taskReads: 0 },
-        { held: 'its Task read', route: taskRead(betaTask), taskReads: 1 },
-      ])(
-        'retires an activation waiting on $held when the Company changes, and never replays it on return',
-        async ({ route, taskReads }) => {
-          window.history.replaceState(null, '', '/#my-tasks');
-          const server = installServer();
-          render(<App identity={deterministicBrowserIdentity()} />);
-          server.hold(route);
-          fireEvent.click(await openAction(betaTask));
-          await server.requested(route);
-
-          await selectCompany(companyB.id);
-          await projectRow(
-            `${otherCompanyProject.title} Client: ${beta.displayName}`,
+          await waitFor(() =>
+            expect(server.count(taskRead(betaTask))).toBe(activation),
           );
-          await selectCompany(companyA.id);
-          await projectRow(atelierRow);
-          server.serve(route);
-          await server.release(route);
-          await act(
-            async () => await new Promise((resolve) => setTimeout(resolve)),
+          expect(server.count(betaProjectRead)).toBe(activation);
+          expectView(
+            selectedView === 'all' ? 'All Projects' : 'My open Projects',
           );
+        }
+        expect(server.count('GET /api/projects')).toBe(allReads);
+        expect(server.count('GET /api/projects?view=mine_open')).toBe(
+          mineReads,
+        );
+        if (selectedView === 'mine_open') chooseView('all');
+        expect(
+          await within(projectsRegion()).findByRole('checkbox', {
+            name: 'Include closed Projects',
+            hidden: shown === 'clarte',
+          }),
+        ).toHaveProperty('checked', selectedView === 'mine_open');
+        expect(server.commands()).toEqual([]);
+      },
+    );
 
-          expect(projectDetail()).not.toBeInTheDocument();
-          expect(
-            within(projectsRegion()).queryByRole('heading', {
-              name: taskTitle,
-            }),
-          ).not.toBeInTheDocument();
-          expect(server.count(betaProjectRead)).toBe(1);
-          expect(server.count(taskRead(betaTask))).toBe(taskReads);
-        },
+    it('preserves Mine and focuses the exact overdue Task outside its directory through App', async () => {
+      window.history.replaceState(null, '', '/#projects');
+      const server = installServer({ showOverdue: true });
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn(
+          (query: string) =>
+            ({
+              matches: true,
+              media: query,
+              onchange: null,
+              addListener: vi.fn(),
+              removeListener: vi.fn(),
+              addEventListener: vi.fn(),
+              removeEventListener: vi.fn(),
+              dispatchEvent: vi.fn(() => false),
+            }) satisfies MediaQueryList,
+        ),
       );
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await projectRow(atelierRow);
+      chooseView('mine_open');
+      await waitFor(() => {
+        const list = projectList();
+        expect(
+          within(list).getAllByRole('button', { hidden: shown === 'clarte' }),
+        ).toHaveLength(1);
+        expectListed(list, atelierRow);
+        expect(
+          within(list).queryByRole('button', {
+            name: `${sharedTitle} Client: ${beta.displayName}`,
+            hidden: shown === 'clarte',
+          }),
+        ).toBeNull();
+      });
+      const allReads = server.count('GET /api/projects');
+      const mineReads = server.count('GET /api/projects?view=mine_open');
+      navigateTo('Overview');
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: homeCopy.cardName({
+            ...homeCopy.summaries.overdue_tasks,
+            count: '2',
+          }),
+        }),
+      );
+      const overdue = await screen.findByRole('region', {
+        name: homeCopy.overdue.title({ company: companyA.displayName }),
+      });
+      fireEvent.click(
+        await within(overdue).findByRole('button', {
+          name: homeCopy.overdue.openTask({
+            task: taskTitle,
+            project: sharedTitle,
+            client: beta.displayName,
+          }),
+        }),
+      );
+      await openedProject(beta);
+      const tasks = await openedTask(betaTask);
+      await frames();
+      expect(projectsRegion()).toBeVisible();
+      expect(document.activeElement).toBe(
+        within(tasks).getByRole('heading', { name: taskTitle }),
+      );
+      expectView('My open Projects');
+      const list = projectList();
+      expect(
+        within(list).getAllByRole('button', { hidden: shown === 'clarte' }),
+      ).toHaveLength(1);
+      expectListed(list, atelierRow);
+      expect(
+        within(list).queryByRole('button', {
+          name: `${sharedTitle} Client: ${beta.displayName}`,
+          hidden: shown === 'clarte',
+        }),
+      ).toBeNull();
+      expect(server.count('GET /api/projects')).toBe(allReads);
+      expect(server.count('GET /api/projects?view=mine_open')).toBe(mineReads);
+      expect(server.count('GET /api/overdue-tasks?offset=0')).toBe(1);
+      expect(server.count(betaProjectRead)).toBe(1);
+      expect(server.count(taskRead(betaTask))).toBe(1);
+      expect(server.count(taskRead(atelierTask))).toBe(0);
+      expect(server.commands()).toEqual([]);
     });
-  },
-);
+
+    it('opens the exact Project and Task of a same-titled row by their own reads and keeps another Project’s Task draft', async () => {
+      window.history.replaceState(null, '', '/#projects');
+      const server = installServer();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await chooseProjectRow(atelierRow);
+      await openedProject(atelier);
+      fireEvent.click(
+        await waitFor(() =>
+          within(visibleTasks()).getByRole('button', { name: taskTitle }),
+        ),
+      );
+      await openedTask(atelierTask);
+      changeValue(taskTitleField(), taskDraft);
+
+      navigateTo(taskCopy.myTasks.title);
+      const open = await openAction(betaTask);
+      expect(open).toHaveTextContent(taskCopy.myTasks.open);
+      fireEvent.click(open);
+
+      // The Projects section is shown and focused; later replies keep focus.
+      await frames();
+      expect(document.activeElement).toBe(projectsRegion());
+      expect(projectsRegion()).toBeVisible();
+      await openedProject(beta);
+      const tasks = await openedTask(betaTask);
+      await frames();
+      expect(document.activeElement).toBe(projectsRegion());
+      expect(taskTitleField()).toHaveValue(taskTitle);
+      expect(
+        within(tasks).getByRole('region', { name: taskCopy.history }),
+      ).toBeVisible();
+      expect(screen.getByRole('tab', { name: 'Tasks' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      // One fresh Project read and one completed Task open cycle; My Tasks is
+      // not re-read and nothing is sent.
+      expect(server.count(betaProjectRead)).toBe(1);
+      expect(server.count(`${betaProjectRead}/tasks`)).toBe(1);
+      expect(server.count(taskRead(betaTask))).toBe(1);
+      expect(server.count(`${taskRead(betaTask)}/history`)).toBe(1);
+      expect(server.count(`${betaProjectRead}/eligible-task-assignees`)).toBe(
+        1,
+      );
+      expect(server.count('GET /api/assigned-tasks')).toBe(1);
+      expect(server.commands()).toEqual([]);
+      // Nothing identifies the target outside its owners' reads.
+      expect(
+        within(projectsRegion()).queryByText(titleReadWithMyTasks, {
+          exact: false,
+        }),
+      ).not.toBeInTheDocument();
+      for (const id of [betaProject.id, betaTask.id]) {
+        expect(window.location.href).not.toContain(id);
+        expect(JSON.stringify(window.history.state ?? null)).not.toContain(id);
+        expect(document.body.textContent).not.toContain(id);
+      }
+
+      await chooseProjectRow(atelierRow);
+      await openedTask(atelierTask);
+      expect(taskTitleField()).toHaveValue(taskDraft);
+      expect(server.count(taskRead(atelierTask))).toBe(1);
+    });
+
+    it.each([
+      {
+        change: 'completed',
+        current: {
+          ...betaTask,
+          status: 'done',
+          completion: {
+            actor: attribution,
+            occurredAt: '2026-09-24T10:00:00.000Z',
+          },
+          version: 2,
+        },
+        shows: (tasks: HTMLElement) => {
+          expect(
+            within(tasks).getByText(/Completion declared by Coordinator/),
+          ).toBeVisible();
+          expect(
+            within(tasks).getByRole('button', { name: taskCopy.moves.reopen }),
+          ).toBeVisible();
+        },
+      },
+      {
+        change: 'reassigned',
+        current: { ...betaTask, assignee: colleague, version: 2 },
+        shows: (tasks: HTMLElement) =>
+          expect(
+            within(tasks).getByText(colleague.displayLabel, { selector: 'dd' }),
+          ).toBeVisible(),
+      },
+    ])(
+      'opens a Task $change since My Tasks was read in its current state, leaving My Tasks unchanged until Refresh',
+      async ({ current, shows }) => {
+        window.history.replaceState(null, '', '/#my-tasks');
+        const server = installServer();
+        renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+        );
+        const open = await openAction(betaTask);
+        server.change(current, false);
+
+        fireEvent.click(open);
+        await openedProject(beta);
+        shows(await openedTask(betaTask));
+        navigateTo(taskCopy.myTasks.title);
+        expect(within(myTasksRegion()).getAllByRole('listitem')).toHaveLength(
+          2,
+        );
+        expect(server.count('GET /api/assigned-tasks')).toBe(1);
+
+        fireEvent.click(
+          within(myTasksRegion()).getByRole('button', {
+            name: taskCopy.myTasks.refresh,
+          }),
+        );
+        await waitFor(() =>
+          expect(within(myTasksRegion()).getAllByRole('listitem')).toHaveLength(
+            1,
+          ),
+        );
+        expect(server.count('GET /api/assigned-tasks')).toBe(2);
+        expect(server.commands()).toEqual([]);
+      },
+    );
+
+    // A Task read already under way stays in its own Project's hidden panel,
+    // exactly as after choosing that Project and Task by hand.
+    it.each([
+      {
+        held: 'its Project read',
+        route: atelierProjectRead,
+        earlierAborted: true,
+        atelierTaskReads: 0,
+      },
+      {
+        held: 'its Task read',
+        route: taskRead(atelierTask),
+        earlierAborted: false,
+        atelierTaskReads: 1,
+      },
+    ])(
+      'renders only the latest of two quick activations when the earlier one waits on $held',
+      async ({ route, earlierAborted, atelierTaskReads }) => {
+        window.history.replaceState(null, '', '/#my-tasks');
+        const server = installServer();
+        renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+        );
+        server.hold(route);
+        fireEvent.click(await openAction(atelierTask));
+        const earlier = await server.requested(route);
+
+        // Prisme shows the opened Project; the second activation returns to My Tasks.
+        navigateTo(taskCopy.myTasks.title);
+        fireEvent.click(await openAction(betaTask));
+        await openedProject(beta);
+        await openedTask(betaTask);
+        expect(earlier.signal?.aborted).toBe(earlierAborted);
+        await server.release(route);
+
+        await openedProject(beta);
+        const tasks = await openedTask(betaTask);
+        expect(
+          tasks.querySelector(
+            `.task-facts time[datetime="${atelierTask.dueDate}"]`,
+          ),
+        ).not.toBeInTheDocument();
+        expect(screen.getAllByRole('article')).toHaveLength(1);
+        expect(server.count(taskRead(atelierTask))).toBe(atelierTaskReads);
+        expect(server.count(taskRead(betaTask))).toBe(1);
+      },
+    );
+
+    it.each([
+      { held: 'its Project read', route: betaProjectRead, taskReads: 0 },
+      { held: 'its Task read', route: taskRead(betaTask), taskReads: 1 },
+    ])(
+      'retires an activation waiting on $held when the Company changes, and never replays it on return',
+      async ({ route, taskReads }) => {
+        window.history.replaceState(null, '', '/#my-tasks');
+        const server = installServer();
+        renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+        );
+        server.hold(route);
+        fireEvent.click(await openAction(betaTask));
+        await server.requested(route);
+
+        await selectCompany(companyB.id);
+        await projectRow(
+          `${otherCompanyProject.title} Client: ${beta.displayName}`,
+        );
+        await selectCompany(companyA.id);
+        await projectRow(atelierRow);
+        server.serve(route);
+        await server.release(route);
+        await act(
+          async () => await new Promise((resolve) => setTimeout(resolve)),
+        );
+
+        expect(projectDetail()).not.toBeInTheDocument();
+        expect(
+          within(projectsRegion()).queryByRole('heading', { name: taskTitle }),
+        ).not.toBeInTheDocument();
+        expect(server.count(betaProjectRead)).toBe(1);
+        expect(server.count(taskRead(betaTask))).toBe(taskReads);
+      },
+    );
+  });
+});

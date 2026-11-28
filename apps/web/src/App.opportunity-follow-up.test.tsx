@@ -10,17 +10,24 @@ import {
 } from './access/company-grants.test-fixture';
 import { commercialIntakeCopy } from './commercial-intake/commercial-intake.copy';
 import type { FollowUpCurrent } from './opportunity-follow-up/follow-up-contract';
+import type { InterfacePreference } from './clarte/interface-preference';
 import {
   buildClientRequest,
   requestListItemFor,
 } from './test/commercial-intake-responses';
+import { dealDetailFor, dealSummaryFor } from './test/deal-responses';
+import {
+  actorNameShown,
+  navigateInInterface,
+  openRequestInInterface,
+  publishAccessInInterface,
+} from './test/deal-interface';
+import { appInterfaces, renderInInterface } from './test/app-interface';
 import {
   act,
   fireEvent,
-  render,
   screen,
   waitFor,
-  within,
 } from './test/render-with-interface-locale';
 import { changeValue } from './test/select-option';
 
@@ -301,6 +308,11 @@ function installTransport(initial: ActorContext) {
         nativeReads.push(path);
         return Response.json(detail);
       }
+      // Clarté's deal reads of the same Request and Opportunity.
+      if (path.startsWith('/api/deals?'))
+        return Response.json({ items: [dealSummaryFor(detail)] });
+      if (path === `/api/deals/${opportunityId}`)
+        return Response.json(dealDetailFor(detail));
       if (path === datePath && method === 'GET') {
         dateReads.push(path);
         if (denyDate) {
@@ -336,48 +348,41 @@ function installTransport(initial: ActorContext) {
   };
 }
 
+// Each test runs in both interfaces until the Clarté switch-over (#1548).
+let shownInterface: InterfacePreference = 'current';
 function navigate(label: string) {
-  fireEvent.click(
-    within(
-      screen.getByRole('navigation', { name: 'Primary navigation' }),
-    ).getByRole('link', { name: label }),
-  );
+  navigateInInterface(shownInterface, label);
 }
 async function openRequest() {
   const identity = deterministicBrowserIdentity();
-  const rendered = render(<App identity={identity} />);
-  const open = await screen.findByRole('button', {
-    name: /^Original Request DEMO/u,
+  const rendered = renderInInterface(
+    shownInterface,
+    <App identity={identity} />,
+  );
+  await openRequestInInterface(shownInterface, {
+    subject: detail.subject,
+    title: detail.initialOpportunity.title,
   });
-  await act(async () => {
-    fireEvent.click(open);
-  });
-  await screen.findByRole('article', { name: detail.subject });
   return { ...rendered, identity };
 }
+const coordinatorBundle = {
+  bundle: 'opportunity-follow-up-coordinator',
+  bundleLabel: 'Company Opportunity Follow-up Coordinator',
+};
+const ideasReaderBundle = {
+  bundle: 'ideas-reader',
+  bundleLabel: 'Ideas Reader',
+};
 async function publishAssignment(
   operation: 'grant' | 'revoke',
-  targetMember = membershipId,
-  bundle = 'opportunity-follow-up-coordinator',
+  bundle = coordinatorBundle,
 ) {
-  navigate('Team & access');
-  const access = await screen.findByRole('region', { name: 'Company access' });
-  changeValue(within(access).getByLabelText('Workspace member'), targetMember);
-  changeValue(
-    within(access).getByLabelText('Company', { exact: true }),
-    company.id,
-  );
-  changeValue(within(access).getByLabelText('Access bundle'), bundle);
-  fireEvent.click(
-    within(access).getByRole('button', {
-      name: operation === 'grant' ? 'Grant access' : 'Revoke access',
-    }),
-  );
-  await screen.findByText(
-    operation === 'grant'
-      ? 'Access granted. Server state refreshed.'
-      : 'Access revoked. Server state refreshed.',
-  );
+  await publishAccessInInterface(shownInterface, {
+    operation,
+    member: { workspaceMembershipId: membershipId, displayName: 'Ada DEMO' },
+    company,
+    ...bundle,
+  });
   navigate('Client Requests');
 }
 
@@ -408,236 +413,337 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-describe('Opportunity follow-up through the actual App', () => {
-  it.each(['date', 'native'])(
-    'retires optional Client pages and ignored-abort replies while preserving an independent %s draft',
-    async (editor) => {
-      const server = installTransport(projectionOwner());
+describe.each(appInterfaces)(
+  'Opportunity follow-up through the actual App in the %s interface',
+  (appInterface) => {
+    beforeEach(() => {
+      shownInterface = appInterface;
+    });
+
+    // The current Requests section shows its follow-up discovery beside an open
+    // Request; Clarté shows it in the Deals list, never beside a deal.
+    it.runIf(appInterface === 'clarte')(
+      'retires the list discovery’s optional Client pages and an ignored-abort reply, and opens a discovered deal',
+      async () => {
+        const server = installTransport(projectionOwner());
+        renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+        );
+        await screen.findByRole('button', {
+          name: detail.initialOpportunity.title,
+        });
+        changeValue(
+          screen.getByLabelText('Through chosen date, inclusive'),
+          '2026-11-25',
+        );
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Find follow-ups' }),
+        );
+        await screen.findByText(projectedClientName);
+        const held = server.holdNextDiscovery();
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Find follow-ups' }),
+        );
+        await waitFor(() => expect(held.signal()).toBeDefined());
+        const replacement = projectionOwner('New Client capture Actor DEMO');
+        if (!replacement.activeCompany)
+          throw new Error('Expected replacement Company');
+        server.setActor({
+          ...replacement,
+          activeCompany: {
+            ...replacement.activeCompany,
+            grants: withCompanyGrants(replacement.activeCompany.grants, {
+              ...clientGrant,
+              assignmentId: '60000000-0000-4000-8000-000000000002',
+            }),
+          },
+        });
+        await publishAssignment('grant', ideasReaderBundle);
+        expect(
+          actorNameShown(appInterface, 'New Client capture Actor DEMO'),
+        ).toBe(true);
+        expect(
+          screen.getByLabelText('Through chosen date, inclusive'),
+        ).toHaveValue('');
+        expect(held.signal()?.aborted).toBe(true);
+        await act(async () => {
+          held.deferred.settle(Response.json(clientDiscoveryPage));
+          await held.deferred.promise;
+        });
+        expect(screen.queryByText(projectedClientName)).not.toBeInTheDocument();
+        changeValue(
+          screen.getByLabelText('Through chosen date, inclusive'),
+          '2026-11-25',
+        );
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Find follow-ups' }),
+        );
+        await screen.findByText(projectedClientName);
+        await act(async () => {
+          fireEvent.click(screen.getByRole('button', { name: 'Open Request' }));
+        });
+        await screen.findByRole('article', { name: detail.subject });
+        await screen.findByText('No follow-up declaration.');
+        expect(server.unexpected).toEqual([]);
+      },
+    );
+
+    it.skipIf(appInterface === 'clarte').each(['date', 'native'])(
+      'retires optional Client pages and ignored-abort replies while preserving an independent %s draft',
+      async (editor) => {
+        const server = installTransport(projectionOwner());
+        await openRequest();
+        await screen.findByText('No follow-up declaration.');
+        changeValue(
+          screen.getByLabelText('Through chosen date, inclusive'),
+          '2026-11-25',
+        );
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Find follow-ups' }),
+        );
+        await screen.findByText(projectedClientName);
+        const held = server.holdNextDiscovery();
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Find follow-ups' }),
+        );
+        await waitFor(() => expect(held.signal()).toBeDefined());
+        const label =
+          editor === 'date'
+            ? 'Follow-up date (optional)'
+            : commercialIntakeCopy.nextAction;
+        fireEvent.click(
+          screen.getByRole('button', {
+            name:
+              editor === 'date'
+                ? 'Record follow-up'
+                : commercialIntakeCopy.editNextAction,
+          }),
+        );
+        const draft = screen.getByLabelText(label);
+        const draftValue =
+          editor === 'date' ? '2026-11-26' : 'Independent native draft DEMO';
+        changeValue(draft, draftValue);
+        const dateReads = [...server.dateReads];
+        const replacement = projectionOwner('New Client capture Actor DEMO');
+        if (!replacement.activeCompany)
+          throw new Error('Expected replacement Company');
+        const clientReplacement = {
+          ...replacement,
+          activeCompany: {
+            ...replacement.activeCompany,
+
+            grants: withCompanyGrants(replacement.activeCompany.grants, {
+              ...clientGrant,
+              assignmentId: '60000000-0000-4000-8000-000000000002',
+            }),
+          },
+        };
+        // An external Client capture change is observed by the current member's
+        // unrelated administration refresh. Date authority stays identical.
+        server.setActor(clientReplacement);
+        await publishAssignment('grant', ideasReaderBundle);
+        expect(screen.getByText('New Client capture Actor DEMO')).toBeVisible();
+        expect(screen.getByLabelText(label)).toBe(draft);
+        expect(draft).toHaveValue(draftValue);
+        expect(
+          screen.getByLabelText('Through chosen date, inclusive'),
+        ).toHaveValue('');
+        expect(held.signal()?.aborted).toBe(true);
+        await act(async () => {
+          held.deferred.settle(Response.json(clientDiscoveryPage));
+          await held.deferred.promise;
+        });
+        expect(screen.queryByText(projectedClientName)).not.toBeInTheDocument();
+        expect(screen.getByLabelText(label)).toBe(draft);
+        server.setActor({
+          ...clientReplacement,
+          displayName: 'Client capture revoked Actor DEMO',
+          activeCompany: {
+            ...clientReplacement.activeCompany,
+
+            grants: withoutCompanyGrants(
+              clientReplacement.activeCompany.grants,
+              'company_director_client_access',
+            ),
+          },
+        });
+        await publishAssignment('revoke', ideasReaderBundle);
+        expect(
+          screen.getByText('Client capture revoked Actor DEMO'),
+        ).toBeVisible();
+        expect(screen.getByLabelText(label)).toBe(draft);
+        expect(draft).toHaveValue(draftValue);
+        expect(server.dateReads).toEqual(dateReads);
+        expect(server.unexpected).toEqual([]);
+      },
+    );
+
+    it.each<Capture>(['absent', 'missing-native', 'missing-token'])(
+      'leaves native Request reading unchanged and fetches no follow-up under %s captures',
+      async (capture) => {
+        const server = installTransport(actor(capture));
+        const rendered = await openRequest();
+        expect(
+          screen.queryByRole('heading', { name: 'Opportunity follow-up' }),
+        ).not.toBeInTheDocument();
+        expect(server.dateReads).toEqual([]);
+        // Clarté lists deals, not Requests, and reads only the opened one.
+        expect(
+          server.nativeReads.filter((path) => path.includes('/requests?')),
+        ).toHaveLength(appInterface === 'current' ? 1 : 0);
+        expect(
+          server.nativeReads.filter((path) => path.endsWith(requestId)),
+        ).toHaveLength(1);
+        const before = [...server.nativeReads];
+        await act(async () => {
+          rendered.rerender(<App identity={rendered.identity} />);
+        });
+        expect(server.nativeReads).toEqual(before);
+        expect(server.unexpected).toEqual([]);
+      },
+    );
+
+    it('exposes the captured feature and arbitrates one editor in both native and follow-up directions', async () => {
+      const server = installTransport(actor());
       await openRequest();
       await screen.findByText('No follow-up declaration.');
-      changeValue(
-        screen.getByLabelText('Through chosen date, inclusive'),
-        '2026-11-25',
-      );
-      fireEvent.click(screen.getByRole('button', { name: 'Find follow-ups' }));
-      await screen.findByText(projectedClientName);
-      const held = server.holdNextDiscovery();
-      fireEvent.click(screen.getByRole('button', { name: 'Find follow-ups' }));
-      await waitFor(() => expect(held.signal()).toBeDefined());
-      const label =
-        editor === 'date'
-          ? 'Follow-up date (optional)'
-          : commercialIntakeCopy.nextAction;
+      expect(server.dateReads).toHaveLength(1);
+      fireEvent.click(screen.getByRole('button', { name: 'Record follow-up' }));
+      expect(
+        screen.getByRole('button', {
+          name: commercialIntakeCopy.editNextAction,
+        }),
+      ).toBeDisabled();
       fireEvent.click(
         screen.getByRole('button', {
-          name:
-            editor === 'date'
-              ? 'Record follow-up'
-              : commercialIntakeCopy.editNextAction,
+          name: commercialIntakeCopy.editNextAction,
         }),
       );
-      const draft = screen.getByLabelText(label);
-      const draftValue =
-        editor === 'date' ? '2026-11-26' : 'Independent native draft DEMO';
-      changeValue(draft, draftValue);
-      const dateReads = [...server.dateReads];
-      const replacement = projectionOwner('New Client capture Actor DEMO');
-      if (!replacement.activeCompany)
-        throw new Error('Expected replacement Company');
-      const clientReplacement = {
-        ...replacement,
-        activeCompany: {
-          ...replacement.activeCompany,
-
-          grants: withCompanyGrants(replacement.activeCompany.grants, {
-            ...clientGrant,
-            assignmentId: '60000000-0000-4000-8000-000000000002',
-          }),
-        },
-      };
-      // An external Client capture change is observed by the current member's
-      // unrelated administration refresh. Date authority stays identical.
-      server.setActor(clientReplacement);
-      await publishAssignment('grant', membershipId, 'ideas-reader');
-      expect(screen.getByText('New Client capture Actor DEMO')).toBeVisible();
-      expect(screen.getByLabelText(label)).toBe(draft);
-      expect(draft).toHaveValue(draftValue);
       expect(
-        screen.getByLabelText('Through chosen date, inclusive'),
-      ).toHaveValue('');
-      expect(held.signal()?.aborted).toBe(true);
-      await act(async () => {
-        held.deferred.settle(Response.json(clientDiscoveryPage));
-        await held.deferred.promise;
-      });
-      expect(screen.queryByText(projectedClientName)).not.toBeInTheDocument();
-      expect(screen.getByLabelText(label)).toBe(draft);
-      server.setActor({
-        ...clientReplacement,
-        displayName: 'Client capture revoked Actor DEMO',
-        activeCompany: {
-          ...clientReplacement.activeCompany,
-
-          grants: withoutCompanyGrants(
-            clientReplacement.activeCompany.grants,
-            'company_director_client_access',
-          ),
-        },
-      });
-      await publishAssignment('revoke', membershipId, 'ideas-reader');
+        screen.queryByLabelText(commercialIntakeCopy.nextAction),
+      ).not.toBeInTheDocument();
+      expect(screen.getByLabelText('Follow-up date (optional)')).toBeVisible();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Abandon this intent' }),
+      );
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: commercialIntakeCopy.editNextAction,
+        }),
+      );
+      const native = screen.getByLabelText(commercialIntakeCopy.nextAction);
+      changeValue(native, 'Independent native editor DEMO');
       expect(
-        screen.getByText('Client capture revoked Actor DEMO'),
-      ).toBeVisible();
-      expect(screen.getByLabelText(label)).toBe(draft);
-      expect(draft).toHaveValue(draftValue);
-      expect(server.dateReads).toEqual(dateReads);
+        screen.getByRole('button', { name: 'Record follow-up' }),
+      ).toBeDisabled();
+      fireEvent.click(screen.getByRole('button', { name: 'Record follow-up' }));
+      expect(
+        screen.queryByLabelText('Follow-up date (optional)'),
+      ).not.toBeInTheDocument();
+      expect(native).toHaveValue('Independent native editor DEMO');
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: commercialIntakeCopy.cancelNextAction,
+        }),
+      );
+      expect(
+        screen.getByRole('button', { name: 'Record follow-up' }),
+      ).toBeEnabled();
       expect(server.unexpected).toEqual([]);
-    },
-  );
+    });
 
-  it.each<Capture>(['absent', 'missing-native', 'missing-token'])(
-    'leaves native Request reading unchanged and fetches no follow-up under %s captures',
-    async (capture) => {
-      const server = installTransport(actor(capture));
-      const rendered = await openRequest();
+    it('retires only follow-up authority while preserving the same valid native text editor', async () => {
+      const server = installTransport(actor());
+      await openRequest();
+      await screen.findByText('No follow-up declaration.');
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: commercialIntakeCopy.editNextAction,
+        }),
+      );
+      const native = screen.getByLabelText(commercialIntakeCopy.nextAction);
+      changeValue(native, 'Keep this native text intent DEMO');
+      const nativeReads = [...server.nativeReads];
+      server.setActor(actor('absent', 'Fresh revoked Actor DEMO'));
+      await publishAssignment('revoke');
       expect(
         screen.queryByRole('heading', { name: 'Opportunity follow-up' }),
       ).not.toBeInTheDocument();
-      expect(server.dateReads).toEqual([]);
+      expect(screen.getByLabelText(commercialIntakeCopy.nextAction)).toBe(
+        native,
+      );
+      expect(native).toHaveValue('Keep this native text intent DEMO');
       expect(
-        server.nativeReads.filter((path) => path.includes('/requests?')),
-      ).toHaveLength(1);
-      expect(
-        server.nativeReads.filter((path) => path.endsWith(requestId)),
-      ).toHaveLength(1);
-      const before = [...server.nativeReads];
-      await act(async () => {
-        rendered.rerender(<App identity={rendered.identity} />);
-      });
-      expect(server.nativeReads).toEqual(before);
-      expect(server.unexpected).toEqual([]);
-    },
-  );
-
-  it('exposes the captured feature and arbitrates one editor in both native and follow-up directions', async () => {
-    const server = installTransport(actor());
-    await openRequest();
-    await screen.findByText('No follow-up declaration.');
-    expect(server.dateReads).toHaveLength(1);
-    fireEvent.click(screen.getByRole('button', { name: 'Record follow-up' }));
-    expect(
-      screen.getByRole('button', { name: commercialIntakeCopy.editNextAction }),
-    ).toBeDisabled();
-    fireEvent.click(
-      screen.getByRole('button', { name: commercialIntakeCopy.editNextAction }),
-    );
-    expect(
-      screen.queryByLabelText(commercialIntakeCopy.nextAction),
-    ).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Follow-up date (optional)')).toBeVisible();
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Abandon this intent' }),
-    );
-    fireEvent.click(
-      screen.getByRole('button', { name: commercialIntakeCopy.editNextAction }),
-    );
-    const native = screen.getByLabelText(commercialIntakeCopy.nextAction);
-    changeValue(native, 'Independent native editor DEMO');
-    expect(
-      screen.getByRole('button', { name: 'Record follow-up' }),
-    ).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Record follow-up' }));
-    expect(
-      screen.queryByLabelText('Follow-up date (optional)'),
-    ).not.toBeInTheDocument();
-    expect(native).toHaveValue('Independent native editor DEMO');
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: commercialIntakeCopy.cancelNextAction,
-      }),
-    );
-    expect(
-      screen.getByRole('button', { name: 'Record follow-up' }),
-    ).toBeEnabled();
-    expect(server.unexpected).toEqual([]);
-  });
-
-  it('retires only follow-up authority while preserving the same valid native text editor', async () => {
-    const server = installTransport(actor());
-    await openRequest();
-    await screen.findByText('No follow-up declaration.');
-    fireEvent.click(
-      screen.getByRole('button', { name: commercialIntakeCopy.editNextAction }),
-    );
-    const native = screen.getByLabelText(commercialIntakeCopy.nextAction);
-    changeValue(native, 'Keep this native text intent DEMO');
-    const nativeReads = [...server.nativeReads];
-    server.setActor(actor('absent', 'Fresh revoked Actor DEMO'));
-    await publishAssignment('revoke');
-    expect(
-      screen.queryByRole('heading', { name: 'Opportunity follow-up' }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByLabelText(commercialIntakeCopy.nextAction)).toBe(native);
-    expect(native).toHaveValue('Keep this native text intent DEMO');
-    expect(
-      screen.getByRole('button', { name: commercialIntakeCopy.saveNextAction }),
-    ).toBeEnabled();
-    expect(server.nativeReads).toEqual(nativeReads);
-    expect(server.unexpected).toEqual([]);
-  });
-
-  it('rejects an older full-Actor recovery after an equal-permission capture replacement and preserves the new follow-up editor', async () => {
-    const original = actor();
-    const server = installTransport(original);
-    await openRequest();
-    await screen.findByText('No follow-up declaration.');
-    const held = server.holdDeniedDateRecovery();
-    fireEvent.click(screen.getByRole('button', { name: 'Reload follow-up' }));
-    await waitFor(() => expect(held.signal()).toBeDefined());
-    fireEvent.click(
-      screen.getByRole('button', { name: commercialIntakeCopy.editNextAction }),
-    );
-    const native = screen.getByLabelText(commercialIntakeCopy.nextAction);
-    changeValue(native, 'Preserved behind recovery DEMO');
-    server.setActor(actor('absent', 'Revoked Actor DEMO'));
-    await publishAssignment('revoke');
-    expect(held.signal()?.aborted).toBe(true);
-    const replacement = actor('complete', 'Newer accepted Actor DEMO');
-    if (!replacement.activeCompany)
-      throw new Error('Expected replacement Company');
-    server.setActor({
-      ...replacement,
-      activeCompany: {
-        ...replacement.activeCompany,
-        grants: withCompanyGrants(replacement.activeCompany.grants, {
-          bundle: 'company_opportunity_follow_up_coordinator',
-          version: 'v1',
-          assignmentId: '30000000-0000-4000-8000-000000000002',
+        screen.getByRole('button', {
+          name: commercialIntakeCopy.saveNextAction,
         }),
-        opportunityFollowUpReadCapture: `opportunity-follow-up-read.v1.${'b'.repeat(64)}`,
-      },
+      ).toBeEnabled();
+      expect(server.nativeReads).toEqual(nativeReads);
+      expect(server.unexpected).toEqual([]);
     });
-    await publishAssignment('grant');
-    await screen.findByText('No follow-up declaration.');
-    expect(screen.getByLabelText(commercialIntakeCopy.nextAction)).toBe(native);
-    expect(native).toHaveValue('Preserved behind recovery DEMO');
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: commercialIntakeCopy.cancelNextAction,
-      }),
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Record follow-up' }));
-    const freshDate = screen.getByLabelText('Follow-up date (optional)');
-    changeValue(freshDate, '2026-11-25');
-    const before = [...server.calls];
-    await act(async () => {
-      held.deferred.settle(Response.json(original));
-      await held.deferred.promise;
+
+    it('rejects an older full-Actor recovery after an equal-permission capture replacement and preserves the new follow-up editor', async () => {
+      const original = actor();
+      const server = installTransport(original);
+      await openRequest();
+      await screen.findByText('No follow-up declaration.');
+      const held = server.holdDeniedDateRecovery();
+      fireEvent.click(screen.getByRole('button', { name: 'Reload follow-up' }));
+      await waitFor(() => expect(held.signal()).toBeDefined());
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: commercialIntakeCopy.editNextAction,
+        }),
+      );
+      const native = screen.getByLabelText(commercialIntakeCopy.nextAction);
+      changeValue(native, 'Preserved behind recovery DEMO');
+      server.setActor(actor('absent', 'Revoked Actor DEMO'));
+      await publishAssignment('revoke');
+      expect(held.signal()?.aborted).toBe(true);
+      const replacement = actor('complete', 'Newer accepted Actor DEMO');
+      if (!replacement.activeCompany)
+        throw new Error('Expected replacement Company');
+      server.setActor({
+        ...replacement,
+        activeCompany: {
+          ...replacement.activeCompany,
+          grants: withCompanyGrants(replacement.activeCompany.grants, {
+            bundle: 'company_opportunity_follow_up_coordinator',
+            version: 'v1',
+            assignmentId: '30000000-0000-4000-8000-000000000002',
+          }),
+          opportunityFollowUpReadCapture: `opportunity-follow-up-read.v1.${'b'.repeat(64)}`,
+        },
+      });
+      await publishAssignment('grant');
+      await screen.findByText('No follow-up declaration.');
+      expect(screen.getByLabelText(commercialIntakeCopy.nextAction)).toBe(
+        native,
+      );
+      expect(native).toHaveValue('Preserved behind recovery DEMO');
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: commercialIntakeCopy.cancelNextAction,
+        }),
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Record follow-up' }));
+      const freshDate = screen.getByLabelText('Follow-up date (optional)');
+      changeValue(freshDate, '2026-11-25');
+      const before = [...server.calls];
+      await act(async () => {
+        held.deferred.settle(Response.json(original));
+        await held.deferred.promise;
+      });
+      expect(actorNameShown(appInterface, 'Newer accepted Actor DEMO')).toBe(
+        true,
+      );
+      expect(screen.getByLabelText('Follow-up date (optional)')).toBe(
+        freshDate,
+      );
+      expect(freshDate).toHaveValue('2026-11-25');
+      expect(server.calls).toEqual(before);
+      expect(server.unexpected).toEqual([]);
     });
-    expect(screen.getByText('Newer accepted Actor DEMO')).toBeVisible();
-    expect(screen.getByLabelText('Follow-up date (optional)')).toBe(freshDate);
-    expect(freshDate).toHaveValue('2026-11-25');
-    expect(server.calls).toEqual(before);
-    expect(server.unexpected).toEqual([]);
-  });
-});
+  },
+);

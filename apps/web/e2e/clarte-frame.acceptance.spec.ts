@@ -193,7 +193,7 @@ test('reaches every authorized entry and tab from the menu and the jump list', a
   await screenshot(page, 'clarte-today');
 
   const walk: ReadonlyArray<readonly [string, readonly string[]]> = [
-    ['Affaires', ['Client Requests']],
+    ['Deals', ['Client Requests']],
     ['Clients', ['Clients']],
     ['Missions and audits', ['Projects']],
     [

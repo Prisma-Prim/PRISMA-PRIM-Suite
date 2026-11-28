@@ -16,7 +16,7 @@ import { settingsTabs } from './settings/settings-tabs';
 
 export type ClarteEntryId =
   | 'today'
-  | 'affaires'
+  | 'deals'
   | 'clients'
   | 'missions'
   | 'tasks'
@@ -119,10 +119,10 @@ export const clarteEntries = [
     tabs: [{ destination: 'overview', render: renderClarteScreen }],
   },
   {
-    id: 'affaires',
+    id: 'deals',
     group: 'primary',
     icon: Briefcase,
-    tabs: [{ destination: 'requests', render: renderCurrentScreen }],
+    tabs: [{ destination: 'requests', render: renderClarteScreen }],
   },
   {
     id: 'clients',
@@ -134,7 +134,7 @@ export const clarteEntries = [
     id: 'missions',
     group: 'primary',
     icon: ShieldCheck,
-    tabs: [{ destination: 'projects', render: renderCurrentScreen }],
+    tabs: [{ destination: 'projects', render: renderClarteScreen }],
   },
   {
     id: 'tasks',
@@ -190,7 +190,7 @@ export const clarteEntries = [
 /** The entries the phone bottom bar shows; every other one is under More. */
 export const clartePhoneEntries: ReadonlySet<ClarteEntryId> = new Set([
   'today',
-  'affaires',
+  'deals',
   'tasks',
   'documents',
 ]);
