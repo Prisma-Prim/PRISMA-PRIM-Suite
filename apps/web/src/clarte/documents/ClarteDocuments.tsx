@@ -2,8 +2,10 @@ import { FilePlus2, FileText, FolderKanban, Search } from 'lucide-react';
 import {
   Fragment,
   useEffect,
+  useId,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
   type RefObject,
 } from 'react';
@@ -16,6 +18,7 @@ import {
   type DocumentWorkspaceProps,
 } from '../../documents/DocumentWorkspace';
 import type { DocumentProjectAssociation } from '../../documents/document-response';
+import { documentNativeAuthority } from '../../documents/document-native-authority';
 import {
   WORKSPACE_FAMILIES,
   documentHas,
@@ -23,6 +26,7 @@ import {
   isWorkspaceFamily,
   type WorkspaceFamily,
 } from '../../documents/document-family-registry';
+import { useInterfaceLocale } from '../../localization/interface-locale';
 import { formatApplicationDateTime } from '../../presentation/date-time';
 import { Select } from '../../presentation/Select';
 import { ClarteBadge } from '../components/ClarteBadge';
@@ -77,6 +81,9 @@ function ClarteDocumentSession(props: DocumentWorkspaceProps) {
     retryListRead,
   } = session;
   const clarte = useClarteDocumentsCopy();
+  const { locale } = useInterfaceLocale();
+  const relativeTime = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  const now = Date.now();
   const [registering, setRegistering] = useState(false);
   const [organizing, setOrganizing] = useState(false);
   const [typeFilter, setTypeFilter] = useState<WorkspaceFamily>();
@@ -262,8 +269,17 @@ function ClarteDocumentSession(props: DocumentWorkspaceProps) {
                         </span>
                         <span>{document.clientDisplayName}</span>
                         {documentHas(document, 'showsRegistrationTime') && (
-                          <time dateTime={document.createdAt}>
-                            {formatApplicationDateTime(document.createdAt)}
+                          <time
+                            dateTime={document.createdAt}
+                            title={formatApplicationDateTime(
+                              document.createdAt,
+                            )}
+                          >
+                            {formatRecordedAge(
+                              document.createdAt,
+                              now,
+                              relativeTime,
+                            )}
                           </time>
                         )}
                       </p>
@@ -311,6 +327,7 @@ function ClarteDocumentSession(props: DocumentWorkspaceProps) {
       {/* A denied or failed refresh withdraws the Document with the rows. */}
       {detail && state.status === 'ready' && (
         <DocumentPanel
+          key={detail.id}
           props={props}
           session={session}
           onClose={() => setDetail(undefined)}
@@ -318,6 +335,19 @@ function ClarteDocumentSession(props: DocumentWorkspaceProps) {
       )}
     </section>
   );
+}
+
+function formatRecordedAge(
+  createdAt: string,
+  now: number,
+  format: Intl.RelativeTimeFormat,
+) {
+  const minutes = Math.trunc((Date.parse(createdAt) - now) / 60_000);
+  if (minutes === 0) return format.format(0, 'second');
+  if (Math.abs(minutes) < 60) return format.format(minutes, 'minute');
+  const hours = Math.trunc(minutes / 60);
+  if (Math.abs(hours) < 24) return format.format(hours, 'hour');
+  return format.format(Math.trunc(hours / 24), 'day');
 }
 
 function TypeFacet({
@@ -554,26 +584,64 @@ function DocumentPanel({
     refreshAfterVersionWork,
   } = session;
   const clarte = useClarteDocumentsCopy();
+  const versionListId = useId();
+  const [versionView, setVersionView] = useState<
+    'summary' | 'details' | 'references'
+  >('summary');
+  const [choosingProject, setChoosingProject] = useState(false);
   const detailsPart = useRef<HTMLDivElement>(null);
   const versionsPart = useRef<HTMLDivElement>(null);
   const correctionsPart = useRef<HTMLDivElement>(null);
+  const canManageProjectAssociation =
+    canReadProjects &&
+    holds(
+      actor.activeCompany,
+      'company_document_project_organizer',
+      'document.project.manage',
+    );
+  useEffect(() => {
+    if (!canManageProjectAssociation) setChoosingProject(false);
+  }, [canManageProjectAssociation]);
   if (!detail) return null;
   const screen = familyScreen(detail.type);
   const correctionLocked =
     correction === 'pending' || correction === 'uncertain';
   const reference = detail.version.representation;
-  return (
+  const showProjectPicker = choosingProject && canManageProjectAssociation;
+  const hasVersions = Boolean(documentNativeAuthority(actor, detail.type));
+  const hasVersionReferences = hasVersions && detail.type === 'questionnaire';
+  const frozenReferenceStyle: CSSProperties & { '--frozen-reference': string } =
+    {
+      '--frozen-reference': JSON.stringify(clarte.frozenReference),
+    };
+  const documentPanel = (
     <ClarteSidePanel
       title={detail.title}
       description={screen.status(familyCopies, detail.version.status)}
       titleRef={detailHeading}
       icon={<FileText />}
+      open={!showProjectPicker}
       dismissible={!protectedWorkActive}
       onClose={onClose}
     >
       <nav className="clarte-document-parts" aria-label={clarte.sections}>
         <PartLink part={detailsPart} label={clarte.details} />
-        <PartLink part={versionsPart} label={clarte.versions} />
+        <PartLink
+          part={versionsPart}
+          label={clarte.versions}
+          onActivate={() => {
+            if (!versionWorkProtected && versionView === 'references')
+              setVersionView('summary');
+          }}
+        />
+        {hasVersionReferences && (
+          <PartLink
+            part={versionsPart}
+            label={clarte.references}
+            disabled={versionWorkProtected && versionView !== 'references'}
+            onActivate={() => setVersionView('references')}
+          />
+        )}
         <PartLink part={correctionsPart} label={clarte.corrections} />
       </nav>
       <div className="clarte-document-stack" ref={detailsPart}>
@@ -688,6 +756,18 @@ function DocumentPanel({
                         copy.notLinkedToProject,
                       )}
                     </span>
+                    {detail.projectAssociation.state === 'unlinked' &&
+                      detail.type !== 'project-source' &&
+                      canManageProjectAssociation && (
+                        <ClarteButton
+                          size="small"
+                          variant="quiet"
+                          disabled={protectedWorkActive}
+                          onClick={() => setChoosingProject(true)}
+                        >
+                          {clarte.associateProject}
+                        </ClarteButton>
+                      )}
                     {detail.projectAssociation.state === 'linked' &&
                       onOpenProject && (
                         <ClarteButton
@@ -798,22 +878,50 @@ function DocumentPanel({
               onWorkspaceAccessRejected={onWorkspaceAccessRejected}
             />
           )}
-          <div ref={versionsPart}>
-            <DocumentVersions
-              key={familyAuthority.ownerKey('versions', detail.type)}
-              actor={actor}
-              identity={identity}
-              documentId={detail.id}
-              documentType={detail.type}
-              workingRevision={detail.workingRevision}
-              onProtectedWorkChange={setVersionWorkProtected}
-              onRefresh={() => refreshAfterVersionWork(detail.id)}
-              onCompanyContextRejected={onCompanyContextRejected}
-              onActorRevalidated={onActorRevalidated}
-              onWorkspaceAccessRejected={onWorkspaceAccessRejected}
-            />
+          <div
+            ref={versionsPart}
+            className="clarte-document-version-panel"
+            data-view={versionView}
+            style={frozenReferenceStyle}
+          >
+            {hasVersions &&
+              (versionView === 'references' ? (
+                <h3>{clarte.references}</h3>
+              ) : (
+                <ClarteButton
+                  variant="quiet"
+                  size="small"
+                  aria-expanded={versionView === 'details'}
+                  aria-controls={versionListId}
+                  disabled={versionWorkProtected}
+                  onClick={() =>
+                    setVersionView(
+                      versionView === 'details' ? 'summary' : 'details',
+                    )
+                  }
+                >
+                  {versionView === 'details'
+                    ? clarte.hideVersionDetails
+                    : clarte.showVersionDetails}
+                </ClarteButton>
+              ))}
+            <div id={versionListId}>
+              <DocumentVersions
+                key={familyAuthority.ownerKey('versions', detail.type)}
+                actor={actor}
+                identity={identity}
+                documentId={detail.id}
+                documentType={detail.type}
+                workingRevision={detail.workingRevision}
+                onProtectedWorkChange={setVersionWorkProtected}
+                onRefresh={() => refreshAfterVersionWork(detail.id)}
+                onCompanyContextRejected={onCompanyContextRejected}
+                onActorRevalidated={onActorRevalidated}
+                onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+              />
+            </div>
           </div>
-          <div ref={correctionsPart}>
+          <div ref={correctionsPart} className="clarte-document-corrections">
             <DocumentCorrectionHistory
               key={familyAuthority.ownerKey('corrections', detail.type)}
               actor={actor}
@@ -827,19 +935,48 @@ function DocumentPanel({
       </div>
     </ClarteSidePanel>
   );
+  return (
+    <>
+      {documentPanel}
+      {showProjectPicker && (
+        <ClarteProjectDocuments
+          actor={actor}
+          identity={identity}
+          fromDocument
+          onActivityRecorded={() => refreshAfterVersionWork(detail.id)}
+          onOpenDocument={(documentId) => {
+            setChoosingProject(false);
+            void open(documentId);
+          }}
+          onClose={() => setChoosingProject(false)}
+        />
+      )}
+    </>
+  );
 }
 
 /** Brings one part of the Document panel into view; every part stays mounted. */
 function PartLink({
   part,
   label,
-}: Readonly<{ part: RefObject<HTMLDivElement | null>; label: string }>) {
+  disabled,
+  onActivate,
+}: Readonly<{
+  part: RefObject<HTMLDivElement | null>;
+  label: string;
+  disabled?: boolean;
+  onActivate?: () => void;
+}>) {
   return (
     <button
       type="button"
-      onClick={() =>
-        part.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
-      }
+      disabled={disabled}
+      onClick={() => {
+        onActivate?.();
+        requestAnimationFrame(() =>
+          part.current?.scrollIntoView?.({ block: 'start' }),
+        );
+      }}
     >
       {label}
     </button>

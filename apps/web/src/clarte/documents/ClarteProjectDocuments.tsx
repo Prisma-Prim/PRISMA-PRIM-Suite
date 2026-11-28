@@ -36,12 +36,14 @@ type Projects =
 export function ClarteProjectDocuments({
   actor,
   identity,
+  fromDocument = false,
   onActivityRecorded,
   onOpenDocument,
   onClose,
 }: Readonly<{
   actor: ActorContext;
   identity: BrowserIdentity;
+  fromDocument?: boolean;
   onActivityRecorded?: () => void | Promise<void>;
   onOpenDocument: (documentId: string) => void;
   onClose: () => void;
@@ -115,8 +117,8 @@ export function ClarteProjectDocuments({
       : undefined;
   return (
     <ClarteSidePanel
-      title={clarte.projectsAction}
-      description={clarte.projectsDescription}
+      title={fromDocument ? clarte.associateProject : clarte.projectsAction}
+      description={fromDocument ? undefined : clarte.projectsDescription}
       onClose={onClose}
     >
       <div className="clarte-document-stack">

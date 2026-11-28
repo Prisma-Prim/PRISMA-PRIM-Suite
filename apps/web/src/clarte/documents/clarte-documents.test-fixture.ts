@@ -407,7 +407,10 @@ export function createClarteDocumentsApi(
   const associations = new Map<string, { linked: boolean; revision: number }>(
     options.documents === 'none'
       ? []
-      : [[seededDocumentIds.questionnaire, { linked: true, revision: 1 }]],
+      : [
+          [seededDocumentIds.questionnaire, { linked: true, revision: 1 }],
+          [seededDocumentIds.report, { linked: false, revision: 3 }],
+        ],
   );
   let registered = 0;
   const association = (id: string) =>
@@ -689,6 +692,8 @@ export function createClarteDocumentsApi(
       /^\/api\/documents\/([^/]+)\/project-association$/u.exec(path);
     if (associating?.[1] && method === 'POST') {
       const body = object(request.body);
+      if (count(body.expectedRevision) !== association(associating[1]).revision)
+        return { status: 409, json: {} };
       const revision = count(body.expectedRevision) + 1;
       associations.set(associating[1], {
         linked: body.action === 'link',

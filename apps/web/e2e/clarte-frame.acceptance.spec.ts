@@ -206,7 +206,7 @@ test('reaches every authorized entry and tab from the menu and the jump list', a
         'Internal Tasks',
       ],
     ],
-    ['Documents', ['Working Documents', 'Knowledge evidence']],
+    ['Documents', ['Register', 'Knowledge base']],
     ['Finance', ['Invoice Records', 'Manual incoming Payment observations']],
     ['Improvement', ['Ideas', 'Operational risks']],
   ];

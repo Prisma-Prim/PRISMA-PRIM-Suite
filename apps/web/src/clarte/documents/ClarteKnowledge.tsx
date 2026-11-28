@@ -62,7 +62,7 @@ function ClarteKnowledgeSession(props: KnowledgeEvidenceOwnerProps) {
         id="knowledge-evidence"
         tabIndex={-1}
         className="clarte-knowledge"
-        aria-label={copy('title')}
+        aria-label={clarte.knowledgeTab}
       >
         <ClarteErrorState
           title={copy('denied')}
@@ -87,7 +87,7 @@ function ClarteKnowledgeSession(props: KnowledgeEvidenceOwnerProps) {
       id="knowledge-evidence"
       tabIndex={-1}
       className="clarte-knowledge"
-      aria-label={copy('title')}
+      aria-label={clarte.knowledgeTab}
     >
       <ClarteCard>
         <form
@@ -203,12 +203,21 @@ function ClarteKnowledgeSession(props: KnowledgeEvidenceOwnerProps) {
                       </span>
                     </figcaption>
                   </figure>
-                  <ClarteButton
-                    size="small"
-                    onClick={() => void open(citation, 'current')}
-                  >
-                    {copy('open')}
-                  </ClarteButton>
+                  <div className="clarte-document-actions">
+                    <ClarteButton
+                      size="small"
+                      onClick={() => void open(citation, 'current')}
+                    >
+                      {copy('open')}
+                    </ClarteButton>
+                    <ClarteButton
+                      size="small"
+                      onClick={() => void download(citation, 'current')}
+                    >
+                      <Download aria-hidden="true" />
+                      {copy('download')}
+                    </ClarteButton>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -246,6 +255,9 @@ function ClarteKnowledgeSession(props: KnowledgeEvidenceOwnerProps) {
               {copy(view.citation.source.versionStatus)}
             </ClarteBadge>
           </div>
+          <blockquote className="clarte-knowledge-passage">
+            {view.citation.text}
+          </blockquote>
           {view.mode === 'historical' && (
             <p className="clarte-knowledge-historical">
               <History aria-hidden="true" />
@@ -281,9 +293,6 @@ function ClarteKnowledgeSession(props: KnowledgeEvidenceOwnerProps) {
               </dd>
             </div>
           </dl>
-          <blockquote className="clarte-knowledge-passage">
-            {view.citation.text}
-          </blockquote>
           {view.pdf === 'pending' && <p role="status">{copy('loading')}</p>}
           {view.pdf === 'failure' && (
             <p className="clarte-documents-feedback" role="alert">

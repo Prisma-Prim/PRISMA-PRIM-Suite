@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "9365ae03-c6be-4bc4-9c83-0fcb9ee33156:a4a60880bdcbf05ac",
+  "date": "2026-11-28",
+  "runType": "pull-request-proof",
+  "issue": 1581,
+  "pullRequest": 1588,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-28T13:04:24.012Z",
+    "end": "2026-11-28T13:19:49.693Z",
+    "durationSeconds": 926
+  },
+  "tokens": {
+    "input": 74,
+    "output": 15609,
+    "cacheCreation": 96036,
+    "cacheRead": 3972777
+  },
+  "models": [
+    {
+      "model": "claude-sonnet-5-5",
+      "tokens": {
+        "input": 74,
+        "output": 15609,
+        "cacheCreation": 96036,
+        "cacheRead": 3972777
+      },
+      "estimatedPriceUsd": 0.793606
+    }
+  ],
+  "price": {
+    "estimatedUsd": 0.793606,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Shepherd of a local Codex change; tab labels moved to Clarte-only copy"
+  }
+}

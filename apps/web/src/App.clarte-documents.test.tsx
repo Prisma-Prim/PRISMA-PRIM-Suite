@@ -32,10 +32,12 @@ type Api = ReturnType<typeof createClarteDocumentsApi>;
 function serve(options: Parameters<typeof createClarteDocumentsApi>[0] = {}) {
   const api = createClarteDocumentsApi(options);
   const bodies: unknown[] = [];
+  const reads: string[] = [];
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = new URL(input.toString(), window.location.origin);
+      if (!init?.method || init.method === 'GET') reads.push(url.pathname);
       const body =
         typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
       if (body !== undefined) bodies.push(body);
@@ -48,7 +50,7 @@ function serve(options: Parameters<typeof createClarteDocumentsApi>[0] = {}) {
       return Response.json(reply.json, { status: reply.status });
     }),
   );
-  return { api, bodies };
+  return { api, bodies, reads };
 }
 
 function openDocuments(hash = '#documents') {
@@ -83,6 +85,12 @@ function versionRow(panel: HTMLElement, number: number) {
   return row;
 }
 
+function showVersionDetails(panel: HTMLElement) {
+  fireEvent.click(
+    within(panel).getByRole('button', { name: 'Show version details' }),
+  );
+}
+
 function writesTo(api: Api, suffix: string) {
   return api.writes.filter((write) => write.endsWith(suffix));
 }
@@ -113,6 +121,50 @@ afterEach(() => {
 });
 
 describe('Clarté Documents register', () => {
+  it('uses the register and knowledge-base labels in the Documents navigation', async () => {
+    serve();
+    openDocuments();
+    const views = await screen.findByRole('navigation', {
+      name: 'Documents views',
+    });
+    expect(within(views).getByRole('link', { name: 'Register' })).toBeVisible();
+    expect(
+      within(views).getByRole('link', { name: 'Knowledge base' }),
+    ).toBeVisible();
+  });
+
+  it('shows the recorded age in the register and keeps the exact date available', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-11-27T10:01:00Z'));
+    serve();
+    openDocuments();
+    const button = await within(await registerLoaded()).findByRole('button', {
+      name: 'Fictional initial assessment questionnaire',
+    });
+    const row = button.closest('li');
+    if (!row) throw new Error('Missing Document row');
+    const recorded = within(row).getByText('1 hour ago');
+    expect(recorded).toHaveAttribute('datetime', '2026-11-27T09:01:00.000Z');
+    expect(recorded).toHaveAttribute('title', expect.stringContaining('2026'));
+  });
+
+  it('shows the version references directly from the Document navigation', async () => {
+    serve();
+    openDocuments();
+    const panel = await openDocument(
+      'Fictional initial assessment questionnaire',
+    );
+    fireEvent.click(
+      within(
+        within(panel).getByRole('navigation', { name: 'Document sections' }),
+      ).getByRole('button', { name: 'References' }),
+    );
+    expect(
+      await within(panel).findByRole('list', {
+        name: /references.*version 1/i,
+      }),
+    ).toBeVisible();
+  });
+
   it('designates an official Version from the Document side panel', async () => {
     const { api } = serve();
     openDocuments();
@@ -120,6 +172,7 @@ describe('Clarté Documents register', () => {
       'Fictional initial assessment questionnaire',
     );
     const versions = within(panel).getByRole('region', { name: 'Versions' });
+    showVersionDetails(panel);
 
     fireEvent.click(
       await within(versions).findByRole('button', { name: 'Start new draft' }),
@@ -155,6 +208,7 @@ describe('Clarté Documents register', () => {
       'Fictional initial assessment questionnaire',
     );
     const versions = within(panel).getByRole('region', { name: 'Versions' });
+    showVersionDetails(panel);
     fireEvent.click(
       await within(versions).findByRole('button', { name: 'Start new draft' }),
     );
@@ -344,6 +398,7 @@ describe('Clarté Documents register', () => {
     const { api } = serve();
     openDocuments();
     const panel = await openDocument('Fictional stage 1 audit report');
+    showVersionDetails(panel);
     await within(panel).findByRole('heading', { name: 'Version 1' });
     const draft = versionRow(panel, 1);
     const file = new File([clarteDocumentPdf], 'fictional-report.pdf', {
@@ -556,6 +611,47 @@ describe('Clarté Documents register', () => {
     ).toBeNull();
   });
 
+  it('opens Project association from the Document details and shows the confirmed link', async () => {
+    const { bodies } = serve();
+    openDocuments();
+    const panel = await openDocument('Fictional stage 1 audit report');
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Associate with a Project' }),
+    );
+    const organizer = screen.getByRole('dialog', {
+      name: 'Associate with a Project',
+    });
+    changeValue(
+      await within(organizer).findByLabelText('Project'),
+      clarteDocumentsProject.id,
+    );
+    const linked = await within(organizer).findByRole('region', {
+      name: 'Working Documents',
+    });
+    fireEvent.click(
+      await within(linked).findByRole('button', {
+        name: 'Attach working Document',
+      }),
+    );
+    fireEvent.click(
+      await within(linked).findByRole('button', {
+        name: 'Attach Fictional stage 1 audit report',
+      }),
+    );
+    await within(linked).findByRole('heading', {
+      name: 'Fictional stage 1 audit report',
+    });
+    expect(bodies).toContainEqual({
+      projectId: clarteDocumentsProject.id,
+      action: 'link',
+      expectedRevision: 3,
+    });
+    fireEvent.click(within(organizer).getByRole('button', { name: 'Close' }));
+    expect(
+      await within(panel).findByText(clarteDocumentsProject.title),
+    ).toBeVisible();
+  });
+
   it('shows the empty register when nothing is registered yet', async () => {
     serve({ documents: 'none' });
     openDocuments();
@@ -588,11 +684,42 @@ describe('Clarté Documents register', () => {
 });
 
 describe('Clarté Knowledge view', () => {
+  it('verifies the exact passage before downloading its PDF directly from a result', async () => {
+    const { reads } = serve();
+    openDocuments('#knowledge-evidence');
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'Literal search' }),
+      {
+        target: { value: 'accredited laboratory' },
+      },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Search passages' }));
+    const passages = await screen.findByRole('region', {
+      name: 'Passages found',
+    });
+    fireEvent.click(
+      within(passages).getByRole('button', {
+        name: 'Download exact source PDF',
+      }),
+    );
+    await waitFor(() => expect(downloads).toEqual(['knowledge-source.pdf']));
+    const { sourceId, documentId, documentVersionId, representationId } =
+      clarteKnowledgeSource;
+    expect(
+      reads.filter(
+        (path) => path.includes(sourceId) || path.includes(documentId),
+      ),
+    ).toEqual([
+      `/api/knowledge/evidence/sources/${sourceId}/passages/section%204.2`,
+      `/api/documents/${documentId}/versions/${documentVersionId}/content/${representationId}`,
+    ]);
+  });
+
   it('searches a literal passage, reopens its exact cited version and downloads its verified source PDF', async () => {
     serve();
     openDocuments('#knowledge-evidence');
     const view = await screen.findByRole('region', {
-      name: 'Knowledge evidence',
+      name: 'Knowledge base',
     });
     const inventory = await within(view).findByRole('region', {
       name: 'Current sources',
@@ -619,6 +746,11 @@ describe('Clarté Knowledge view', () => {
     const citation = await within(view).findByRole('article', {
       name: clarteKnowledgeSource.title,
     });
+    const passage = within(citation).getByText(clartePassageText);
+    const locator = within(citation).getByText('Locator');
+    expect(passage.compareDocumentPosition(locator)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
     fireEvent.click(
       within(citation).getByRole('button', {
         name: 'Reopen this cited version — ' + clarteKnowledgeSource.title,
@@ -639,7 +771,7 @@ describe('Clarté Knowledge view', () => {
     serve();
     openDocuments('#knowledge-evidence');
     const view = await screen.findByRole('region', {
-      name: 'Knowledge evidence',
+      name: 'Knowledge base',
     });
     fireEvent.change(
       within(view).getByRole('textbox', { name: 'Literal search' }),

@@ -163,6 +163,9 @@ it('withdraws the open Document when its refresh after a Version command is deni
   const title = 'Fictional initial assessment questionnaire';
   fireEvent.click(await screen.findByRole('button', { name: title }));
   const panel = await screen.findByRole('dialog', { name: title });
+  fireEvent.click(
+    within(panel).getByRole('button', { name: 'Show version details' }),
+  );
   const start = await within(panel).findByRole('button', {
     name: 'Start new draft',
   });
