@@ -185,11 +185,55 @@ export function RecommendationView({
 export function DossierReviewView({
   review,
   register,
+  itemColumn,
 }: {
   review: DossierReview;
   register: DocumentRegister;
+  itemColumn?: string;
 }) {
   const copy = useCertificationCopy();
+  if (itemColumn !== undefined) {
+    const hasNotes = DOSSIER_ITEMS.some(
+      (item) => review.items[item].note !== null,
+    );
+    return (
+      <>
+        <div className="clarte-table-wrap">
+          <table
+            className="clarte-table"
+            aria-label={copy('dossierReviewTitle')}
+          >
+            <thead>
+              <tr>
+                <th scope="col">{itemColumn}</th>
+                <th scope="col">{copy('dossierReviewResult')}</th>
+                {hasNotes && <th scope="col">{copy('dossierItemNote')}</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {DOSSIER_ITEMS.map((item) => {
+                const answer = review.items[item];
+                return (
+                  <tr key={item}>
+                    <th scope="row">{copy(dossierItemLabel(item))}</th>
+                    <td>
+                      <span
+                        className={`certification-status certification-status-${answer.answer === 'missing' ? 'rejected' : answer.answer === 'present' ? 'open' : 'neutral'}`}
+                      >
+                        {copy(dossierAnswerLabel(answer.answer))}
+                      </span>
+                    </td>
+                    {hasNotes && <td>{answer.note}</td>}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <DossierReviewConclusion review={review} register={register} />
+      </>
+    );
+  }
   return (
     <dl className="certification-facts">
       <div>
@@ -218,6 +262,43 @@ export function DossierReviewView({
           </div>
         );
       })}
+      <DossierReviewAttribution review={review} register={register} />
+    </dl>
+  );
+}
+
+function DossierReviewConclusion(props: {
+  review: DossierReview;
+  register: DocumentRegister;
+}) {
+  const copy = useCertificationCopy();
+  return (
+    <dl className="certification-facts">
+      <div>
+        <dt>{copy('dossierReviewResult')}</dt>
+        <dd>
+          {dossierComplete(props.review)
+            ? copy('dossierComplete')
+            : formatMessage(copy('dossierIncomplete'), {
+                count: missingItems(props.review),
+              })}
+        </dd>
+      </div>
+      <DossierReviewAttribution {...props} />
+    </dl>
+  );
+}
+
+function DossierReviewAttribution({
+  review,
+  register,
+}: {
+  review: DossierReview;
+  register: DocumentRegister;
+}) {
+  const copy = useCertificationCopy();
+  return (
+    <>
       <div>
         <dt>{copy('dossierConclusion')}</dt>
         <dd>{review.conclusion}</dd>
@@ -233,7 +314,7 @@ export function DossierReviewView({
         register={register}
       />
       <IndependenceRow />
-    </dl>
+    </>
   );
 }
 
@@ -241,11 +322,43 @@ export function DossierReviewView({
 export function CertificateTextsView({
   texts,
   label,
+  layout = 'facts',
 }: {
   texts: readonly CertificateText[];
   label: CertificationMessageKey;
+  layout?: 'facts' | 'table';
 }) {
   const copy = useCertificationCopy();
+  if (layout === 'table')
+    return (
+      <div className="clarte-table-wrap">
+        <table
+          className="clarte-table clarte-case-texts"
+          aria-label={copy(label)}
+        >
+          <thead>
+            <tr>
+              <th scope="col">{copy('certificateLanguage')}</th>
+              <th scope="col">{copy('certificateHolderName')}</th>
+              <th scope="col">{copy('certificateAddress')}</th>
+              <th scope="col">{copy('certificateScope')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {texts.map((text) => (
+              <tr key={text.language}>
+                <th scope="row">{text.language}</th>
+                <td data-label={copy('certificateHolderName')}>
+                  {text.holderName}
+                </td>
+                <td data-label={copy('certificateAddress')}>{text.address}</td>
+                <td data-label={copy('certificateScope')}>{text.scope}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
   return (
     <ul className="certification-texts" aria-label={copy(label)}>
       {texts.map((text) => (
@@ -288,9 +401,11 @@ function useAttachmentName(register: DocumentRegister) {
 export function CertificationDecisionView({
   decision,
   register,
+  layout,
 }: {
   decision: CertificationDecision;
   register: DocumentRegister;
+  layout?: 'facts' | 'table';
 }) {
   const copy = useCertificationCopy();
   const { formatDate } = useInterfaceLocale();
@@ -350,6 +465,7 @@ export function CertificationDecisionView({
         <CertificateTextsView
           texts={decision.grantedTexts}
           label="grantedTexts"
+          layout={layout}
         />
       )}
     </>
@@ -360,9 +476,11 @@ export function CertificationDecisionView({
 export function CertificateDataView({
   data,
   register,
+  layout,
 }: {
   data: CertificateData;
   register: DocumentRegister;
+  layout?: 'facts' | 'table';
 }) {
   const copy = useCertificationCopy();
   const { formatDate } = useInterfaceLocale();
@@ -381,7 +499,11 @@ export function CertificateDataView({
           <dd>{attachmentName(data.agreementAttachmentId)}</dd>
         </div>
       </dl>
-      <CertificateTextsView texts={data.texts} label="certificateTextsAgreed" />
+      <CertificateTextsView
+        texts={data.texts}
+        label="certificateTextsAgreed"
+        layout={layout}
+      />
     </>
   );
 }

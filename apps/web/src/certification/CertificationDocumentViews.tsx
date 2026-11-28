@@ -62,7 +62,7 @@ export function useAttachmentReference() {
 }
 
 /** A file size in decimal units of the interface locale. */
-function useFileSize() {
+export function useFileSize() {
   const { locale } = useInterfaceLocale();
   return (bytes: number) => {
     const { value, unit } =

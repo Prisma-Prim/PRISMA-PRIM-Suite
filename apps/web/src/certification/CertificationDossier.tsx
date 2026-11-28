@@ -29,6 +29,7 @@ import {
   type DeadlineAdministrationView,
   type DeadlineFeedback,
 } from './CertificationExchanges';
+import type { ExchangeRegisterPart } from './CertificationExchanges';
 
 import {
   useCertificationExchangeRegister,
@@ -193,7 +194,7 @@ export function useCertificationDossier({
    */
   function render(
     busy: boolean,
-    part: 'consistency' | 'exchanges' | 'all' = 'all',
+    part: 'consistency' | 'all' | ExchangeRegisterPart = 'all',
   ) {
     if (!view) return null;
     const caseView = view;
@@ -444,6 +445,7 @@ export function useCertificationDossier({
       return exchangeRegister.render({
         prefix,
         busy,
+        part: part === 'all' || part === 'consistency' ? undefined : part,
         roles: {
           manager: authority.manage,
           contributor:
@@ -479,7 +481,8 @@ export function useCertificationDossier({
     }
     return (
       <>
-        {part !== 'exchanges' && consistencySection(caseView)}
+        {(part === 'all' || part === 'consistency') &&
+          consistencySection(caseView)}
         {part !== 'consistency' && exchangesSection(caseView)}
       </>
     );

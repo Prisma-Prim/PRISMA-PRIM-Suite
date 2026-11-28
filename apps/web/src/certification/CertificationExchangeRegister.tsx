@@ -274,11 +274,13 @@ export function useCertificationExchangeRegister(
     busy,
     roles,
     administration,
+    part,
   }: {
     prefix: string;
     busy: boolean;
     roles: ExchangesRegionProps['roles'];
     administration: ReactNode;
+    part?: ExchangesRegionProps['part'];
   }) {
     if (!view) return null;
     const feedbackIds = {
@@ -330,6 +332,7 @@ export function useCertificationExchangeRegister(
     const records = view.caseDetail.exchanges.records;
     return (
       <ExchangesRegion
+        part={part}
         paging={exchangePaging}
         onLoadMore={() => void loadMoreExchanges()}
         onReload={() => reload(view.caseDetail.id)}

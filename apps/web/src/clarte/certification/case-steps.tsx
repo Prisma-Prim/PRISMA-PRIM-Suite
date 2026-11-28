@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import {
   ArrowLeftRight,
+  CalendarClock,
+  ListChecks,
   FileText,
   History,
   ShieldCheck,
@@ -21,12 +23,17 @@ import {
   type CaseStepStates,
 } from '../../certification/CertificationViews';
 import type { CertificationRegistry } from '../../certification/use-certification-registry';
+import { clarteFindingPresentation } from './ClarteFindings';
+import { ClarteClosing } from './ClarteClosing';
+import { ClarteCaseDocuments } from './ClarteCaseDocuments';
 
 /** What a step or register renderer receives: the Case owner and its read Case. */
 export type CaseStepContext = Readonly<{
   registry: CertificationRegistry;
   view: CertificationCaseView;
   busy: boolean;
+  reload: () => void;
+  projectSources: ReactNode;
 }>;
 
 /**
@@ -51,10 +58,7 @@ export type CaseStep = Readonly<{
 }>;
 
 /**
- * The steps of a Certification Case, from the application to the
- * Certificate. #1538 draws the steps up to Stage 2 in Clarté; each later
- * step still shows the current interface's sections of that step until
- * #1539 replaces its `render`, so every existing function stays reachable.
+ * The steps of a Certification Case, from the application to the Certificate.
  */
 export const caseSteps = [
   {
@@ -107,9 +111,13 @@ export const caseSteps = [
     covers: ['stage_1_plan', 'stage_1_report'],
     recorded: (detail) => detail.stage1Report !== null,
     state: (states) => states.stage1,
-    render: ({ registry, busy }) =>
+    render: ({ registry, busy, reload }) =>
       registry.stages.renderStage(busy, 'stage_1', (stage) =>
-        registry.findings.render(stage, busy),
+        registry.findings.render(
+          stage,
+          busy,
+          clarteFindingPresentation(reload),
+        ),
       ),
   },
   {
@@ -118,12 +126,15 @@ export const caseSteps = [
     covers: ['stage_2_plan', 'stage_2_report'],
     recorded: (detail) => detail.stage2Report !== null,
     state: (states) => states.stage2,
-    render: ({ registry, busy }) =>
+    render: ({ registry, busy, reload }) =>
       registry.stages.renderStage(busy, 'stage_2', (stage) =>
-        registry.findings.render(stage, busy),
+        registry.findings.render(
+          stage,
+          busy,
+          clarteFindingPresentation(reload),
+        ),
       ),
   },
-  // #1539 replaces the renderers below with its Clarté screens.
   {
     id: 'findings',
     label: 'stepFindings',
@@ -131,12 +142,20 @@ export const caseSteps = [
     recorded: (detail) =>
       detail.stage2Report !== null && !detail.findings.some(findingBlocks),
     state: (states) => states.findings,
-    render: ({ registry, view, busy }) =>
+    render: ({ registry, view, busy, reload }) =>
       view.caseDetail.stage1Plan === null ? null : (
         <>
-          {registry.findings.render('stage_1', busy)}
+          {registry.findings.render(
+            'stage_1',
+            busy,
+            clarteFindingPresentation(reload),
+          )}
           {view.caseDetail.stage2Plan !== null &&
-            registry.findings.render('stage_2', busy)}
+            registry.findings.render(
+              'stage_2',
+              busy,
+              clarteFindingPresentation(reload),
+            )}
         </>
       ),
   },
@@ -147,9 +166,9 @@ export const caseSteps = [
     recorded: (detail) => detail.recommendation !== null,
     state: (states) => states.recommendation,
     render: ({ registry, view, busy }) =>
-      view.caseDetail.stage2Report === null
-        ? null
-        : registry.closing.render(busy, 'recommendation'),
+      view.caseDetail.stage2Report === null ? null : (
+        <ClarteClosing registry={registry} busy={busy} step="recommendation" />
+      ),
   },
   {
     id: 'certificateData',
@@ -159,9 +178,9 @@ export const caseSteps = [
     state: (states) => states.certificateData,
     render: ({ registry, view, busy }) =>
       view.caseDetail.stage2Report === null &&
-      view.caseDetail.certificateData === null
-        ? null
-        : registry.closing.render(busy, 'certificateData'),
+      view.caseDetail.certificateData === null ? null : (
+        <ClarteClosing registry={registry} busy={busy} step="certificateData" />
+      ),
   },
   {
     id: 'dossierReview',
@@ -170,9 +189,9 @@ export const caseSteps = [
     recorded: (detail) => detail.dossierReview !== null,
     state: (states) => states.dossierReview,
     render: ({ registry, view, busy }) =>
-      view.caseDetail.recommendation === null
-        ? null
-        : registry.closing.render(busy, 'dossierReview'),
+      view.caseDetail.recommendation === null ? null : (
+        <ClarteClosing registry={registry} busy={busy} step="dossierReview" />
+      ),
   },
   {
     id: 'decision',
@@ -181,9 +200,9 @@ export const caseSteps = [
     recorded: (detail) => detail.decision !== null,
     state: (states) => states.decision,
     render: ({ registry, view, busy }) =>
-      view.caseDetail.recommendation === null
-        ? null
-        : registry.closing.render(busy, 'decision'),
+      view.caseDetail.recommendation === null ? null : (
+        <ClarteClosing registry={registry} busy={busy} step="decision" />
+      ),
   },
   {
     id: 'certificate',
@@ -191,8 +210,9 @@ export const caseSteps = [
     covers: ['certificate'],
     recorded: (detail) => detail.certificate !== null,
     state: (states) => states.certificate,
-    render: ({ registry, busy }) =>
-      registry.closing.render(busy, 'certificate'),
+    render: ({ registry, busy }) => (
+      <ClarteClosing registry={registry} busy={busy} step="certificate" />
+    ),
   },
 ] as const satisfies readonly CaseStep[];
 
@@ -212,22 +232,38 @@ export type CaseRegister = Readonly<{
   render: CaseStepRenderer;
 }>;
 
-/**
- * The Case's registers. The timeline is Clarté's (#1538); the others show
- * the current interface's sections until #1539 replaces their `render`.
- */
+/** The Case's registers, independent of the active procedure step. */
 export const caseRegisters = [
   {
     id: 'documents',
     label: { catalogue: 'certification', key: 'documentsTitle' },
     icon: FileText,
-    render: ({ registry, busy }) => registry.documents.render(busy),
+    render: ({ registry, busy, projectSources }) => (
+      <ClarteCaseDocuments
+        registry={registry}
+        busy={busy}
+        projectSources={projectSources}
+      />
+    ),
   },
   {
     id: 'exchanges',
-    label: { catalogue: 'exchanges', key: 'title' },
+    label: { catalogue: 'exchanges', key: 'registerTitle' },
     icon: ArrowLeftRight,
     render: ({ registry, busy }) => registry.dossier.render(busy, 'exchanges'),
+  },
+  {
+    id: 'deadlines',
+    label: { catalogue: 'exchanges', key: 'deadlinesTitle' },
+    icon: CalendarClock,
+    render: ({ registry, busy }) => registry.dossier.render(busy, 'deadlines'),
+  },
+  {
+    id: 'reverification',
+    label: { catalogue: 'exchanges', key: 'reverificationTitle' },
+    icon: ListChecks,
+    render: ({ registry, busy }) =>
+      registry.dossier.render(busy, 'reverification'),
   },
   {
     id: 'consistency',

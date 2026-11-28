@@ -31,6 +31,7 @@ type Props = {
   identity: BrowserIdentity;
   projectId: string;
   projectStatus: ProjectStatus;
+  browseOnly?: boolean;
   onProjectChanged?: () => void | Promise<void>;
   onActivityRecorded?: () => void | Promise<void>;
   /** Opens a displayed linked Document by its stable id; this panel never reads it. */
@@ -70,6 +71,7 @@ function ProjectDocumentSession({
   identity,
   projectId,
   projectStatus,
+  browseOnly = false,
   onProjectChanged,
   onActivityRecorded,
   onOpenDocument,
@@ -96,11 +98,13 @@ function ProjectDocumentSession({
     holds(company, 'company_project_access', 'project.read') &&
     (actor.workspacePermissions.includes('client.manage') ||
       holds(company, 'company_director_client_access', 'client.read'));
-  const canManage = holds(
-    company,
-    'company_document_project_organizer',
-    'document.project.manage',
-  );
+  const canManage =
+    !browseOnly &&
+    holds(
+      company,
+      'company_document_project_organizer',
+      'document.project.manage',
+    );
   const canOpen = holds(
     company,
     'company_document_registrar',
@@ -378,10 +382,14 @@ function ProjectDocumentSession({
   return (
     <section
       aria-label={copy.title}
-      className="project-documents project-documents--prisme"
+      className={
+        browseOnly
+          ? 'project-documents'
+          : 'project-documents project-documents--prisme'
+      }
     >
       <h4>{copy.title}</h4>
-      <p>{copy.warning}</p>
+      {!browseOnly && <p>{copy.warning}</p>}
       {renderState(load, false)}
       <button
         type="button"

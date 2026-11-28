@@ -1,6 +1,6 @@
 import { unexpected } from './certification-command';
 import { findingRoles, type FindingRoles } from './certification-audit-roles';
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { formatMessage } from '../localization/messages';
 import { type CertificationMessageKey } from './certification.copy';
 import {
@@ -87,6 +87,19 @@ type FindingSubmission =
 interface FindingsContext extends CertificationWorkflowContext<'finding'> {
   registerDownload: (view: CaseView) => RegisterDownload | undefined;
 }
+
+export type FindingPresentation = {
+  history: (finding: Finding, register: CaseView['register']) => ReactNode;
+  empty: (message: string) => ReactNode;
+  form: (props: {
+    title: string;
+    busy: boolean;
+    reloadRequired: boolean;
+    onClose: () => void;
+    children: ReactNode;
+  }) => ReactNode;
+};
+
 /** Owns the one open Finding form, its command and the two Stage Findings panels. */
 export function useCertificationFindings({
   view,
@@ -119,7 +132,11 @@ export function useCertificationFindings({
       retry: () => retryUncertainCommand(findingFeedback, execute),
     });
   }
-  function render(stage: AuditStage, busy: boolean) {
+  function render(
+    stage: AuditStage,
+    busy: boolean,
+    presentation?: FindingPresentation,
+  ) {
     if (!view) return null;
     const caseView = view;
     /** Records the open Finding form; the server rechecks every rule. */
@@ -220,7 +237,10 @@ export function useCertificationFindings({
       const roles = findingRoles(view, actor.workspaceMembershipId, authority);
       const active = activeFindingForm(view, roles);
       return (
-        <section aria-labelledby={titleId}>
+        <section
+          aria-labelledby={titleId}
+          className={presentation ? 'clarte-case-findings' : undefined}
+        >
           <h6 id={titleId}>
             {copy(
               stage === 'stage_1'
@@ -230,7 +250,9 @@ export function useCertificationFindings({
           </h6>
           <p>{copy('findingsHelp')}</p>
           {findings.length === 0 ? (
-            <p>{copy('findingsEmpty')}</p>
+            (presentation?.empty(copy('findingsEmpty')) ?? (
+              <p>{copy('findingsEmpty')}</p>
+            ))
           ) : (
             <ol className="certification-findings">
               {findings.map((finding) =>
@@ -302,29 +324,49 @@ export function useCertificationFindings({
             download={registerDownload(view)}
           />
           <FindingHold finding={finding} />
-          <FindingHistory finding={finding} register={view.register} />
-          {open ? (
-            <>
-              {feedbackMessage()}
-              {findingFormFor(view, finding, open)}
-            </>
-          ) : (
-            commands.length > 0 && (
-              <div className="certification-actions">
-                {commands.map((command) => (
-                  <button
-                    key={command}
-                    type="button"
-                    disabled={busy || active !== null}
-                    onClick={() => openFindingForm(finding, command)}
-                  >
-                    {findingCommandTitle(command, finding)}
-                  </button>
-                ))}
-              </div>
-            )
+          {presentation?.history(finding, view.register) ?? (
+            <FindingHistory finding={finding} register={view.register} />
+          )}
+          {open &&
+            presentForm(
+              findingCommandTitle(open.command, finding),
+              findingFormFor(view, finding, open),
+            )}
+          {(!open || presentation) && commands.length > 0 && (
+            <div className="certification-actions">
+              {commands.map((command) => (
+                <button
+                  key={command}
+                  type="button"
+                  disabled={
+                    busy || (active !== null && open?.command !== command)
+                  }
+                  onClick={() => openFindingForm(finding, command)}
+                >
+                  {findingCommandTitle(command, finding)}
+                </button>
+              ))}
+            </div>
           )}
         </li>
+      );
+    }
+
+    function presentForm(title: string, form: ReactNode) {
+      const children = (
+        <>
+          {feedbackMessage()}
+          {form}
+        </>
+      );
+      return (
+        presentation?.form({
+          title,
+          busy,
+          reloadRequired: blockedUntilReload(findingFeedback),
+          onClose: closeFindingForm,
+          children,
+        }) ?? children
       );
     }
 
@@ -440,40 +482,42 @@ export function useCertificationFindings({
       );
       const open =
         active?.command === 'record' && active.stage === stage ? active : null;
-      if (!open)
-        return (
-          <button
-            type="button"
-            disabled={busy || active !== null}
-            onClick={() => {
-              setFindingForm({
-                command: 'record',
-                stage,
-                draft: emptyFindingDraft(),
-              });
-              setFindingFeedback(IDLE);
-            }}
-          >
-            {title}
-          </button>
-        );
       return (
         <>
-          {feedbackMessage()}
-          <FindingRecordForm
-            idPrefix={`${prefix}-${stage}-finding`}
-            title={title}
-            stage={stage}
-            draft={open.draft}
-            register={view.register.items}
-            disabled={busy}
-            submitting={findingFeedback.status === 'saving'}
-            submitBlocked={blockedUntilReload(findingFeedback)}
-            feedbackId={describedFeedbackId(findingFeedback, feedbackId)}
-            onChange={(draft) => editFindingForm({ ...open, draft })}
-            onSubmit={submitFinding}
-            onCancel={closeFindingForm}
-          />
+          {(!open || presentation) && (
+            <button
+              type="button"
+              disabled={busy || (active !== null && open === null)}
+              onClick={() => {
+                setFindingForm({
+                  command: 'record',
+                  stage,
+                  draft: emptyFindingDraft(),
+                });
+                setFindingFeedback(IDLE);
+              }}
+            >
+              {title}
+            </button>
+          )}
+          {open &&
+            presentForm(
+              title,
+              <FindingRecordForm
+                idPrefix={`${prefix}-${stage}-finding`}
+                title={title}
+                stage={stage}
+                draft={open.draft}
+                register={view.register.items}
+                disabled={busy}
+                submitting={findingFeedback.status === 'saving'}
+                submitBlocked={blockedUntilReload(findingFeedback)}
+                feedbackId={describedFeedbackId(findingFeedback, feedbackId)}
+                onChange={(draft) => editFindingForm({ ...open, draft })}
+                onSubmit={submitFinding}
+                onCancel={closeFindingForm}
+              />,
+            )}
         </>
       );
     }

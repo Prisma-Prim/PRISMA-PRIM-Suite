@@ -1,5 +1,5 @@
 import { unexpected } from './certification-command';
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
   createAuthenticatedApiClient,
@@ -346,7 +346,12 @@ export function useCertificationDocuments({
       retry: () => retryUncertainCommand(attachFeedback, execute),
     });
   }
-  function render(busy: boolean) {
+  function render(
+    busy: boolean,
+    presentRegister: (
+      props: Parameters<typeof DossierRegister>[0],
+    ) => ReactNode = (props) => <DossierRegister {...props} />,
+  ) {
     if (!view) return null;
     const caseView = view;
     function submitAttach(event: FormEvent) {
@@ -460,10 +465,10 @@ export function useCertificationDocuments({
       <section aria-labelledby={`${prefix}-documents-title`}>
         <h5 id={`${prefix}-documents-title`}>{copy('documentsTitle')}</h5>
         <p>{copy('documentsHelp')}</p>
-        <DossierRegister
-          register={caseView.register}
-          download={registerDownload(caseView, busy)}
-        />
+        {presentRegister({
+          register: caseView.register,
+          download: registerDownload(caseView, busy),
+        })}
         {!documentRights && (
           <p className="certification-note">
             {copy('documentsNoContentRights')}
