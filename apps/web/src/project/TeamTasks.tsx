@@ -25,7 +25,7 @@ import { TeamTaskRows } from './TeamTaskRows';
 import { useProjectTaskCopy } from './task.copy';
 import './task-discovery.css';
 import './team-tasks.css';
-type Props = {
+export type TeamTasksProps = {
   actor: ActorContext;
   identity: BrowserIdentity;
   onOpenTask?: (target: {
@@ -61,20 +61,24 @@ export function teamTaskAuthority(actor: ActorContext) {
     holds(c, 'company_director_client_access', 'client.read'),
   ]);
 }
-export function TeamTasks(props: Props) {
+export function TeamTasks(props: TeamTasksProps) {
   const owner = useRequestLifetime(
     props.identity,
     teamTaskAuthority(props.actor),
   );
   return <TeamTasksOwner key={owner} {...props} />;
 }
-type Load =
+export type TeamTasksLoad =
   | { kind: 'idle' | 'loading' | 'denied' | 'error' | 'malformed' }
   | { kind: 'ready'; page: ReturnType<typeof readTeamTasks> };
-function TeamTasksOwner(props: Props) {
-  const copy = useTeamTasksCopy(),
-    native = useProjectTaskCopy();
-  const [load, setLoad] = useState<Load>({ kind: 'idle' }),
+/**
+ * The Company's Team Tasks under the applied criteria, one page of 25 at a
+ * time: read on each entry into the visible section and on demand, with
+ * access recovery. Opening a Task carries this section's navigation
+ * lifetime. Both interfaces present it.
+ */
+export function useTeamTasks(props: TeamTasksProps) {
+  const [load, setLoad] = useState<TeamTasksLoad>({ kind: 'idle' }),
     [applied, setApplied] = useState({
       filters: defaultTeamTaskFilters,
       offset: 0,
@@ -166,8 +170,18 @@ function TeamTasksOwner(props: Props) {
     }
     wasActive.current = active;
   }, [active]);
-  const busy = load.kind === 'loading',
-    f = applied.filters;
+  const busy = load.kind === 'loading';
+  function openTask(target: { projectId: string; taskId: string }) {
+    if (sourceSignal && !sourceSignal.aborted)
+      current.current.onOpenTask?.({ ...target, sourceSignal });
+  }
+  return { load, applied, busy, read, openTask };
+}
+function TeamTasksOwner(props: TeamTasksProps) {
+  const copy = useTeamTasksCopy(),
+    native = useProjectTaskCopy();
+  const { load, applied, busy, read, openTask } = useTeamTasks(props);
+  const f = applied.filters;
   return (
     <section
       id="team-tasks"
@@ -215,14 +229,9 @@ function TeamTasksOwner(props: Props) {
         load.page.tasks.length ? (
           <TeamTaskRows
             tasks={load.page.tasks}
-            onOpen={(task) => {
-              if (sourceSignal && !sourceSignal.aborted)
-                current.current.onOpenTask?.({
-                  projectId: task.projectId,
-                  taskId: task.id,
-                  sourceSignal,
-                });
-            }}
+            onOpen={(task) =>
+              openTask({ projectId: task.projectId, taskId: task.id })
+            }
           />
         ) : (
           <p className="task-discovery-state" role="status">

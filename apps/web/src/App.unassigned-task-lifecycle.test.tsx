@@ -1,12 +1,11 @@
 import {
   act,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
 } from './test/render-with-interface-locale';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
@@ -14,6 +13,16 @@ import type { TaskView } from './project/task-response';
 import { preparatoryLifecycle } from './project/project-lifecycle.test-fixtures';
 import { changeValue } from './test/select-option';
 import { companyGrants } from './access/company-grants.test-fixture';
+import type { InterfacePreference } from './clarte/interface-preference';
+import { appInterfaces, renderInInterface } from './test/app-interface';
+import { navigateIn } from './test/task-views-interface';
+
+/** The interface of the running case; `describe.each` below sets it. */
+let appInterface: InterfacePreference = 'current';
+const render = (
+  ui: Parameters<typeof renderInInterface>[1],
+  options?: Parameters<typeof renderInInterface>[2],
+) => renderInInterface(appInterface, ui, options);
 
 const company = { id: 'queue-company', displayName: 'PRISMA-PRIM' };
 const otherCompany = { id: 'other-company', displayName: 'BIC' };
@@ -227,191 +236,209 @@ afterEach(() => {
 });
 const queue = () => screen.getByRole('region', { name: 'Unassigned Tasks' });
 function navigate(name: string) {
-  fireEvent.click(
-    within(
-      screen.getByRole('navigation', { name: 'Primary navigation' }),
-    ).getByRole('link', { name }),
-  );
+  navigateIn(appInterface, name);
 }
 async function ready() {
   await screen.findByRole('heading', { name: task.title });
 }
 
-it('opens the exact current Task through fresh Project and Task reads, preserves focus and returns to a fresh queue', async () => {
-  const api = installServer();
-  // No registry version grants task.read without task.manage (#1332), so this
-  // Task Manager sees a read-only listing, as the former reader did; the
-  // narrowed reader itself is proved in ProjectTasks.test.tsx.
-  api.state.mutable = false;
-  render(<App identity={deterministicBrowserIdentity()} />);
-  await ready();
-  api.state.currentTask = { ...task, title: 'Fresh exact title', version: 2 };
-  fireEvent.click(
-    within(queue()).getByRole('button', { name: /^Open Undated exact/u }),
-  );
-  const projects = await screen.findByRole('region', { name: 'Projects' });
-  expect(
-    await within(projects).findByRole('heading', { name: 'Fresh exact title' }),
-  ).toBeVisible();
-  await waitFor(() => expect(projects).toHaveFocus());
-  expect(
-    api.calls.filter((call) => call.path === `/api/projects/${project.id}`),
-  ).toHaveLength(1);
-  expect(
-    api.calls.filter((call) => call.path === `/api/tasks/${task.id}`),
-  ).toHaveLength(1);
-  expect(
-    api.calls.filter((call) => call.path === `/api/tasks/${task.id}/history`),
-  ).toHaveLength(1);
-  expect(
-    api.calls.some((call) => call.path.includes('eligible-task-assignees')),
-  ).toBe(false);
-  expect(
-    within(projects).queryByText('Listed preparation label'),
-  ).not.toBeInTheDocument();
-  expect(window.location.href).not.toContain(task.id);
-  expect(JSON.stringify(window.history.state)).not.toContain(project.id);
-  expect(
-    screen.queryByRole('region', { name: 'Unassigned Tasks' }),
-  ).not.toBeInTheDocument();
-  api.state.queueRows = [];
-  navigate('Unassigned Tasks');
-  expect(
-    await screen.findByText(
-      'No readable open unassigned Tasks in this Company.',
-    ),
-  ).toBeVisible();
-  expect(
-    api.calls
-      .filter((call) => call.path === '/api/unassigned-tasks')
-      .map((call) => call.offset),
-  ).toEqual([0, 0]);
-  expect(api.calls.every((call) => call.method === 'GET')).toBe(true);
-});
+describe.each(appInterfaces)(
+  'Unassigned Task lifecycle in the %s interface',
+  (chosen) => {
+    beforeEach(() => {
+      appInterface = chosen;
+    });
+    it('opens the exact current Task through fresh Project and Task reads, preserves focus and returns to a fresh queue', async () => {
+      const api = installServer();
+      // No registry version grants task.read without task.manage (#1332), so this
+      // Task Manager sees a read-only listing, as the former reader did; the
+      // narrowed reader itself is proved in ProjectTasks.test.tsx.
+      api.state.mutable = false;
+      render(<App identity={deterministicBrowserIdentity()} />);
+      await ready();
+      api.state.currentTask = {
+        ...task,
+        title: 'Fresh exact title',
+        version: 2,
+      };
+      fireEvent.click(
+        within(queue()).getByRole('button', { name: /^Open Undated exact/u }),
+      );
+      const projects = await screen.findByRole('region', { name: 'Projects' });
+      expect(
+        await within(projects).findByRole('heading', {
+          name: 'Fresh exact title',
+        }),
+      ).toBeVisible();
+      await waitFor(() => expect(projects).toHaveFocus());
+      expect(
+        api.calls.filter((call) => call.path === `/api/projects/${project.id}`),
+      ).toHaveLength(1);
+      expect(
+        api.calls.filter((call) => call.path === `/api/tasks/${task.id}`),
+      ).toHaveLength(1);
+      expect(
+        api.calls.filter(
+          (call) => call.path === `/api/tasks/${task.id}/history`,
+        ),
+      ).toHaveLength(1);
+      expect(
+        api.calls.some((call) => call.path.includes('eligible-task-assignees')),
+      ).toBe(false);
+      expect(
+        within(projects).queryByText('Listed preparation label'),
+      ).not.toBeInTheDocument();
+      expect(window.location.href).not.toContain(task.id);
+      expect(JSON.stringify(window.history.state)).not.toContain(project.id);
+      expect(
+        screen.queryByRole('region', { name: 'Unassigned Tasks' }),
+      ).not.toBeInTheDocument();
+      api.state.queueRows = [];
+      navigate('Unassigned Tasks');
+      expect(
+        await screen.findByText(
+          'No readable open unassigned Tasks in this Company.',
+        ),
+      ).toBeVisible();
+      expect(
+        api.calls
+          .filter((call) => call.path === '/api/unassigned-tasks')
+          .map((call) => call.offset),
+      ).toEqual([0, 0]);
+      expect(api.calls.every((call) => call.method === 'GET')).toBe(true);
+    });
 
-it.each(['closed Project', 'historical original Client'] as const)(
-  'opens a discoverable Task as existing read-only detail for a %s',
-  async (kind) => {
-    const api = installServer();
-    api.state.mutable = false;
-    api.state.closed = kind === 'closed Project';
-    api.state.actor = {
-      ...actor,
-      activeCompany: {
-        grants: [],
-        ...actor.activeCompany,
-        ...company,
+    it.each(['closed Project', 'historical original Client'] as const)(
+      'opens a discoverable Task as existing read-only detail for a %s',
+      async (kind) => {
+        const api = installServer();
+        api.state.mutable = false;
+        api.state.closed = kind === 'closed Project';
+        api.state.actor = {
+          ...actor,
+          activeCompany: {
+            grants: [],
+            ...actor.activeCompany,
+            ...company,
+          },
+        };
+        render(<App identity={deterministicBrowserIdentity()} />);
+        await ready();
+        fireEvent.click(
+          within(queue()).getByRole('button', { name: /^Open Undated exact/u }),
+        );
+        const tasks = await screen.findByRole('region', { name: 'Tasks' });
+        expect(
+          await within(tasks).findByRole('heading', { name: task.title }),
+        ).toBeVisible();
+        expect(
+          within(tasks).getByText(
+            kind === 'closed Project'
+              ? 'Read-only: this Project is closed. Task history remains available.'
+              : 'Read-only: the original Client has been superseded. Task history remains available.',
+          ),
+        ).toBeVisible();
+        expect(
+          within(tasks).queryByRole('button', { name: 'Save Task' }),
+        ).not.toBeInTheDocument();
+        expect(
+          api.calls.some((call) =>
+            call.path.includes('eligible-task-assignees'),
+          ),
+        ).toBe(false);
+        expect(api.calls.every((call) => call.method === 'GET')).toBe(true);
       },
-    };
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await ready();
-    fireEvent.click(
-      within(queue()).getByRole('button', { name: /^Open Undated exact/u }),
     );
-    const tasks = await screen.findByRole('region', { name: 'Tasks' });
-    expect(
-      await within(tasks).findByRole('heading', { name: task.title }),
-    ).toBeVisible();
-    expect(
-      within(tasks).getByText(
-        kind === 'closed Project'
-          ? 'Read-only: this Project is closed. Task history remains available.'
-          : 'Read-only: the original Client has been superseded. Task history remains available.',
-      ),
-    ).toBeVisible();
-    expect(
-      within(tasks).queryByRole('button', { name: 'Save Task' }),
-    ).not.toBeInTheDocument();
-    expect(
-      api.calls.some((call) => call.path.includes('eligible-task-assignees')),
-    ).toBe(false);
-    expect(api.calls.every((call) => call.method === 'GET')).toBe(true);
-  },
-);
 
-it('retires a held queue when navigating away and starts zero on return', async () => {
-  const api = installServer();
-  api.state.hold = true;
-  render(<App identity={deterministicBrowserIdentity()} />);
-  await waitFor(() => expect(api.held).toHaveLength(1));
-  navigate('Projects');
-  await waitFor(() => expect(api.held[0]?.signal?.aborted).toBe(true));
-  api.state.hold = false;
-  await api.release();
-  expect(
-    screen.queryByRole('heading', { name: task.title }),
-  ).not.toBeInTheDocument();
-  navigate('Unassigned Tasks');
-  await ready();
-  expect(
-    api.calls
-      .filter((call) => call.path === '/api/unassigned-tasks')
-      .map((call) => call.offset),
-  ).toEqual([0, 0]);
-});
+    it('retires a held queue when navigating away and starts zero on return', async () => {
+      const api = installServer();
+      api.state.hold = true;
+      render(<App identity={deterministicBrowserIdentity()} />);
+      await waitFor(() => expect(api.held).toHaveLength(1));
+      navigate('Projects');
+      await waitFor(() => expect(api.held[0]?.signal?.aborted).toBe(true));
+      api.state.hold = false;
+      await api.release();
+      expect(
+        screen.queryByRole('heading', { name: task.title }),
+      ).not.toBeInTheDocument();
+      navigate('Unassigned Tasks');
+      await ready();
+      expect(
+        api.calls
+          .filter((call) => call.path === '/api/unassigned-tasks')
+          .map((call) => call.offset),
+      ).toEqual([0, 0]);
+    });
 
-it('retires Company A rows and late replies across Company switching without replaying an opening', async () => {
-  const api = installServer();
-  api.state.hold = true;
-  render(<App identity={deterministicBrowserIdentity()} />);
-  await waitFor(() => expect(api.held).toHaveLength(1));
-  api.state.hold = false;
-  changeValue(
-    screen.getByLabelText('Active Company', { exact: true }),
-    otherCompany.id,
-  );
-  await screen.findByText('No readable open unassigned Tasks in this Company.');
-  expect(api.held[0]?.signal?.aborted).toBe(true);
-  await api.release();
-  expect(
-    screen.queryByRole('heading', { name: task.title }),
-  ).not.toBeInTheDocument();
-  expect(
-    api.calls.some((call) => call.path === `/api/projects/${project.id}`),
-  ).toBe(false);
-});
+    it('retires Company A rows and late replies across Company switching without replaying an opening', async () => {
+      const api = installServer();
+      api.state.hold = true;
+      render(<App identity={deterministicBrowserIdentity()} />);
+      await waitFor(() => expect(api.held).toHaveLength(1));
+      api.state.hold = false;
+      changeValue(
+        screen.getByLabelText('Active Company', { exact: true }),
+        otherCompany.id,
+      );
+      await screen.findByText(
+        'No readable open unassigned Tasks in this Company.',
+      );
+      expect(api.held[0]?.signal?.aborted).toBe(true);
+      await api.release();
+      expect(
+        screen.queryByRole('heading', { name: task.title }),
+      ).not.toBeInTheDocument();
+      expect(
+        api.calls.some((call) => call.path === `/api/projects/${project.id}`),
+      ).toBe(false);
+    });
 
-it.each(['identity replacement', 'signed-out session'] as const)(
-  'retires pending rows through the real App after %s and cannot revive them on return',
-  async (change) => {
-    const api = installServer();
-    api.state.hold = true;
-    const initial = deterministicBrowserIdentity();
-    const view = render(<App identity={initial} />);
-    await waitFor(() => expect(api.held).toHaveLength(1));
-    api.state.hold = false;
-    api.state.queueRows = [{ ...task, title: 'Replacement session Task' }];
-    api.state.actor = {
-      ...actor,
-      internalUserId: 'replacement-reader',
-      workspaceMembershipId: 'replacement-member',
-    };
-    const replacement = deterministicBrowserIdentity();
-    view.rerender(
-      <App
-        identity={
-          change === 'signed-out session'
-            ? {
-                ...replacement,
-                signedIn: false,
-                signedOutView: <p>Session ended</p>,
-              }
-            : replacement
+    it.each(['identity replacement', 'signed-out session'] as const)(
+      'retires pending rows through the real App after %s and cannot revive them on return',
+      async (change) => {
+        const api = installServer();
+        api.state.hold = true;
+        const initial = deterministicBrowserIdentity();
+        const view = render(<App identity={initial} />);
+        await waitFor(() => expect(api.held).toHaveLength(1));
+        api.state.hold = false;
+        api.state.queueRows = [{ ...task, title: 'Replacement session Task' }];
+        api.state.actor = {
+          ...actor,
+          internalUserId: 'replacement-reader',
+          workspaceMembershipId: 'replacement-member',
+        };
+        const replacement = deterministicBrowserIdentity();
+        view.rerender(
+          <App
+            identity={
+              change === 'signed-out session'
+                ? {
+                    ...replacement,
+                    signedIn: false,
+                    signedOutView: <p>Session ended</p>,
+                  }
+                : replacement
+            }
+          />,
+        );
+        await waitFor(() => expect(api.held[0]?.signal?.aborted).toBe(true));
+        if (change === 'signed-out session') {
+          expect(screen.getByText('Session ended')).toBeVisible();
+          view.rerender(<App identity={replacement} />);
         }
-      />,
+        await screen.findByRole('heading', {
+          name: 'Replacement session Task',
+        });
+        await api.release();
+        expect(
+          screen.queryByRole('heading', { name: task.title }),
+        ).not.toBeInTheDocument();
+        expect(
+          api.calls.filter((call) => call.path === '/api/unassigned-tasks'),
+        ).toHaveLength(2);
+      },
     );
-    await waitFor(() => expect(api.held[0]?.signal?.aborted).toBe(true));
-    if (change === 'signed-out session') {
-      expect(screen.getByText('Session ended')).toBeVisible();
-      view.rerender(<App identity={replacement} />);
-    }
-    await screen.findByRole('heading', { name: 'Replacement session Task' });
-    await api.release();
-    expect(
-      screen.queryByRole('heading', { name: task.title }),
-    ).not.toBeInTheDocument();
-    expect(
-      api.calls.filter((call) => call.path === '/api/unassigned-tasks'),
-    ).toHaveLength(2);
   },
 );

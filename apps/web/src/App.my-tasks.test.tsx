@@ -1,5 +1,5 @@
-import { render, screen, within } from './test/render-with-interface-locale';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { screen, within } from './test/render-with-interface-locale';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
@@ -9,6 +9,8 @@ import {
   companyGrants,
   withoutCompanyGrants,
 } from './access/company-grants.test-fixture';
+import { appInterfaces, renderInInterface } from './test/app-interface';
+import { taskViewLink } from './test/task-views-interface';
 
 const company = {
   id: 'company-1',
@@ -123,80 +125,91 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-it('offers My Tasks when the active Company satisfies the Task-read predicate', async () => {
-  const paths = serve(actor);
-  window.history.replaceState(null, '', '/#my-tasks');
-  render(<App identity={deterministicBrowserIdentity()} />);
-  const navigation = await screen.findByRole('navigation', {
-    name: 'Primary navigation',
-  });
-  expect(
-    await within(navigation).findByRole('link', {
-      name: taskCopy.myTasks.title,
-    }),
-  ).toHaveAttribute('aria-current', 'page');
-  const prisme = screen.getByRole('region', { name: taskCopy.myTasks.title });
-  expect(
-    await within(prisme).findByRole('heading', { name: assigned.title }),
-  ).toBeInTheDocument();
-  expect(within(prisme).getByText(project.clientDisplayName)).toBeVisible();
-  expect(paths).toContain('/api/assigned-tasks');
-});
-
-it.each([
-  [
-    'Workspace Company and Client management without a Task Manager grant',
-    {
-      ...actor,
-      workspacePermissions: ['company.manage', 'client.manage'],
-      activeCompany: {
-        ...company,
-        grants: withoutCompanyGrants(company.grants, 'company_task_manager'),
-      },
-    },
-  ],
-  [
-    'no project.read',
-    {
-      ...actor,
-      activeCompany: {
-        ...company,
-
-        grants: withoutCompanyGrants(company.grants, 'company_project_access'),
-      },
-    },
-  ],
-  [
-    'no Client read',
-    {
-      ...actor,
-      activeCompany: {
-        ...company,
-
-        grants: withoutCompanyGrants(
-          company.grants,
-          'company_director_client_access',
-        ),
-      },
-    },
-  ],
-  ['no active Company', { ...actor, activeCompany: undefined }],
-] satisfies Array<[string, ActorContext]>)(
-  'neither offers nor reads My Tasks with %s',
-  async (_case, current) => {
-    const paths = serve(current);
-    window.history.replaceState(null, '', '/');
-    render(<App identity={deterministicBrowserIdentity()} />);
+describe.each(appInterfaces)('My Tasks in the %s interface', (appInterface) => {
+  it('offers My Tasks when the active Company satisfies the Task-read predicate', async () => {
+    const paths = serve(actor);
+    window.history.replaceState(null, '', '/#my-tasks');
+    renderInInterface(
+      appInterface,
+      <App identity={deterministicBrowserIdentity()} />,
+    );
+    await screen.findByRole('navigation', {
+      name: 'Primary navigation',
+    });
+    expect(taskViewLink(appInterface, 'My Tasks')).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    const prisme = screen.getByRole('region', { name: taskCopy.myTasks.title });
     expect(
-      await screen.findByRole('heading', { name: 'Hello, Ada Ionescu.' }),
+      await within(prisme).findByRole('heading', { name: assigned.title }),
     ).toBeInTheDocument();
-    expect(
-      screen.queryAllByRole('link', { name: taskCopy.myTasks.title }),
-    ).toHaveLength(0);
-    await new Promise((settle) => setTimeout(settle, 0));
-    expect(paths).not.toContain('/api/assigned-tasks');
-  },
-);
+    expect(within(prisme).getByText(project.clientDisplayName)).toBeVisible();
+    expect(paths).toContain('/api/assigned-tasks');
+  });
+
+  it.each([
+    [
+      'Workspace Company and Client management without a Task Manager grant',
+      {
+        ...actor,
+        workspacePermissions: ['company.manage', 'client.manage'],
+        activeCompany: {
+          ...company,
+          grants: withoutCompanyGrants(company.grants, 'company_task_manager'),
+        },
+      },
+    ],
+    [
+      'no project.read',
+      {
+        ...actor,
+        activeCompany: {
+          ...company,
+
+          grants: withoutCompanyGrants(
+            company.grants,
+            'company_project_access',
+          ),
+        },
+      },
+    ],
+    [
+      'no Client read',
+      {
+        ...actor,
+        activeCompany: {
+          ...company,
+
+          grants: withoutCompanyGrants(
+            company.grants,
+            'company_director_client_access',
+          ),
+        },
+      },
+    ],
+    ['no active Company', { ...actor, activeCompany: undefined }],
+  ] satisfies Array<[string, ActorContext]>)(
+    'neither offers nor reads My Tasks with %s',
+    async (_case, current) => {
+      const paths = serve(current);
+      window.history.replaceState(null, '', '/');
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await screen.findByRole('navigation', { name: 'Primary navigation' });
+      expect(
+        screen.queryAllByRole('link', { name: taskCopy.myTasks.title }),
+      ).toHaveLength(0);
+      expect(screen.queryAllByRole('link', { name: /^Tasks$/u })).toHaveLength(
+        0,
+      );
+      await new Promise((settle) => setTimeout(settle, 0));
+      expect(paths).not.toContain('/api/assigned-tasks');
+    },
+  );
+});
 
 // A Task Manager grant with an unsupported version or a blank assignment
 // fails closed for the whole current Actor (#1332), so nothing offers My Tasks.

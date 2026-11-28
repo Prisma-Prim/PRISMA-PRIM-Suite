@@ -1,5 +1,5 @@
 import { StrictMode } from 'react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import { readCurrentActor } from './access/current-actor';
@@ -24,6 +24,8 @@ import {
   publishInternalActor,
 } from './test/internal-task-app';
 import { withoutCompanyGrants } from './access/company-grants.test-fixture';
+import { appInterfaces, renderInInterface } from './test/app-interface';
+import { taskViewLink } from './test/task-views-interface';
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
@@ -33,31 +35,52 @@ afterEach(() => {
   vi.unstubAllGlobals();
   window.history.replaceState(null, '', '/');
 });
-it('offers the authorized Internal Tasks navigation link', async () => {
-  window.history.replaceState(null, '', '/#projects');
-  installInternalTaskApp();
-  render(
-    <StrictMode>
-      <App identity={deterministicBrowserIdentity()} />
-    </StrictMode>,
-  );
-  const navigation = await screen.findByRole('navigation', {
-    name: 'Primary navigation',
-  });
-  const link = within(navigation).getByRole('link', {
-    name: 'Internal Tasks',
-  });
-  expect(link).toBeVisible();
-  expect(link).toHaveAttribute('href', '#internal-tasks');
-  fireEvent.click(link);
-  const panel = await screen.findByRole('region', { name: 'Internal Tasks' });
-  await within(panel).findByRole('button', {
-    name: 'Internal inventory DEMO',
-  });
-  expect(
-    within(panel).getByRole('textbox', { name: 'Task title' }),
-  ).toBeVisible();
-});
+describe.each(appInterfaces)(
+  'Internal Tasks entry in the %s interface',
+  (appInterface) => {
+    it('offers the authorized Internal Tasks navigation link', async () => {
+      window.history.replaceState(null, '', '/#projects');
+      installInternalTaskApp();
+      renderInInterface(
+        appInterface,
+        <StrictMode>
+          <App identity={deterministicBrowserIdentity()} />
+        </StrictMode>,
+      );
+      const navigation = await screen.findByRole('navigation', {
+        name: 'Primary navigation',
+      });
+      // Clarté lists the view under its Tasks entry.
+      if (appInterface === 'clarte')
+        fireEvent.click(
+          within(navigation).getByRole('link', { name: 'Tasks' }),
+        );
+      const link = taskViewLink(appInterface, 'Internal Tasks');
+      expect(link).toBeVisible();
+      expect(link).toHaveAttribute('href', '#internal-tasks');
+      fireEvent.click(link);
+      const panel = await screen.findByRole('region', {
+        name: 'Internal Tasks',
+      });
+      await within(panel).findByRole('button', {
+        name: 'Internal inventory DEMO',
+      });
+      // Clarté creates an internal Task in a side panel.
+      let create = panel;
+      if (appInterface === 'clarte') {
+        fireEvent.click(
+          within(panel).getByRole('button', { name: 'Create internal Task' }),
+        );
+        create = await screen.findByRole('dialog', {
+          name: 'Create internal Task',
+        });
+      }
+      expect(
+        within(create).getByRole('textbox', { name: 'Task title' }),
+      ).toBeVisible();
+    });
+  },
+);
 it('keeps literal work and exact uncertain command through locale changes, then retains confirmation through separate refresh failure', async () => {
   const writes: Array<{
     body: BodyInit | null | undefined;

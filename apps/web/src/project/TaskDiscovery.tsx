@@ -25,18 +25,21 @@ export type TaskDiscoveryProps = {
   identity: BrowserIdentity;
   onOpenTask?: (target: { projectId: string; taskId: string }) => void;
 };
-type Props = TaskDiscoveryProps & { kind: 'unassigned' | 'blocked' };
+type Props = TaskDiscoveryProps & { kind: TaskDiscoveryKind };
 type Page =
   ReturnType<typeof readUnassignedTasks> | ReturnType<typeof readBlockedTasks>;
-type Load =
+export type TaskDiscoveryLoad =
   | { kind: 'loading' | 'denied' | 'error' | 'malformed'; offset: number }
   | { kind: 'ready'; page: Page };
 
-/** App and the authority key retire this read on navigation or access changes. */
-export function TaskDiscovery(props: Props) {
-  const { actor } = props;
-  const authority = JSON.stringify([
-    props.kind,
+export type TaskDiscoveryKind = 'unassigned' | 'blocked';
+/** App and this authority key retire the read on navigation or access changes. */
+export function taskDiscoveryAuthority(
+  kind: TaskDiscoveryKind,
+  actor: ActorContext,
+): string {
+  return JSON.stringify([
+    kind,
     actor.internalUserId,
     actor.workspaceId,
     actor.workspaceMembershipId,
@@ -44,17 +47,29 @@ export function TaskDiscovery(props: Props) {
     actor.workspacePermissions,
     actor.activeCompany,
   ]);
-  return <DiscoveryPage key={authority} {...props} />;
 }
-function DiscoveryPage({ actor, identity, onOpenTask, kind }: Props) {
-  const unassignedMessage = useUnassignedTasksCopy(),
-    blockedMessage = useBlockedTasksCopy();
-  const message = kind === 'blocked' ? blockedMessage : unassignedMessage;
-  const nativeCopy = useProjectTaskCopy();
-  const taskCopy = useMyTasksCopy();
-  const { formatDate } = useInterfaceLocale();
-  const titleId = useId();
-  const [load, setLoad] = useState<Load>({ kind: 'loading', offset: 0 });
+export function TaskDiscovery(props: Props) {
+  return (
+    <DiscoveryPage
+      key={taskDiscoveryAuthority(props.kind, props.actor)}
+      {...props}
+    />
+  );
+}
+/**
+ * One page of 25 unassigned or blocked Tasks of the active Company, read on
+ * mount and on demand; the latest read supersedes earlier ones. Both
+ * interfaces present it.
+ */
+export function useTaskDiscovery({
+  actor,
+  identity,
+  kind,
+}: Pick<Props, 'actor' | 'identity' | 'kind'>) {
+  const [load, setLoad] = useState<TaskDiscoveryLoad>({
+    kind: 'loading',
+    offset: 0,
+  });
   const operationScope = String(useRequestLifetime(identity, 'tasks'));
   const latest = useScopedOperation(operationScope);
   const observation = useActorObservation(actor);
@@ -105,6 +120,17 @@ function DiscoveryPage({ actor, identity, onOpenTask, kind }: Props) {
     read(0);
   }, [operationScope]);
   const offset = load.kind === 'ready' ? load.page.offset : load.offset;
+  return { load, offset, read };
+}
+function DiscoveryPage({ actor, identity, onOpenTask, kind }: Props) {
+  const unassignedMessage = useUnassignedTasksCopy(),
+    blockedMessage = useBlockedTasksCopy();
+  const message = kind === 'blocked' ? blockedMessage : unassignedMessage;
+  const nativeCopy = useProjectTaskCopy();
+  const taskCopy = useMyTasksCopy();
+  const { formatDate } = useInterfaceLocale();
+  const titleId = useId();
+  const { load, offset, read } = useTaskDiscovery({ actor, identity, kind });
   function renderLoad() {
     switch (load.kind) {
       case 'loading':

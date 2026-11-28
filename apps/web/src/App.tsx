@@ -30,6 +30,13 @@ import { MissionPlanWorkspace } from './mission-plan/MissionPlanWorkspace';
 import { missionPlanAuthority } from './mission-plan/mission-plan-authority';
 import { IdeasWorkspace } from './ideas/IdeasWorkspace';
 import { ClarteIdeas } from './clarte/improvement/ClarteIdeas';
+import { ClarteInternalTasks } from './clarte/tasks/ClarteInternalTasks';
+import {
+  ClarteBlockedTasks,
+  ClarteMyTasks,
+  ClarteTeamTasks,
+  ClarteUnassignedTasks,
+} from './clarte/tasks/ClarteTaskViews';
 import { ClarteOperationalRisks } from './clarte/improvement/ClarteOperationalRisks';
 import { ideasAuthority, ideasContextKey } from './ideas/ideas-contract';
 import { useIdeasCopy } from './ideas/ideas.copy';
@@ -984,6 +991,17 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onWorkspaceAccessRejected={rejectWorkspaceAccess}
         />
       ),
+      clarteContent: (
+        <ClarteInternalTasks
+          key={`internal-tasks:${access.sessionGeneration}:${companySelectionGeneration}:${internalTaskAuthority(access.actor)}`}
+          actor={access.actor}
+          identity={identity}
+          companyGeneration={companySelectionGeneration}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContext}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
+      ),
     });
   if (ideasAuthority(access.actor).read) {
     const ideas = {
@@ -1361,6 +1379,15 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onOpenTask={openProject}
         />
       ),
+      clarteContent: (
+        <ClarteMyTasks
+          key={`my-tasks:${access.sessionGeneration}:${clientAuthorityGeneration}:${activeCompanyId ?? 'no-company'}`}
+          actor={access.actor}
+          identity={identity}
+          onOpenTask={openProject}
+          onActivityRecorded={refreshActivityLog}
+        />
+      ),
     });
   if (canReadTasks(access.actor))
     sections.push({
@@ -1374,6 +1401,15 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           actor={access.actor}
           identity={identity}
           onOpenTask={openProject}
+        />
+      ),
+      clarteContent: (
+        <ClarteUnassignedTasks
+          key={`unassigned-tasks:${access.sessionGeneration}:${clientAuthorityGeneration}:${activeCompanyId ?? 'no-company'}`}
+          actor={access.actor}
+          identity={identity}
+          onOpenTask={openProject}
+          onActivityRecorded={refreshActivityLog}
         />
       ),
     });
@@ -1391,6 +1427,15 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onOpenTask={openProject}
         />
       ),
+      clarteContent: (
+        <ClarteBlockedTasks
+          key={`blocked-tasks:${access.sessionGeneration}:${clientAuthorityGeneration}:${activeCompanyId ?? 'no-company'}`}
+          actor={access.actor}
+          identity={identity}
+          onOpenTask={openProject}
+          onActivityRecorded={refreshActivityLog}
+        />
+      ),
     });
   if (canReadTasks(access.actor))
     sections.push({
@@ -1405,6 +1450,18 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           actor={access.actor}
           identity={identity}
           onOpenTask={openProject}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContext}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
+      ),
+      clarteContent: (
+        <ClarteTeamTasks
+          key={`team:${access.sessionGeneration}:${clientAuthorityGeneration}:${clientIdentityGeneration}:${activeCompanyId}`}
+          actor={access.actor}
+          identity={identity}
+          onOpenTask={openProject}
+          onActivityRecorded={refreshActivityLog}
           onActorRevalidated={acceptRevalidatedActor}
           onCompanyContextRejected={rejectCompanyContext}
           onWorkspaceAccessRejected={rejectWorkspaceAccess}

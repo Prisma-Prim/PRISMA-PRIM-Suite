@@ -1,0 +1,831 @@
+/*
+ * Clarté Tasks (#1542): the Task views, a Task's side panel and the internal
+ * Tasks. Every rule is scoped to a `clarte-task` class inside the Clarté
+ * frame; light background only.
+ */
+.clarte-frame .clarte-tasks {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-tasks:focus {
+  outline: none;
+}
+
+.clarte-frame .clarte-tasks-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 12px 16px;
+}
+
+.clarte-frame .clarte-tasks-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-tasks-toolbar-actions .clarte-field {
+  min-width: 190px;
+}
+
+/* Due-date groups of My Tasks */
+.clarte-frame .clarte-task-group {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-task-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--clarte-font-heading);
+  font-size: 15px;
+}
+
+.clarte-frame .clarte-task-group-head span {
+  color: var(--clarte-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.clarte-frame .clarte-task-group[data-group='pastDueGroup'] h2 {
+  color: var(--clarte-danger);
+}
+
+/* Task rows */
+.clarte-frame .clarte-card.clarte-task-card {
+  padding: 4px 16px;
+}
+
+.clarte-frame .clarte-task-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-task-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 0;
+  border-top: 1px solid var(--clarte-line-soft);
+}
+
+.clarte-frame .clarte-task-row:first-child {
+  border-top: 0;
+}
+
+.clarte-frame .clarte-task-mark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: var(--clarte-faint);
+}
+
+.clarte-frame .clarte-task-mark svg {
+  width: 21px;
+  height: 21px;
+}
+
+.clarte-frame .clarte-task-row[data-state='blocked'] .clarte-task-mark {
+  color: var(--clarte-danger);
+}
+
+.clarte-frame .clarte-task-row[data-state='done'] .clarte-task-mark {
+  color: var(--clarte-success);
+}
+
+.clarte-frame .clarte-task-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-task-title {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-task-title button {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  color: var(--clarte-ink);
+  background: none;
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-task-title button:hover {
+  color: var(--clarte-accent-text);
+  text-decoration: underline;
+}
+
+.clarte-frame .clarte-task-title button:focus-visible {
+  border-radius: 4px;
+  outline: none;
+  box-shadow: var(--clarte-focus);
+}
+
+.clarte-frame .clarte-task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-task-place {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  color: var(--clarte-accent-text);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-task-place span + span::before {
+  content: '·';
+  margin-right: 6px;
+  color: var(--clarte-faint);
+}
+
+.clarte-frame .clarte-task-priority {
+  color: var(--clarte-warning);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-task-reason,
+.clarte-frame .clarte-task-completion {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-task-declaration {
+  display: grid;
+  gap: 2px;
+  color: var(--clarte-danger);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-task-declaration p,
+.clarte-frame .clarte-task-declaration dl {
+  margin: 0;
+}
+
+.clarte-frame .clarte-task-declaration dl div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+}
+
+.clarte-frame .clarte-task-declaration dt {
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-task-declaration dt::after {
+  content: ':';
+}
+
+.clarte-frame .clarte-task-declaration dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-task-side {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-task-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--clarte-accent-text);
+  background: var(--clarte-accent-soft);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.clarte-frame .clarte-task-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px 10px;
+  margin: 0;
+}
+
+.clarte-frame .clarte-task-facts div {
+  display: flex;
+  align-items: center;
+}
+
+/* The values carry their meaning; the labels stay for assistive technology. */
+.clarte-frame .clarte-task-facts dt {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.clarte-frame .clarte-task-facts dd {
+  margin: 0;
+  color: var(--clarte-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.clarte-frame .clarte-task-due {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  color: var(--clarte-info);
+  background: var(--clarte-info-soft);
+  font-size: 12px;
+}
+
+.clarte-frame .clarte-task-due svg {
+  width: 13px;
+  height: 13px;
+}
+
+.clarte-frame .clarte-task-due[data-tone='past'] {
+  color: var(--clarte-danger);
+  background: var(--clarte-danger-soft);
+}
+
+.clarte-frame .clarte-task-due[data-tone='today'] {
+  color: var(--clarte-warning);
+  background: var(--clarte-warning-soft);
+}
+
+.clarte-frame .clarte-task-due[data-tone='none'] {
+  color: var(--clarte-muted);
+  background: var(--clarte-surface-sunken);
+}
+
+.clarte-frame .clarte-task-project svg {
+  width: 15px;
+  height: 15px;
+}
+
+.clarte-frame .clarte-tasks-pagination {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Team filters */
+.clarte-frame .clarte-task-criteria form {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  align-items: end;
+  gap: 12px;
+}
+
+.clarte-frame .clarte-task-criteria form > div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-task-criteria label,
+.clarte-frame .clarte-task-form label {
+  color: var(--clarte-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-task-criteria [role='alert'] {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--clarte-danger);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-task-criteria button[type='submit'] {
+  border-color: transparent;
+  color: var(--clarte-accent-ink);
+  background: var(--clarte-accent);
+}
+
+.clarte-frame .clarte-task-applied {
+  margin: 12px 0 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+/* A Task's side panel */
+.clarte-frame .clarte-task-panel {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-task-parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 18px;
+  margin: -4px 0 0;
+  border-bottom: 1px solid var(--clarte-line);
+}
+
+.clarte-frame .clarte-task-parts [role='tab'] {
+  min-height: 0;
+  margin-bottom: -1px;
+  padding: 8px 6px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--clarte-ink-soft);
+  background: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-task-parts [role='tab'][aria-selected='true'] {
+  border-bottom-color: var(--clarte-accent);
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-task-parts [role='tab']:hover {
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-task-parts [role='tab']:focus-visible {
+  border-radius: 6px;
+  outline: none;
+  box-shadow: var(--clarte-focus);
+}
+
+.clarte-frame .clarte-task-feedback {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--clarte-radius-md);
+  color: var(--clarte-accent-text);
+  background: var(--clarte-accent-soft);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-task-part {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  min-width: 0;
+  scroll-margin-top: 12px;
+}
+
+.clarte-frame .clarte-task-part[hidden] {
+  display: none;
+}
+
+.clarte-frame .clarte-task-part > * {
+  max-width: 100%;
+}
+
+.clarte-frame .clarte-task-part > dl,
+.clarte-frame .clarte-task-part > section,
+.clarte-frame .clarte-task-part > div,
+.clarte-frame .clarte-task-part > form {
+  justify-self: stretch;
+}
+
+.clarte-frame .clarte-task-part > h3 {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-task-panel-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+  margin: 0;
+}
+
+.clarte-frame .clarte-task-panel-facts dt {
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-task-panel-facts dd {
+  margin: 3px 0 0;
+  color: var(--clarte-ink);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-task-panel-wide {
+  grid-column: 1 / -1;
+}
+
+.clarte-frame .clarte-task-instructions {
+  white-space: pre-wrap;
+  font-weight: 500;
+}
+
+.clarte-frame .clarte-task-notice {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--clarte-radius-md);
+  color: var(--clarte-warning);
+  background: var(--clarte-warning-soft);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-task-project-name {
+  margin: 0;
+  color: var(--clarte-accent-text);
+  font-weight: 600;
+}
+
+/*
+ * Forms the panel shares with the current interface (Task fields, reason,
+ * result, grouped planning and internal Tasks): stacked labelled fields in
+ * the Clarté look.
+ */
+.clarte-frame .clarte-task-panel form {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+}
+
+.clarte-frame .clarte-task-panel label {
+  display: grid;
+  gap: 6px;
+  color: var(--clarte-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-task-panel input:not([type='checkbox'], [type='radio']),
+.clarte-frame .clarte-task-panel textarea {
+  width: 100%;
+  min-height: 40px;
+  color: var(--clarte-ink);
+  font: inherit;
+  font-weight: 400;
+}
+
+.clarte-frame .clarte-task-panel textarea {
+  resize: vertical;
+}
+
+.clarte-frame .clarte-task-panel input:focus,
+.clarte-frame .clarte-task-panel textarea:focus {
+  border-color: var(--clarte-accent);
+  outline: none;
+  box-shadow: var(--clarte-focus);
+}
+
+.clarte-frame .clarte-task-panel form p,
+.clarte-frame .clarte-task-panel .task-results p,
+.clarte-frame .clarte-task-panel .task-planning p {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-task-panel .task-reason-error {
+  color: var(--clarte-danger);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-task-panel button[type='submit'] {
+  justify-self: start;
+  border-color: transparent;
+  color: var(--clarte-accent-ink);
+  background: var(--clarte-accent);
+}
+
+.clarte-frame .clarte-task-panel .task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-task-form {
+  padding: 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface-muted);
+}
+
+/* The result part: the existing result owner in the Clarté look */
+.clarte-frame .clarte-task-panel .task-results {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+
+.clarte-frame .clarte-task-panel .task-results > *,
+.clarte-frame .clarte-task-panel .task-results form {
+  max-width: 100%;
+}
+
+.clarte-frame .clarte-task-panel .task-results > ol,
+.clarte-frame .clarte-task-panel .task-results > form,
+.clarte-frame .clarte-task-panel .task-results > article {
+  justify-self: stretch;
+}
+
+.clarte-frame .clarte-task-panel .task-results > h5,
+.clarte-frame .clarte-task-panel .task-results h6,
+.clarte-frame .clarte-task-panel .task-history h6,
+.clarte-frame .clarte-task-panel .task-planning h5 {
+  margin: 0;
+  color: var(--clarte-ink);
+  font-size: 14px;
+}
+
+.clarte-frame .clarte-task-panel .task-results ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-task-panel .task-result-declaration {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--clarte-success-soft);
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-success-soft);
+}
+
+.clarte-frame .clarte-task-panel .task-result-declaration .task-result-text {
+  color: var(--clarte-ink);
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+
+.clarte-frame .clarte-task-panel .task-result-declaration button {
+  justify-self: stretch;
+  margin-top: 6px;
+}
+
+/* The history part: a quiet timeline */
+.clarte-frame .clarte-task-panel .task-history ol {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-task-panel .task-history li {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: 0 0 16px 28px;
+}
+
+.clarte-frame .clarte-task-panel .task-history li::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--clarte-line);
+  border-radius: 50%;
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-task-panel .task-history li::after {
+  content: '';
+  position: absolute;
+  top: 20px;
+  bottom: 0;
+  left: 8px;
+  width: 2px;
+  background: var(--clarte-line-soft);
+}
+
+.clarte-frame .clarte-task-panel .task-history li:last-child::after {
+  display: none;
+}
+
+.clarte-frame .clarte-task-panel .task-history p,
+.clarte-frame .clarte-task-panel .task-history dl {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-task-panel .task-history dd {
+  margin: 0;
+}
+
+/* Grouped planning of this Project's open Tasks */
+.clarte-frame .clarte-task-planning {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface-muted);
+}
+
+.clarte-frame .clarte-task-planning > p {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-task-panel .task-planning > section {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.clarte-frame .clarte-task-panel .task-planning > section[hidden] {
+  display: none;
+}
+
+.clarte-frame .clarte-task-panel .task-planning-row {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-sm);
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-task-panel .task-planning-row legend {
+  padding: 0 4px;
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-task-panel .task-planning-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--clarte-ink);
+  font-size: 14px;
+}
+
+.clarte-frame .clarte-task-panel .task-planning-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.clarte-frame .clarte-task-panel .task-planning-scope {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Internal Tasks */
+.clarte-frame .clarte-internal-assignees {
+  display: grid;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-internal-assignees p {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-internal-task-panel .internal-task-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.clarte-frame .clarte-internal-task-panel .internal-task-panel > h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.clarte-frame .clarte-internal-task-panel .internal-task-values {
+  display: grid;
+  grid-template-columns: minmax(110px, auto) minmax(0, 1fr);
+  gap: 8px 14px;
+  margin: 0;
+  font-size: 13.5px;
+}
+
+.clarte-frame .clarte-internal-task-panel .internal-task-values dt {
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-internal-task-panel .internal-task-values dd {
+  margin: 0;
+  color: var(--clarte-ink);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-internal-task-panel pre {
+  margin: 0;
+  font: inherit;
+  white-space: pre-wrap;
+}
+
+.clarte-frame .clarte-internal-task-panel .internal-task-history {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-internal-task-panel .internal-task-history li {
+  padding: 10px 12px;
+  border: 1px solid var(--clarte-line-soft);
+  border-radius: var(--clarte-radius-sm);
+}
+
+.clarte-frame .clarte-internal-task-panel .internal-task-history p {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .clarte-frame .clarte-tasks-toolbar-actions {
+    width: 100%;
+  }
+
+  .clarte-frame .clarte-tasks-toolbar-actions .clarte-field {
+    flex: 1 1 100%;
+  }
+
+  .clarte-frame .clarte-task-card {
+    padding: 0 12px;
+  }
+
+  .clarte-frame .clarte-task-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 12px;
+  }
+
+  .clarte-frame .clarte-task-side {
+    grid-column: 2;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .clarte-frame .clarte-task-facts {
+    justify-content: flex-start;
+  }
+
+  .clarte-frame .clarte-task-project {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .clarte-frame .clarte-task-panel-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

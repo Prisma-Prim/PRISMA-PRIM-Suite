@@ -15,6 +15,7 @@ it('has every Clarté frame and component text in the four interface languages',
     'improvement/clarte-improvement.copy.ts#clarteImprovementMessages',
     'settings/settings-access.copy.ts#settingsAccessMessages',
     'settings/settings-console.copy.ts#settingsConsoleMessages',
+    'tasks/clarte-tasks.copy.ts#clarteTasksMessages',
     'today/clarte-today.copy.ts#clarteTodayMessages',
   ]);
 });

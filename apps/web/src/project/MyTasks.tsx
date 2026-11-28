@@ -20,7 +20,7 @@ type Props = {
   /** Opens this assigned Task in its Project; rows offer Open only when supplied. */
   onOpenTask?: (task: { projectId: string; taskId: string }) => void;
 };
-type Load =
+export type AssignedTasksLoad =
   | { kind: 'loading' | 'denied' | 'error' }
   | { kind: 'ready'; tasks: AssignedTask[] };
 
@@ -36,10 +36,9 @@ export function canReadTasks(actor: ActorContext): boolean {
   );
 }
 
-export function MyTasks(props: Props) {
-  const { actor } = props;
-  // Any authority change remounts the list, dropping its pending reply and rows.
-  const authority = JSON.stringify([
+/** Any authority change remounts the list, dropping its pending reply and rows. */
+export function assignedTasksAuthority(actor: ActorContext): string {
+  return JSON.stringify([
     actor.internalUserId,
     actor.workspaceId,
     actor.workspaceMembershipId,
@@ -47,14 +46,21 @@ export function MyTasks(props: Props) {
     actor.workspacePermissions,
     actor.activeCompany,
   ]);
-  return <AssignedTasks key={authority} {...props} />;
 }
 
-function AssignedTasks({ actor, identity, onOpenTask }: Props) {
-  const copy = useMyTasksCopy();
-  const { formatDate } = useInterfaceLocale();
-  const titleId = useId();
-  const [load, setLoad] = useState<Load>({ kind: 'loading' });
+export function MyTasks(props: Props) {
+  return <AssignedTasks key={assignedTasksAuthority(props.actor)} {...props} />;
+}
+
+/**
+ * The actor's open assigned Tasks, read once on mount and on demand; the
+ * latest read supersedes any earlier one. Both interfaces present it.
+ */
+export function useAssignedTasks({
+  actor,
+  identity,
+}: Pick<Props, 'actor' | 'identity'>) {
+  const [load, setLoad] = useState<AssignedTasksLoad>({ kind: 'loading' });
   const operationScope = String(useRequestLifetime(identity, 'tasks'));
   const latest = useScopedOperation(operationScope);
   const observation = useActorObservation(actor);
@@ -102,7 +108,14 @@ function AssignedTasks({ actor, identity, onOpenTask }: Props) {
   useEffect(() => {
     read();
   }, [operationScope]);
+  return { load, read };
+}
 
+function AssignedTasks({ actor, identity, onOpenTask }: Props) {
+  const copy = useMyTasksCopy();
+  const { formatDate } = useInterfaceLocale();
+  const titleId = useId();
+  const { load, read } = useAssignedTasks({ actor, identity });
   return (
     <section
       id="my-tasks"
