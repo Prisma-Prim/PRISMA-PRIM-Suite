@@ -134,7 +134,7 @@ export const clarteEntries = [
     id: 'missions',
     group: 'primary',
     icon: ShieldCheck,
-    tabs: [{ destination: 'projects', render: renderCurrentScreen }],
+    tabs: [{ destination: 'projects', render: renderClarteScreen }],
   },
   {
     id: 'tasks',

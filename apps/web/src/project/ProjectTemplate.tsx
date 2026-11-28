@@ -387,67 +387,11 @@ export function ProjectTemplatePlan({
   onActivityRecorded?: () => Promise<void> | void;
 }) {
   const copy = useProjectTemplateCopy();
-  const [generation, setGeneration] = useState(0);
-  const [load, setLoad] = useState<
-    | { kind: 'loading' | 'error' | 'denied' }
-    | { kind: 'ready'; template: CopiedTemplatePlan | null }
-  >({ kind: 'loading' });
-  const companyId = actor.activeCompany?.id;
-  const ownerScope = String(
-    useRequestLifetime(
-      identity,
-      JSON.stringify([
-        projectId,
-        actor.internalUserId,
-        actor.workspaceId,
-        actor.workspaceMembershipId,
-        companyId,
-        grantOf(actor.activeCompany, 'company_project_access'),
-      ]),
-    ),
-  );
-  const reads = useScopedOperationGroup(ownerScope);
-  const observation = useActorObservation(actor);
-  const captureRecovery = useAuthorityLifetime(String(observation), identity);
-  useEffect(() => {
-    const operation = reads.beginLatest();
-    if (!operation) return;
-    const { signal } = operation;
-    const recoveryCurrent = captureRecovery();
-    setLoad({ kind: 'loading' });
-    void (async () => {
-      try {
-        const api = await createAuthenticatedApiClient(identity);
-        if (signal.aborted) return;
-        const response = await api.request(`/projects/${projectId}/template`, {
-          companyContextId: companyId,
-          signal,
-        });
-        if (signal.aborted) return;
-        if (response.status === 'unauthorized') {
-          if (recoveryCurrent()) await identity.rejectSession();
-          else setLoad({ kind: 'denied' });
-          return;
-        }
-        if (response.status === 'forbidden') {
-          setLoad({ kind: 'denied' });
-          return;
-        }
-        const plan =
-          response.status === 'ok'
-            ? readCopiedTemplatePlan(response.value)
-            : undefined;
-        setLoad(
-          plan ? { kind: 'ready', template: plan.template } : { kind: 'error' },
-        );
-      } catch {
-        if (!signal.aborted) setLoad({ kind: 'error' });
-      } finally {
-        operation.release();
-      }
-    })();
-    return operation.retire;
-  }, [companyId, identity, projectId, generation, reads, captureRecovery]);
+  const { load, retry } = useCopiedTemplatePlan({
+    actor,
+    identity,
+    projectId,
+  });
   if (load.kind === 'ready' && load.template === null) return null;
   const planView = (
     <section className="project-template-plan" aria-label={copy('plan')}>
@@ -458,10 +402,7 @@ export function ProjectTemplatePlan({
             {load.kind === 'error' ? copy('planError') : copy(load.kind)}
           </p>
           {load.kind === 'error' && (
-            <button
-              type="button"
-              onClick={() => setGeneration((value) => value + 1)}
-            >
+            <button type="button" onClick={retry}>
               {copy('retry')}
             </button>
           )}
@@ -560,6 +501,83 @@ export function ProjectTemplatePlan({
         )}
     </>
   );
+}
+
+/** The read of a Project's copied Template plan, for every interface. */
+export type CopiedTemplatePlanRead =
+  | { kind: 'loading' | 'error' | 'denied' }
+  | { kind: 'ready'; template: CopiedTemplatePlan | null };
+
+/**
+ * Reads the plan copied into a Project from its Template, under the Project
+ * access, member and Company that own it; `retry` reads it again.
+ */
+export function useCopiedTemplatePlan({
+  actor,
+  identity,
+  projectId,
+}: Props & { projectId: string }) {
+  const [generation, setGeneration] = useState(0);
+  const [load, setLoad] = useState<CopiedTemplatePlanRead>({
+    kind: 'loading',
+  });
+  const companyId = actor.activeCompany?.id;
+  const ownerScope = String(
+    useRequestLifetime(
+      identity,
+      JSON.stringify([
+        projectId,
+        actor.internalUserId,
+        actor.workspaceId,
+        actor.workspaceMembershipId,
+        companyId,
+        grantOf(actor.activeCompany, 'company_project_access'),
+      ]),
+    ),
+  );
+  const reads = useScopedOperationGroup(ownerScope);
+  const observation = useActorObservation(actor);
+  const captureRecovery = useAuthorityLifetime(String(observation), identity);
+  useEffect(() => {
+    const operation = reads.beginLatest();
+    if (!operation) return;
+    const { signal } = operation;
+    const recoveryCurrent = captureRecovery();
+    setLoad({ kind: 'loading' });
+    void (async () => {
+      try {
+        const api = await createAuthenticatedApiClient(identity);
+        if (signal.aborted) return;
+        const response = await api.request(`/projects/${projectId}/template`, {
+          companyContextId: companyId,
+          signal,
+        });
+        if (signal.aborted) return;
+        if (response.status === 'unauthorized') {
+          if (recoveryCurrent()) await identity.rejectSession();
+          else setLoad({ kind: 'denied' });
+          return;
+        }
+        if (response.status === 'forbidden') {
+          setLoad({ kind: 'denied' });
+          return;
+        }
+        const plan =
+          response.status === 'ok'
+            ? readCopiedTemplatePlan(response.value)
+            : undefined;
+        setLoad(
+          plan ? { kind: 'ready', template: plan.template } : { kind: 'error' },
+        );
+      } catch {
+        if (!signal.aborted) setLoad({ kind: 'error' });
+      } finally {
+        operation.release();
+      }
+    })();
+    return operation.retire;
+  }, [companyId, identity, projectId, generation, reads, captureRecovery]);
+  return { load, retry: () => setGeneration((value) => value + 1) };
 }
 
 /** Replacing any prerequisite retires template drafts and replies, even if labels match. */

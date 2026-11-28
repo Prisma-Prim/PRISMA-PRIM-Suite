@@ -4,8 +4,13 @@ import {
   screen,
   within,
 } from './test/render-with-interface-locale';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { appInterfaces, renderInInterface } from './test/app-interface';
+import {
+  projectDetailSection,
+  projectsMenuLabel,
+} from './test/project-interface';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import {
@@ -138,49 +143,58 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-it.each([
-  ['a Project Access v1 reader', actor, false],
-  ['a Project Access v2 holder', updater, true],
-])(
-  'shows the responsible member in Project detail to %s with change controls only for project.update',
-  async (_, current, changeable) => {
-    const paths = serve(current);
-    window.history.replaceState(null, '', '/#projects');
-    render(<App identity={deterministicBrowserIdentity()} />);
-    const navigation = await screen.findByRole('navigation', {
-      name: 'Primary navigation',
-    });
-    expect(
-      within(navigation).getByRole('link', { name: 'Projects' }),
-    ).toBeInTheDocument();
-    const projects = await screen.findByRole('region', { name: 'Projects' });
-    fireEvent.click(
-      await within(projects).findByRole('button', {
-        name: `${project.title} Client: ${project.clientDisplayName}`,
-      }),
-    );
-    const detail = await within(projects).findByRole('article', {
-      name: project.title,
-    });
-    const responsible = within(detail).getByRole('region', {
-      name: 'Responsible member',
-    });
-    expect(
-      await within(responsible).findByText(ion.displayLabel, {
-        selector: 'dd',
-      }),
-    ).toBeInTheDocument();
-    expect(
-      within(responsible).getByText(/Last changed by Ana Popescu on/u),
-    ).toBeInTheDocument();
-    expect(
-      within(responsible).queryByRole('button', { name: 'Change' }) !== null,
-    ).toBe(changeable);
-    expect(paths).not.toContain(
-      `/api/projects/${project.id}/eligible-responsible-members`,
-    );
-  },
-);
+describe.each(appInterfaces)('in the %s interface', (appInterface) => {
+  it.each([
+    ['a Project Access v1 reader', actor, false],
+    ['a Project Access v2 holder', updater, true],
+  ])(
+    'shows the responsible member in Project detail to %s with change controls only for project.update',
+    async (_, current, changeable) => {
+      const paths = serve(current);
+      window.history.replaceState(null, '', '/#projects');
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      const navigation = await screen.findByRole('navigation', {
+        name: 'Primary navigation',
+      });
+      expect(
+        within(navigation).getByRole('link', {
+          name: projectsMenuLabel(appInterface),
+        }),
+      ).toBeInTheDocument();
+      const projects = await screen.findByRole('region', { name: 'Projects' });
+      fireEvent.click(
+        await within(projects).findByRole('button', {
+          name: `${project.title} Client: ${project.clientDisplayName}`,
+        }),
+      );
+      const detail = await within(projects).findByRole('article', {
+        name: project.title,
+      });
+      const responsible = projectDetailSection(
+        appInterface,
+        detail,
+        'Responsible member',
+      );
+      expect(
+        await within(responsible).findByText(ion.displayLabel, {
+          selector: 'dd',
+        }),
+      ).toBeInTheDocument();
+      expect(
+        within(responsible).getByText(/Last changed by Ana Popescu on/u),
+      ).toBeInTheDocument();
+      expect(
+        within(responsible).queryByRole('button', { name: 'Change' }) !== null,
+      ).toBe(changeable);
+      expect(paths).not.toContain(
+        `/api/projects/${project.id}/eligible-responsible-members`,
+      );
+    },
+  );
+});
 
 it('renders responsible-member changes in the Activity Log with their before and after members', async () => {
   serve(actor);

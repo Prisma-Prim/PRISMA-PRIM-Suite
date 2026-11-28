@@ -4,8 +4,14 @@ import {
   screen,
   within,
 } from './test/render-with-interface-locale';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { appInterfaces, renderInInterface } from './test/app-interface';
+import {
+  projectDetailSection,
+  projectRowOf,
+  showProjectList,
+} from './test/project-interface';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import type { ProjectLifecycle } from './project/project-lifecycle-response';
@@ -194,49 +200,86 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-it('mounts the Lifecycle section above the responsible member and refreshes the detail status and the list row together', async () => {
-  const paths = serve();
-  window.history.replaceState(null, '', '/#projects');
-  render(<App identity={deterministicBrowserIdentity()} />);
-  const projects = await screen.findByRole('region', { name: 'Projects' });
-  const row = await within(projects).findByRole('button', {
-    name: `${project.title} Client: ${project.clientDisplayName}`,
-  });
-  const listItem = row.closest('li');
-  if (!listItem) throw new Error('The Project row is not a list item.');
-  expect(within(listItem).getByText('Active')).toBeInTheDocument();
-  fireEvent.click(row);
-  const detail = await within(projects).findByRole('article', {
-    name: project.title,
-  });
-  const lifecycle = within(detail).getByRole('region', { name: 'Lifecycle' });
-  const responsible = within(detail).getByRole('region', {
-    name: 'Responsible member',
-  });
-  expect(
-    lifecycle.compareDocumentPosition(responsible) &
-      Node.DOCUMENT_POSITION_FOLLOWING,
-  ).toBeTruthy();
-  // Only a preparatory Project repeats the preparation notice.
-  expect(
-    within(detail).queryByText(
-      'Preparation only. This record does not authorize work to start.',
-    ),
-  ).toBeNull();
-  fireEvent.click(
-    await within(lifecycle).findByRole('button', { name: 'Put on hold' }),
-  );
-  fireEvent.change(within(lifecycle).getByLabelText('Hold reason'), {
-    target: { value: 'Client asked to pause.' },
-  });
-  fireEvent.click(
-    within(lifecycle).getByRole('button', { name: 'Put Project on hold' }),
-  );
-  await within(lifecycle).findByRole('button', { name: 'Resume Project' });
-  expect(await within(listItem).findByText('On hold')).toBeInTheDocument();
-  expect(within(detail).getAllByText('On hold')).toHaveLength(2);
-  expect(paths).toContain(`GET /api/projects/${project.id}`);
-});
+describe.each(appInterfaces)(
+  'Project lifecycle through App in the %s interface',
+  (appInterface) => {
+    it('mounts the Lifecycle section above the responsible member and refreshes the detail status and the list row together', async () => {
+      const paths = serve();
+      window.history.replaceState(null, '', '/#projects');
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      const projects = await screen.findByRole('region', { name: 'Projects' });
+      const row = await within(projects).findByRole('button', {
+        name: `${project.title} Client: ${project.clientDisplayName}`,
+      });
+      const listItem = projectRowOf(row);
+      expect(within(listItem).getByText('Active')).toBeInTheDocument();
+      fireEvent.click(row);
+      const detail = await within(projects).findByRole('article', {
+        name: project.title,
+      });
+      const lifecycle = projectDetailSection(appInterface, detail, 'Lifecycle');
+      // Clarté shows the responsible member in its own panel instead.
+      if (appInterface === 'current') {
+        const responsible = within(detail).getByRole('region', {
+          name: 'Responsible member',
+        });
+        expect(
+          lifecycle.compareDocumentPosition(responsible) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      }
+      // Only a preparatory Project repeats the preparation notice.
+      expect(
+        within(detail).queryByText(
+          'Preparation only. This record does not authorize work to start.',
+        ),
+      ).toBeNull();
+      fireEvent.click(
+        await within(lifecycle).findByRole('button', { name: 'Put on hold' }),
+      );
+      fireEvent.change(within(lifecycle).getByLabelText('Hold reason'), {
+        target: { value: 'Client asked to pause.' },
+      });
+      fireEvent.click(
+        within(lifecycle).getByRole('button', { name: 'Put Project on hold' }),
+      );
+      await within(lifecycle).findByRole('button', { name: 'Resume Project' });
+      expect(within(detail).getAllByText('On hold')).toHaveLength(2);
+      showProjectList(appInterface, projects);
+      expect(await within(listItem).findByText('On hold')).toBeInTheDocument();
+      expect(paths).toContain(`GET /api/projects/${project.id}`);
+    });
+
+    it('keeps a Project with a preparatory status labelled and its notice beside the registration form', async () => {
+      servePreparatory();
+      window.history.replaceState(null, '', '/#projects');
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      const projects = await screen.findByRole('region', { name: 'Projects' });
+      const row = await within(projects).findByRole('button', {
+        name: `${project.title} Client: ${project.clientDisplayName}`,
+      });
+      expect(projectRowOf(row)).toHaveTextContent('Preparatory');
+      // Clarté registers a preparatory Project from its side panel.
+      if (appInterface === 'clarte')
+        fireEvent.click(
+          within(projects).getByRole('button', {
+            name: 'Preparatory Project',
+          }),
+        );
+      expect(
+        within(projects).getByText(
+          'Preparation only. This record does not authorize work to start.',
+        ).parentElement?.tagName,
+      ).toBe('FORM');
+    });
+  },
+);
 
 it('labels lifecycle and Approver events from centralized copy and omits an event with malformed metadata', async () => {
   serve({
@@ -319,7 +362,7 @@ it('labels lifecycle and Approver events from centralized copy and omits an even
   expect(items[0]).toHaveTextContent(`Target: Project: ${project.title}`);
 });
 
-it('keeps a Project with a preparatory status labelled and its notice beside the registration form', async () => {
+function servePreparatory() {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {
@@ -335,16 +378,4 @@ it('keeps a Project with a preparatory status labelled and its notice beside the
       return Response.json([]);
     }),
   );
-  window.history.replaceState(null, '', '/#projects');
-  render(<App identity={deterministicBrowserIdentity()} />);
-  const projects = await screen.findByRole('region', { name: 'Projects' });
-  const row = await within(projects).findByRole('button', {
-    name: `${project.title} Client: ${project.clientDisplayName}`,
-  });
-  expect(row.closest('li')).toHaveTextContent('Preparatory');
-  expect(
-    within(projects).getByText(
-      'Preparation only. This record does not authorize work to start.',
-    ).parentElement?.tagName,
-  ).toBe('FORM');
-});
+}
