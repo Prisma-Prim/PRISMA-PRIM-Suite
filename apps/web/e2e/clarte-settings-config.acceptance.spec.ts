@@ -116,7 +116,7 @@ const plan = {
   id: '00000000-0000-4000-8000-000000007001',
   planId: '00000000-0000-4000-8000-000000007000',
   versionNumber: 1,
-  title: 'Plan de implementare ISO 14001',
+  title: 'Plan demonstrativ',
   activityCount: 2,
   publishedAt: '2026-10-14T09:00:00.000Z',
   actor: {
@@ -126,15 +126,15 @@ const plan = {
   activities: [
     {
       key: '00000000-0000-4000-8000-000000007101',
-      title: 'Diagnostic inițial',
-      activity: 'Analiza situației existente',
-      intendedResult: 'Raport de diagnostic',
+      title: 'Activitate demonstrativă 1',
+      activity: 'Acțiune demonstrativă 1',
+      intendedResult: 'Rezultat demonstrativ 1',
     },
     {
       key: '00000000-0000-4000-8000-000000007102',
-      title: 'Analiza aspectelor de mediu',
-      activity: 'Identificarea aspectelor',
-      intendedResult: 'Registrul aspectelor',
+      title: 'Activitate demonstrativă 2',
+      activity: 'Acțiune demonstrativă 2',
+      intendedResult: 'Rezultat demonstrativ 2',
     },
   ],
 };
@@ -144,10 +144,10 @@ const offering = {
   companyId: company.id,
   serviceDefinitionId: '00000000-0000-4000-8000-000000008101',
   serviceDefinition: {
-    code: 'CERT_22000',
-    name: 'Certificare ISO 22000:2018',
+    code: 'SVC_ALPHA',
+    name: 'Serviciu demonstrativ Alfa',
   },
-  commercialLabel: 'Audit inițial în două etape',
+  commercialLabel: 'Descriere demonstrativă',
   availability: 'AVAILABLE',
   provenance: 'ILLUSTRATIVE',
   provisional: true,
@@ -168,7 +168,7 @@ const tariff = (versionNumber: number, state: string, unitAmount: string) => ({
   id: `00000000-0000-4000-8000-00000000900${versionNumber}`,
   offeringId: offering.id,
   versionNumber,
-  unit: 'zi-auditor',
+  unit: 'unitate-demo',
   unitAmount,
   currency: 'MDL',
   taxRatePercent: '20',
@@ -204,11 +204,11 @@ function body(route: Route): unknown {
 /** A stateful fake of every configuration read and command of the journey. */
 async function serveConfigurator(page: Page) {
   const stages = [
-    'Primul contact',
-    'Nevoie calificată',
-    'Estimare',
-    'Ofertă trimisă',
-    'Negociere',
+    'Lead nou',
+    'Calificare inițială',
+    'Evaluare internă',
+    'Propunere',
+    'Discuție contractuală',
   ].map((label, index) => ({
     id: `00000000-0000-4000-8000-00000000400${index}`,
     label,
@@ -217,17 +217,17 @@ async function serveConfigurator(page: Page) {
   }));
   const definitions = [
     definition(
-      'CERT_22000',
-      'Certificare ISO 22000:2018',
+      'SVC_ALPHA',
+      'Serviciu demonstrativ Alfa',
       offering.serviceDefinitionId,
     ),
     definition(
-      'CERT_9001',
-      'Certificare ISO 9001:2015',
+      'SVC_BETA',
+      'Serviciu demonstrativ Beta',
       '00000000-0000-4000-8000-000000008102',
     ),
   ];
-  const tariffs = [tariff(1, 'CURRENT', '9800.0000')];
+  const tariffs = [tariff(1, 'CURRENT', '1250.0000')];
   let offerModelRevision: 'pending' | 'proposed' | 'approved' = 'pending';
   let deadlines = [deadlineSet(1, 15)];
   const writes: string[] = [];
@@ -264,8 +264,8 @@ async function serveConfigurator(page: Page) {
       if (method === 'GET')
         return route.fulfill({ json: { items: definitions } });
       const created = definition(
-        'CERT_14001',
-        'Certificare ISO 14001:2015',
+        'SVC_GAMMA',
+        'Serviciu demonstrativ Gamma',
         '00000000-0000-4000-8000-000000008103',
       );
       definitions.unshift(created);
@@ -296,7 +296,7 @@ async function serveConfigurator(page: Page) {
       return route.fulfill({ json: { items: tariffs, provisional: true } });
     if (path === `${tariffRoot}/tariff-versions`) {
       const published = {
-        ...tariff(2, 'SCHEDULED', '10300'),
+        ...tariff(2, 'SCHEDULED', '1300'),
         effectiveFrom: '2030-01-01T00:00:00.000Z',
       };
       tariffs.unshift(published);
@@ -486,7 +486,7 @@ test('configures sales stages, catalogue, pricing, models, plans and deadlines f
   const stages = await openSection(page, 'Sales stages', '#sales-stages');
   await stages.getByRole('button', { name: 'Add a stage' }).click();
   const stageForm = page.getByRole('dialog', { name: 'Sales Stage settings' });
-  await stageForm.getByLabel('New stage label').fill('Câștigată sau pierdută');
+  await stageForm.getByLabel('New stage label').fill('Închidere');
   await stageForm.getByRole('button', { name: 'Add stage' }).click();
   await expect(stageForm).toHaveCount(0);
   await expect(
@@ -500,15 +500,15 @@ test('configures sales stages, catalogue, pricing, models, plans and deadlines f
   const serviceForm = page.getByRole('dialog', {
     name: 'Shared Service Definitions',
   });
-  await serviceForm.getByLabel('Service code').fill('CERT_14001');
+  await serviceForm.getByLabel('Service code').fill('SVC_GAMMA');
   await serviceForm
     .getByLabel('Service name')
-    .fill('Certificare ISO 14001:2015');
+    .fill('Serviciu demonstrativ Gamma');
   await serviceForm.getByRole('button', { name: 'Define Service' }).click();
   await expect(serviceForm).toHaveCount(0);
   await expect(
     catalogue.getByRole('table', { name: 'Service Definitions' }),
-  ).toContainText('CERT_14001');
+  ).toContainText('SVC_GAMMA');
   await screenshot(page, 'clarte-settings-config-catalogue');
 
   // Pricing: publish a Tariff version for an Offering.
@@ -516,11 +516,11 @@ test('configures sales stages, catalogue, pricing, models, plans and deadlines f
   const tariffs = pricing.getByRole('region', { name: 'Tariff Versions' });
   await tariffs.getByLabel('Company Service Offering').click();
   await page
-    .getByRole('option', { name: /Certificare ISO 22000:2018/u })
+    .getByRole('option', { name: /Serviciu demonstrativ Alfa/u })
     .click();
   await expect(
     tariffs.getByRole('table', { name: 'Current Tariff Version' }),
-  ).toContainText('9,800.0000 MDL');
+  ).toContainText('1,250.0000 MDL');
   await screenshot(page, 'clarte-settings-config-pricing');
   await tariffs
     .getByRole('button', { name: 'Publish a Tariff Version' })
@@ -528,8 +528,8 @@ test('configures sales stages, catalogue, pricing, models, plans and deadlines f
   const tariffForm = page.getByRole('dialog', {
     name: 'Publish a Tariff Version',
   });
-  await tariffForm.getByLabel('Unit', { exact: true }).fill('zi-auditor');
-  await tariffForm.getByLabel('Unit amount').fill('10300');
+  await tariffForm.getByLabel('Unit', { exact: true }).fill('unitate-demo');
+  await tariffForm.getByLabel('Unit amount').fill('1300');
   await tariffForm.getByLabel('Currency').click();
   await page.getByRole('option', { name: 'MDL' }).click();
   await tariffForm.getByLabel('Tax rate percent').fill('20');
@@ -605,9 +605,7 @@ test('configures sales stages, catalogue, pricing, models, plans and deadlines f
   await screenshot(page, 'clarte-settings-config-project-templates');
   await plans.getByRole('button', { name: 'Successor Version' }).click();
   const planForm = page.getByRole('dialog', { name: 'Successor Version' });
-  await planForm
-    .getByLabel('Plan name')
-    .fill('Plan de implementare ISO 14001 (2027)');
+  await planForm.getByLabel('Plan name').fill('Plan demonstrativ revizuit');
   await planForm.getByRole('button', { name: 'Publish plan' }).click();
   await expect(planForm).toHaveCount(0);
   await expect(plans.getByText('Publication confirmed.')).toBeVisible();

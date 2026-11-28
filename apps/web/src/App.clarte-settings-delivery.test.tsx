@@ -184,7 +184,7 @@ describe('Mission Plans in the Clarté Settings console', () => {
                 ...source,
                 id: '60000000-0000-4000-8000-000000001547',
                 planId: '50000000-0000-4000-8000-000000001547',
-                title: 'Plan de implementare ISO 14001',
+                title: 'Plan demonstrativ',
                 activities:
                   typeof published === 'object' &&
                   published !== null &&
@@ -223,10 +223,10 @@ describe('Mission Plans in the Clarté Settings console', () => {
     fireEvent.click(within(plans).getByRole('button', { name: 'New plan' }));
     const panel = screen.getByRole('dialog', { name: 'New plan' });
     for (const [label, value] of [
-      ['Plan name', 'Plan de implementare ISO 14001'],
-      ['Activity title', 'Diagnostic inițial'],
-      ['Planned action', 'Analiza situației existente'],
-      ['Intended result', 'Raport de diagnostic'],
+      ['Plan name', 'Plan demonstrativ'],
+      ['Activity title', 'Activitate demonstrativă 1'],
+      ['Planned action', 'Acțiune demonstrativă 1'],
+      ['Intended result', 'Rezultat demonstrativ 1'],
     ] as const)
       fireEvent.change(within(panel).getByLabelText(label, { exact: true }), {
         target: { value },
@@ -238,7 +238,7 @@ describe('Mission Plans in the Clarté Settings console', () => {
       expect(commands(sent, '/api/mission-plans')).toHaveLength(1),
     );
     expect(commands(sent, '/api/mission-plans')[0]?.body).toMatchObject({
-      title: 'Plan de implementare ISO 14001',
+      title: 'Plan demonstrativ',
     });
     expect(await screen.findByText('Publication confirmed.')).toBeVisible();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

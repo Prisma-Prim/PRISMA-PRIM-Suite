@@ -52,7 +52,7 @@ describe('Sales stages in the Clarté Settings console', () => {
     });
 
   it('adds a stage at the end of the Company list from a side panel (EX-064)', async () => {
-    let stages = [stage(1, 'Primul contact'), stage(2, 'Calificare')];
+    let stages = [stage(1, 'Lead nou'), stage(2, 'Calificare')];
     const sent = serve(configurator, (request) => {
       if (request.path !== '/api/sales-stages') return undefined;
       if (request.method === 'POST') {
@@ -71,7 +71,7 @@ describe('Sales stages in the Clarté Settings console', () => {
       within(list)
         .getAllByRole('listitem')
         .map((item) => item.textContent),
-    ).toEqual(['1Primul contactActive', '2CalificareActive']);
+    ).toEqual(['1Lead nouActive', '2CalificareActive']);
     expect(
       screen.getByRole('region', { name: 'Fictional Consulting · Stages: 2' }),
     ).toBeVisible();
@@ -171,9 +171,9 @@ describe('Sales stages in the Clarté Settings console', () => {
 describe('Service catalogue in the Clarté Settings console', () => {
   const definition = {
     id: '00000000-0000-4000-8000-000000000071',
-    code: 'CERT_14001',
-    name: 'Certificare ISO 14001',
-    description: 'Audit inițial în două etape',
+    code: 'SVC_GAMMA',
+    name: 'Serviciu demonstrativ Gamma',
+    description: 'Descriere demonstrativă',
     provenance: 'ILLUSTRATIVE',
     provisional: true,
     createdByWorkspaceMembershipId: 'membership-1',
@@ -184,7 +184,7 @@ describe('Service catalogue in the Clarté Settings console', () => {
     companyId,
     serviceDefinitionId: definition.id,
     serviceDefinition: { code: definition.code, name: definition.name },
-    commercialLabel: 'Certificare de mediu',
+    commercialLabel: 'Etichetă comercială demonstrativă',
     availability: 'AVAILABLE',
     provenance: 'ILLUSTRATIVE',
     provisional: true,
@@ -238,7 +238,7 @@ describe('Service catalogue in the Clarté Settings console', () => {
       name: 'Shared Service Definitions',
     });
     fireEvent.change(within(definePanel).getByLabelText('Service code'), {
-      target: { value: 'cert_14001' },
+      target: { value: 'svc_gamma' },
     });
     fireEvent.change(within(definePanel).getByLabelText('Service name'), {
       target: { value: definition.name },
@@ -257,14 +257,14 @@ describe('Service catalogue in the Clarté Settings console', () => {
     expect(
       commands(sent, '/api/commercial-catalogue/service-definitions')[0]?.body,
     ).toEqual({
-      code: 'CERT_14001',
+      code: 'SVC_GAMMA',
       name: definition.name,
       description: definition.description,
     });
     const definitionsTable = await screen.findByRole('table', {
       name: 'Service Definitions',
     });
-    expect(within(definitionsTable).getByText('CERT_14001')).toBeVisible();
+    expect(within(definitionsTable).getByText('SVC_GAMMA')).toBeVisible();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Record offering' }));
@@ -296,7 +296,7 @@ describe('Service catalogue in the Clarté Settings console', () => {
       name: 'Company Service Offerings',
     });
     expect(
-      within(offeringsTable).getByText('Certificare de mediu'),
+      within(offeringsTable).getByText('Etichetă comercială demonstrativă'),
     ).toBeVisible();
   });
 });
@@ -327,8 +327,8 @@ describe('Pricing in the Clarté Settings console', () => {
       id: `00000000-0000-4000-8000-00000000020${versionNumber}`,
       offeringId,
       versionNumber,
-      unit: 'zi-auditor',
-      unitAmount: '9800.0000',
+      unit: 'unitate-demo',
+      unitAmount: '1250.0000',
       currency: 'MDL',
       taxRatePercent: '20',
       taxLabel: 'TVA',
@@ -354,8 +354,8 @@ describe('Pricing in the Clarté Settings console', () => {
     });
 
   it('reads current and scheduled Pricing Rule versions and publishes the next one (EX-073, EX-074)', async () => {
-    const current = ruleVersion(1, 'CURRENT', 'Tarif 2026-A');
-    const scheduled = ruleVersion(2, 'SCHEDULED', 'Tarif 2027-A');
+    const current = ruleVersion(1, 'CURRENT', 'Regulă demonstrativă A');
+    const scheduled = ruleVersion(2, 'SCHEDULED', 'Regulă demonstrativă B');
     let head = scheduled;
     const sent = serve(pricingManager, (request) => {
       if (request.path === '/api/pricing-configuration/rule-scope')
@@ -366,7 +366,7 @@ describe('Pricing in the Clarté Settings console', () => {
         });
       if (request.path === '/api/pricing-configuration/rule-versions') {
         if (request.method === 'POST') {
-          head = ruleVersion(3, 'SCHEDULED', 'Tarif 2027-B');
+          head = ruleVersion(3, 'SCHEDULED', 'Regulă demonstrativă C');
           return Response.json(
             { outcome: 'PUBLISHED', version: head },
             { status: 201 },
@@ -387,12 +387,14 @@ describe('Pricing in the Clarté Settings console', () => {
     const currentTable = await screen.findByRole('table', {
       name: 'Current Pricing Rule Version',
     });
-    expect(within(currentTable).getByText('Tarif 2026-A')).toBeVisible();
+    expect(
+      within(currentTable).getByText('Regulă demonstrativă A'),
+    ).toBeVisible();
     expect(within(currentTable).getByText('Current')).toBeVisible();
     expect(
       within(
         screen.getByRole('table', { name: 'Scheduled successors' }),
-      ).getByText('Tarif 2027-A'),
+      ).getByText('Regulă demonstrativă B'),
     ).toBeVisible();
 
     fireEvent.click(
@@ -402,7 +404,7 @@ describe('Pricing in the Clarté Settings console', () => {
       name: 'Publish a Pricing Rule Version',
     });
     fireEvent.change(within(panel).getByLabelText('Label'), {
-      target: { value: 'Tarif 2027-B' },
+      target: { value: 'Regulă demonstrativă C' },
     });
     fireEvent.change(within(panel).getByLabelText(/^Effective from/u), {
       target: { value: '2030-01-01T08:00:00' },
@@ -418,7 +420,7 @@ describe('Pricing in the Clarté Settings console', () => {
     expect(
       commands(sent, '/api/pricing-configuration/rule-versions')[0]?.body,
     ).toMatchObject({
-      label: 'Tarif 2027-B',
+      label: 'Regulă demonstrativă C',
       expectedActiveVersionNumber: 2,
     });
     expect(await screen.findByText('Version 3 published.')).toBeVisible();
@@ -443,8 +445,8 @@ describe('Pricing in the Clarté Settings console', () => {
             {
               id: offeringId,
               serviceDefinition: {
-                code: 'CERT_22000',
-                name: 'Certificare ISO 22000',
+                code: 'SVC_ALPHA',
+                name: 'Serviciu demonstrativ Alfa',
               },
               commercialLabel: null,
             },
@@ -493,7 +495,7 @@ describe('Pricing in the Clarté Settings console', () => {
       name: 'All Tariff Versions of this offering',
     });
     expect(
-      within(history).getByText('9,800.0000 MDL per zi-auditor'),
+      within(history).getByText('1,250.0000 MDL per unitate-demo'),
     ).toBeVisible();
 
     fireEvent.click(
@@ -503,10 +505,10 @@ describe('Pricing in the Clarté Settings console', () => {
       name: 'Publish a Tariff Version',
     });
     fireEvent.change(within(panel).getByLabelText('Unit'), {
-      target: { value: 'zi-auditor' },
+      target: { value: 'unitate-demo' },
     });
     fireEvent.change(within(panel).getByLabelText('Unit amount'), {
-      target: { value: '10300' },
+      target: { value: '1300' },
     });
     selectOption(within(panel).getByLabelText('Currency'), 'MDL');
     fireEvent.change(within(panel).getByLabelText('Tax rate percent'), {
@@ -535,8 +537,8 @@ describe('Pricing in the Clarté Settings console', () => {
         `/api/pricing-configuration/offerings/${offeringId}/tariff-versions`,
       )[0]?.body,
     ).toMatchObject({
-      unit: 'zi-auditor',
-      unitAmount: '10300',
+      unit: 'unitate-demo',
+      unitAmount: '1300',
       currency: 'MDL',
       taxRatePercent: '20',
       taxLabel: 'TVA',
