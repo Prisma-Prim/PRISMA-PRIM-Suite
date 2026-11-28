@@ -5,6 +5,8 @@ import {
 } from '../../localization/messages';
 
 const keys = [
+  'registerTab',
+  'knowledgeTab',
   'registerAction',
   'typeFilter',
   'allTypes',
@@ -16,6 +18,7 @@ const keys = [
   'details',
   'externalReference',
   'projectsAction',
+  'associateProject',
   'projectsDescription',
   'projectChoice',
   'projectChoicePlaceholder',
@@ -26,11 +29,17 @@ const keys = [
   'passages',
   'sections',
   'versions',
+  'showVersionDetails',
+  'hideVersionDetails',
+  'references',
+  'frozenReference',
   'corrections',
 ] as const;
 
 export const clarteDocumentsMessages = defineMessages(keys, {
   ro: {
+    registerTab: 'Registru',
+    knowledgeTab: 'Bază de cunoștințe',
     registerAction: 'Înregistrați un Document',
     typeFilter: 'Tipul Documentului',
     allTypes: 'Toate',
@@ -42,6 +51,7 @@ export const clarteDocumentsMessages = defineMessages(keys, {
     details: 'Detalii',
     externalReference: 'Referință externă',
     projectsAction: 'Documentele unui Proiect',
+    associateProject: 'Asociați cu un Proiect',
     projectsDescription:
       'Asociați Documente de lucru unui Proiect, deschideți-le sau eliminați-le din el.',
     projectChoice: 'Proiect',
@@ -53,9 +63,15 @@ export const clarteDocumentsMessages = defineMessages(keys, {
     passages: 'Pasaje găsite',
     sections: 'Părțile Documentului',
     versions: 'Versiuni',
+    showVersionDetails: 'Afișați detaliile versiunilor',
+    hideVersionDetails: 'Ascundeți detaliile versiunilor',
+    references: 'Referințe',
+    frozenReference: 'Fixată',
     corrections: 'Corectări',
   },
   ru: {
+    registerTab: 'Реестр',
+    knowledgeTab: 'База знаний',
     registerAction: 'Зарегистрировать документ',
     typeFilter: 'Тип документа',
     allTypes: 'Все',
@@ -67,6 +83,7 @@ export const clarteDocumentsMessages = defineMessages(keys, {
     details: 'Сведения',
     externalReference: 'Внешняя ссылка',
     projectsAction: 'Документы проекта',
+    associateProject: 'Связать с проектом',
     projectsDescription:
       'Связывайте рабочие документы с проектом, открывайте их или убирайте из проекта.',
     projectChoice: 'Проект',
@@ -78,9 +95,15 @@ export const clarteDocumentsMessages = defineMessages(keys, {
     passages: 'Найденные фрагменты',
     sections: 'Разделы документа',
     versions: 'Версии',
+    showVersionDetails: 'Показать сведения о версиях',
+    hideVersionDetails: 'Скрыть сведения о версиях',
+    references: 'Ссылки',
+    frozenReference: 'Зафиксирована',
     corrections: 'Исправления',
   },
   fr: {
+    registerTab: 'Registre',
+    knowledgeTab: 'Base de connaissances',
     registerAction: 'Enregistrer un document',
     typeFilter: 'Type de document',
     allTypes: 'Tous',
@@ -92,6 +115,7 @@ export const clarteDocumentsMessages = defineMessages(keys, {
     details: 'Détails',
     externalReference: 'Référence externe',
     projectsAction: 'Documents d’un projet',
+    associateProject: 'Associer à un projet',
     projectsDescription:
       'Associez des documents de travail à un projet, ouvrez-les ou retirez-les du projet.',
     projectChoice: 'Projet',
@@ -103,9 +127,15 @@ export const clarteDocumentsMessages = defineMessages(keys, {
     passages: 'Passages trouvés',
     sections: 'Parties du document',
     versions: 'Versions',
+    showVersionDetails: 'Afficher le détail des versions',
+    hideVersionDetails: 'Masquer le détail des versions',
+    references: 'Références',
+    frozenReference: 'Verrouillée',
     corrections: 'Corrections',
   },
   en: {
+    registerTab: 'Register',
+    knowledgeTab: 'Knowledge base',
     registerAction: 'Register a Document',
     typeFilter: 'Document type',
     allTypes: 'All',
@@ -117,6 +147,7 @@ export const clarteDocumentsMessages = defineMessages(keys, {
     details: 'Details',
     externalReference: 'External reference',
     projectsAction: 'Documents of a Project',
+    associateProject: 'Associate with a Project',
     projectsDescription:
       'Associate working Documents with a Project, open them or remove them from it.',
     projectChoice: 'Project',
@@ -128,6 +159,10 @@ export const clarteDocumentsMessages = defineMessages(keys, {
     passages: 'Passages found',
     sections: 'Document sections',
     versions: 'Versions',
+    showVersionDetails: 'Show version details',
+    hideVersionDetails: 'Hide version details',
+    references: 'References',
+    frozenReference: 'Frozen',
     corrections: 'Corrections',
   },
 });
@@ -135,6 +170,8 @@ export const clarteDocumentsMessages = defineMessages(keys, {
 export function useClarteDocumentsCopy() {
   const message = useMessages(clarteDocumentsMessages);
   return {
+    registerTab: message('registerTab'),
+    knowledgeTab: message('knowledgeTab'),
     registerAction: message('registerAction'),
     typeFilter: message('typeFilter'),
     allTypes: message('allTypes'),
@@ -146,6 +183,7 @@ export function useClarteDocumentsCopy() {
     details: message('details'),
     externalReference: message('externalReference'),
     projectsAction: message('projectsAction'),
+    associateProject: message('associateProject'),
     projectsDescription: message('projectsDescription'),
     projectChoice: message('projectChoice'),
     projectChoicePlaceholder: message('projectChoicePlaceholder'),
@@ -156,6 +194,10 @@ export function useClarteDocumentsCopy() {
     passages: message('passages'),
     sections: message('sections'),
     versions: message('versions'),
+    showVersionDetails: message('showVersionDetails'),
+    hideVersionDetails: message('hideVersionDetails'),
+    references: message('references'),
+    frozenReference: message('frozenReference'),
     corrections: message('corrections'),
   };
 }

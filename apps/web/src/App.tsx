@@ -5,6 +5,7 @@ import { paymentAuthority } from './payment-observation/payment-authority';
 import { paymentCopy } from './payment-observation/ui';
 import { DocumentsSection } from './documents/DocumentsSection';
 import { ClarteDocumentWorkspace } from './clarte/documents/ClarteDocuments';
+import { useClarteDocumentsCopy } from './clarte/documents/clarte-documents.copy';
 import { ClarteKnowledge } from './clarte/documents/ClarteKnowledge';
 import { InvoiceRecordsWorkspace } from './invoice-record/InvoiceRecordsWorkspace';
 import { useInvoiceRecordCopy } from './invoice-record/invoice-record-copy';
@@ -157,6 +158,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const ideasCopy = useIdeasCopy();
   const internalTaskCopy = useInternalTaskCopy();
   const knowledgeCopy = useKnowledgeCopy();
+  const clarteDocumentsCopy = useClarteDocumentsCopy();
   const prismeCopy = usePrismeCopy();
   const unassignedCopy = useUnassignedTasksCopy();
   const blockedCopy = useBlockedTasksCopy();
@@ -964,7 +966,10 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     };
     sections.push({
       id: 'knowledge-evidence',
-      label: knowledgeCopy('title'),
+      label:
+        interfacePreference === 'clarte'
+          ? clarteDocumentsCopy.knowledgeTab
+          : knowledgeCopy('title'),
       description: knowledgeCopy('help'),
       mountWhenSelected: true,
       content: <KnowledgeEvidenceWorkspace {...knowledge} />,
@@ -1195,6 +1200,10 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     sections.push({
       id: 'documents',
       ...prismeCopy.sections.documents,
+      label:
+        interfacePreference === 'clarte'
+          ? clarteDocumentsCopy.registerTab
+          : prismeCopy.sections.documents.label,
       content: <DocumentsSection key={documentsKey} {...documents} />,
       clarteContent: (
         <DocumentsSection

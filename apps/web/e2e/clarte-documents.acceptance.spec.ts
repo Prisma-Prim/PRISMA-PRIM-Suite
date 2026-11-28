@@ -94,6 +94,14 @@ test('registers a reference, makes it official with its PDF, links a received Co
   await expect(register.locator('.clarte-document-rows > li')).toHaveCount(1);
   await register.getByLabel('Filter working Documents').fill('');
   await expect(register.locator('.clarte-document-rows > li')).toHaveCount(3);
+  if (!isPhoneLayout(page)) {
+    const heights = await register
+      .locator('.clarte-document-rows > li')
+      .evaluateAll((rows) =>
+        rows.map((row) => row.getBoundingClientRect().height),
+      );
+    for (const height of heights) expect(height).toBeCloseTo(63, 0);
+  }
   await noHorizontalScroll(page);
   await screenshot(page, 'clarte-documents-register');
 
@@ -121,8 +129,25 @@ test('registers a reference, makes it official with its PDF, links a received Co
   await expect(
     versions.getByRole('heading', { name: 'Version 1' }),
   ).toBeVisible();
+  await expect(versions.getByLabel('Choose the PDF file')).toBeHidden();
+  const draft = versions.getByRole('listitem').filter({ hasText: 'Version 1' });
+  const frame = await draft.boundingBox();
+  const badge = await draft.getByText('Draft', { exact: true }).boundingBox();
+  if (!frame || !badge) throw new Error('Draft Version summary is missing');
+  expect(badge.x + badge.width).toBeLessThanOrEqual(frame.x + frame.width);
   await noHorizontalScroll(page);
   await screenshot(page, 'clarte-documents-panel');
+  const parts = panel.getByRole('navigation', { name: 'Document sections' });
+  await parts.getByRole('button', { name: 'Versions' }).click();
+  await expect(draft).toBeInViewport();
+  await screenshot(page, 'clarte-documents-versions');
+  await parts.getByRole('button', { name: 'References' }).click();
+  await expect(
+    versions.getByRole('list', { name: 'References for Version 1' }),
+  ).toBeInViewport();
+  await screenshot(page, 'clarte-documents-references');
+  await parts.getByRole('button', { name: 'Versions' }).click();
+  await panel.getByRole('button', { name: 'Show version details' }).click();
   await versions.getByLabel('Choose the PDF file').setInputFiles({
     name: 'fictional-supplier.pdf',
     mimeType: 'application/pdf',
@@ -168,7 +193,39 @@ test('registers a reference, makes it official with its PDF, links a received Co
   await expect(received.getByText('Fictional courier delivery')).toBeVisible();
   await received.getByRole('button', { name: 'Close' }).click();
 
-  // Associate working Documents with a Project, remove one and open another.
+  // Associate the open Document with a Project through the existing picker.
+  await register
+    .getByRole('button', { name: 'Fictional stage 1 audit report' })
+    .click();
+  const report = page.getByRole('dialog', {
+    name: 'Fictional stage 1 audit report',
+  });
+  await report
+    .getByRole('button', { name: 'Associate with a Project' })
+    .click();
+  const association = page.getByRole('dialog', {
+    name: 'Associate with a Project',
+  });
+  await selectOption(association.getByLabel('Project'), { value: project.id });
+  const projectDocuments = association.getByRole('region', {
+    name: 'Working Documents',
+  });
+  await projectDocuments
+    .getByRole('button', { name: 'Attach working Document' })
+    .click();
+  await projectDocuments
+    .getByRole('button', { name: 'Attach Fictional stage 1 audit report' })
+    .click();
+  await expect(
+    projectDocuments.getByRole('heading', {
+      name: 'Fictional stage 1 audit report',
+    }),
+  ).toBeVisible();
+  await association.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(report.getByText(project.title)).toBeVisible();
+  await report.getByRole('button', { name: 'Close' }).click();
+
+  // Remove and open linked Documents through the register's Project panel.
   await register
     .getByRole('button', { name: 'Documents of a Project' })
     .click();
@@ -182,10 +239,6 @@ test('registers a reference, makes it official with its PDF, links a received Co
       name: 'Fictional initial assessment questionnaire',
     }),
   ).toBeVisible();
-  await linked.getByRole('button', { name: 'Attach working Document' }).click();
-  await linked
-    .getByRole('button', { name: 'Attach Fictional stage 1 audit report' })
-    .click();
   await expect(
     linked.getByRole('heading', { name: 'Fictional stage 1 audit report' }),
   ).toBeVisible();
@@ -202,31 +255,29 @@ test('registers a reference, makes it official with its PDF, links a received Co
   await noHorizontalScroll(page);
   await screenshot(page, 'clarte-documents-project');
   await linked.getByRole('button', { name: 'Open Document' }).click();
-  const report = page.getByRole('dialog', {
-    name: 'Fictional stage 1 audit report',
-  });
   await expect(report.getByText(project.title)).toBeVisible();
   await report.getByRole('button', { name: 'Close' }).click();
 
   // Knowledge: literal search, exact passage and its verified source PDF.
   await page
     .getByRole('navigation', { name: 'Documents views' })
-    .getByRole('link', { name: 'Knowledge evidence' })
+    .getByRole('link', { name: 'Knowledge base' })
     .click();
   const knowledge = page.locator('section#knowledge-evidence');
   await expect(knowledge.getByText(knowledgeSource.title)).toBeVisible();
   await knowledge.getByLabel('Literal search').fill('accredited laboratory');
   await knowledge.getByRole('button', { name: 'Search passages' }).click();
-  await knowledge.getByRole('button', { name: 'Open passage' }).click();
+  const passages = knowledge.getByRole('region', { name: 'Passages found' });
+  await expect(passages).toContainText(passageText);
+  await download(
+    page,
+    passages.getByRole('button', { name: 'Download exact source PDF' }),
+    knowledgePdf,
+  );
   const citation = knowledge.getByRole('article', {
     name: knowledgeSource.title,
   });
   await expect(citation).toContainText(passageText);
-  await download(
-    page,
-    citation.getByRole('button', { name: 'Download exact source PDF' }),
-    knowledgePdf,
-  );
   await noHorizontalScroll(page);
   await screenshot(page, 'clarte-documents-knowledge');
 

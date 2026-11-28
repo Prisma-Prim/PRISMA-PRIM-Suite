@@ -197,6 +197,7 @@
   font: inherit;
   font-size: 14.5px;
   font-weight: 650;
+  line-height: 1.4;
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -237,6 +238,16 @@
   content: '·';
 }
 
+@media (min-width: 769px) {
+  .clarte-frame .clarte-document-open {
+    min-height: 0;
+  }
+
+  .clarte-frame .clarte-document-rows .clarte-document-row-meta {
+    line-height: 1.35;
+  }
+}
+
 .clarte-frame .clarte-documents-note {
   margin: 0;
   color: var(--clarte-muted);
@@ -265,11 +276,13 @@
   gap: 4px;
   margin: -18px -20px 16px;
   padding: 0 20px;
+  overflow-x: auto;
   border-bottom: 1px solid var(--clarte-line);
   background: var(--clarte-surface);
 }
 
 .clarte-frame .clarte-document-parts button {
+  flex: none;
   min-height: 42px;
   padding: 0 10px;
   border: 0;
@@ -281,6 +294,12 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.clarte-frame .clarte-document-parts + *,
+.clarte-frame .clarte-document-version-panel,
+.clarte-frame .clarte-document-corrections {
+  scroll-margin-top: 46px;
 }
 
 .clarte-frame .clarte-document-parts button:hover {
@@ -344,6 +363,7 @@
 
 .clarte-frame .clarte-document-legacy > section,
 .clarte-frame .clarte-document-legacy > div > section,
+.clarte-frame .clarte-document-version-panel,
 .clarte-frame .clarte-document-legacy .project-documents {
   padding: 16px;
   border: 1px solid var(--clarte-line);
@@ -425,12 +445,126 @@
 }
 
 .clarte-frame .clarte-document-legacy .working-document-version-status {
+  min-width: 0;
+  max-width: 100%;
   padding: 2px 9px;
   border-radius: 999px;
   background: var(--clarte-surface-sunken);
   color: var(--clarte-ink-soft);
   font-size: 12px;
   font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-document-version-panel {
+  min-width: 0;
+}
+
+.clarte-frame .clarte-document-version-panel > .clarte-button {
+  margin-bottom: 10px;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.clarte-frame
+  .clarte-document-version-panel[data-view='summary']
+  .working-document-version {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  align-items: start;
+}
+
+/* Keep the shared Version and PDF sessions mounted while changing presentation. */
+.clarte-frame
+  .clarte-document-version-panel[data-view='summary']
+  .working-document-version
+  > :not(.working-document-version-heading, .working-document-version-actions),
+.clarte-frame
+  .clarte-document-version-panel[data-view='summary']
+  .working-document-version-actions
+  > :not(.working-document-pdf),
+.clarte-frame
+  .clarte-document-version-panel[data-view='summary']
+  .working-document-pdf
+  > :not(h6, p:first-of-type, p:has(time) + button, [role]),
+.clarte-frame
+  .clarte-document-version-panel[data-view='references']
+  .working-document-version
+  > :not(
+    .working-document-version-heading,
+    .working-document-version-references,
+    .working-document-reference-form
+  ) {
+  display: none;
+}
+
+.clarte-frame
+  .clarte-document-version-panel[data-view='summary']
+  .working-document-pdf {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.clarte-frame
+  .clarte-document-version-panel[data-view='summary']
+  .working-document-pdf
+  button {
+  margin: 0;
+  text-align: left;
+}
+
+.clarte-frame
+  .clarte-document-legacy
+  .working-document-version-references
+  > li {
+  padding: 10px 12px;
+  border: 1px solid var(--clarte-line-soft);
+  border-radius: var(--clarte-radius-sm);
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .working-document-version-references button {
+  justify-self: start;
+}
+
+.clarte-frame
+  .clarte-document-version-panel
+  .working-document-version:not(.working-document-version--draft)
+  .working-document-version-reference-label::after {
+  display: inline-block;
+  margin-inline-start: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--clarte-surface-sunken);
+  color: var(--clarte-ink-soft);
+  font-weight: 650;
+  content: var(--frozen-reference);
+}
+
+.clarte-frame
+  .clarte-document-legacy
+  .working-document-correction-history-list {
+  margin-inline-start: 5px;
+  border-inline-start: 1px solid var(--clarte-line);
+}
+
+.clarte-frame .working-document-correction-history-list > li {
+  position: relative;
+  padding-inline-start: 16px;
+}
+
+.clarte-frame .working-document-correction-history-list > li::before {
+  position: absolute;
+  inset-block-start: 7px;
+  inset-inline-start: -5px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--clarte-accent);
+  content: '';
 }
 
 .clarte-frame
@@ -595,6 +729,12 @@
 }
 
 @media (max-width: 768px) {
+  .clarte-frame
+    .clarte-document-version-panel[data-view='summary']
+    .working-document-version {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .clarte-frame .clarte-documents-layout {
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
