@@ -27,6 +27,7 @@ import {
   useDocumentFamilyAuthority,
   useDocumentFamilyCopies,
   withoutProtectedRelation,
+  type SourceRegistrationProps,
   type WorkspaceDocument,
   type WorkspaceDocumentDetail,
   type WorkspaceFamily,
@@ -90,39 +91,7 @@ export type DocumentOpenTarget =
 export type RequestedDocument = Exclude<DocumentOpenTarget, string> & {
   requestId: number;
 };
-export function DocumentWorkspace(
-  props: Parameters<typeof DocumentSession>[0],
-) {
-  const company = props.actor.activeCompany;
-  return (
-    <DocumentSession
-      key={JSON.stringify([
-        props.actor.workspaceId,
-        props.actor.workspaceMembershipId,
-        company?.id,
-        ...captureOf(grantOf(company, 'company_document_registrar')),
-      ])}
-      {...props}
-    />
-  );
-}
-
-function DocumentSession({
-  actor,
-  identity,
-  onActivityRecorded = () => undefined,
-  clientFilter,
-  clientIdentityRevision = 0,
-  onOpenClientDossier,
-  requestedDocument,
-  onOpenProject,
-  onCompanyContextRejected,
-  onActorRevalidated,
-  onWorkspaceAccessRejected,
-  onSelectPaymentEvidence,
-  onProtectedWorkChange,
-  onProtectedReceivedAddendumWorkChange,
-}: {
+export type DocumentWorkspaceProps = {
   actor: ActorContext;
   identity: BrowserIdentity;
   onActivityRecorded?: () => void | Promise<void>;
@@ -145,7 +114,46 @@ function DocumentSession({
   onSelectPaymentEvidence?: (documentId?: string) => void;
   onProtectedWorkChange?: (protectedWork: boolean) => void;
   onProtectedReceivedAddendumWorkChange?: (protectedWork: boolean) => void;
-}) {
+};
+
+/**
+ * The owner key of one Document session. A different member, Company or
+ * Document registrar grant starts a fresh session in either interface.
+ */
+export function documentSessionKey({
+  actor,
+}: Pick<DocumentWorkspaceProps, 'actor'>): string {
+  const company = actor.activeCompany;
+  return JSON.stringify([
+    actor.workspaceId,
+    actor.workspaceMembershipId,
+    company?.id,
+    ...captureOf(grantOf(company, 'company_document_registrar')),
+  ]);
+}
+
+export function DocumentWorkspace(props: DocumentWorkspaceProps) {
+  return <DocumentSession key={documentSessionKey(props)} {...props} />;
+}
+
+/**
+ * The reads, drafts, holds and commands of one Document session. The current
+ * interface and the Clarté register render the same session, so each request,
+ * draft and protected command keeps exactly one owner in either interface.
+ */
+export function useDocumentSession({
+  actor,
+  identity,
+  onActivityRecorded = () => undefined,
+  clientFilter,
+  clientIdentityRevision = 0,
+  requestedDocument,
+  onCompanyContextRejected,
+  onActorRevalidated,
+  onWorkspaceAccessRejected,
+  onProtectedWorkChange,
+  onProtectedReceivedAddendumWorkChange,
+}: DocumentWorkspaceProps) {
   const copy = useDocumentsCopy();
   const familyCopies = useDocumentFamilyCopies();
   const captureActorRecovery = useAuthorityLifetime(
@@ -1326,6 +1334,172 @@ function DocumentSession({
               ),
         )
       : [];
+  function cancelCorrection(): void {
+    setEditing(false);
+    setCorrection('idle');
+    correctionRetry.current = undefined;
+  }
+  /** A confirmed or stale Version command re-reads the Document, then the Activity Log. */
+  async function refreshAfterVersionWork(documentId: string): Promise<void> {
+    await refreshOpenDetail(documentId);
+    await onActivityRecorded();
+  }
+  /** The selected source family's registration, owned by this session. */
+  function sourceRegistration(registeringCompanyId: string) {
+    return {
+      actor,
+      identity,
+      companyId: registeringCompanyId,
+      onBusyChange: setReceivedBusy,
+      onAccessRejected: async (signal, isCurrent) => {
+        await handleAuthenticatedAccessRejection({
+          result: { status: 'forbidden' },
+          identity,
+          companyContextId: registeringCompanyId,
+          signal,
+          ...(isCurrent ? { isCurrent } : {}),
+          onActorRevalidated: onActorRevalidated ?? (() => undefined),
+          onCompanyContextRejected:
+            onCompanyContextRejected ?? (() => undefined),
+          onWorkspaceAccessRejected:
+            onWorkspaceAccessRejected ?? (() => undefined),
+        });
+      },
+      onStarted: () => {
+        receivedRegistrationOrigin.current = {
+          filter: activeFilter.current,
+          identityRevision: identityRevision.current,
+        };
+      },
+      onRegistered: (saved) => {
+        const origin = receivedRegistrationOrigin.current;
+        if (!origin)
+          throw new Error('Missing received source registration origin');
+        if (!isWorkspaceDocument(saved))
+          throw new Error('Unexpected Document family');
+        publishRegistration({ saved, origin });
+        void Promise.resolve()
+          .then(onActivityRecorded)
+          .catch(() => undefined);
+      },
+    } satisfies SourceRegistrationProps;
+  }
+  return {
+    copy,
+    familyCopies,
+    paymentCopy,
+    state,
+    filter,
+    setFilter,
+    detail,
+    setDetail,
+    detailHeading,
+    family,
+    setFamily,
+    clientId,
+    setClientId,
+    title,
+    setTitle,
+    purpose,
+    setPurpose,
+    url,
+    setUrl,
+    mutation,
+    editing,
+    correction,
+    staleDossier,
+    heldRequest,
+    receivedBusy,
+    versionWorkProtected,
+    setVersionWorkProtected,
+    protectedWorkActive,
+    hostProtected,
+    companyId,
+    canRegister,
+    canCorrect,
+    canReadProjects,
+    familyAuthority,
+    familyCaptures,
+    visibleDocuments,
+    filteredDocuments,
+    restrictionAwaitsRead,
+    restrictionReadFailed,
+    DetailRelation,
+    registrationSource,
+    open,
+    submit,
+    submitCorrection,
+    beginCorrection,
+    cancelCorrection,
+    retryListRead,
+    refreshAfterVersionWork,
+    sourceRegistration,
+  };
+}
+
+/** The current interface's rendering of one Document session. */
+function DocumentSession(props: DocumentWorkspaceProps) {
+  const {
+    actor,
+    identity,
+    onOpenClientDossier,
+    onOpenProject,
+    onCompanyContextRejected,
+    onActorRevalidated,
+    onWorkspaceAccessRejected,
+    onSelectPaymentEvidence,
+  } = props;
+  const {
+    copy,
+    familyCopies,
+    paymentCopy,
+    state,
+    filter,
+    setFilter,
+    detail,
+    setDetail,
+    detailHeading,
+    family,
+    setFamily,
+    clientId,
+    setClientId,
+    title,
+    setTitle,
+    purpose,
+    setPurpose,
+    url,
+    setUrl,
+    mutation,
+    editing,
+    correction,
+    staleDossier,
+    heldRequest,
+    receivedBusy,
+    versionWorkProtected,
+    setVersionWorkProtected,
+    protectedWorkActive,
+    hostProtected,
+    companyId,
+    canRegister,
+    canCorrect,
+    canReadProjects,
+    familyAuthority,
+    familyCaptures,
+    visibleDocuments,
+    filteredDocuments,
+    restrictionAwaitsRead,
+    restrictionReadFailed,
+    DetailRelation,
+    registrationSource,
+    open,
+    submit,
+    submitCorrection,
+    beginCorrection,
+    cancelCorrection,
+    retryListRead,
+    refreshAfterVersionWork,
+    sourceRegistration,
+  } = useDocumentSession(props);
   return (
     <section
       id="documents"
@@ -1435,11 +1609,7 @@ function DocumentSession({
                   <button
                     type="button"
                     disabled={correction === 'pending'}
-                    onClick={() => {
-                      setEditing(false);
-                      setCorrection('idle');
-                      correctionRetry.current = undefined;
-                    }}
+                    onClick={cancelCorrection}
                   >
                     {copy.cancel}
                   </button>
@@ -1574,10 +1744,7 @@ function DocumentSession({
                 documentType={detail.type}
                 workingRevision={detail.workingRevision}
                 onProtectedWorkChange={setVersionWorkProtected}
-                onRefresh={async () => {
-                  await refreshOpenDetail(detail.id);
-                  await onActivityRecorded();
-                }}
+                onRefresh={() => refreshAfterVersionWork(detail.id)}
                 onCompanyContextRejected={onCompanyContextRejected}
                 onActorRevalidated={onActorRevalidated}
                 onWorkspaceAccessRejected={onWorkspaceAccessRejected}
@@ -1654,46 +1821,9 @@ function DocumentSession({
                           registrationSource.authority(actor),
                         ])}
                       >
-                        {registrationSource.render({
-                          actor,
-                          identity,
-                          companyId,
-                          onBusyChange: setReceivedBusy,
-                          onAccessRejected: async (signal, isCurrent) => {
-                            await handleAuthenticatedAccessRejection({
-                              result: { status: 'forbidden' },
-                              identity,
-                              companyContextId: companyId,
-                              signal,
-                              ...(isCurrent ? { isCurrent } : {}),
-                              onActorRevalidated:
-                                onActorRevalidated ?? (() => undefined),
-                              onCompanyContextRejected:
-                                onCompanyContextRejected ?? (() => undefined),
-                              onWorkspaceAccessRejected:
-                                onWorkspaceAccessRejected ?? (() => undefined),
-                            });
-                          },
-                          onStarted: () => {
-                            receivedRegistrationOrigin.current = {
-                              filter: activeFilter.current,
-                              identityRevision: identityRevision.current,
-                            };
-                          },
-                          onRegistered: (saved) => {
-                            const origin = receivedRegistrationOrigin.current;
-                            if (!origin)
-                              throw new Error(
-                                'Missing received source registration origin',
-                              );
-                            if (!isWorkspaceDocument(saved))
-                              throw new Error('Unexpected Document family');
-                            publishRegistration({ saved, origin });
-                            void Promise.resolve()
-                              .then(onActivityRecorded)
-                              .catch(() => undefined);
-                          },
-                        })}
+                        {registrationSource.render(
+                          sourceRegistration(companyId),
+                        )}
                       </Fragment>
                     ) : (
                       <p>{registrationSource.denied(familyCopies)}</p>

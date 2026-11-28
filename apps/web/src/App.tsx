@@ -4,6 +4,8 @@ import { PaymentWorkspace } from './payment-observation/PaymentWorkspace';
 import { paymentAuthority } from './payment-observation/payment-authority';
 import { paymentCopy } from './payment-observation/ui';
 import { DocumentsSection } from './documents/DocumentsSection';
+import { ClarteDocumentWorkspace } from './clarte/documents/ClarteDocuments';
+import { ClarteKnowledge } from './clarte/documents/ClarteKnowledge';
 import { InvoiceRecordsWorkspace } from './invoice-record/InvoiceRecordsWorkspace';
 import { useInvoiceRecordCopy } from './invoice-record/invoice-record-copy';
 import {
@@ -19,6 +21,7 @@ import { useInternalTaskCopy } from './internal-task/internal-task.copy';
 import {
   KnowledgeEvidenceWorkspace,
   knowledgeAuthority,
+  type KnowledgeEvidenceProps,
 } from './knowledge-evidence/KnowledgeEvidenceWorkspace';
 import { useKnowledgeCopy } from './knowledge-evidence/knowledge.copy';
 import { TeamTasks } from './project/TeamTasks';
@@ -888,23 +891,24 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ),
     });
 
-  if (knowledgeAuthority(access.actor))
+  if (knowledgeAuthority(access.actor)) {
+    const knowledge: KnowledgeEvidenceProps = {
+      actor: access.actor,
+      identity,
+      authorityGeneration: `${access.sessionGeneration}:${companySelectionGeneration}:${clientAuthorityGeneration}:${clientIdentityGeneration}`,
+      onActorRevalidated: acceptRevalidatedActor,
+      onCompanyContextRejected: rejectCompanyContext,
+      onWorkspaceAccessRejected: rejectWorkspaceAccess,
+    };
     sections.push({
       id: 'knowledge-evidence',
       label: knowledgeCopy('title'),
       description: knowledgeCopy('help'),
       mountWhenSelected: true,
-      content: (
-        <KnowledgeEvidenceWorkspace
-          actor={access.actor}
-          identity={identity}
-          authorityGeneration={`${access.sessionGeneration}:${companySelectionGeneration}:${clientAuthorityGeneration}:${clientIdentityGeneration}`}
-          onActorRevalidated={acceptRevalidatedActor}
-          onCompanyContextRejected={rejectCompanyContext}
-          onWorkspaceAccessRejected={rejectWorkspaceAccess}
-        />
-      ),
+      content: <KnowledgeEvidenceWorkspace {...knowledge} />,
+      clarteContent: <ClarteKnowledge {...knowledge} />,
     });
+  }
   if (canReadInternalTasks(access.actor))
     sections.push({
       id: 'internal-tasks',
@@ -1062,44 +1066,45 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         />
       ),
     });
-  if (access.actor.activeCompany && canAccessClients)
+  if (access.actor.activeCompany && canAccessClients) {
+    const documentsKey = `documents:${access.sessionGeneration}:${access.actor.activeCompany.id}`;
+    const documents: Parameters<typeof DocumentsSection>[0] = {
+      clientKey: `documents:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany.id}`,
+      actor: access.actor,
+      identity,
+      onActivityRecorded: refreshActivityLog,
+      clientFilter:
+        documentClientFilter?.navigationContext === navigationContext
+          ? documentClientFilter
+          : undefined,
+      clientIdentityRevision: clientIdentityGeneration,
+      onOpenClientDossier: openClientDossier,
+      requestedDocument: currentRequestedDocument?.paymentEvidenceVersionId
+        ? undefined
+        : currentRequestedDocument,
+      requestedPaymentEvidence:
+        currentRequestedDocument?.paymentEvidenceVersionId
+          ? currentRequestedDocument
+          : undefined,
+      onProtectedSourceWorkChange: reportProtectedSource,
+      onOpenProject: openProject && ((projectId) => openProject({ projectId })),
+      onCompanyContextRejected: rejectCompanyContext,
+      onActorRevalidated: acceptRevalidatedActor,
+      onWorkspaceAccessRejected: rejectWorkspaceAccess,
+    };
     sections.push({
       id: 'documents',
       ...prismeCopy.sections.documents,
-      content: (
+      content: <DocumentsSection key={documentsKey} {...documents} />,
+      clarteContent: (
         <DocumentsSection
-          key={`documents:${access.sessionGeneration}:${access.actor.activeCompany.id}`}
-          clientKey={`documents:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany.id}`}
-          actor={access.actor}
-          identity={identity}
-          onActivityRecorded={refreshActivityLog}
-          clientFilter={
-            documentClientFilter?.navigationContext === navigationContext
-              ? documentClientFilter
-              : undefined
-          }
-          clientIdentityRevision={clientIdentityGeneration}
-          onOpenClientDossier={openClientDossier}
-          requestedDocument={
-            currentRequestedDocument?.paymentEvidenceVersionId
-              ? undefined
-              : currentRequestedDocument
-          }
-          requestedPaymentEvidence={
-            currentRequestedDocument?.paymentEvidenceVersionId
-              ? currentRequestedDocument
-              : undefined
-          }
-          onProtectedSourceWorkChange={reportProtectedSource}
-          onOpenProject={
-            openProject && ((projectId) => openProject({ projectId }))
-          }
-          onCompanyContextRejected={rejectCompanyContext}
-          onActorRevalidated={acceptRevalidatedActor}
-          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          key={documentsKey}
+          {...documents}
+          workspace={ClarteDocumentWorkspace}
         />
       ),
     });
+  }
   if (canAccessClients)
     sections.push({
       id: 'clients',
