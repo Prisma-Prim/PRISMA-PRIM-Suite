@@ -22,6 +22,11 @@ import './invoice-record.css';
 
 export type InvoiceRecordsWorkspaceProps = ActorRequestProps &
   InvoiceRelatedCallbacks & { projectionAuthority: string };
+/** What an Invoice Records owner reads under: its authority and read capture. */
+export type InvoiceOwnerProps = InvoiceRecordsWorkspaceProps & {
+  authority: InvoiceAuthority;
+  readCapture: string;
+};
 function financeReadCapture(actor: ActorRequestProps['actor']) {
   const company = actor.activeCompany;
   return company &&
@@ -31,7 +36,18 @@ function financeReadCapture(actor: ActorRequestProps['actor']) {
     ? company.invoiceRecordReadCapture
     : undefined;
 }
-export function InvoiceRecordsWorkspace(props: InvoiceRecordsWorkspaceProps) {
+/**
+ * The owner an Invoice Records view may mount while its section is shown:
+ * its authority, read capture and the lifetime that keys it. Both interfaces
+ * use the same gate.
+ */
+export function useInvoiceWorkspaceGate(props: InvoiceRecordsWorkspaceProps):
+  | {
+      authority: InvoiceAuthority;
+      readCapture: string;
+      generation: number;
+    }
+  | undefined {
   const visible = useContext(SectionVisibility);
   const authority = invoiceRecordAuthority(props.actor);
   const capture = financeReadCapture(props.actor);
@@ -51,17 +67,22 @@ export function InvoiceRecordsWorkspace(props: InvoiceRecordsWorkspaceProps) {
     !props.identity.loaded ||
     !props.identity.signedIn
   )
-    return null;
+    return undefined;
+  return { authority, readCapture: capture, generation };
+}
+export function InvoiceRecordsWorkspace(props: InvoiceRecordsWorkspaceProps) {
+  const gate = useInvoiceWorkspaceGate(props);
+  if (!gate) return null;
   return (
     <InvoiceWorkspaceOwner
-      key={generation}
+      key={gate.generation}
       {...props}
-      authority={authority}
-      readCapture={capture}
+      authority={gate.authority}
+      readCapture={gate.readCapture}
     />
   );
 }
-type Selection =
+export type InvoiceSelection =
   | { kind: 'inventory' }
   | {
       kind: 'record';
@@ -69,19 +90,20 @@ type Selection =
       generation: number;
       receipt?: InvoiceReceipt;
     };
-function InvoiceWorkspaceOwner(
-  props: InvoiceRecordsWorkspaceProps & {
-    authority: InvoiceAuthority;
-    readCapture: string;
-  },
-) {
-  const copy = useInvoiceRecordCopy();
+/**
+ * The inventory, record and creation selection of one Invoice Records owner.
+ * Opening a record or leaving creation retires the owner's earlier requests;
+ * creation lives only while its source, manage and projection authority do.
+ */
+export function useInvoiceWorkspaceOwner(props: InvoiceOwnerProps) {
   const owner = useActorRequests({
     ...props,
     companyId: props.authority.companyId,
     scope: props.authority.key,
   });
-  const [selection, setSelection] = useState<Selection>({ kind: 'inventory' });
+  const [selection, setSelection] = useState<InvoiceSelection>({
+    kind: 'inventory',
+  });
   const [denied, setDenied] = useState(false);
   const [create, setCreate] = useState<{
     generation: number;
@@ -123,6 +145,35 @@ function InvoiceWorkspaceOwner(
     owner.retire();
     setCreate(undefined);
   }
+  function startCreate() {
+    if (props.authority.sourceKey && props.authority.manageKey) {
+      owner.retire();
+      setCreate({
+        generation: sourceGeneration,
+        authority: props.authority.sourceKey,
+        manage: props.authority.manageKey,
+      });
+    }
+  }
+  return {
+    selection,
+    backToInventory: () => setSelection({ kind: 'inventory' }),
+    denied,
+    activeCreate,
+    sourceGeneration,
+    recoverAccess: owner.recover,
+    open,
+    deny,
+    leaveCreate,
+    /** A creation denial closes the form and keeps the inventory. */
+    closeCreate: () => setCreate(undefined),
+    startCreate,
+  };
+}
+function InvoiceWorkspaceOwner(props: InvoiceOwnerProps) {
+  const copy = useInvoiceRecordCopy();
+  const workspace = useInvoiceWorkspaceOwner(props);
+  const { selection, activeCreate } = workspace;
   return (
     <section
       id="invoice-records"
@@ -135,7 +186,7 @@ function InvoiceWorkspaceOwner(
         <p>{props.actor.activeCompany?.displayName}</p>
         <p className="invoice-record-notice">{copy.description}</p>
       </header>
-      {denied ? (
+      {workspace.denied ? (
         <p role="alert">{copy.denied}</p>
       ) : selection.kind === 'record' ? (
         <InvoiceRecordDetail
@@ -143,27 +194,15 @@ function InvoiceWorkspaceOwner(
           {...props}
           recordId={selection.id}
           confirmed={selection.receipt}
-          onOpenRecord={open}
-          onBack={() => setSelection({ kind: 'inventory' })}
+          onOpenRecord={workspace.open}
+          onBack={workspace.backToInventory}
         />
       ) : (
         <>
           {!activeCreate &&
             props.authority.manageKey &&
             props.authority.sourceKey && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (props.authority.sourceKey && props.authority.manageKey) {
-                    owner.retire();
-                    setCreate({
-                      generation: sourceGeneration,
-                      authority: props.authority.sourceKey,
-                      manage: props.authority.manageKey,
-                    });
-                  }
-                }}
-              >
+              <button type="button" onClick={workspace.startCreate}>
                 {copy.create}
               </button>
             )}
@@ -172,35 +211,36 @@ function InvoiceWorkspaceOwner(
           props.authority.sourceKey ? (
             <InvoiceRecordForm
               {...props}
-              key={sourceGeneration}
+              key={workspace.sourceGeneration}
               companyId={props.authority.companyId}
               manageAuthority={props.authority.manageKey}
               sourceAuthority={props.authority.sourceKey}
               edit={{ kind: 'CREATE', replaces: null }}
-              onCancel={leaveCreate}
-              onDenied={() => setCreate(undefined)}
-              onSaved={(receipt) => open(receipt.recordId, receipt)}
-              onReload={leaveCreate}
-              recoverAccess={owner.recover}
+              onCancel={workspace.leaveCreate}
+              onDenied={workspace.closeCreate}
+              onSaved={(receipt) => workspace.open(receipt.recordId, receipt)}
+              onReload={workspace.leaveCreate}
+              recoverAccess={workspace.recoverAccess}
             />
           ) : (
-            <InvoiceInventory {...props} onOpen={open} onDenied={deny} />
+            <InvoiceInventory
+              {...props}
+              onOpen={workspace.open}
+              onDenied={workspace.deny}
+            />
           )}
         </>
       )}
     </section>
   );
 }
-function InvoiceInventory(
-  props: InvoiceRecordsWorkspaceProps & {
-    authority: InvoiceAuthority;
-    readCapture: string;
-    onOpen: (id: string) => void;
-    onDenied: () => void;
-  },
+/**
+ * The paged Invoice Records inventory. A page that repeats a cursor or a row,
+ * or breaks the newest-first order, is refused as an error.
+ */
+export function useInvoiceInventory(
+  props: InvoiceOwnerProps & { onDenied: () => void },
 ) {
-  const copy = useInvoiceRecordCopy();
-  const { locale } = useInterfaceLocale();
   const owner = useActorRequests({
     ...props,
     companyId: props.authority.companyId,
@@ -260,6 +300,17 @@ function InvoiceInventory(
   useEffect(() => {
     void load();
   }, []);
+  return { items, cursor, state, load };
+}
+function InvoiceInventory(
+  props: InvoiceOwnerProps & {
+    onOpen: (id: string) => void;
+    onDenied: () => void;
+  },
+) {
+  const copy = useInvoiceRecordCopy();
+  const { locale } = useInterfaceLocale();
+  const { items, cursor, state, load } = useInvoiceInventory(props);
   return (
     <section aria-label={copy.title}>
       {state === 'loading' && <p role="status">{copy.loading}</p>}

@@ -11,11 +11,12 @@ import {
   paymentEvidenceDocument,
   paymentEvidenceIds as ids,
 } from './payment-evidence/payment-evidence.test-fixture';
+import { appInterfaces, renderInInterface } from './test/app-interface';
+import type { InterfacePreference } from './clarte/interface-preference';
 import { changeValue } from './test/select-option';
 import {
   act,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
@@ -241,18 +242,84 @@ function app(identity: BrowserIdentity) {
     </>
   );
 }
-async function openSource() {
+/** Where each interface keeps payment evidence: Documents, or Finance › Payment proofs. */
+const evidenceHash = {
+  current: '#documents',
+  clarte: '#payment-proofs',
+} as const satisfies Record<InterfacePreference, string>;
+async function sourceReady(appInterface: InterfacePreference) {
+  if (appInterface === 'current')
+    await screen.findByRole('button', { name: 'Payment evidence' });
+  else await screen.findByRole('region', { name: 'Preserved payment proofs' });
+}
+async function openSource(appInterface: InterfacePreference) {
+  if (appInterface === 'clarte') {
+    await sourceReady(appInterface);
+    return;
+  }
   fireEvent.click(
     await screen.findByRole('button', { name: 'Payment evidence' }),
   );
   await screen.findByRole('button', { name: 'Other Documents' });
 }
-async function startOwner(owner: Owner): Promise<{
+/** The current interface opens on registration; Clarté opens it from the register action. */
+async function openRegistration(appInterface: InterfacePreference) {
+  await openSource(appInterface);
+  if (appInterface === 'clarte')
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Register payment evidence' }),
+    );
+}
+async function openEvidence(appInterface: InterfacePreference) {
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: appInterface === 'current' ? 'Open evidence' : 'Fictional notice',
+    }),
+  );
+}
+/**
+ * Where the evidence owner renders: the page, or Clarté's side panel. Clarté
+ * keeps the unmigrated Documents section mounted while hidden, with its own
+ * fields of the same names.
+ */
+function evidenceView(appInterface: InterfacePreference) {
+  return appInterface === 'current'
+    ? screen
+    : within(screen.getByRole('dialog'));
+}
+/** The control that leaves the evidence view: Other Documents, or the panel's Close. */
+function leaveControl(appInterface: InterfacePreference) {
+  return appInterface === 'current'
+    ? screen.getByRole('button', { name: 'Other Documents' })
+    : within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Close',
+      });
+}
+function chooseLocale(
+  appInterface: InterfacePreference,
+  value: 'ro' | 'fr' | 'ru' | 'en',
+) {
+  if (appInterface === 'current') {
+    const locale = document.getElementById('interface-locale');
+    if (!locale) throw new Error('Expected the real interface locale control.');
+    changeValue(locale, value);
+    return;
+  }
+  // Each language is named in itself; the menu stays open across choices.
+  const names = { ro: 'Română', fr: 'Français', ru: 'Русский', en: 'English' };
+  if (!screen.queryByRole('radio', { name: names[value] }))
+    fireEvent.click(screen.getByRole('button', { name: 'User menu' }));
+  fireEvent.click(screen.getByRole('radio', { name: names[value] }));
+}
+async function startOwner(
+  owner: Owner,
+  appInterface: InterfacePreference,
+): Promise<{
   lockedControl: HTMLElement;
   file?: File;
 }> {
-  await openSource();
   if (owner === 'registration') {
+    await openRegistration(appInterface);
     const form = screen.getByRole('form', {
       name: 'Register payment evidence',
     });
@@ -277,13 +344,14 @@ async function startOwner(owner: Owner): Promise<{
     );
     return { lockedControl: title };
   }
-  fireEvent.click(await screen.findByRole('button', { name: 'Open evidence' }));
-  await screen.findByRole('heading', { name: 'Fictional notice' });
+  await openSource(appInterface);
+  await openEvidence(appInterface);
+  await screen.findAllByRole('heading', { name: 'Fictional notice' });
   if (owner === 'correction') {
     fireEvent.click(
       screen.getByRole('button', { name: 'Correct draft metadata' }),
     );
-    const title = screen.getByLabelText('Title');
+    const title = evidenceView(appInterface).getByLabelText('Title');
     fireEvent.change(title, {
       target: { value: 'Protected literal correction' },
     });
@@ -294,7 +362,9 @@ async function startOwner(owner: Owner): Promise<{
   }
   const version = await screen.findByRole('button', { name: 'Version 1' });
   if (owner === 'upload') {
-    const input = await screen.findByLabelText('Choose the PDF file');
+    const input = await evidenceView(appInterface).findByLabelText(
+      'Choose the PDF file',
+    );
     const file = new File(
       ['%PDF-1.4 fictional interface boundary'],
       'fictional-notice.pdf',
@@ -318,17 +388,23 @@ async function startOwner(owner: Owner): Promise<{
   return { lockedControl: version };
 }
 
-async function expectNavigationHeld(lockedControl: HTMLElement) {
+async function expectNavigationHeld(
+  lockedControl: HTMLElement,
+  appInterface: InterfacePreference,
+) {
   expect(lockedControl).toBeDisabled();
-  expect(
-    screen.getByRole('button', { name: 'Other Documents' }),
-  ).toBeDisabled();
+  const leave = leaveControl(appInterface);
+  if (appInterface === 'current') expect(leave).toBeDisabled();
+  else fireEvent.click(leave);
+  expect(lockedControl.isConnected).toBe(true);
   fireEvent.click(
     within(
       screen.getByRole('navigation', { name: 'Primary navigation' }),
     ).getByRole('link', { name: 'Clients' }),
   );
-  await waitFor(() => expect(window.location.hash).toBe('#documents'));
+  await waitFor(() =>
+    expect(window.location.hash).toBe(evidenceHash[appInterface]),
+  );
   expect(
     screen.getByRole('combobox', { name: 'Active Company' }),
   ).toBeDisabled();
@@ -339,7 +415,9 @@ async function expectNavigationHeld(lockedControl: HTMLElement) {
     window.history.pushState(window.history.state, '', attempted);
     window.dispatchEvent(new PopStateEvent('popstate'));
   });
-  await waitFor(() => expect(window.location.hash).toBe('#documents'));
+  await waitFor(() =>
+    expect(window.location.hash).toBe(evidenceHash[appInterface]),
+  );
   expect(lockedControl.isConnected).toBe(true);
   expect(lockedControl).toBeDisabled();
 }
@@ -351,7 +429,6 @@ const originalScroll = scrollable.scrollIntoView;
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
-  window.history.replaceState(null, '', '/#documents');
   scrollable.scrollIntoView = vi.fn();
   vi.stubGlobal(
     'matchMedia',
@@ -377,119 +454,127 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-describe('Payment Source protection through the actual App navigation boundary', () => {
-  it.each(owners)(
-    'retains pending and uncertain %s through sidebar/history attempts and retries the exact envelope',
-    async (owner) => {
-      const api = installHttp(owner);
-      const identity = {
-        ...deterministicBrowserIdentity(),
-        getToken: vi.fn(async () => 'fictional-token'),
-      };
-      render(app(identity));
-      const { lockedControl, file } = await startOwner(owner);
-      await waitFor(() => expect(api.writes).toHaveLength(1));
-      const first = api.writes[0];
-      if (!first) throw new Error('Expected the dispatched command.');
-      expect(first.key).toBeTruthy();
-      expect(first.signal?.aborted).toBe(false);
-      if (file) expect(first.body).toBe(file);
-      await expectNavigationHeld(lockedControl);
-      expect(first.signal?.aborted).toBe(false);
-      expect(api.writes).toHaveLength(1);
-      await api.replyWrite(0);
-      const retry = await screen.findByRole('button', {
-        name: retryLabel[owner],
-      });
-      await expectNavigationHeld(lockedControl);
-      retry.focus();
-      const locale = document.getElementById('interface-locale');
-      if (!locale)
-        throw new Error('Expected the real interface locale control.');
-      for (const value of ['ro', 'fr', 'ru', 'en']) {
-        changeValue(locale, value);
-        expect(lockedControl.isConnected).toBe(true);
-        expect(lockedControl).toBeDisabled();
-      }
-      fireEvent.click(retry);
-      await waitFor(() => expect(api.writes).toHaveLength(2));
-      const repeated = api.writes[1];
-      if (!repeated) throw new Error('Expected the identical retry.');
-      expect({
-        path: repeated.path,
-        method: repeated.method,
-        body: repeated.body,
-        key: repeated.key,
-      }).toEqual({
-        path: first.path,
-        method: first.method,
-        body: first.body,
-        key: first.key,
-      });
-      if (file) expect(repeated.body).toBe(file);
-      expect(first.signal?.aborted).toBe(false);
-      await api.replyWrite(1);
-      expect(
-        await screen.findByRole('button', { name: retryLabel[owner] }),
-      ).toBeInTheDocument();
-    },
-  );
+describe.each(appInterfaces)(
+  'Payment Source protection through the actual App navigation boundary in the %s interface',
+  (appInterface) => {
+    beforeEach(() => {
+      window.history.replaceState(null, '', `/${evidenceHash[appInterface]}`);
+    });
+    function render(ui: Parameters<typeof renderInInterface>[1]) {
+      return renderInInterface(appInterface, ui);
+    }
+    it.each(owners)(
+      'retains pending and uncertain %s through sidebar/history attempts and retries the exact envelope',
+      async (owner) => {
+        const api = installHttp(owner);
+        const identity = {
+          ...deterministicBrowserIdentity(),
+          getToken: vi.fn(async () => 'fictional-token'),
+        };
+        render(app(identity));
+        const { lockedControl, file } = await startOwner(owner, appInterface);
+        await waitFor(() => expect(api.writes).toHaveLength(1));
+        const first = api.writes[0];
+        if (!first) throw new Error('Expected the dispatched command.');
+        expect(first.key).toBeTruthy();
+        expect(first.signal?.aborted).toBe(false);
+        if (file) expect(first.body).toBe(file);
+        await expectNavigationHeld(lockedControl, appInterface);
+        expect(first.signal?.aborted).toBe(false);
+        expect(api.writes).toHaveLength(1);
+        await api.replyWrite(0);
+        const retry = await screen.findByRole('button', {
+          name: retryLabel[owner],
+        });
+        await expectNavigationHeld(lockedControl, appInterface);
+        retry.focus();
+        for (const value of ['ro', 'fr', 'ru', 'en'] as const) {
+          chooseLocale(appInterface, value);
+          expect(lockedControl.isConnected).toBe(true);
+          expect(lockedControl).toBeDisabled();
+        }
+        fireEvent.click(retry);
+        await waitFor(() => expect(api.writes).toHaveLength(2));
+        const repeated = api.writes[1];
+        if (!repeated) throw new Error('Expected the identical retry.');
+        expect({
+          path: repeated.path,
+          method: repeated.method,
+          body: repeated.body,
+          key: repeated.key,
+        }).toEqual({
+          path: first.path,
+          method: first.method,
+          body: first.body,
+          key: first.key,
+        });
+        if (file) expect(repeated.body).toBe(file);
+        expect(first.signal?.aborted).toBe(false);
+        await api.replyWrite(1);
+        expect(
+          await screen.findByRole('button', { name: retryLabel[owner] }),
+        ).toBeInTheDocument();
+      },
+    );
 
-  it('retires a pending registration permanently after public App identity A→B→A', async () => {
-    const api = installHttp('registration');
-    const identity = deterministicBrowserIdentity();
-    const view = render(app(identity));
-    const { lockedControl } = await startOwner('registration');
-    await waitFor(() => expect(api.writes).toHaveLength(1));
-    const original = api.writes[0];
-    if (!original) throw new Error('Expected the held registration.');
-    view.rerender(app(deterministicBrowserIdentity()));
-    await screen.findByRole('button', { name: 'Payment evidence' });
-    view.rerender(app(identity));
-    await screen.findByRole('button', { name: 'Payment evidence' });
-    await waitFor(() => expect(original.signal?.aborted).toBe(true));
-    expect(lockedControl.isConnected).toBe(false);
-    await api.replyWrite(0);
-    await openSource();
-    expect(
-      screen.queryByRole('button', { name: retryLabel.registration }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Title')).toHaveValue('');
-    expect(api.writes).toHaveLength(1);
-  });
-
-  it.each(['Recorder', 'Company'])(
-    'retires correction on authoritative %s withdrawal even while user navigation is protected',
-    async (withdrawal) => {
-      const api = installHttp('correction', true);
-      render(app(deterministicBrowserIdentity()));
-      const { lockedControl } = await startOwner('correction');
+    it('retires a pending registration permanently after public App identity A→B→A', async () => {
+      const api = installHttp('registration');
+      const identity = deterministicBrowserIdentity();
+      const view = render(app(identity));
+      const { lockedControl } = await startOwner('registration', appInterface);
       await waitFor(() => expect(api.writes).toHaveLength(1));
-      expect(api.heldVersionCount).toBeGreaterThan(0);
       const original = api.writes[0];
-      if (!original) throw new Error('Expected the held correction.');
-      expect(
-        screen.getByRole('combobox', { name: 'Active Company' }),
-      ).toBeDisabled();
-      const previousActorReads = api.actorReads;
-      if (withdrawal === 'Recorder') api.withdrawRecorder();
-      else api.withdrawCompany();
-      await api.denyVersions();
-      await waitFor(() =>
-        expect(api.actorReads).toBeGreaterThan(previousActorReads),
-      );
+      if (!original) throw new Error('Expected the held registration.');
+      view.rerender(app(deterministicBrowserIdentity()));
+      await sourceReady(appInterface);
+      view.rerender(app(identity));
+      await sourceReady(appInterface);
       await waitFor(() => expect(original.signal?.aborted).toBe(true));
       expect(lockedControl.isConnected).toBe(false);
-      await waitFor(() =>
+      await api.replyWrite(0);
+      await openRegistration(appInterface);
+      expect(
+        screen.queryByRole('button', { name: retryLabel.registration }),
+      ).not.toBeInTheDocument();
+      expect(evidenceView(appInterface).getByLabelText('Title')).toHaveValue(
+        '',
+      );
+      expect(api.writes).toHaveLength(1);
+    });
+
+    it.each(['Recorder', 'Company'])(
+      'retires correction on authoritative %s withdrawal even while user navigation is protected',
+      async (withdrawal) => {
+        const api = installHttp('correction', true);
+        render(app(deterministicBrowserIdentity()));
+        const { lockedControl } = await startOwner('correction', appInterface);
+        await waitFor(() => expect(api.writes).toHaveLength(1));
+        expect(api.heldVersionCount).toBeGreaterThan(0);
+        const original = api.writes[0];
+        if (!original) throw new Error('Expected the held correction.');
         expect(
           screen.getByRole('combobox', { name: 'Active Company' }),
-        ).not.toBeDisabled(),
-      );
-      await api.replyWrite(0);
-      expect(
-        screen.queryByRole('button', { name: retryLabel.correction }),
-      ).not.toBeInTheDocument();
-      expect(api.writes).toHaveLength(1);
-    },
-  );
-});
+        ).toBeDisabled();
+        const previousActorReads = api.actorReads;
+        if (withdrawal === 'Recorder') api.withdrawRecorder();
+        else api.withdrawCompany();
+        await api.denyVersions();
+        await waitFor(() =>
+          expect(api.actorReads).toBeGreaterThan(previousActorReads),
+        );
+        await waitFor(() => expect(original.signal?.aborted).toBe(true));
+        expect(lockedControl.isConnected).toBe(false);
+        await waitFor(() =>
+          expect(
+            screen.getByRole('combobox', { name: 'Active Company' }),
+          ).not.toBeDisabled(),
+        );
+        await api.replyWrite(0);
+        expect(
+          screen.queryByRole('button', { name: retryLabel.correction }),
+        ).not.toBeInTheDocument();
+        expect(api.writes).toHaveLength(1);
+      },
+    );
+  },
+);

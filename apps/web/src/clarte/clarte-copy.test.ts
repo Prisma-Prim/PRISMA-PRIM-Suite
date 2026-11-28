@@ -9,5 +9,6 @@ it('has every Clarté frame and component text in the four interface languages',
     'clarte-frame.copy.ts#clarteFrameMessages',
     'components/clarte-components.copy.ts#clarteComponentMessages',
     'documents/clarte-documents.copy.ts#clarteDocumentsMessages',
+    'finance/clarte-finance.copy.ts#clarteFinanceMessages',
   ]);
 });
