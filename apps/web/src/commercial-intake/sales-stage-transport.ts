@@ -2,8 +2,10 @@ import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { grantOf, holds } from '../access/company-grants';
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
 import { selectedWorkspaceId } from '../access/workspace-selection';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { useActorObservation } from '../api/use-actor-requests';
 import type { CommercialIntakeRequest } from './RequestClientAssociation';
 import type {
   SalesStageAccessHandler,
@@ -25,6 +27,8 @@ function intakeReadsOf(company: ActorContext['activeCompany']): boolean {
  * keys and access handling as Commercial Intake. A refused configuration
  * keeps the list readable while the revalidated actor still reads Commercial
  * Intake; any other refusal closes the screen until the actor is read again.
+ * A recovery belongs to the Actor observed when its request started: once a
+ * newer Actor is observed, it forwards nothing and the newer Actor decides.
  */
 export function useSalesStageTransport({
   actor,
@@ -67,13 +71,18 @@ export function useSalesStageTransport({
     canConfigure,
   ]);
   const [denied, setDenied] = useState(false);
+  const observation = useActorObservation(actor);
+  const captureRecovery = useAuthorityLifetime(String(observation), identity);
+  const recoveries = useRef(new WeakMap<AbortSignal, () => boolean>());
   const callbacks = useRef({
+    actor,
     onActorRevalidated,
     onCompanyContextRejected,
     onWorkspaceAccessRejected,
   });
   useLayoutEffect(() => {
     callbacks.current = {
+      actor,
       onActorRevalidated,
       onCompanyContextRejected,
       onWorkspaceAccessRejected,
@@ -89,6 +98,8 @@ export function useSalesStageTransport({
       body,
       idempotencyKey,
     }): Promise<HttpResult> => {
+      if (!recoveries.current.has(signal))
+        recoveries.current.set(signal, captureRecovery());
       try {
         signal.throwIfAborted();
         const token = identity.requestHeaders
@@ -128,14 +139,16 @@ export function useSalesStageTransport({
         return { status: 'network' };
       }
     },
-    [identity],
+    [identity, captureRecovery],
   );
 
   const handleAccess: SalesStageAccessHandler = useCallback(
     async (result, companyContextId, signal, resource) => {
       if (signal.aborted) return 'rejected';
+      const recoveryCurrent =
+        recoveries.current.get(signal) ?? captureRecovery();
       if (result.status === 401) {
-        await identity.rejectSession();
+        if (recoveryCurrent()) await identity.rejectSession();
         return 'rejected';
       }
       if (result.status !== 403) return 'ok';
@@ -157,16 +170,26 @@ export function useSalesStageTransport({
           onWorkspaceAccessRejected: () =>
             callbacks.current.onWorkspaceAccessRejected(),
           signal,
+          isCurrent: () => !signal.aborted && recoveryCurrent(),
         });
       } catch {
         // The received refusal stays definite even if revalidation fails.
       }
       if (signal.aborted) return 'rejected';
+      // A newer Actor was observed meanwhile: it, not the late reply, says
+      // whether the list stays readable.
+      if (!recoveryCurrent()) {
+        const latest = callbacks.current.actor.activeCompany;
+        retained =
+          resource !== 'intake' &&
+          latest?.id === companyContextId &&
+          intakeReadsOf(latest);
+      }
       if (retained) return 'retained';
       setDenied(true);
       return 'rejected';
     },
-    [identity],
+    [identity, captureRecovery],
   );
 
   if (denied) return { status: 'denied', retry: () => setDenied(false) };
