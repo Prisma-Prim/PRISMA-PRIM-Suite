@@ -233,7 +233,12 @@ function parseStage(
   value: unknown,
   expected: AffaireStage | undefined,
 ): AffaireStageView {
-  if (!isRecord(value) || value.stage !== expected || !isMarker(value.marker))
+  if (
+    !isRecord(value) ||
+    !isStage(value.stage) ||
+    value.stage !== expected ||
+    !isMarker(value.marker)
+  )
     throw new Error('Invalid affaire stage.');
   const stage = value.stage;
   const marker = value.marker;

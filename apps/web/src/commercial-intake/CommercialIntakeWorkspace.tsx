@@ -186,6 +186,12 @@ export type RequestStagePresentation = {
   command?: { kind: 'next-action' | 'outcome'; requestId: number };
   /** After a confirmed change of the Request, its Opportunity or follow-up. */
   onChanged: () => void;
+  /**
+   * While true, a command is pending or uncertain, or the follow-up panel
+   * owns protected work: leaving the Request would discard its retry, as the
+   * workspace's own Back button would.
+   */
+  onProtectedChange: (active: boolean) => void;
 };
 
 /** The version a requested Request detail opens with selected. */
@@ -1353,9 +1359,16 @@ export function CommercialIntakeWorkspace({
   // The Request stage's owner rereads its affaire when a follow-up edit ends,
   // saved or not; the follow-up panel owns its own command and receipt.
   const stageChanged = useRef(requestStage?.onChanged);
+  const stageProtected = useRef(requestStage?.onProtectedChange);
   useLayoutEffect(() => {
     stageChanged.current = requestStage?.onChanged;
+    stageProtected.current = requestStage?.onProtectedChange;
   });
+  // The same condition that disables the workspace's own Back button.
+  const leavingDiscardsWork = pending || followUpProtected;
+  useEffect(() => {
+    stageProtected.current?.(leavingDiscardsWork);
+  }, [leavingDiscardsWork]);
   const followUpWasProtected = useRef(false);
   useEffect(() => {
     if (followUpWasProtected.current && !followUpProtected)

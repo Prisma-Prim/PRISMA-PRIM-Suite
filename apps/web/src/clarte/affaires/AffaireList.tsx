@@ -89,7 +89,7 @@ export type ClientRestriction = {
 export function AffaireList({
   companyId,
   context,
-  clientProjection,
+  readAuthority,
   restriction,
   onClearRestriction,
   updated,
@@ -110,7 +110,7 @@ export function AffaireList({
    * withdraws them at once and rereads the first page, as the current
    * Requests list does.
    */
-  clientProjection: string;
+  readAuthority: string;
   restriction: ClientRestriction | undefined;
   onClearRestriction: () => void;
   /** The latest reread of an opened affaire, replacing its loaded row. */
@@ -129,10 +129,10 @@ export function AffaireList({
     scope: 'clarte-affaires',
   });
   const latestRequest = useRef(requests.request);
-  const projection = useRef(clientProjection);
+  const projection = useRef(readAuthority);
   useLayoutEffect(() => {
     latestRequest.current = requests.request;
-    projection.current = clientProjection;
+    projection.current = readAuthority;
   });
   const [view, setView] = useState<ListView>('all');
   const [layout, setLayout] = useState<Layout>('list');
@@ -206,41 +206,47 @@ export function AffaireList({
   useLayoutEffect(() => {
     shownView.current = view;
   });
-  const readProjection = useRef(clientProjection);
+  const readProjection = useRef(readAuthority);
   useEffect(() => {
-    if (readProjection.current === clientProjection) return;
-    readProjection.current = clientProjection;
+    if (readProjection.current === readAuthority) return;
+    readProjection.current = readAuthority;
     void load(shownView.current);
-  }, [clientProjection, load]);
+  }, [readAuthority, load]);
 
-  // A reread affaire replaces its loaded row, so returning shows its state.
+  // A reread affaire replaces its loaded row, so returning shows its state;
+  // a row that left My open dossiers leaves that view.
+  const member = context.actor.workspaceMembershipId;
   useEffect(() => {
     if (!updated) return;
+    const summary = summaryOf(updated.summary);
+    const stillShown =
+      shownView.current === 'all' || isMineOpen(summary, member);
     setState((current) =>
       current.kind === 'ready' && current.projection === updated.projection
         ? {
             ...current,
-            items: current.items.map((item) =>
-              item.opportunityId === updated.summary.opportunityId
-                ? summaryOf(updated.summary)
-                : item,
+            items: current.items.flatMap((item) =>
+              item.opportunityId !== summary.opportunityId
+                ? [item]
+                : stillShown
+                  ? [summary]
+                  : [],
             ),
           }
         : current,
     );
-  }, [updated]);
+  }, [updated, member]);
 
+  // Rows read under an earlier authority are withdrawn until the reread.
+  const visible: ListState =
+    state.kind === 'ready' && state.projection !== readAuthority
+      ? { kind: 'loading' }
+      : state;
   const normalized = filter.trim().toLowerCase();
-  const loaded =
-    state.kind !== 'ready'
-      ? []
-      : state.projection === clientProjection
-        ? state.items
-        : state.items.map((item) => ({ ...item, client: null }));
   const rows =
-    state.kind === 'ready'
+    visible.kind === 'ready'
       ? sortRows(
-          loaded.filter(
+          visible.items.filter(
             (item) =>
               (!restriction ||
                 item.client?.clientDossierId === restriction.clientDossierId) &&
@@ -324,7 +330,7 @@ export function AffaireList({
         <OpportunityFollowUpDiscovery
           actor={context.actor}
           identity={context.identity}
-          clientProjectionAuthority={clientProjection}
+          clientProjectionAuthority={readAuthority}
           disabled={false}
           onCompanyContextRejected={context.onCompanyContextRejected}
           onActorRevalidated={context.onActorRevalidated}
@@ -332,11 +338,11 @@ export function AffaireList({
           onOpenRequest={onOpenRequest}
         />
       </div>
-      {state.kind === 'loading' ? (
+      {visible.kind === 'loading' ? (
         <ClarteLoadingState label={copy('loadingList')} />
-      ) : state.kind === 'denied' ? (
+      ) : visible.kind === 'denied' ? (
         <ClarteErrorState title={copy('listDenied')} />
-      ) : state.kind === 'error' ? (
+      ) : visible.kind !== 'ready' ? (
         <ClarteErrorState
           title={copy('listError')}
           action={
@@ -345,7 +351,7 @@ export function AffaireList({
             </ClarteButton>
           }
         />
-      ) : state.items.length === 0 ? (
+      ) : visible.items.length === 0 ? (
         <ClarteEmptyState
           title={copy(view === 'mine_open' ? 'emptyMine' : 'emptyAll')}
         />
@@ -369,16 +375,16 @@ export function AffaireList({
       ) : (
         <AffaireBoard rows={rows} onOpen={onOpen} />
       )}
-      {state.kind === 'ready' && state.nextCursor ? (
+      {visible.kind === 'ready' && visible.nextCursor ? (
         <div className="clarte-affaires-older">
-          {state.older === 'error' ? (
+          {visible.older === 'error' ? (
             <p role="alert">{copy('olderError')}</p>
           ) : null}
           <ClarteButton
-            disabled={state.older === 'loading'}
-            onClick={() => void load(view, state.nextCursor)}
+            disabled={visible.older === 'loading'}
+            onClick={() => void load(view, visible.nextCursor)}
           >
-            {copy(state.older === 'loading' ? 'loadingOlder' : 'loadOlder')}
+            {copy(visible.older === 'loading' ? 'loadingOlder' : 'loadOlder')}
           </ClarteButton>
         </div>
       ) : null}
@@ -591,6 +597,14 @@ function summaryOf(affaire: AffaireSummary): AffaireSummary {
     lastChangedAt: affaire.lastChangedAt,
     thread: affaire.thread,
   };
+}
+
+/** Commercial Intake's My open cases: Open or On hold and owned by the member. */
+function isMineOpen(item: AffaireSummary, workspaceMembershipId: string) {
+  return (
+    item.owner.workspaceMembershipId === workspaceMembershipId &&
+    (item.status === 'OPEN' || item.status === 'ON_HOLD')
+  );
 }
 
 function matches(item: AffaireSummary, normalized: string) {

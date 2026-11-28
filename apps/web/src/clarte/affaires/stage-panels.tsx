@@ -42,6 +42,8 @@ export type AffaireStagePanelContext = {
   financeDestination?: 'invoice-records' | 'payments';
   /** Rereads the affaire after a confirmed change made in a panel. */
   onAffaireChanged: () => void;
+  /** Holds leaving the affaire while the Request stage protects its work. */
+  onRequestProtectedChange: (active: boolean) => void;
   /** The Next step card's latest request for a Request stage editor. */
   requestCommand?: RequestStagePresentation['command'];
 };
@@ -103,6 +105,7 @@ function RequestStagePanel({ affaire, context }: AffaireStagePanelProps) {
           loadingLabel: copy('requestLoading'),
           command: context.requestCommand,
           onChanged: context.onAffaireChanged,
+          onProtectedChange: context.onRequestProtectedChange,
         }}
       />
     </div>

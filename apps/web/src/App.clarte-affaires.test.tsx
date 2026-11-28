@@ -27,7 +27,9 @@ const ada = { workspaceMembershipId: 'member-ada', displayName: 'Ada Ionescu' };
 const ion = { workspaceMembershipId: 'member-ion', displayName: 'Ion Popa' };
 const negotiation = { id: 'stage-negotiation', label: 'Negotiation' };
 
-function actor(bundles: 'commercial' | 'reader' = 'commercial'): ActorContext {
+function actor(
+  bundles: 'commercial' | 'intake' | 'reader' = 'commercial',
+): ActorContext {
   return {
     internalUserId: 'user-ada',
     workspaceMembershipId: ada.workspaceMembershipId,
@@ -47,7 +49,7 @@ function actor(bundles: 'commercial' | 'reader' = 'commercial'): ActorContext {
         },
         {
           bundle: 'company_commercial_intake',
-          version: bundles === 'commercial' ? 'v4' : 'v1',
+          version: bundles === 'reader' ? 'v1' : 'v4',
           assignmentId: 'intake',
         },
         ...(bundles === 'commercial'
@@ -163,7 +165,9 @@ function server(initialActor = actor()) {
   const calls: string[] = [];
   const unexpected: string[] = [];
   let listResponse: (() => Response | Promise<Response>) | undefined;
-  let affaireResponse: (() => Response) | undefined;
+  let affaireResponse: (() => Response | Promise<Response>) | undefined;
+  let commandResponse: (() => Response | Promise<Response>) | undefined;
+  let currentActor = initialActor;
   const offerSummary = () =>
     affaireSummaryFor(stored, {
       thread:
@@ -194,7 +198,7 @@ function server(initialActor = actor()) {
       const body: unknown =
         typeof init?.body === 'string' ? JSON.parse(init.body) : undefined;
       if (path === '/api/access/current-actor')
-        return Response.json(initialActor);
+        return Response.json(currentActor);
       if (path === '/api/companies') return Response.json([company]);
       if (path === '/api/activity-log') return Response.json({ events: [] });
       if (path === '/api/clients') return Response.json([]);
@@ -237,6 +241,11 @@ function server(initialActor = actor()) {
             displayLabel: member.displayName,
           })),
         });
+      if (method === 'POST' && commandResponse) {
+        const respond = commandResponse;
+        commandResponse = undefined;
+        return respond();
+      }
       if (method === 'POST' && typeof body === 'object' && body !== null) {
         const version = opportunity.version + 1;
         if (path === `${commands}/next-action` && 'nextAction' in body)
@@ -343,8 +352,15 @@ function server(initialActor = actor()) {
     respondToList(next: () => Response | Promise<Response>) {
       listResponse = next;
     },
-    respondToAffaire(next: () => Response) {
+    respondToAffaire(next: (() => Response | Promise<Response>) | undefined) {
       affaireResponse = next;
+    },
+    /** Answers only the next command, then the store answers again. */
+    respondToNextCommand(next: () => Response | Promise<Response>) {
+      commandResponse = next;
+    },
+    setActor(next: ActorContext) {
+      currentActor = next;
     },
     lose() {
       stored = {
@@ -761,5 +777,159 @@ describe('Affaires in the Clarté interface', () => {
     await openOfferAffaire();
     expect(nextStep()).toHaveTextContent('Call the Client');
     expect(within(nextStep()).queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('withdraws every stage fact at once when a grant changes and rereads them under the new grants', async () => {
+    const api = server();
+    await openOfferAffaire();
+    const thread = screen.getByRole('list', { name: 'Affaire stages' });
+    expect(screen.getByRole('region', { name: 'Offer' })).toHaveTextContent(
+      'Version 1',
+    );
+    // The revalidated Actor keeps Commercial Intake and Client access but
+    // loses the Opportunity manager grant; the reread is held.
+    api.setActor(actor('intake'));
+    api.respondToNextCommand(() => Response.json({}, { status: 403 }));
+    let release: () => void = () => undefined;
+    api.respondToAffaire(
+      () =>
+        new Promise<Response>((resolve) => {
+          release = () => {
+            api.respondToAffaire(undefined);
+            resolve(
+              Response.json({
+                ...affaireDetailFor(
+                  affaireRequest(
+                    'offer',
+                    'Certification ISO 22000',
+                    ada,
+                    '2026-11-20T08:00:00.000Z',
+                    'Valea Verde SRL',
+                  ),
+                  {
+                    thread: { kind: 'in_progress', currentStage: 'offer' },
+                    lastChangedAt: '2026-11-27T09:00:00.000Z',
+                  },
+                ),
+                stages: offerStages(
+                  affaireRequest(
+                    'offer',
+                    'Certification ISO 22000',
+                    ada,
+                    '2026-11-20T08:00:00.000Z',
+                  ),
+                ),
+              }),
+            );
+          };
+        }),
+    );
+    fireEvent.click(
+      within(nextStep()).getByRole('button', {
+        name: 'Change the next action',
+      }),
+    );
+    changeValue(await screen.findByLabelText('Next action'), 'Refused draft');
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+    });
+    await waitFor(() =>
+      expect(
+        within(thread).getByRole('button', { name: /Offer/u }),
+      ).toHaveTextContent('Not available to you'),
+    );
+    fireEvent.click(within(thread).getByRole('button', { name: /Offer/u }));
+    expect(
+      screen.getByText('This stage is not available to you.'),
+    ).toBeVisible();
+    expect(screen.queryByText('Version 1')).not.toBeInTheDocument();
+    const header = screen
+      .getByRole('heading', { level: 2, name: 'Certification ISO 22000' })
+      .closest('header');
+    if (!header) throw new Error('Expected the affaire header.');
+    expect(
+      within(header).queryByText('Valea Verde SRL'),
+    ).not.toBeInTheDocument();
+    expect(within(header).getByText('No Client')).toBeVisible();
+    await act(async () => {
+      release();
+    });
+    await waitFor(() =>
+      expect(
+        within(thread).getByRole('button', { name: /Offer/u }),
+      ).toHaveTextContent('Current stage'),
+    );
+    expect(screen.getByText('Version 1')).toBeVisible();
+  });
+
+  it('keeps the affaire open while a Request command is pending', async () => {
+    const api = server();
+    await openOfferAffaire();
+    let respond: (response: Response) => void = () => undefined;
+    api.respondToNextCommand(
+      () =>
+        new Promise<Response>((resolve) => {
+          respond = resolve;
+        }),
+    );
+    fireEvent.click(
+      within(nextStep()).getByRole('button', {
+        name: 'Change the next action',
+      }),
+    );
+    changeValue(await screen.findByLabelText('Next action'), 'Pending draft');
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+    });
+    const back = screen.getByRole('button', { name: 'Back to affaires' });
+    await waitFor(() => expect(back).toBeDisabled());
+    fireEvent.click(back);
+    expect(
+      screen.getByRole('heading', {
+        level: 2,
+        name: 'Certification ISO 22000',
+      }),
+    ).toBeVisible();
+    await act(async () => {
+      respond(Response.json({}, { status: 500 }));
+    });
+    // As the current Requests detail's Back: only a pending command holds it.
+    await waitFor(() => expect(back).toBeEnabled());
+  });
+
+  it('removes an affaire from My open dossiers once it is reassigned', async () => {
+    server();
+    renderClarte();
+    await screen.findByRole('button', { name: 'HACCP set-up' });
+    fireEvent.click(screen.getByRole('button', { name: 'My open dossiers' }));
+    const row = await screen.findByRole('button', {
+      name: 'Certification ISO 22000',
+    });
+    await act(async () => {
+      fireEvent.click(row);
+    });
+    const request = await screen.findByRole('article', {
+      name: 'Certification ISO 22000 request',
+      hidden: true,
+    });
+    fireEvent.click(
+      within(screen.getByRole('list', { name: 'Affaire stages' })).getByRole(
+        'button',
+        { name: /Request/u },
+      ),
+    );
+    fireEvent.click(
+      within(request).getByRole('button', { name: 'Change responsible' }),
+    );
+    changeValue(
+      await screen.findByRole('combobox', { name: 'New responsible actor' }),
+      ion.workspaceMembershipId,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save responsible' }));
+    });
+    await waitFor(() => expect(nextStep()).toHaveTextContent('Ion Popa'));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to affaires' }));
+    expect(rowTitles()).toEqual(['HACCP set-up']);
   });
 });

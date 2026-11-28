@@ -27,6 +27,7 @@ import {
   parseAffaireDetail,
   type AffaireDetail,
   type AffaireStage,
+  type AffaireStageView,
   type AffaireSummary,
 } from './affaire-response';
 import { useAffaireCopy } from './affaires.copy';
@@ -50,7 +51,7 @@ export type AffaireUpdate = { summary: AffaireSummary; projection: string };
 
 type PageContext = Omit<
   AffaireStagePanelContext,
-  'onAffaireChanged' | 'requestCommand'
+  'onAffaireChanged' | 'onRequestProtectedChange' | 'requestCommand'
 >;
 
 /**
@@ -63,21 +64,27 @@ export function AffairePage({
   target,
   companyId,
   context,
-  clientProjection,
+  readAuthority,
   initialStage,
+  leaveHeld,
   onBack,
+  onProtectedChange,
   onSummary,
 }: Readonly<{
   target: AffaireTarget;
   companyId: string;
   context: PageContext;
   /**
-   * The Client authority and identity the shown Client name belongs to. A
-   * change withdraws the name at once and rereads the affaire.
+   * The grants, captures and Client authority and identity the shown facts
+   * belong to. A change withdraws the Client name and every stage fact at
+   * once and rereads the affaire.
    */
-  clientProjection: string;
+  readAuthority: string;
   initialStage?: AffaireStage;
+  /** The Request stage protects pending or uncertain work: Back waits. */
+  leaveHeld: boolean;
   onBack: () => void;
+  onProtectedChange: (active: boolean) => void;
   onSummary: (update: AffaireUpdate) => void;
 }>) {
   const copy = useAffaireCopy();
@@ -100,11 +107,11 @@ export function AffairePage({
   const sequence = useRef(0);
   const summary = useRef(onSummary);
   const latestRequest = useRef(requests.request);
-  const projection = useRef(clientProjection);
+  const projection = useRef(readAuthority);
   useLayoutEffect(() => {
     summary.current = onSummary;
     latestRequest.current = requests.request;
-    projection.current = clientProjection;
+    projection.current = readAuthority;
   });
 
   const load = useCallback(async () => {
@@ -154,12 +161,12 @@ export function AffairePage({
   }, [load]);
 
   // A Client authority or identity change rereads; until then no name shows.
-  const readProjection = useRef(clientProjection);
+  const readProjection = useRef(readAuthority);
   useEffect(() => {
-    if (readProjection.current === clientProjection) return;
-    readProjection.current = clientProjection;
+    if (readProjection.current === readAuthority) return;
+    readProjection.current = readAuthority;
     void load();
-  }, [clientProjection, load]);
+  }, [readAuthority, load]);
 
   const heading = useRef<HTMLHeadingElement>(null);
   const focused = useRef(false);
@@ -170,7 +177,12 @@ export function AffairePage({
   }, [state.kind]);
 
   const back = (
-    <ClarteButton variant="quiet" size="small" onClick={onBack}>
+    <ClarteButton
+      variant="quiet"
+      size="small"
+      disabled={leaveHeld}
+      onClick={onBack}
+    >
       <ArrowLeft aria-hidden="true" />
       {copy('backToList')}
     </ClarteButton>
@@ -206,9 +218,9 @@ export function AffairePage({
     );
 
   const affaire: AffaireDetail =
-    state.projection === clientProjection
+    state.projection === readAuthority
       ? state.affaire
-      : { ...state.affaire, client: null };
+      : withdrawn(state.affaire);
   const current =
     affaire.thread.kind === 'in_progress'
       ? affaire.thread.currentStage
@@ -217,6 +229,7 @@ export function AffairePage({
   const panelContext: AffaireStagePanelContext = {
     ...context,
     onAffaireChanged: () => void load(),
+    onRequestProtectedChange: onProtectedChange,
     requestCommand: command,
   };
   const openCommand = (kind: 'next-action' | 'outcome') => {
@@ -541,6 +554,41 @@ function statusTone(status: AffaireDetail['status']) {
       return exhaustive;
     }
   }
+}
+
+/**
+ * What may stay shown while a reread under a changed authority is pending:
+ * the Commercial Intake summary, never a Client name, follow-up date or any
+ * later stage's facts or presence.
+ */
+function withdrawn(affaire: AffaireDetail): AffaireDetail {
+  const closed = affaire.thread.kind === 'closed';
+  return {
+    ...affaire,
+    client: null,
+    followUpOn: { readable: false },
+    thread: closed
+      ? affaire.thread
+      : { kind: 'in_progress', currentStage: 'request' },
+    stages: affaire.stages.map((view): AffaireStageView => {
+      switch (view.stage) {
+        case 'request':
+          return { ...view, marker: closed ? 'done' : 'current' };
+        case 'collection':
+          return view;
+        case 'costing':
+        case 'offer':
+        case 'contract':
+        case 'delivery':
+        case 'closure':
+          return { stage: view.stage, marker: 'not_available' };
+        default: {
+          const exhaustive: never = view;
+          return exhaustive;
+        }
+      }
+    }),
+  };
 }
 
 function failure(

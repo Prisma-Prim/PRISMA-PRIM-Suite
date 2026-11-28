@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { grantOf, holds } from '../../access/company-grants';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { RequestedVersion } from '../../commercial-intake/CommercialIntakeWorkspace';
 import { AffaireList, rowTarget, type ClientRestriction } from './AffaireList';
 import {
@@ -27,7 +26,10 @@ export function ClarteAffaires({
   clientRestriction,
   requestedRequest,
   ...context
-}: Omit<AffaireStagePanelContext, 'onAffaireChanged' | 'requestCommand'> &
+}: Omit<
+  AffaireStagePanelContext,
+  'onAffaireChanged' | 'onRequestProtectedChange' | 'requestCommand'
+> &
   Readonly<{
     /** A new object restricts the loaded rows to one dossier; none clears it. */
     clientRestriction?: ClientRestriction;
@@ -43,16 +45,25 @@ export function ClarteAffaires({
   const [opened, setOpened] = useState<OpenedAffaire>();
   const [restriction, setRestriction] = useState(clientRestriction);
   const [updated, setUpdated] = useState<AffaireUpdate>();
+  // While the Request stage protects a pending or uncertain command, the
+  // page stays: a requested affaire waits, as in the current workspace.
+  const [pageProtected, setPageProtected] = useState(false);
+  const [held, setHeld] = useState<Omit<OpenedAffaire, 'opening'>>();
 
+  const protection = useRef(pageProtected);
+  useLayoutEffect(() => {
+    protection.current = pageProtected;
+  });
+  // Only a new restriction closes the page, never over protected work.
   useEffect(() => {
     setRestriction(clientRestriction);
-    if (clientRestriction) setOpened(undefined);
+    if (clientRestriction && !protection.current) setOpened(undefined);
   }, [clientRestriction]);
 
   useEffect(() => {
     if (!requestedRequest || requestedRequest.sourceSignal?.aborted) return;
     const version = requestedRequest.version;
-    setOpened((current) => ({
+    setHeld({
       target: {
         kind: 'request',
         clientRequestId: requestedRequest.clientRequestId,
@@ -63,21 +74,27 @@ export function ClarteAffaires({
           : version?.type === 'contract_version'
             ? 'contract'
             : undefined,
-      opening: (current?.opening ?? 0) + 1,
-    }));
+    });
   }, [requestedRequest]);
 
+  useEffect(() => {
+    if (!held || pageProtected) return;
+    setHeld(undefined);
+    setOpened((current) => ({
+      ...held,
+      opening: (current?.opening ?? 0) + 1,
+    }));
+  }, [held, pageProtected]);
+
   if (!company) return null;
-  // Client names belong to the Client authority and identity they were read
-  // under, as in the current Requests workspace.
-  const clientGrant = grantOf(company, 'company_director_client_access');
-  const clientProjection = JSON.stringify([
+  // Loaded names and stage facts belong to the authority they were read
+  // under: any change of grant, capture, Client authority or identity
+  // withdraws them at once and rereads, as the current workspaces do.
+  const readAuthority = JSON.stringify([
     context.clientAuthorityRevision,
     context.clientIdentityRevision,
-    clientGrant?.assignmentId,
-    clientGrant?.permissionSetVersion,
-    context.actor.workspacePermissions.includes('client.manage') ||
-      holds(company, 'company_director_client_access', 'client.read'),
+    context.actor.workspacePermissions,
+    company,
   ]);
   const open = (target: AffaireTarget) =>
     setOpened((current) => ({
@@ -85,6 +102,7 @@ export function ClarteAffaires({
       opening: (current?.opening ?? 0) + 1,
     }));
   const close = () => {
+    if (pageProtected) return;
     const target = opened?.target;
     setOpened(undefined);
     if (target?.kind === 'opportunity')
@@ -98,7 +116,7 @@ export function ClarteAffaires({
         <AffaireList
           companyId={company.id}
           context={context}
-          clientProjection={clientProjection}
+          readAuthority={readAuthority}
           restriction={restriction}
           onClearRestriction={() => setRestriction(undefined)}
           updated={updated}
@@ -116,9 +134,11 @@ export function ClarteAffaires({
           target={opened.target}
           companyId={company.id}
           context={context}
-          clientProjection={clientProjection}
+          readAuthority={readAuthority}
           initialStage={opened.initialStage}
+          leaveHeld={pageProtected}
           onBack={close}
+          onProtectedChange={setPageProtected}
           onSummary={setUpdated}
         />
       ) : null}
