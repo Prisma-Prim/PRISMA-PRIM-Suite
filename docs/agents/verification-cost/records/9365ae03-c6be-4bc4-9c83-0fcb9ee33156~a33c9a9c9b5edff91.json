@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "9365ae03-c6be-4bc4-9c83-0fcb9ee33156:a33c9a9c9b5edff91",
+  "date": "2026-11-28",
+  "runType": "pull-request-proof",
+  "issue": 1583,
+  "pullRequest": 1587,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-28T13:01:33.260Z",
+    "end": "2026-11-28T13:17:25.101Z",
+    "durationSeconds": 952
+  },
+  "tokens": {
+    "input": 76,
+    "output": 16219,
+    "cacheCreation": 103186,
+    "cacheRead": 4117857
+  },
+  "models": [
+    {
+      "model": "claude-sonnet-5-5",
+      "tokens": {
+        "input": 76,
+        "output": 16219,
+        "cacheCreation": 103186,
+        "cacheRead": 4117857
+      },
+      "estimatedPriceUsd": 0.832093
+    }
+  ],
+  "price": {
+    "estimatedUsd": 0.832093,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Shepherd of a local Codex change: typecheck, lint, targeted tests, journey and local comparison."
+  }
+}
