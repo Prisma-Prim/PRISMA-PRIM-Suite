@@ -1028,6 +1028,98 @@ describe('Clarté Finance › Collections', () => {
     ).toEqual(['CORRECT_DRAFT', 'CONFIRM']);
   });
 
+  it('recovers a conflicting new observation through a deliberate reload of the exact sources', async () => {
+    let sourceReads = 0;
+    const http = installApp(financeActor, (call) => {
+      if (call.method === 'POST' && call.path === '/api/payments')
+        return Response.json({ code: 'STALE_SOURCE' }, { status: 409 });
+      if (call.path === '/api/payments')
+        return Response.json({
+          format: 'PAYMENT_INVENTORY/1',
+          companyId: payIds.company,
+          readCapture: paymentCapture,
+          items: [],
+          nextCursor: null,
+        });
+      if (call.path === '/api/payments/sources') {
+        sourceReads += 1;
+        return Response.json({
+          format: 'PAYMENT_SOURCE_PAGE/1',
+          companyId: payIds.company,
+          readCapture: paymentCapture,
+          items: [paymentSource],
+          nextCursor: null,
+        });
+      }
+      if (
+        call.path ===
+        `/api/documents/${payIds.document}/versions/${payIds.version}/content/${payIds.representation}`
+      )
+        return pdf();
+      return undefined;
+    });
+    renderFinance('payments', deterministicBrowserIdentity());
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'New manual observation' }),
+    );
+    const dialog = panel('New manual observation');
+    fireEvent.click(
+      await within(dialog).findByRole('button', {
+        name: 'Select an authorized exact source 1',
+      }),
+    );
+    fireEvent.change(within(dialog).getByLabelText('Declared amount'), {
+      target: { value: '1255.00' },
+    });
+    changeValue(within(dialog).getByLabelText('Currency'), 'MDL');
+    fireEvent.change(within(dialog).getByLabelText('Declared effective date'), {
+      target: { value: paymentValues.effectiveOn },
+    });
+    fireEvent.change(within(dialog).getByLabelText('Declared payment method'), {
+      target: { value: paymentValues.method },
+    });
+    fireEvent.change(within(dialog).getByLabelText('What was observed'), {
+      target: { value: paymentValues.observationBasis },
+    });
+    fireEvent.click(
+      within(dialog).getByRole('checkbox', {
+        name: /I declare one manually observed incoming Payment/,
+      }),
+    );
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Record observation' }),
+    );
+    expect(
+      await within(dialog).findByText(
+        'The command conflicts with current data. Deliberately reload and review before starting a new command.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('combobox', { name: 'Active Company' }),
+      ).toBeDisabled(),
+    );
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Reload and review' }),
+    );
+    // The fresh exact sources release the conflict and offer a new choice.
+    expect(
+      await within(dialog).findByRole('button', {
+        name: 'Select an authorized exact source 1',
+      }),
+    ).toBeEnabled();
+    await waitFor(() =>
+      expect(
+        within(dialog).queryByRole('region', { name: 'Record observation' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole('combobox', { name: 'Active Company' }),
+    ).toBeEnabled();
+    expect(sourceReads).toBe(2);
+    expect(http.posts()).toHaveLength(1);
+  });
+
   it('EX-189: withdraws a draft observation', async () => {
     const reason = 'Recorded twice by mistake';
     let current = draft;

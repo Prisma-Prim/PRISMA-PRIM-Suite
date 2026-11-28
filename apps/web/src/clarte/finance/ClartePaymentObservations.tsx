@@ -215,17 +215,17 @@ function ClartePaymentOwner(
                   )
                 }
               >
+                {/*
+                  The source chooser keeps its own place, as in the current
+                  interface: a creation conflict reloads it beside the held
+                  command, and its fresh read releases the conflict.
+                */}
+                {chooser}
                 {editor ? (
                   command
                 ) : selected ? (
-                  <ObservationDetail
-                    {...props}
-                    owner={owner}
-                    chooser={chooser}
-                  />
-                ) : (
-                  chooser
-                )}
+                  <ObservationDetail {...props} owner={owner} />
+                ) : null}
                 {!selected && !editor && !protectedWork && (
                   <ClarteButton onClick={owner.cancelCreation}>
                     {copy.cancel}
@@ -475,9 +475,7 @@ function SelectedSource(
 }
 
 /** The observation's facts, related records, commands and history. */
-function ObservationDetail(
-  props: PaymentWorkspaceProps & { owner: Owner; chooser: ReactNode },
-) {
+function ObservationDetail(props: PaymentWorkspaceProps & { owner: Owner }) {
   const { locale } = useInterfaceLocale();
   const copy = paymentCopy[locale];
   const { owner } = props;
@@ -563,7 +561,6 @@ function ObservationDetail(
           </ClarteButton>
         )}
       </div>
-      {props.chooser}
       <section className="clarte-finance-history" aria-label={copy.history}>
         <h3>{copy.history}</h3>
         {owner.history?.items.map((revision) => (
