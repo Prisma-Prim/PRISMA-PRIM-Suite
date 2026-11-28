@@ -267,6 +267,8 @@
   flex-direction: column;
   width: min(100vw, 620px);
   height: 100%;
+  /* A long body scrolls inside the panel instead of growing past the screen. */
+  max-height: 100dvh;
   background: var(--clarte-bg);
   box-shadow: var(--clarte-shadow-raised);
 }
@@ -282,6 +284,22 @@
   padding: 18px 20px;
   border-bottom: 1px solid var(--clarte-line);
   background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-side-panel-icon {
+  display: grid;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: var(--clarte-radius-sm);
+  background: var(--clarte-accent-soft);
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-side-panel-icon svg {
+  width: 19px;
+  height: 19px;
 }
 
 .clarte-frame .clarte-side-panel-head > div {
@@ -301,6 +319,7 @@
 
 .clarte-frame .clarte-side-panel-body {
   flex: 1;
+  min-height: 0;
   padding: 18px 20px;
   overflow-y: auto;
 }

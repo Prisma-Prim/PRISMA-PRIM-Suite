@@ -47,18 +47,19 @@ function section(
   options: Partial<ApplicationSection> = {},
 ): ApplicationSection {
   const label = sectionLabels[id];
-  const destination = (
+  const placeholder = (
     <section id={id} tabIndex={-1} aria-label={`${label} screen`}>
       {label} content
     </section>
   );
-  // A migrated tab renders `clarteContent`, a current one `content`.
+  // A migrated tab renders `clarteContent`; this frame test needs one
+  // placeholder screen whichever renderer a slice chose for the tab.
   return {
     id,
     label,
     description: `${label} description`,
-    content: destination,
-    clarteContent: destination,
+    content: placeholder,
+    clarteContent: placeholder,
     ...options,
   };
 }
