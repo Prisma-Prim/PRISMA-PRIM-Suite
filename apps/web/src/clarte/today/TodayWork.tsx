@@ -9,7 +9,15 @@ import {
   TriangleAlert,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+} from 'react';
 import { useContractDecisionQueueCopy } from '../../contract/contract-decision-queue.copy';
 import { useInterfaceLocale } from '../../localization/interface-locale';
 import { useOfferDecisionQueueCopy } from '../../offer/offer-decision-queue.copy';
@@ -49,6 +57,7 @@ export function TodayWork({
   items,
   loading,
   incomplete,
+  review,
   onOpen,
   onBack,
 }: Readonly<{
@@ -57,6 +66,8 @@ export function TodayWork({
   loading: boolean;
   /** Some lists could not be read and are not in the order. */
   incomplete: boolean;
+  /** The existing review shown in the detail column on desktop. */
+  review?: ReactNode;
   onOpen: (item: WorkItem) => void;
   onBack: () => void;
 }>) {
@@ -66,10 +77,18 @@ export function TodayWork({
   const titleId = useId();
   const itemTitleId = useId();
   const heading = useRef<HTMLHeadingElement>(null);
+  const openButton = useRef<HTMLButtonElement>(null);
+  const reviewed = useRef(false);
+  const reviewOpen = Boolean(review);
   const [current, setCurrent] = useState<{ key: string; index: number }>();
   useEffect(() => {
     heading.current?.focus();
   }, []);
+  useLayoutEffect(() => {
+    if (reviewed.current && !reviewOpen)
+      (openButton.current ?? heading.current)?.focus();
+    reviewed.current = reviewOpen;
+  }, [reviewOpen]);
 
   // The position follows its item across rereads; a settled item gives its
   // place to the next one.
@@ -85,35 +104,36 @@ export function TodayWork({
   };
 
   return (
-    <section className="clarte-today-work" aria-labelledby={titleId}>
-      <header className="clarte-today-work-head">
-        <div>
+    <section
+      className="clarte-today-work-layout"
+      aria-labelledby={titleId}
+      aria-description={copy.message('workOrder')}
+    >
+      <div className="clarte-today-work-list">
+        <header className="clarte-today-work-head">
           <h2 id={titleId} ref={heading} tabIndex={-1}>
             {copy.message('workTitle')}
           </h2>
-          <p>{copy.message('workOrder')}</p>
-        </div>
-        <ClarteButton onClick={onBack}>
-          <ArrowLeft aria-hidden="true" />
-          {copy.message('workBack')}
-        </ClarteButton>
-      </header>
-      {loading && (
-        <p className="clarte-today-card-note" role="status">
-          {copy.message('workLoading')}
-        </p>
-      )}
-      {incomplete && (
-        <p className="clarte-today-work-warning" role="alert">
-          {copy.message('workIncomplete')}
-        </p>
-      )}
-      {!item ? (
-        !loading && <ClarteEmptyState title={copy.message('workEmpty')} />
-      ) : (
-        <div className="clarte-today-work-layout">
+          <ClarteButton size="small" disabled={reviewOpen} onClick={onBack}>
+            <ArrowLeft aria-hidden="true" />
+            {copy.message('workBack')}
+          </ClarteButton>
+        </header>
+        {loading && (
+          <p className="clarte-today-card-note" role="status">
+            {copy.message('workLoading')}
+          </p>
+        )}
+        {incomplete && (
+          <p className="clarte-today-work-warning" role="alert">
+            {copy.message('workIncomplete')}
+          </p>
+        )}
+        {!item ? (
+          !loading && <ClarteEmptyState title={copy.message('workEmpty')} />
+        ) : (
           <nav
-            className="clarte-today-work-list"
+            className="clarte-today-work-groups"
             aria-label={copy.message('workList')}
           >
             {workSources.map((source) => {
@@ -137,6 +157,7 @@ export function TodayWork({
                           <button
                             type="button"
                             aria-current={position === index || undefined}
+                            disabled={reviewOpen}
                             onClick={() => go(position)}
                           >
                             <span
@@ -156,22 +177,27 @@ export function TodayWork({
               );
             })}
           </nav>
-          <WorkItemCard
-            item={item}
-            described={describe(item)}
-            titleId={itemTitleId}
-            position={copy.workPosition({
-              position: formatNumber(index + 1),
-              total: formatNumber(items.length),
-            })}
-            hasPrevious={index > 0}
-            hasNext={index < items.length - 1}
-            onPrevious={() => go(index - 1)}
-            onNext={() => go(index + 1)}
-            onOpen={() => onOpen(item)}
-          />
-        </div>
+        )}
+      </div>
+      {item && (
+        <WorkItemCard
+          item={item}
+          described={describe(item)}
+          titleId={itemTitleId}
+          position={copy.workPosition({
+            position: formatNumber(index + 1),
+            total: formatNumber(items.length),
+          })}
+          hasPrevious={index > 0}
+          hasNext={index < items.length - 1}
+          onPrevious={() => go(index - 1)}
+          onNext={() => go(index + 1)}
+          onOpen={() => onOpen(item)}
+          openRef={openButton}
+          hidden={reviewOpen}
+        />
       )}
+      {review}
     </section>
   );
 }
@@ -193,6 +219,8 @@ function WorkItemCard({
   onPrevious,
   onNext,
   onOpen,
+  openRef,
+  hidden,
 }: Readonly<{
   item: WorkItem;
   described: Described;
@@ -203,6 +231,8 @@ function WorkItemCard({
   onPrevious: () => void;
   onNext: () => void;
   onOpen: () => void;
+  openRef: Ref<HTMLButtonElement>;
+  hidden: boolean;
 }>) {
   const copy = useClarteTodayCopy();
   const Icon = groupIcons[item.source];
@@ -211,6 +241,7 @@ function WorkItemCard({
       className="clarte-today-work-item"
       data-source={item.source}
       aria-labelledby={titleId}
+      hidden={hidden}
     >
       <p className="clarte-today-work-position" role="status">
         {position}
@@ -230,6 +261,7 @@ function WorkItemCard({
       </p>
       <div className="clarte-today-work-actions">
         <ClarteButton
+          ref={openRef}
           variant="primary"
           aria-label={copy.workOpenNamed({ title: described.title })}
           onClick={onOpen}

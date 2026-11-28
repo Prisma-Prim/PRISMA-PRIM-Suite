@@ -122,6 +122,19 @@ describe('Clarté Today', () => {
     await within(block).findByRole('heading', {
       name: 'Contracts awaiting an internal decision',
     });
+    for (const [action, title] of [
+      [
+        'Decide on the Profitability Estimate',
+        todayDecisions.profitability.opportunityTitle,
+      ],
+      ['Decide on the Offer', todayDecisions.offer.opportunityTitle],
+      ['Decide on the Contract', todayDecisions.contract.opportunityTitle],
+    ] as const) {
+      const heading = await within(block).findByRole('heading', {
+        name: action,
+      });
+      expect(heading.nextElementSibling).toHaveTextContent(title);
+    }
     expect(
       within(block).getByRole('button', { name: 'Review version 2' }),
     ).toBeVisible();
@@ -254,14 +267,21 @@ describe('Clarté Today', () => {
         name: `Open ${todayDecisions.offer.opportunityTitle}`,
       }),
     );
-    const review = await screen.findByRole('dialog', {
+    const review = await within(work).findByRole('region', {
       name: todayDecisions.offer.opportunityTitle,
     });
+    expect(within(review).getByRole('heading', { level: 3 })).toHaveFocus();
+    expect(
+      within(work).getByRole('navigation', { name: 'Items in order' }),
+    ).toBeVisible();
     fireEvent.keyDown(review, { key: 'Escape' });
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
+    expect(review).not.toBeInTheDocument();
     expect(await within(work).findByText('Item 2 of 8')).toBeVisible();
+    expect(
+      within(work).getByRole('button', {
+        name: `Open ${todayDecisions.offer.opportunityTitle}`,
+      }),
+    ).toHaveFocus();
     fireEvent.click(
       within(work).getByRole('button', { name: 'Back to Today' }),
     );
@@ -276,6 +296,9 @@ describe('Clarté Today', () => {
     const { api } = serve();
     openToday();
     const summary = await screen.findByRole('region', { name: home.title });
+    expect(
+      within(summary).getByRole('button', { name: 'All Companies summaries' }),
+    ).toBeVisible();
     await within(summary).findByRole('button', {
       name: cardName('overdue_tasks', 2),
     });

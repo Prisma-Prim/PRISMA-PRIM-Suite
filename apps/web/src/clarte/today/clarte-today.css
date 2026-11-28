@@ -32,16 +32,15 @@
 .clarte-frame .clarte-today-hero::after {
   content: '';
   position: absolute;
-  top: -40%;
-  right: -6%;
-  width: 34%;
-  height: 180%;
-  border-radius: 50%;
+  inset: -25% -6% -52% auto;
+  width: 32%;
   background: radial-gradient(
-    closest-side,
-    var(--clarte-accent-line),
-    var(--clarte-accent-soft) 60%,
-    transparent
+    ellipse 100% 198% at 0 147%,
+    transparent 73%,
+    var(--clarte-accent-soft) 74%,
+    var(--clarte-accent-line) 82%,
+    color-mix(in srgb, var(--clarte-accent) 38%, var(--clarte-surface)) 90%,
+    var(--clarte-accent-line)
   );
   pointer-events: none;
 }
@@ -135,14 +134,20 @@
 /* Decisions */
 .clarte-frame .clarte-today-queues {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  align-items: start;
-  gap: 18px 16px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  column-gap: 16px;
 }
 
 .clarte-frame .clarte-today-queue {
   display: grid;
-  gap: 10px;
+  grid-template-rows: subgrid;
+  min-width: 0;
+  padding-bottom: 12px;
+}
+
+.clarte-frame .clarte-today-queue > :nth-child(2):not(ul) {
+  grid-row: 2 / -2;
+  align-self: start;
 }
 
 .clarte-frame .clarte-today-queue-head {
@@ -150,6 +155,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 12px;
+  margin-bottom: 10px;
 }
 
 .clarte-frame .clarte-today-queue-head h3 {
@@ -178,22 +184,27 @@
 
 .clarte-frame .clarte-today-decisions {
   display: grid;
-  gap: 12px;
+  grid-row: 2 / -2;
+  grid-template-rows: subgrid;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .clarte-frame .clarte-today-decision {
-  display: grid;
-  align-content: start;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   padding: 18px 20px 20px;
   border: 1px solid var(--clarte-line);
   border-top: 3px solid var(--clarte-accent);
   border-radius: 16px;
   background: var(--clarte-surface);
   box-shadow: var(--clarte-shadow);
+}
+
+.clarte-frame .clarte-today-decision + .clarte-today-decision {
+  margin-top: 12px;
 }
 
 .clarte-frame .clarte-today-decision-top {
@@ -214,9 +225,16 @@
   line-height: 1.3;
 }
 
+.clarte-frame .clarte-today-decision-title p {
+  margin: 3px 0 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
 .clarte-frame .clarte-today-decision > .clarte-button {
-  justify-self: start;
-  margin-top: 4px;
+  align-self: flex-start;
+  margin-top: auto;
 }
 
 .clarte-frame .clarte-today-facts {
@@ -254,7 +272,10 @@
 
 .clarte-frame .clarte-today-pager {
   display: flex;
+  grid-row: -2 / -1;
+  flex-wrap: wrap;
   gap: 8px;
+  margin-top: 10px;
 }
 
 /* To do: the reused attention and deadline lists take Clarté surfaces */
@@ -502,6 +523,64 @@
   box-shadow: var(--clarte-shadow);
 }
 
+.clarte-frame .clarte-today-followup .operational-home-overdue-list {
+  margin-top: 12px;
+}
+
+.clarte-frame .clarte-today-followup .operational-home-overdue-list dt::after {
+  content: none;
+}
+
+.clarte-frame .clarte-today-followup .operational-home-overdue-list dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 1101px) {
+  .clarte-frame .clarte-today .operational-home-overdue-list li {
+    grid-template-columns:
+      minmax(0, 1.45fr) minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1.2fr)
+      minmax(0, 1fr) minmax(0, 1fr) auto;
+    row-gap: 2px;
+  }
+
+  .clarte-frame .clarte-today .operational-home-overdue-list li > div,
+  .clarte-frame .clarte-today .operational-home-overdue-state {
+    display: contents;
+  }
+
+  .clarte-frame .clarte-today .operational-home-overdue-list h4 {
+    grid-area: 1 / 1;
+    align-self: end;
+    overflow-wrap: anywhere;
+  }
+
+  .clarte-frame .clarte-today .operational-home-overdue-state span:first-child {
+    grid-area: 2 / 1;
+    align-self: start;
+  }
+
+  .clarte-frame .clarte-today .operational-home-overdue-state span + span {
+    grid-area: 1 / 6 / span 2;
+    justify-self: start;
+  }
+
+  .clarte-frame .clarte-today .operational-home-overdue-list dl {
+    display: grid;
+    grid-area: 1 / 2 / span 2 / span 4;
+    grid-template-columns: subgrid;
+  }
+
+  .clarte-frame .clarte-today .operational-home-overdue-list dl div {
+    display: grid;
+    gap: 2px;
+  }
+
+  .clarte-frame .clarte-today .operational-home-overdue-list li > button {
+    grid-area: 1 / 7 / span 2;
+  }
+}
+
 /* Side cards */
 .clarte-frame .clarte-today-card {
   display: grid;
@@ -552,90 +631,96 @@
 
 .clarte-frame .clarte-today-counters {
   display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .clarte-frame .clarte-today-counters li + li {
-  border-top: 1px solid var(--clarte-line-soft);
+  border-left: 1px solid var(--clarte-line-soft);
 }
 
 .clarte-frame .clarte-today .clarte-today-counter {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 3px;
   width: 100%;
-  min-height: 0;
-  padding: 10px 4px;
+  height: 100%;
+  min-height: 48px;
+  padding: 6px;
   border: 0;
   border-radius: var(--clarte-radius-sm);
   color: var(--clarte-ink);
   background: transparent;
   text-align: left;
-  font-weight: 400;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .clarte-frame .clarte-today .clarte-today-counter:hover {
   background: var(--clarte-surface-muted);
 }
 
-.clarte-frame .clarte-today-counter-icon {
+.clarte-frame .clarte-today-counter strong {
+  font-family: var(--clarte-font-heading);
+  font-size: 20px;
+}
+
+.clarte-frame .clarte-today-summary-head {
   display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  color: var(--clarte-accent-text);
-  background: var(--clarte-accent-soft);
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content);
+  align-items: center;
+  gap: 0 8px;
+}
+
+.clarte-frame .clarte-today-summary-head .clarte-today-card-head {
+  justify-content: flex-start;
+  gap: 4px;
+}
+
+/* All Companies summaries reuse the existing reader and continuation. */
+.clarte-frame .clarte-today-companies .multi-company-summary-entry {
+  display: contents;
 }
 
 .clarte-frame
-  .clarte-today-counter[data-kind='overdue_tasks']
-  .clarte-today-counter-icon {
-  color: var(--clarte-danger);
-  background: var(--clarte-danger-soft);
-}
-
-.clarte-frame .clarte-today-counter-icon svg {
-  width: 17px;
-  height: 17px;
-}
-
-.clarte-frame .clarte-today-counter-text {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-
-.clarte-frame .clarte-today-counter-text span {
-  font-weight: 600;
-}
-
-.clarte-frame .clarte-today-counter-text small {
-  color: var(--clarte-muted);
+  .clarte-today
+  .clarte-today-companies
+  .multi-company-summary-entry
+  > button {
+  min-height: 36px;
+  padding: 4px 0;
+  border: 0;
+  color: var(--clarte-accent-text);
+  background: transparent;
   font-size: 12px;
-  line-height: 1.35;
+  font-weight: 600;
+  text-align: left;
 }
 
-.clarte-frame .clarte-today-counter strong {
-  font-family: var(--clarte-font-heading);
-  font-size: 22px;
+.clarte-frame
+  .clarte-today
+  .clarte-today-companies
+  .multi-company-summary-entry
+  > button:hover {
+  text-decoration: underline;
 }
 
-/* All Companies summaries, reused inside a side card */
-.clarte-frame .clarte-today-companies .multi-company-summary-entry {
-  display: grid;
-  gap: 12px;
-}
-
-.clarte-frame .clarte-today-companies .multi-company-summary-entry > button {
-  justify-self: stretch;
+.clarte-frame
+  .clarte-today-companies
+  .multi-company-summary-entry
+  > button:disabled {
+  display: none;
 }
 
 .clarte-frame .clarte-today-companies .multi-company-summary {
   display: grid;
+  grid-column: 1 / -1;
   gap: 12px;
   margin: 0;
   padding: 0;
@@ -646,6 +731,8 @@
 
 .clarte-frame .clarte-today-companies .multi-company-summary-heading {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 8px;
 }
 
@@ -674,6 +761,48 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.clarte-frame
+  .clarte-today
+  .multi-company-summary-heading
+  .multi-company-summary-actions {
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.clarte-frame
+  .clarte-today
+  .multi-company-summary-heading
+  .multi-company-summary-actions
+  button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  color: var(--clarte-muted);
+  font-size: 0;
+}
+
+.clarte-frame
+  .clarte-today
+  .multi-company-summary-heading
+  .multi-company-summary-actions
+  button::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  mask: var(--summary-action-icon) center / contain no-repeat;
+}
+
+.clarte-frame .clarte-today .multi-company-summary-heading button:first-child {
+  --summary-action-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 7v5h-5M4 17v-5h5M5 10a7 7 0 0 1 12-4l3 6M4 12l3 6a7 7 0 0 0 12-4'/%3E%3C/svg%3E");
+}
+
+.clarte-frame .clarte-today .multi-company-summary-heading button:last-child {
+  --summary-action-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 6 12 12M18 6 6 18'/%3E%3C/svg%3E");
 }
 
 .clarte-frame .clarte-today-companies .multi-company-summary-rows {
@@ -865,33 +994,24 @@
 }
 
 /* Work in order */
-.clarte-frame .clarte-today-work {
-  display: grid;
-  gap: 16px;
-  min-width: 0;
-}
-
 .clarte-frame .clarte-today-work-head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
 }
 
 .clarte-frame .clarte-today-work-head h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: 16px;
 }
 
 .clarte-frame .clarte-today-work-head h2:focus {
   outline: none;
 }
 
-.clarte-frame .clarte-today-work-head p {
-  margin: 4px 0 0;
-  color: var(--clarte-muted);
-  font-size: 13px;
+.clarte-frame .clarte-today-work-head .clarte-button {
+  flex-shrink: 0;
 }
 
 .clarte-frame .clarte-today-work-warning {
@@ -917,6 +1037,16 @@
   border-radius: 16px;
   background: var(--clarte-surface);
   box-shadow: var(--clarte-shadow);
+}
+
+.clarte-frame .clarte-today-work-groups {
+  display: grid;
+  gap: 14px;
+}
+
+.clarte-frame .clarte-today-inline-review h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .clarte-frame .clarte-today-work-group {
@@ -1252,11 +1382,12 @@
   }
 
   .clarte-frame .clarte-today-home {
-    gap: 22px;
+    gap: 18px;
   }
 
   .clarte-frame .clarte-today-hero {
-    padding: 20px;
+    gap: 6px;
+    padding: 16px;
     border-radius: 18px;
   }
 
@@ -1269,15 +1400,21 @@
   }
 
   .clarte-frame .clarte-today-hero-actions > .clarte-button {
-    flex: 1 1 auto;
+    flex: 1 0 min(100%, 140px);
+    min-width: 0;
+    max-width: 100%;
+    padding-inline: 6px;
+    text-align: center;
+    white-space: normal;
   }
 
   .clarte-frame .clarte-today-hero-actions .clarte-button--primary {
     flex-basis: 100%;
   }
 
-  .clarte-frame .clarte-today-decisions {
-    grid-template-columns: minmax(0, 1fr);
+  .clarte-frame .clarte-today-hero-actions {
+    gap: 8px;
+    margin-top: 4px;
   }
 
   .clarte-frame .clarte-today-todo-body > section {
@@ -1300,12 +1437,26 @@
     padding: 16px;
   }
 
+  .clarte-frame .clarte-today .operational-home-overdue-list dl {
+    display: grid;
+    gap: 4px;
+  }
+
+  .clarte-frame .clarte-today .operational-home-overdue-list dl div {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    gap: 8px;
+  }
+
+  .clarte-frame .clarte-today .operational-home-overdue-list dd {
+    text-align: end;
+  }
+
   .clarte-frame .clarte-today-work-layout {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .clarte-frame .clarte-today-work-item {
-    order: -1;
     padding: 20px;
   }
 

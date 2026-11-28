@@ -53,6 +53,7 @@ export type QueueReport =
 
 /** What the Clarté card of one decision shows, from its queue's own copy. */
 type CardFacts = Readonly<{
+  action: string;
   kind: string;
   title: string;
   facts: readonly (readonly [string, string])[];
@@ -68,12 +69,14 @@ type CardFacts = Readonly<{
  * work in order.
  */
 export function TodayDecisions({
+  hidden,
   context,
   sessionGeneration,
   queues,
   onReport,
   onReview,
 }: Readonly<{
+  hidden: boolean;
   context: PendingDecisionContext;
   sessionGeneration: number;
   queues: ReportedQueues;
@@ -91,15 +94,26 @@ export function TodayDecisions({
     PRECONTRACT: contractCopy.precontract,
     ADDENDUM: contractCopy.addendum,
   };
+  const contractActions = {
+    CONTRACT: 'decideContract',
+    PRECONTRACT: 'decidePrecontract',
+    ADDENDUM: 'decideAddendum',
+  } as const;
   // The block exists once an authorized queue owner is mounted.
   const reported = [queues.profitability, queues.offer, queues.contract].filter(
     (queue) => queue !== undefined,
+  );
+  const cardRows = Math.max(
+    1,
+    ...reported.map(({ state: { view } }) =>
+      view.kind === 'ready' ? view.page.items.length : 0,
+    ),
   );
   return (
     <section
       className="clarte-today-section"
       aria-labelledby={titleId}
-      hidden={reported.length === 0}
+      hidden={hidden || reported.length === 0}
     >
       <header className="clarte-today-section-head">
         <h2 id={titleId}>{copy.message('decideTitle')}</h2>
@@ -112,11 +126,14 @@ export function TodayDecisions({
           present={(state) => (
             <QueueCards
               kind="profitability"
+              cardRows={cardRows}
+              focusHeading={!hidden}
               state={state}
               copy={profitabilityCopy}
               onReport={(queue) => onReport({ kind: 'profitability', queue })}
               onReview={(item) => onReview({ queue: 'profitability', item })}
               facts={(item) => ({
+                action: copy.message('decideProfitability'),
                 kind: copy.message('kindProfitability'),
                 title: item.opportunityTitle,
                 facts: [
@@ -138,11 +155,14 @@ export function TodayDecisions({
           present={(state) => (
             <QueueCards
               kind="offer"
+              cardRows={cardRows}
+              focusHeading={!hidden}
               state={state}
               copy={offerCopy}
               onReport={(queue) => onReport({ kind: 'offer', queue })}
               onReview={(item) => onReview({ queue: 'offer', item })}
               facts={(item) => ({
+                action: copy.message('decideOffer'),
                 kind: copy.message('kindOffer'),
                 title: item.opportunityTitle,
                 facts: [
@@ -165,11 +185,14 @@ export function TodayDecisions({
           present={(state) => (
             <QueueCards
               kind="contract"
+              cardRows={cardRows}
+              focusHeading={!hidden}
               state={state}
               copy={contractCopy}
               onReport={(queue) => onReport({ kind: 'contract', queue })}
               onReview={(item) => onReview({ queue: 'contract', item })}
               facts={(item) => ({
+                action: copy.message(contractActions[item.kind]),
                 kind: contractKinds[item.kind],
                 title: item.opportunityTitle,
                 facts: [
@@ -206,6 +229,8 @@ type QueueCopy = Readonly<{
 
 function QueueCards<Item extends { versionId: string }>({
   kind,
+  cardRows,
+  focusHeading,
   state,
   copy,
   facts,
@@ -213,6 +238,8 @@ function QueueCards<Item extends { versionId: string }>({
   onReview,
 }: Readonly<{
   kind: DecisionQueueKind;
+  cardRows: number;
+  focusHeading: boolean;
   state: DecisionQueueState<Item>;
   copy: QueueCopy;
   facts: (item: Item) => CardFacts;
@@ -274,7 +301,10 @@ function QueueCards<Item extends { versionId: string }>({
                     <ClarteBadge tone="accent">{card.kind}</ClarteBadge>
                     {card.variant && <small>{card.variant}</small>}
                   </div>
-                  <h4>{card.title}</h4>
+                  <div className="clarte-today-decision-title">
+                    <h4>{card.action}</h4>
+                    <p>{card.title}</p>
+                  </div>
                   <dl className="clarte-today-facts">
                     {card.facts.map(([label, value]) => (
                       <div key={label}>
@@ -306,11 +336,16 @@ function QueueCards<Item extends { versionId: string }>({
     <section
       className="clarte-today-queue"
       aria-labelledby={titleId}
+      style={{ gridRowEnd: `span ${cardRows + 2}` }}
       data-queue={kind}
       data-empty={items.length === 0 || undefined}
     >
       <header className="clarte-today-queue-head">
-        <h3 id={titleId} ref={state.heading} tabIndex={-1}>
+        <h3
+          id={titleId}
+          ref={focusHeading ? state.heading : undefined}
+          tabIndex={-1}
+        >
           {copy.title}
         </h3>
         {page > 1 && <small>{today.reviewPage({ page })}</small>}

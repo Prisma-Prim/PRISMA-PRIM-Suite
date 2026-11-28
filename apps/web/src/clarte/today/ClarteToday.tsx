@@ -1,7 +1,8 @@
-import { FileSignature, Inbox, Play, ShieldCheck } from 'lucide-react';
+import { FileSignature, Inbox, Play, ShieldCheck, X } from 'lucide-react';
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -22,6 +23,7 @@ import { readUpcomingDeadlines } from '../../operational-home/upcoming-deadlines
 import { ClarteButton } from '../components/ClarteButton';
 import { ClarteSidePanel } from '../components/ClarteSidePanel';
 import { ClarteEmptyState } from '../components/ClarteState';
+import { useClarteComponentCopy } from '../components/clarte-components.copy';
 import { useClarteTodayCopy } from './clarte-today.copy';
 import {
   TodayDecisions,
@@ -101,7 +103,10 @@ function TodayWithSummary(
   return <TodayScreen {...props} summary={{ props: props.summary, state }} />;
 }
 
-type Review = DecisionWork & { owner: object };
+type Review = DecisionWork & {
+  owner: object;
+  presentation: 'panel' | 'inline';
+};
 
 function TodayScreen({
   actor,
@@ -220,11 +225,14 @@ function TodayScreen({
       </div>
     );
 
-  function openReview(work: DecisionWork) {
+  function openReview(
+    work: DecisionWork,
+    presentation: Review['presentation'] = 'panel',
+  ) {
     const owner = queues[work.queue]?.owner;
     if (!owner) return;
     setReviewHeld(false);
-    setReview({ ...work, owner });
+    setReview({ ...work, owner, presentation });
   }
   function closeReview() {
     if (!review) return;
@@ -236,7 +244,9 @@ function TodayScreen({
   function openWork(item: WorkItem) {
     switch (item.source) {
       case 'decision':
-        openReview(item);
+        // Keep the chosen presentation for the life of the review, including
+        // when resizing during a write.
+        openReview(item, window.innerWidth > 768 ? 'inline' : 'panel');
         return;
       case 'attention':
         onOpenTask?.({ projectId: item.task.project.id, taskId: item.task.id });
@@ -282,6 +292,19 @@ function TodayScreen({
   ];
 
   const date = view?.today ?? browserDate();
+  const decisionReview = review && (
+    <DecisionReview
+      review={review}
+      queues={queues}
+      held={reviewHeld}
+      onHeld={setReviewHeld}
+      onRetired={() => {
+        setReview(undefined);
+        setReviewHeld(false);
+      }}
+      onClose={closeReview}
+    />
+  );
   return (
     <div className="clarte-today">
       {working && (
@@ -289,6 +312,9 @@ function TodayScreen({
           items={items}
           loading={reads.includes('loading')}
           incomplete={reads.includes('error')}
+          review={
+            review?.presentation === 'inline' ? decisionReview : undefined
+          }
           onOpen={openWork}
           onBack={() => {
             returnToWorkButton.current = true;
@@ -344,6 +370,7 @@ function TodayScreen({
         <div className="clarte-today-columns">
           <div className="clarte-today-main">
             <TodayDecisions
+              hidden={working || followUp}
               context={{
                 actor,
                 identity,
@@ -377,9 +404,10 @@ function TodayScreen({
                 onRefresh={summary.state.read}
                 onOpen={summary.state.open}
                 overdueCard={summary.state.overdueCard}
+                companies={companies}
               />
             )}
-            {companies && (
+            {!summary && companies && (
               <div className="clarte-today-card clarte-today-companies">
                 {companies}
               </div>
@@ -392,19 +420,7 @@ function TodayScreen({
           </div>
         </div>
       </div>
-      {review && (
-        <DecisionReview
-          review={review}
-          queues={queues}
-          held={reviewHeld}
-          onHeld={setReviewHeld}
-          onRetired={() => {
-            setReview(undefined);
-            setReviewHeld(false);
-          }}
-          onClose={closeReview}
-        />
-      )}
+      {review?.presentation === 'panel' && decisionReview}
       {quick === 'capture' && capture && (
         <CapturePanel
           capture={capture}
@@ -431,7 +447,7 @@ function readyItems<Item>(
     : undefined;
 }
 
-/** The existing review of one decision, in a side panel over Today. */
+/** The existing review of one decision, opened from Today or Work in order. */
 function DecisionReview({
   review,
   queues,
@@ -471,15 +487,78 @@ function DecisionReview({
       return exhaustive;
     }
   }
+  const description = `${kind} — ${copy.decisionContext({ version: review.item.versionNumber })}`;
+  if (review.presentation === 'inline')
+    return (
+      <InlineDecisionReview
+        title={review.item.opportunityTitle}
+        description={description}
+        held={held}
+        onClose={onClose}
+      >
+        {body}
+      </InlineDecisionReview>
+    );
   return (
     <ClarteSidePanel
       title={review.item.opportunityTitle}
-      description={`${kind} — ${copy.decisionContext({ version: review.item.versionNumber })}`}
+      description={description}
       icon={<ShieldCheck />}
       dismissible={!held}
       onClose={onClose}
     >
       <div className="clarte-today-review">{body}</div>
     </ClarteSidePanel>
+  );
+}
+
+function InlineDecisionReview({
+  title,
+  description,
+  held,
+  onClose,
+  children,
+}: Readonly<{
+  title: string;
+  description: string;
+  held: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}>) {
+  const copy = useClarteComponentCopy();
+  const titleId = useId();
+  const heading = useRef<HTMLHeadingElement>(null);
+  useLayoutEffect(() => {
+    heading.current?.focus();
+  }, []);
+  return (
+    <section
+      className="clarte-today-card clarte-today-inline-review"
+      aria-labelledby={titleId}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && !held && !event.defaultPrevented) {
+          event.stopPropagation();
+          onClose();
+        }
+      }}
+    >
+      <header className="clarte-today-card-head">
+        <div>
+          <h3 id={titleId} ref={heading} tabIndex={-1}>
+            {title}
+          </h3>
+          <p className="clarte-today-card-note">{description}</p>
+        </div>
+        <ClarteButton
+          variant="quiet"
+          aria-label={copy.close}
+          disabled={held}
+          onClick={onClose}
+        >
+          <X aria-hidden="true" />
+        </ClarteButton>
+      </header>
+      <div className="clarte-today-review">{children}</div>
+    </section>
   );
 }
