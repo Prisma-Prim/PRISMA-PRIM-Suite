@@ -36,6 +36,10 @@ type Props = {
   identity: BrowserIdentity;
   opportunityId: string;
   requestedVersionId?: string;
+  /** Lays the decision out beside the exact version it decides. */
+  besideVersion?: boolean;
+  /** After a confirmed version or decision. */
+  onChanged?: () => void;
   onProtectedAccessRejected?: () => void;
   onCompanyContextRejected: (companyContextId: string) => void;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
@@ -83,6 +87,8 @@ function ProfitabilityEstimateOwner({
   identity,
   opportunityId,
   requestedVersionId,
+  besideVersion = false,
+  onChanged,
   onProtectedAccessRejected,
   company,
   authority,
@@ -418,6 +424,7 @@ function ProfitabilityEstimateOwner({
       setSelected(version);
       if (command.kind === 'submit') setCorrection(version);
       setMutation({ kind: command.kind === 'submit' ? 'saved' : 'decided' });
+      onChanged?.();
     } catch {
       if (current() && (!controller.signal.aborted || timedOut))
         setMutation({ kind: 'uncertain', command });
@@ -583,6 +590,7 @@ function ProfitabilityEstimateOwner({
           {selected ? (
             <ProfitabilityVersionDetail
               version={selected}
+              besideVersion={besideVersion}
               disabled={locked}
               mayDecide={authority.decide}
               mayCreate={authority.create && !requestedVersionId}

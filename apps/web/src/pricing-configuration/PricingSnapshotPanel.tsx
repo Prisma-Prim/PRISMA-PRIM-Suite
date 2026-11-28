@@ -146,6 +146,7 @@ export function PricingSnapshotPanel({
   actor,
   identity,
   opportunityId,
+  onChanged,
   onCompanyContextRejected,
   onActorRevalidated = () => undefined,
   onWorkspaceAccessRejected = () => undefined,
@@ -153,6 +154,8 @@ export function PricingSnapshotPanel({
   actor: ActorContext;
   identity: BrowserIdentity;
   opportunityId: string;
+  /** After a confirmed calculated and recorded snapshot. */
+  onChanged?: () => void;
   onCompanyContextRejected: (companyContextId: string) => void;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
@@ -513,6 +516,7 @@ export function PricingSnapshotPanel({
             Object.entries(current).map(([id]) => [id, emptyDraftLine()]),
           ),
         );
+        onChanged?.();
         return;
       }
       const nextFieldFeedback = fieldFeedbackFor(result, nextAttempt);

@@ -15,6 +15,8 @@ import {
   requestListItemFor,
 } from './test/commercial-intake-responses';
 import { companyGrants } from './access/company-grants.test-fixture';
+import { commercialDealFor } from './test/deal-responses';
+import { offerVersionPlace } from './test/deal-interface';
 
 const companyId = 'company-a';
 const requestId = 'request-592';
@@ -202,6 +204,19 @@ function installTransport(events: unknown[] = offerEvents): Transport {
         return respond({ items: [requestListItemFor(requestDetail())] });
       if (path.endsWith(`/commercial-intake/requests/${requestId}`))
         return respond(requestDetail());
+      // Clarté opens an exact Offer Version on its deal's Offer stage.
+      if (path.endsWith(`/deals/${opportunityId}`))
+        return respond(
+          commercialDealFor(requestDetail(), {
+            offer: {
+              versionNumber: 2,
+              decisionState: 'PENDING',
+              transmissionState: 'NOT_TRANSMITTED',
+              clientResponseState: 'NONE',
+              validUntil: '2026-10-27T09:00:00.000Z',
+            },
+          }),
+        );
       if (path.endsWith(`${offerPath}/versions`))
         return respond({
           versions: [
@@ -320,7 +335,7 @@ describe.each(appInterfaces)(
       ).toBeInTheDocument();
     });
 
-    it('opens the Request detail with the exact superseded Offer Version selected', async () => {
+    it('opens its Request with the exact superseded Offer Version selected', async () => {
       const transport = installTransport();
       renderInInterface(
         appInterface,
@@ -334,7 +349,9 @@ describe.each(appInterfaces)(
       );
 
       expect(
-        await screen.findByText(`Original source of ${subject}`),
+        await offerVersionPlace(appInterface, {
+          originalText: `Original source of ${subject}`,
+        }),
       ).toBeVisible();
       expect(
         await within(offerRegion()).findByText(

@@ -14,11 +14,17 @@ import { ClarteButton } from '../components/ClarteButton';
 import { DealList, rowTarget, type ClientRestriction } from './DealList';
 import { DealPage, type DealTarget, type DealUpdate } from './DealPage';
 import { useDealCopy } from './deals.copy';
-import type { DealStagePanelContext } from './stage-panels';
+import {
+  requestedVersionStages,
+  type DealRequestedVersion,
+  type DealStagePanelContext,
+} from './stage-panels';
 import './clarte-deals.css';
 
 type OpenedDeal = {
   target: DealTarget;
+  /** The exact version its owning stage opens. */
+  requestedVersion?: DealRequestedVersion;
   /** Numbers each opening, so reopening the same deal remounts its page. */
   opening: number;
 };
@@ -41,15 +47,19 @@ export function ClarteDeals({
   ...context
 }: Omit<
   DealStagePanelContext,
-  'onDealChanged' | 'onRequestProtectedChange' | 'requestCommand'
+  | 'onDealChanged'
+  | 'onRequestProtectedChange'
+  | 'requestCommand'
+  | 'requestedVersion'
 > &
   Readonly<{
     /** A new object restricts the loaded rows to one dossier; none clears it. */
     clientRestriction?: ClientRestriction;
     /**
-     * A new object opens that Request's deal; one naming an exact Offer or
-     * agreement version opens it in the current Request screens instead,
-     * until #1534 and #1535 bring those versions to the deal page.
+     * A new object opens that Request's deal. One naming an exact version
+     * opens the deal at the stage that owns it (`requestedVersionStages`);
+     * an agreement version still opens in the current Request screens until
+     * #1535 brings it to the deal page.
      */
     requestedRequest?: RequestedRequest;
   }>) {
@@ -87,7 +97,8 @@ export function ClarteDeals({
 
   useEffect(() => {
     if (!requestedRequest || requestedRequest.sourceSignal?.aborted) return;
-    if (requestedRequest.version) {
+    const version = requestedRequest.version;
+    if (version && !requestedVersionStages[version.type]) {
       // The current screens open the exact version and hold it themselves.
       setVersioned(requestedRequest);
       setVersionShown(true);
@@ -99,6 +110,14 @@ export function ClarteDeals({
         kind: 'request',
         clientRequestId: requestedRequest.clientRequestId,
       },
+      ...(version
+        ? {
+            requestedVersion: {
+              version,
+              requestId: requestedRequest.requestId,
+            },
+          }
+        : {}),
     });
   }, [requestedRequest]);
 
@@ -163,6 +182,7 @@ export function ClarteDeals({
           <DealPage
             key={opened.opening}
             target={opened.target}
+            requestedVersion={opened.requestedVersion}
             companyId={company.id}
             context={context}
             readAuthority={readAuthority}

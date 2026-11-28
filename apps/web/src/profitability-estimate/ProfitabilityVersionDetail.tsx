@@ -9,6 +9,7 @@ import { useProfitabilityCopy } from './profitability.copy';
 
 export function ProfitabilityVersionDetail({
   version,
+  besideVersion = false,
   disabled,
   mayCreate,
   mayDecide,
@@ -16,6 +17,8 @@ export function ProfitabilityVersionDetail({
   onCorrection,
 }: {
   version: EstimateVersion;
+  /** Lays the decision out beside the exact version it decides. */
+  besideVersion?: boolean;
   disabled: boolean;
   mayCreate: boolean;
   mayDecide: boolean;
@@ -28,14 +31,8 @@ export function ProfitabilityVersionDetail({
   const { inputs, results } = version;
   const amount = (value: string) =>
     `${displayDecimal(value, locale)} ${inputs.currency}`;
-  return (
-    <article
-      className="profitability-version"
-      aria-labelledby={`${fieldId}-title`}
-    >
-      <h4 id={`${fieldId}-title`}>
-        {copy('version')} {version.versionNumber}
-      </h4>
+  const record = (
+    <>
       <dl className="profitability-facts">
         <dt>{copy('currency')}</dt>
         <dd>{inputs.currency}</dd>
@@ -97,7 +94,11 @@ export function ProfitabilityVersionDetail({
         <dt>{copy('createdAt')}</dt>
         <dd>{formatDateTime(version.createdAt)}</dd>
       </dl>
-      <h5>{copy('decision')}</h5>
+    </>
+  );
+  const decision = (
+    <>
+      <h5 id={`${fieldId}-decision`}>{copy('decision')}</h5>
       <p>{copy(version.decision?.code ?? 'awaiting')}</p>
       {version.decision ? (
         <dl className="profitability-facts">
@@ -138,6 +139,32 @@ export function ProfitabilityVersionDetail({
           {copy('correction')}
         </button>
       ) : null}
+    </>
+  );
+  return (
+    <article
+      className="profitability-version"
+      aria-labelledby={`${fieldId}-title`}
+    >
+      <h4 id={`${fieldId}-title`}>
+        {copy('version')} {version.versionNumber}
+      </h4>
+      {besideVersion ? (
+        <div className="profitability-version-beside">
+          <div className="profitability-version-record">{record}</div>
+          <section
+            className="profitability-version-decision"
+            aria-labelledby={`${fieldId}-decision`}
+          >
+            {decision}
+          </section>
+        </div>
+      ) : (
+        <>
+          {record}
+          {decision}
+        </>
+      )}
     </article>
   );
 }

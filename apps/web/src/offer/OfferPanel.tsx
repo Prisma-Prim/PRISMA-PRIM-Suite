@@ -136,6 +136,8 @@ function OfferPanelOwner({
   onProtectedWorkChange,
   currentClientId,
   clientDisplayName,
+  besideVersion = false,
+  onChanged,
   onCompanyContextRejected,
   onActorRevalidated = ignoreActor,
   onWorkspaceAccessRejected = ignoreWorkspace,
@@ -143,6 +145,13 @@ function OfferPanelOwner({
   actor: ActorContext;
   identity: BrowserIdentity;
   opportunityId: string;
+  /**
+   * Lays the version's commands out beside its exact representation, so a
+   * decision is never taken without the version it decides.
+   */
+  besideVersion?: boolean;
+  /** After each confirmed command: preparation, version, check or record. */
+  onChanged?: () => void;
   /**
    * The exact Offer Version to open instead of the head, superseded or not.
    * The Offer read decides what is shown; nothing else is requested.
@@ -501,6 +510,7 @@ function OfferPanelOwner({
         attempt.current = undefined;
         setView({ kind: 'offer', offer });
         if (view.kind === 'version') setFeedback('created');
+        onChanged?.();
       } else if (result.status === 'notFound') {
         attempt.current = undefined;
         setFeedback('targetUnavailable');
@@ -533,6 +543,215 @@ function OfferPanelOwner({
     view.kind === 'offer' && !estimateOpen
       ? supportedOfferMessageTarget({ actor, opportunityId, offer: view.offer })
       : null;
+  // The shown version and its commands; `besideVersion` only arranges them.
+  const shown = view.kind === 'offer' ? view.offer : undefined;
+  const summary = shown && (
+    <OfferSummary offer={shown} pdfAction={pdf?.action} />
+  );
+  const messageCommand = onPrepareMessage && messageTarget && (
+    <button
+      type="button"
+      disabled={pending || workflowCommand !== null}
+      onClick={() => onPrepareMessage(messageTarget)}
+    >
+      {messageCopy('prepare')}
+    </button>
+  );
+  const estimateSource = shown && !isIllustrativeOffer(shown) && (
+    <OfferEstimateSource
+      actor={actor}
+      identity={identity}
+      opportunityId={opportunityId}
+      source={shown.version.priceSource}
+      reject={reject}
+    />
+  );
+  const history = shown && companyId && (
+    <fieldset
+      className="offer-command-boundary"
+      disabled={workflowCommand !== null}
+    >
+      <OfferVersionHistory
+        key={`${authorityStamp}:${companyId}:${opportunityId}:${shown.id}:${shown.version.id}`}
+        identity={identity}
+        companyId={companyId}
+        opportunityId={opportunityId}
+        offer={shown}
+        reject={reject}
+        onNavigate={() => {
+          pdf?.navigate();
+          onMessageNavigate?.();
+        }}
+        onSelect={(offer) => {
+          if (estimateOpenRef.current || workflowCommandRef.current !== null)
+            return;
+          reads.retire();
+          preparation.retire();
+          writes.retire();
+          setPending(false);
+          attempt.current = undefined;
+          setFeedback(undefined);
+          setView({ kind: 'offer', offer });
+        }}
+      />
+    </fieldset>
+  );
+  const versionCommand = shown &&
+    mayPrepare &&
+    currentClientId &&
+    !shown.version.supersededByVersionId &&
+    shown.version.clientResponseState !== 'ACCEPTED' && (
+      <button
+        type="button"
+        disabled={pending || workflowCommand !== null}
+        onClick={() => void beginVersion()}
+      >
+        {offerVersionCopy.prepare}
+      </button>
+    );
+  const versionFeedback = shown && feedback && (
+    <p role={feedback === 'created' ? 'status' : 'alert'}>{copy[feedback]}</p>
+  );
+  const qualityCommand = shown && companyId && isExecutableOffer(shown) && (
+    <fieldset
+      className="offer-command-boundary"
+      disabled={workflowCommand !== null && workflowCommand !== 'quality'}
+    >
+      <OfferQualityPanel
+        key={`${authorityStamp}:${companyId}:${opportunityId}:${shown.version.id}`}
+        onCommandLockChange={commandLocks.quality}
+        identity={identity}
+        companyId={companyId}
+        opportunityId={opportunityId}
+        offerVersionId={shown.version.id}
+        qualityRuleSet={shown.version.qualityRuleSet}
+        qualityRuleSetVersion={shown.version.qualityRuleSetVersion}
+        initialRun={shown.version.latestQualityRun}
+        mayRun={
+          !shown.version.supersededByVersionId &&
+          (isModelOffer(shown)
+            ? prepares('commercial.offer.model_based.prepare') ||
+              approves('commercial.offer.model_based.approve')
+            : prepares('commercial.offer.prepare') || mayApprove)
+        }
+        reject={reject}
+        onRun={(run) => {
+          setView((current) =>
+            !estimateOpenRef.current && current.kind === 'offer'
+              ? {
+                  kind: 'offer',
+                  offer: applyOfferQuality(current.offer, run),
+                }
+              : current,
+          );
+          onChanged?.();
+        }}
+      />
+    </fieldset>
+  );
+  const decisionCommand = shown &&
+    companyId &&
+    mayApprove &&
+    (!isModelOffer(shown) ||
+      approves('commercial.offer.model_based.approve')) &&
+    !shown.version.supersededByVersionId && (
+      <fieldset
+        className="offer-command-boundary"
+        disabled={workflowCommand !== null && workflowCommand !== 'decision'}
+      >
+        <OfferDecisionPanel
+          key={`decision:${authorityStamp}:${companyId}:${opportunityId}:${shown.version.id}`}
+          onCommandLockChange={commandLocks.decision}
+          identity={identity}
+          companyId={companyId}
+          opportunityId={opportunityId}
+          offer={shown}
+          reject={reject}
+          onDecision={(decision) => {
+            setView((current) =>
+              !estimateOpenRef.current && current.kind === 'offer'
+                ? {
+                    kind: 'offer',
+                    offer: applyOfferDecision(current.offer, decision),
+                  }
+                : current,
+            );
+            onChanged?.();
+          }}
+        />
+      </fieldset>
+    );
+  const transmissionCommand = shown &&
+    companyId &&
+    isExecutableOffer(shown) &&
+    mayTransmit &&
+    (!isModelOffer(shown) ||
+      prepares('commercial.offer.model_based.transmission.record')) &&
+    !shown.version.supersededByVersionId &&
+    shown.version.decisionState === 'APPROVED' &&
+    shown.version.transmissionState === 'NOT_TRANSMITTED' && (
+      <fieldset
+        className="offer-command-boundary"
+        disabled={
+          workflowCommand !== null && workflowCommand !== 'transmission'
+        }
+      >
+        <OfferTransmissionPanel
+          key={`transmission:${authorityStamp}:${companyId}:${opportunityId}:${shown.version.id}`}
+          onCommandLockChange={commandLocks.transmission}
+          identity={identity}
+          companyId={companyId}
+          opportunityId={opportunityId}
+          offer={shown}
+          reject={reject}
+          onTransmission={(transmission) => {
+            setView((current) =>
+              !estimateOpenRef.current && current.kind === 'offer'
+                ? {
+                    kind: 'offer',
+                    offer: applyOfferTransmission(current.offer, transmission),
+                  }
+                : current,
+            );
+            onChanged?.();
+          }}
+        />
+      </fieldset>
+    );
+  const responseCommand = shown &&
+    companyId &&
+    isExecutableOffer(shown) &&
+    mayRespond &&
+    (!isModelOffer(shown) ||
+      approves('commercial.offer.model_based.response.record')) &&
+    !shown.version.supersededByVersionId &&
+    shown.version.clientResponseState === 'PENDING' && (
+      <fieldset
+        className="offer-command-boundary"
+        disabled={workflowCommand !== null && workflowCommand !== 'response'}
+      >
+        <OfferClientResponsePanel
+          key={`response:${authorityStamp}:${companyId}:${opportunityId}:${shown.version.id}`}
+          onCommandLockChange={commandLocks.response}
+          identity={identity}
+          companyId={companyId}
+          opportunityId={opportunityId}
+          offer={shown}
+          reject={reject}
+          onResponse={(response) => {
+            setView((current) =>
+              !estimateOpenRef.current && current.kind === 'offer'
+                ? {
+                    kind: 'offer',
+                    offer: applyOfferResponse(current.offer, response),
+                  }
+                : current,
+            );
+            onChanged?.();
+          }}
+        />
+      </fieldset>
+    );
   return (
     <section className="offer-panel" aria-labelledby="offer-title">
       <CommercialPdfSelection
@@ -647,6 +866,7 @@ function OfferPanelOwner({
                     attempt.current = undefined;
                     setFeedback(undefined);
                     setView({ kind: 'offer', offer });
+                    onChanged?.();
                   }}
                 />
               ))}
@@ -771,223 +991,43 @@ function OfferPanelOwner({
             )}
           </form>
         )}
-      {view.kind === 'offer' && (
+      {shown && (
         <fieldset
           className="offer-existing-version"
           disabled={estimateOpen}
           aria-labelledby="offer-title"
         >
-          <OfferSummary offer={view.offer} pdfAction={pdf?.action} />
-          {onPrepareMessage && messageTarget && (
-            <button
-              type="button"
-              disabled={pending || workflowCommand !== null}
-              onClick={() => onPrepareMessage(messageTarget)}
-            >
-              {messageCopy('prepare')}
-            </button>
+          {besideVersion ? (
+            <div className="offer-version-beside">
+              <div className="offer-version-document">
+                {summary}
+                {estimateSource}
+              </div>
+              <div className="offer-version-commands">
+                {versionFeedback}
+                {qualityCommand}
+                {decisionCommand}
+                {transmissionCommand}
+                {responseCommand}
+                {messageCommand}
+                {versionCommand}
+                {history}
+              </div>
+            </div>
+          ) : (
+            <>
+              {summary}
+              {messageCommand}
+              {estimateSource}
+              {history}
+              {versionCommand}
+              {versionFeedback}
+              {qualityCommand}
+              {decisionCommand}
+              {transmissionCommand}
+              {responseCommand}
+            </>
           )}
-          {!isIllustrativeOffer(view.offer) && (
-            <OfferEstimateSource
-              actor={actor}
-              identity={identity}
-              opportunityId={opportunityId}
-              source={view.offer.version.priceSource}
-              reject={reject}
-            />
-          )}
-          {companyId && (
-            <fieldset
-              className="offer-command-boundary"
-              disabled={workflowCommand !== null}
-            >
-              <OfferVersionHistory
-                key={`${authorityStamp}:${companyId}:${opportunityId}:${view.offer.id}:${view.offer.version.id}`}
-                identity={identity}
-                companyId={companyId}
-                opportunityId={opportunityId}
-                offer={view.offer}
-                reject={reject}
-                onNavigate={() => {
-                  pdf?.navigate();
-                  onMessageNavigate?.();
-                }}
-                onSelect={(offer) => {
-                  if (
-                    estimateOpenRef.current ||
-                    workflowCommandRef.current !== null
-                  )
-                    return;
-                  reads.retire();
-                  preparation.retire();
-                  writes.retire();
-                  setPending(false);
-                  attempt.current = undefined;
-                  setFeedback(undefined);
-                  setView({ kind: 'offer', offer });
-                }}
-              />
-            </fieldset>
-          )}
-          {mayPrepare &&
-            currentClientId &&
-            !view.offer.version.supersededByVersionId &&
-            view.offer.version.clientResponseState !== 'ACCEPTED' && (
-              <button
-                type="button"
-                disabled={pending || workflowCommand !== null}
-                onClick={() => void beginVersion()}
-              >
-                {offerVersionCopy.prepare}
-              </button>
-            )}
-          {feedback && (
-            <p role={feedback === 'created' ? 'status' : 'alert'}>
-              {copy[feedback]}
-            </p>
-          )}
-          {companyId && isExecutableOffer(view.offer) && (
-            <fieldset
-              className="offer-command-boundary"
-              disabled={
-                workflowCommand !== null && workflowCommand !== 'quality'
-              }
-            >
-              <OfferQualityPanel
-                key={`${authorityStamp}:${companyId}:${opportunityId}:${view.offer.version.id}`}
-                onCommandLockChange={commandLocks.quality}
-                identity={identity}
-                companyId={companyId}
-                opportunityId={opportunityId}
-                offerVersionId={view.offer.version.id}
-                qualityRuleSet={view.offer.version.qualityRuleSet}
-                qualityRuleSetVersion={view.offer.version.qualityRuleSetVersion}
-                initialRun={view.offer.version.latestQualityRun}
-                mayRun={
-                  !view.offer.version.supersededByVersionId &&
-                  (isModelOffer(view.offer)
-                    ? prepares('commercial.offer.model_based.prepare') ||
-                      approves('commercial.offer.model_based.approve')
-                    : prepares('commercial.offer.prepare') || mayApprove)
-                }
-                reject={reject}
-                onRun={(run) =>
-                  setView((current) =>
-                    !estimateOpenRef.current && current.kind === 'offer'
-                      ? {
-                          kind: 'offer',
-                          offer: applyOfferQuality(current.offer, run),
-                        }
-                      : current,
-                  )
-                }
-              />
-            </fieldset>
-          )}
-          {companyId &&
-            mayApprove &&
-            (!isModelOffer(view.offer) ||
-              approves('commercial.offer.model_based.approve')) &&
-            !view.offer.version.supersededByVersionId && (
-              <fieldset
-                className="offer-command-boundary"
-                disabled={
-                  workflowCommand !== null && workflowCommand !== 'decision'
-                }
-              >
-                <OfferDecisionPanel
-                  key={`decision:${authorityStamp}:${companyId}:${opportunityId}:${view.offer.version.id}`}
-                  onCommandLockChange={commandLocks.decision}
-                  identity={identity}
-                  companyId={companyId}
-                  opportunityId={opportunityId}
-                  offer={view.offer}
-                  reject={reject}
-                  onDecision={(decision) =>
-                    setView((current) =>
-                      !estimateOpenRef.current && current.kind === 'offer'
-                        ? {
-                            kind: 'offer',
-                            offer: applyOfferDecision(current.offer, decision),
-                          }
-                        : current,
-                    )
-                  }
-                />
-              </fieldset>
-            )}
-          {companyId &&
-            isExecutableOffer(view.offer) &&
-            mayTransmit &&
-            (!isModelOffer(view.offer) ||
-              prepares('commercial.offer.model_based.transmission.record')) &&
-            !view.offer.version.supersededByVersionId &&
-            view.offer.version.decisionState === 'APPROVED' &&
-            view.offer.version.transmissionState === 'NOT_TRANSMITTED' && (
-              <fieldset
-                className="offer-command-boundary"
-                disabled={
-                  workflowCommand !== null && workflowCommand !== 'transmission'
-                }
-              >
-                <OfferTransmissionPanel
-                  key={`transmission:${authorityStamp}:${companyId}:${opportunityId}:${view.offer.version.id}`}
-                  onCommandLockChange={commandLocks.transmission}
-                  identity={identity}
-                  companyId={companyId}
-                  opportunityId={opportunityId}
-                  offer={view.offer}
-                  reject={reject}
-                  onTransmission={(transmission) =>
-                    setView((current) =>
-                      !estimateOpenRef.current && current.kind === 'offer'
-                        ? {
-                            kind: 'offer',
-                            offer: applyOfferTransmission(
-                              current.offer,
-                              transmission,
-                            ),
-                          }
-                        : current,
-                    )
-                  }
-                />
-              </fieldset>
-            )}
-          {companyId &&
-            isExecutableOffer(view.offer) &&
-            mayRespond &&
-            (!isModelOffer(view.offer) ||
-              approves('commercial.offer.model_based.response.record')) &&
-            !view.offer.version.supersededByVersionId &&
-            view.offer.version.clientResponseState === 'PENDING' && (
-              <fieldset
-                className="offer-command-boundary"
-                disabled={
-                  workflowCommand !== null && workflowCommand !== 'response'
-                }
-              >
-                <OfferClientResponsePanel
-                  key={`response:${authorityStamp}:${companyId}:${opportunityId}:${view.offer.version.id}`}
-                  onCommandLockChange={commandLocks.response}
-                  identity={identity}
-                  companyId={companyId}
-                  opportunityId={opportunityId}
-                  offer={view.offer}
-                  reject={reject}
-                  onResponse={(response) =>
-                    setView((current) =>
-                      !estimateOpenRef.current && current.kind === 'offer'
-                        ? {
-                            kind: 'offer',
-                            offer: applyOfferResponse(current.offer, response),
-                          }
-                        : current,
-                    )
-                  }
-                />
-              </fieldset>
-            )}
         </fieldset>
       )}
     </section>

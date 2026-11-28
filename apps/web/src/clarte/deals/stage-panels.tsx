@@ -3,9 +3,9 @@ import type { BrowserIdentity } from '../../access-composition';
 import type { ActorContext } from '../../access-types';
 import {
   CommercialIntakeWorkspace,
+  type RequestedVersion,
   type RequestStagePresentation,
 } from '../../commercial-intake/CommercialIntakeWorkspace';
-import { useInterfaceLocale } from '../../localization/interface-locale';
 import { formatMessage } from '../../localization/messages';
 import { ClarteBadge, type ClarteTone } from '../components/ClarteBadge';
 import { ClarteButton } from '../components/ClarteButton';
@@ -17,11 +17,12 @@ import type {
   DealStageView,
   AgreementFact,
   CertificationCaseFact,
-  DecisionState,
-  OfferFact,
   ProjectFact,
 } from './deal-response';
 import { useDealCopy, type DealMessageKey } from './deals.copy';
+import { decisionLabelKeys, decisionTone } from './deal-labels';
+import { CostingStagePanel } from './CostingStage';
+import { OfferStagePanel } from './OfferStage';
 
 /**
  * What App composed for the deal page, handed to every stage panel with
@@ -46,7 +47,28 @@ export type DealStagePanelContext = {
   onRequestProtectedChange: (active: boolean) => void;
   /** The Next step card's latest request for a Request stage editor. */
   requestCommand?: RequestStagePresentation['command'];
+  /** The exact version this page was opened for, if any. */
+  requestedVersion?: DealRequestedVersion;
 };
+
+/**
+ * The exact version a navigation, such as an Activity Log event, asked the
+ * deal page to open, numbered by its request. Only the stage that owns it,
+ * in `requestedVersionStages`, opens it.
+ */
+export type DealRequestedVersion = Readonly<{
+  version: RequestedVersion;
+  requestId: number;
+}>;
+
+/**
+ * The stage whose panel opens each kind of exact version on the deal page.
+ * A version kind without a stage here still opens in the current Request
+ * screens; Contract versions join when #1535 brings them to the page.
+ */
+export const requestedVersionStages: Readonly<
+  Partial<Record<RequestedVersion['type'], DealStage>>
+> = { offer_version: 'offer' };
 
 export type DealStagePanelProps = Readonly<{
   deal: DealDetail;
@@ -58,15 +80,15 @@ export type DealStagePanelProps = Readonly<{
 export type DealStagePanel = (props: DealStagePanelProps) => ReactNode;
 
 /**
- * The stage-panel registry of the deal page. Later slices replace their
- * own entry: Costing and Offer (#1534), Contract and Delivery (#1535). Each
- * panel narrows `view` to its own stage and reuses the owner's existing
- * transports; see README.md.
+ * The stage-panel registry of the deal page. Each slice replaces its own
+ * entry: Request (#1533), Costing and Offer (#1534), Contract and Delivery
+ * (#1535). Each panel narrows `view` to its own stage and reuses the owner's
+ * existing transports; see README.md.
  */
 export const dealStagePanels: Readonly<Record<DealStage, DealStagePanel>> = {
   request: RequestStagePanel,
-  costing: CostingSummary,
-  offer: OfferSummary,
+  costing: CostingStagePanel,
+  offer: OfferStagePanel,
   contract: ContractSummary,
   delivery: DeliverySummary,
   closure: ClosureSummary,
@@ -110,94 +132,6 @@ function RequestStagePanel({ deal, context }: DealStagePanelProps) {
   );
 }
 
-function CostingSummary({ view }: DealStagePanelProps) {
-  const copy = useDealCopy();
-  const { formatDateTime } = useInterfaceLocale();
-  if (view.stage !== 'costing' || view.marker === 'not_available') return null;
-  const snapshot = view.pricingSnapshot;
-  const estimate = view.profitabilityEstimate;
-  return (
-    <div className="clarte-stage-facts">
-      <ClarteCard title={copy('pricingTitle')}>
-        {!snapshot.readable ? (
-          <p className="clarte-muted">{copy('notAvailable')}</p>
-        ) : snapshot.value ? (
-          <>
-            <p className="clarte-fact-figure">
-              {formatMessage(copy('pricingValue'), {
-                total: snapshot.value.total,
-                currency: snapshot.value.currency,
-              })}
-            </p>
-            <p className="clarte-muted">
-              {formatMessage(copy('pricingCalculated'), {
-                date: formatDateTime(snapshot.value.calculatedAt),
-              })}
-            </p>
-          </>
-        ) : (
-          <p className="clarte-muted">{copy('pricingNone')}</p>
-        )}
-      </ClarteCard>
-      <ClarteCard title={copy('estimateTitle')}>
-        {!estimate.readable ? (
-          <p className="clarte-muted">{copy('notAvailable')}</p>
-        ) : estimate.value ? (
-          <p className="clarte-fact-line">
-            <span>
-              {formatMessage(copy('estimateVersion'), {
-                version: estimate.value.versionNumber,
-              })}
-            </span>
-            <ClarteBadge tone={estimateTone(estimate.value.decision)}>
-              {copy(estimateLabel(estimate.value.decision))}
-            </ClarteBadge>
-          </p>
-        ) : (
-          <p className="clarte-muted">{copy('estimateNone')}</p>
-        )}
-      </ClarteCard>
-    </div>
-  );
-}
-
-function OfferSummary({ view }: DealStagePanelProps) {
-  const copy = useDealCopy();
-  const { formatDate } = useInterfaceLocale();
-  if (view.stage !== 'offer' || view.marker === 'not_available') return null;
-  if (!view.offer) return <EmptyStage />;
-  const offer: OfferFact = view.offer;
-  return (
-    <ClarteCard>
-      <p className="clarte-fact-line">
-        <span>
-          {formatMessage(copy('offerVersion'), {
-            version: offer.versionNumber,
-          })}
-        </span>
-        <ClarteBadge tone={decisionTone(offer.decisionState)}>
-          {copy(decisionLabel(offer.decisionState))}
-        </ClarteBadge>
-        <ClarteBadge
-          tone={offer.transmissionState === 'TRANSMITTED' ? 'info' : 'neutral'}
-        >
-          {copy(
-            offer.transmissionState === 'TRANSMITTED'
-              ? 'offerSent'
-              : 'offerNotSent',
-          )}
-        </ClarteBadge>
-      </p>
-      <p>{copy(responseLabel(offer.clientResponseState))}</p>
-      <p className="clarte-muted">
-        {formatMessage(copy('offerValidUntil'), {
-          date: formatDate(offer.validUntil),
-        })}
-      </p>
-    </ClarteCard>
-  );
-}
-
 function ContractSummary({ view }: DealStagePanelProps) {
   const copy = useDealCopy();
   if (view.stage !== 'contract' || view.marker === 'not_available') return null;
@@ -214,7 +148,7 @@ function ContractSummary({ view }: DealStagePanelProps) {
               })}
             </span>
             <ClarteBadge tone={decisionTone(agreement.decisionState)}>
-              {copy(decisionLabel(agreement.decisionState))}
+              {copy(decisionLabelKeys[agreement.decisionState])}
             </ClarteBadge>
             <ClarteBadge
               tone={
@@ -307,69 +241,6 @@ function CollectionSummary({ context }: DealStagePanelProps) {
 function EmptyStage() {
   const copy = useDealCopy();
   return <ClarteEmptyState title={copy('panelEmpty')} />;
-}
-
-function decisionLabel(state: DecisionState): DealMessageKey {
-  switch (state) {
-    case 'PENDING':
-      return 'decisionPending';
-    case 'APPROVED':
-      return 'decisionApproved';
-    case 'REJECTED':
-      return 'decisionRejected';
-    default: {
-      const exhaustive: never = state;
-      return exhaustive;
-    }
-  }
-}
-
-function decisionTone(state: DecisionState): ClarteTone {
-  return state === 'APPROVED'
-    ? 'success'
-    : state === 'REJECTED'
-      ? 'danger'
-      : 'warning';
-}
-
-function estimateLabel(
-  decision: 'APPROVE' | 'MODIFY' | 'REJECT' | null,
-): DealMessageKey {
-  switch (decision) {
-    case 'APPROVE':
-      return 'estimateApprove';
-    case 'MODIFY':
-      return 'estimateModify';
-    case 'REJECT':
-      return 'estimateReject';
-    case null:
-      return 'estimatePending';
-    default: {
-      const exhaustive: never = decision;
-      return exhaustive;
-    }
-  }
-}
-
-function estimateTone(
-  decision: 'APPROVE' | 'MODIFY' | 'REJECT' | null,
-): ClarteTone {
-  return decision === 'APPROVE'
-    ? 'success'
-    : decision === 'REJECT'
-      ? 'danger'
-      : 'warning';
-}
-
-function responseLabel(state: OfferFact['clientResponseState']) {
-  const labels = {
-    NONE: 'responseNone',
-    PENDING: 'responsePending',
-    ACCEPTED: 'responseAccepted',
-    REJECTED: 'responseRejected',
-    EXPIRED: 'responseExpired',
-  } as const satisfies Record<OfferFact['clientResponseState'], DealMessageKey>;
-  return labels[state];
 }
 
 function agreementLabel(kind: AgreementFact['kind']) {
