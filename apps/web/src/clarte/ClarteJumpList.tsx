@@ -69,6 +69,15 @@ export function ClarteJumpList({
     input.current?.focus();
   }, []);
 
+  // Focus stays in the field, so the active option is brought into view here.
+  const activeOptionId = activeMatch ? `${ids}-${activeMatch.id}` : undefined;
+  useEffect(() => {
+    if (activeOptionId)
+      document
+        .getElementById(activeOptionId)
+        ?.scrollIntoView?.({ block: 'nearest' });
+  }, [activeOptionId]);
+
   function handleKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
@@ -114,9 +123,7 @@ export function ClarteJumpList({
             aria-expanded="true"
             aria-controls={`${ids}-list`}
             aria-autocomplete="list"
-            aria-activedescendant={
-              activeMatch ? `${ids}-${activeMatch.id}` : undefined
-            }
+            aria-activedescendant={activeOptionId}
             onChange={(event) => {
               setQuery(event.target.value);
               setActive(0);

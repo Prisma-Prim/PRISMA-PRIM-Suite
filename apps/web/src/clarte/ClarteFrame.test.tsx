@@ -392,10 +392,44 @@ describe('Clarté navigation', () => {
     visit('#clients');
     await waitFor(held);
     expect(screen.getByText('Working Documents content')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'User menu' }));
+    expect(
+      screen.getByRole('button', { name: 'Leave the Clarté interface' }),
+    ).toBeDisabled();
   });
 });
 
 describe('Clarté jump list', () => {
+  it('keeps the option chosen with the arrow keys in view', () => {
+    const scrolled: Array<{ element: Element; options: unknown }> = [];
+    const scrollable: {
+      scrollIntoView?: (options?: ScrollIntoViewOptions) => void;
+    } = Element.prototype;
+    const original = scrollable.scrollIntoView;
+    scrollable.scrollIntoView = function (
+      this: Element,
+      options?: ScrollIntoViewOptions,
+    ) {
+      scrolled.push({ element: this, options });
+    };
+    try {
+      renderFrame();
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+      const field = screen.getByRole('combobox', { name: 'Screen name' });
+
+      fireEvent.keyDown(field, { key: 'ArrowUp' });
+
+      const last = screen.getAllByRole('option').at(-1);
+      expect(last).toHaveAttribute('aria-selected', 'true');
+      expect(scrolled.at(-1)).toEqual({
+        element: last,
+        options: { block: 'nearest' },
+      });
+    } finally {
+      scrollable.scrollIntoView = original;
+    }
+  });
+
   it('opens with Ctrl K or Cmd K, filters authorized destinations and opens the chosen one', () => {
     renderFrame({
       sections: [

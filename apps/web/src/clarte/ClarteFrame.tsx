@@ -470,6 +470,8 @@ export function ClarteFrame({
                   <button
                     type="button"
                     className="clarte-button clarte-button--secondary"
+                    // Leaving unmounts every section, with a protected write's owner.
+                    disabled={navigationProtected}
                     onClick={leave}
                   >
                     {copy.leaveClarte}

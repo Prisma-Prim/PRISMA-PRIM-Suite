@@ -805,6 +805,16 @@ describe('Clarté navigation during a protected source write', () => {
     expect(
       screen.getByRole('combobox', { name: 'Active Company' }),
     ).toBeDisabled();
+    // Leaving Clarté would unmount the owner of the uncertain write.
+    fireEvent.click(screen.getByRole('button', { name: 'User menu' }));
+    const leave = screen.getByRole('button', {
+      name: 'Leave the Clarté interface',
+    });
+    expect(leave).toBeDisabled();
+    fireEvent.click(leave);
+    expect(await clarteShown()).toBeInTheDocument();
+    expect(title.isConnected).toBe(true);
+    expect(localStorage.getItem(interfacePreferenceStorageKey)).toBe('clarte');
     expect(api.writes).toHaveLength(1);
   });
 });
