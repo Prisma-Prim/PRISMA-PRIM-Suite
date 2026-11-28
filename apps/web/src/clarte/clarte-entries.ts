@@ -141,11 +141,11 @@ export const clarteEntries = [
     group: 'primary',
     icon: ListChecks,
     tabs: [
-      { destination: 'my-tasks', render: renderCurrentScreen },
-      { destination: 'unassigned-tasks', render: renderCurrentScreen },
-      { destination: 'blocked-tasks', render: renderCurrentScreen },
-      { destination: 'team-tasks', render: renderCurrentScreen },
-      { destination: 'internal-tasks', render: renderCurrentScreen },
+      { destination: 'my-tasks', render: renderClarteScreen },
+      { destination: 'unassigned-tasks', render: renderClarteScreen },
+      { destination: 'blocked-tasks', render: renderClarteScreen },
+      { destination: 'team-tasks', render: renderClarteScreen },
+      { destination: 'internal-tasks', render: renderClarteScreen },
     ],
   },
   {
