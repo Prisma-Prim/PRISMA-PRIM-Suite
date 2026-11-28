@@ -116,7 +116,7 @@ export const clarteEntries = [
     id: 'today',
     group: 'primary',
     icon: Sun,
-    tabs: [{ destination: 'overview', render: renderCurrentScreen }],
+    tabs: [{ destination: 'overview', render: renderClarteScreen }],
   },
   {
     id: 'deals',

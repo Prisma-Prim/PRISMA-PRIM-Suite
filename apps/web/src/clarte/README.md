@@ -117,6 +117,10 @@ The page shows the header, the seven-stage thread, the Next step card and the se
 
 The Request stage embeds Commercial Intake's own detail through `CommercialIntakeWorkspace`'s `requestStage` presentation, so drafts, retries and receipts stay the existing ones. `src/test/deal-responses.ts` builds the deal reads from a Request fixture, and `src/test/deal-interface.tsx` holds the steps of Request App tests that differ between the two interfaces.
 
+## Today
+
+[#1532](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1532) renders Today with `today/ClarteToday.tsx`, passed as `clarteOverview`. It renders the existing owners, each once: the Company summary through `useCompanySummary` (shared with the current overview), the three decision queues through their `present` prop, `MyAttention`, `UpcomingDeadlines`, `OverdueTasksPanel`, `MultiCompanySummary`, the Request capture through `CommercialIntakeWorkspace`'s `requestCapture` presentation and the direct Contract through `ContractPanel`. A decision opens its existing review in a side panel. `today/work-order.ts` documents the order of work in order; it presents the lists the server returned and adds no priority rule. `today/clarte-today.test-fixture.ts` is the fictional API of the App tests and the `clarte-today` journey.
+
 ## Tokens and base components
 
 `clarte-tokens.css` defines the tokens on `.clarte-frame`: surfaces and ink (`--clarte-bg`, `--clarte-surface`, `--clarte-ink`, `--clarte-muted`, `--clarte-line`), the single accent (`--clarte-accent`, `--clarte-accent-soft`, `--clarte-accent-text` for text on soft accent), status tones (`--clarte-success`, `--clarte-warning`, `--clarte-danger`, `--clarte-info` and their `-soft`), radii, shadows, `--clarte-touch-target` (44 px on phone) and the fonts `--clarte-font-body` and `--clarte-font-heading`. The prism sequence `--clarte-stage-1` to `--clarte-stage-7` is reserved for the seven deal stages.

@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react';
 import {
   PendingDecisionQueue,
+  type DecisionQueueState,
   type PendingDecisionContext,
 } from '../commercial-decision-queue/PendingDecisionQueue';
 import { OfferPanel } from './OfferPanel';
@@ -10,7 +12,13 @@ import {
 } from './offer-decision-queue-response';
 import { useOfferDecisionQueueCopy } from './offer-decision-queue.copy';
 
-export function OfferDecisionQueue(props: PendingDecisionContext) {
+export function OfferDecisionQueue({
+  present,
+  ...props
+}: PendingDecisionContext & {
+  /** The Clarté Today presentation of this same owner (#1532). */
+  present?: (queue: DecisionQueueState<OfferDecisionQueueItem>) => ReactNode;
+}) {
   const copy = useOfferDecisionQueueCopy();
   const authority = offerDecisionQueueAuthority(props.actor);
   const company = props.actor.activeCompany;
@@ -38,6 +46,7 @@ export function OfferDecisionQueue(props: PendingDecisionContext) {
       actionLabel={(item) =>
         `${copy.open} ${item.illustrativeReference}, ${copy.version.toLowerCase()} ${item.versionNumber}`
       }
+      present={present}
       renderSelected={(item, report) => (
         <OfferPanel
           {...props}

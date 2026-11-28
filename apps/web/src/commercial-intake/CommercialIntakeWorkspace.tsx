@@ -11,6 +11,7 @@ import { ContractPanel } from '../contract/ContractPanel';
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -194,6 +195,21 @@ export type RequestStagePresentation = {
   onProtectedChange: (active: boolean) => void;
 };
 
+/**
+ * How the Clarté Today quick action (#1532) embeds the capture: only the
+ * form, with the same validation, idempotent retry, access recovery and
+ * Activity refresh. It reads no list and offers no Sales Stage settings.
+ */
+export type RequestCapturePresentation = {
+  /** After a confirmed capture, instead of opening its detail here. */
+  onCaptured: (request: { id: string; opportunityTitle: string }) => void;
+  /**
+   * While true, a capture is pending or uncertain: closing the form would
+   * discard its retry, as leaving the Requests section would not.
+   */
+  onProtectedChange: (active: boolean) => void;
+};
+
 /** The version a requested Request detail opens with selected. */
 type RequestedDetailVersion = {
   clientRequestId: string;
@@ -356,6 +372,7 @@ export function CommercialIntakeWorkspace({
   requestedRequest,
   onOpenProject,
   requestStage,
+  requestCapture,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -385,9 +402,15 @@ export function CommercialIntakeWorkspace({
    * the current interface's Requests section unchanged.
    */
   requestStage?: RequestStagePresentation;
+  /**
+   * The capture alone, for the Clarté Today quick action (#1532). Absent,
+   * the workspace renders the current interface's Requests section.
+   */
+  requestCapture?: RequestCapturePresentation;
 }) {
   const followUpCopy = useFollowUpCopy();
   const copy = useCommercialRequestCopy();
+  const formId = useId();
   const outcomeCopy = useOpportunityOutcomeCopy();
   const stageCopy = useSalesStageCopy();
   const stageDeniedMessage = stageCopy('stageDenied');
@@ -941,8 +964,10 @@ export function CommercialIntakeWorkspace({
     [identity],
   );
 
-  // The Request stage shows one requested detail and never reads the list.
-  const listsRequests = requestStage === undefined;
+  // The Request stage shows one requested detail and the capture alone shows
+  // only its form: neither reads the list.
+  const capturesOnly = requestCapture !== undefined;
+  const listsRequests = requestStage === undefined && !capturesOnly;
   const loadRequests = useCallback(
     async (companyContextId: string, cursor?: string): Promise<void> => {
       if (!listsRequests) return;
@@ -1400,6 +1425,16 @@ export function CommercialIntakeWorkspace({
       setOutcomeEdit({ kind: 'editing', draft: EMPTY_OUTCOME_DRAFT });
     }
   }, [stageCommand, selected, canEditNextAction, canChangeOutcome]);
+
+  // The embedded capture reports the same hold the Requests section applies.
+  const captureCallbacks = useRef(requestCapture);
+  useLayoutEffect(() => {
+    captureCallbacks.current = requestCapture;
+  });
+  const captureProtected = inFlight === 'capture' || captureUncertain;
+  useEffect(() => {
+    captureCallbacks.current?.onProtectedChange(captureProtected);
+  }, [captureProtected]);
 
   function updateField(field: keyof FormState, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -2299,6 +2334,22 @@ export function CommercialIntakeWorkspace({
       }
       if (
         (result.status === 200 || result.status === 201) &&
+        isClientRequest(result.body) &&
+        captureCallbacks.current
+      ) {
+        const captured = {
+          id: result.body.id,
+          opportunityTitle: result.body.initialOpportunity.title,
+        };
+        setForm(emptyForm);
+        retry.current = undefined;
+        await refreshRecordedActivity();
+        if (!operation.signal.aborted)
+          captureCallbacks.current?.onCaptured(captured);
+        return;
+      }
+      if (
+        (result.status === 200 || result.status === 201) &&
         isClientRequest(result.body)
       ) {
         setSelected({
@@ -2323,6 +2374,167 @@ export function CommercialIntakeWorkspace({
       operation.release();
     }
   }
+
+  // One capture form, rendered by the Requests section or alone.
+  const captureForm = (
+    <form
+      className="commercial-intake-form"
+      noValidate
+      onSubmit={(event) => void submit(event)}
+    >
+      <label>
+        {copy.originalText}
+        <textarea
+          value={form.originalText}
+          onChange={(event) => updateField('originalText', event.target.value)}
+          required
+          maxLength={20000}
+        />
+      </label>
+      <label>
+        {copy.sourceLabel}
+        <input
+          value={form.sourceLabel}
+          onChange={(event) => updateField('sourceLabel', event.target.value)}
+          maxLength={120}
+        />
+      </label>
+      <label>
+        {copy.reportedReceivedAt}
+        <input
+          type="datetime-local"
+          value={form.reportedReceivedAt}
+          onChange={(event) =>
+            updateField('reportedReceivedAt', event.target.value)
+          }
+        />
+      </label>
+      <label>
+        {copy.subject}
+        <input
+          value={form.subject}
+          onChange={(event) => updateField('subject', event.target.value)}
+          maxLength={200}
+        />
+      </label>
+      {canSearchClients ? (
+        <div className="commercial-intake-field">
+          <label htmlFor={`${formId}-client-search`}>{copy.clientSearch}</label>
+          <input
+            id={`${formId}-client-search`}
+            value={clientQuery}
+            onChange={(event) => {
+              setClientQuery(event.target.value);
+              setClientSearch({ kind: 'idle' });
+              updateField('clientAccountId', '');
+            }}
+            maxLength={200}
+          />
+          <button
+            type="button"
+            disabled={clientSearch.kind === 'loading'}
+            onClick={() => void searchClients()}
+          >
+            {copy.searchClients}
+          </button>
+          {clientSearch.kind === 'ready' ? (
+            clientSearch.clients.length > 0 ? (
+              <>
+                <label htmlFor={`${formId}-client`}>
+                  {copy.existingClient}
+                </label>
+                <Select
+                  id={`${formId}-client`}
+                  value={form.clientAccountId}
+                  placeholder={copy.noClient}
+                  options={clientSearch.clients.map((client) => ({
+                    value: client.id,
+                    label: client.displayName,
+                  }))}
+                  onValueChange={(value) =>
+                    updateField('clientAccountId', value)
+                  }
+                />
+              </>
+            ) : (
+              <p>{copy.clientSearchEmpty}</p>
+            )
+          ) : clientSearch.kind === 'denied' ? (
+            <p>{copy.clientSearchDenied}</p>
+          ) : clientSearch.kind === 'validation' ? (
+            <p>{copy.clientSearchValidation}</p>
+          ) : clientSearch.kind === 'error' ? (
+            <p>{copy.clientSearchError}</p>
+          ) : null}
+          <small>{copy.clientHelp}</small>
+        </div>
+      ) : (
+        <p>{copy.clientSearchDenied}</p>
+      )}
+      <label>
+        {copy.opportunityTitle}
+        <input
+          value={form.opportunityTitle}
+          onChange={(event) =>
+            updateField('opportunityTitle', event.target.value)
+          }
+          required
+          maxLength={160}
+        />
+      </label>
+      <label>
+        {copy.opportunityScope}
+        <textarea
+          value={form.opportunityScope}
+          onChange={(event) =>
+            updateField('opportunityScope', event.target.value)
+          }
+          maxLength={2000}
+        />
+      </label>
+      <label>
+        {copy.nextAction}
+        <input
+          value={form.nextAction}
+          onChange={(event) => updateField('nextAction', event.target.value)}
+          required
+          maxLength={500}
+        />
+      </label>
+      <button type="submit" disabled={pending}>
+        {copy.capture}
+      </button>
+    </form>
+  );
+  const captureFeedback = feedback ? (
+    <p role="alert">
+      {typeof feedback === 'string'
+        ? feedback
+        : 'outcomeMessage' in feedback
+          ? outcomeCopy[feedback.outcomeMessage]
+          : copy[feedback.requestMessage]}
+    </p>
+  ) : null;
+  if (requestCapture)
+    return (
+      <div className="commercial-intake-workspace commercial-intake-capture">
+        {load.kind === 'denied' || !intakeReads ? (
+          <p role="alert">{copy.denied}</p>
+        ) : (
+          <>
+            <aside
+              className="commercial-intake-source"
+              aria-label={copy.manualSourceInformation}
+            >
+              <strong>{copy.manualSource}</strong>
+              <p>{copy.manualSourceDetail}</p>
+            </aside>
+            {captureFeedback}
+            {captureForm}
+          </>
+        )}
+      </div>
+    );
 
   // The section is its own navigation destination, because the
   // shell's layout wrapper generates no box that could receive focus.
@@ -2724,142 +2936,7 @@ export function CommercialIntakeWorkspace({
           >
             {stageCopy('openSalesStageSettings')}
           </button>
-          <form
-            className="commercial-intake-form"
-            noValidate
-            onSubmit={(event) => void submit(event)}
-          >
-            <label>
-              {copy.originalText}
-              <textarea
-                value={form.originalText}
-                onChange={(event) =>
-                  updateField('originalText', event.target.value)
-                }
-                required
-                maxLength={20000}
-              />
-            </label>
-            <label>
-              {copy.sourceLabel}
-              <input
-                value={form.sourceLabel}
-                onChange={(event) =>
-                  updateField('sourceLabel', event.target.value)
-                }
-                maxLength={120}
-              />
-            </label>
-            <label>
-              {copy.reportedReceivedAt}
-              <input
-                type="datetime-local"
-                value={form.reportedReceivedAt}
-                onChange={(event) =>
-                  updateField('reportedReceivedAt', event.target.value)
-                }
-              />
-            </label>
-            <label>
-              {copy.subject}
-              <input
-                value={form.subject}
-                onChange={(event) => updateField('subject', event.target.value)}
-                maxLength={200}
-              />
-            </label>
-            {canSearchClients ? (
-              <div className="commercial-intake-field">
-                <label htmlFor="commercial-intake-client-search">
-                  {copy.clientSearch}
-                </label>
-                <input
-                  id="commercial-intake-client-search"
-                  value={clientQuery}
-                  onChange={(event) => {
-                    setClientQuery(event.target.value);
-                    setClientSearch({ kind: 'idle' });
-                    updateField('clientAccountId', '');
-                  }}
-                  maxLength={200}
-                />
-                <button
-                  type="button"
-                  disabled={clientSearch.kind === 'loading'}
-                  onClick={() => void searchClients()}
-                >
-                  {copy.searchClients}
-                </button>
-                {clientSearch.kind === 'ready' ? (
-                  clientSearch.clients.length > 0 ? (
-                    <>
-                      <label htmlFor="commercial-intake-client">
-                        {copy.existingClient}
-                      </label>
-                      <Select
-                        id="commercial-intake-client"
-                        value={form.clientAccountId}
-                        placeholder={copy.noClient}
-                        options={clientSearch.clients.map((client) => ({
-                          value: client.id,
-                          label: client.displayName,
-                        }))}
-                        onValueChange={(value) =>
-                          updateField('clientAccountId', value)
-                        }
-                      />
-                    </>
-                  ) : (
-                    <p>{copy.clientSearchEmpty}</p>
-                  )
-                ) : clientSearch.kind === 'denied' ? (
-                  <p>{copy.clientSearchDenied}</p>
-                ) : clientSearch.kind === 'validation' ? (
-                  <p>{copy.clientSearchValidation}</p>
-                ) : clientSearch.kind === 'error' ? (
-                  <p>{copy.clientSearchError}</p>
-                ) : null}
-                <small>{copy.clientHelp}</small>
-              </div>
-            ) : (
-              <p>{copy.clientSearchDenied}</p>
-            )}
-            <label>
-              {copy.opportunityTitle}
-              <input
-                value={form.opportunityTitle}
-                onChange={(event) =>
-                  updateField('opportunityTitle', event.target.value)
-                }
-                required
-                maxLength={160}
-              />
-            </label>
-            <label>
-              {copy.opportunityScope}
-              <textarea
-                value={form.opportunityScope}
-                onChange={(event) =>
-                  updateField('opportunityScope', event.target.value)
-                }
-                maxLength={2000}
-              />
-            </label>
-            <label>
-              {copy.nextAction}
-              <input
-                value={form.nextAction}
-                onChange={(event) =>
-                  updateField('nextAction', event.target.value)
-                }
-                required
-                maxLength={500}
-              />
-            </label>
-            <button type="submit" disabled={pending}>
-              {copy.capture}
-            </button>
-          </form>
+          {captureForm}
           <RequestList
             load={visibleLoad}
             view={listView}
