@@ -1163,17 +1163,17 @@
   background: var(--clarte-accent);
 }
 
-.clarte-frame .clarte-today-affaires {
+.clarte-frame .clarte-today-deals {
   display: grid;
   gap: 12px;
 }
 
-.clarte-frame .clarte-today-affaires h3 {
+.clarte-frame .clarte-today-deals h3 {
   margin: 0;
   font-size: 15px;
 }
 
-.clarte-frame .clarte-today-affaires ul {
+.clarte-frame .clarte-today-deals ul {
   display: grid;
   gap: 8px;
   margin: 0;
@@ -1181,8 +1181,8 @@
   list-style: none;
 }
 
-.clarte-frame .clarte-today .clarte-today-affaire,
-.clarte-frame .clarte-side-panel .clarte-today-affaire {
+.clarte-frame .clarte-today .clarte-today-deal,
+.clarte-frame .clarte-side-panel .clarte-today-deal {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1198,20 +1198,20 @@
   font-weight: 400;
 }
 
-.clarte-frame .clarte-today-affaire span {
+.clarte-frame .clarte-today-deal span {
   display: grid;
   gap: 2px;
 }
 
-.clarte-frame .clarte-today-affaire strong {
+.clarte-frame .clarte-today-deal strong {
   font-weight: 600;
 }
 
-.clarte-frame .clarte-today-affaire small {
+.clarte-frame .clarte-today-deal small {
   color: var(--clarte-muted);
 }
 
-.clarte-frame .clarte-today-affaire svg {
+.clarte-frame .clarte-today-deal svg {
   width: 16px;
   height: 16px;
   color: var(--clarte-muted);
@@ -1222,7 +1222,7 @@
   gap: 12px;
 }
 
-.clarte-frame .clarte-today-contract-affaire {
+.clarte-frame .clarte-today-contract-deal {
   display: flex;
   flex-wrap: wrap;
   align-items: center;

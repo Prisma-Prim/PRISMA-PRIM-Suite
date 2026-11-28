@@ -166,7 +166,7 @@ export const todayDecisions = {
   },
 } as const;
 
-/** The Request whose affaire takes the direct Contract in the journey. */
+/** The Request whose deal takes the direct Contract in the journey. */
 export const todayDirectRequest = buildClientRequest({
   id: '00000000-0000-4000-8000-000000006001',
   companyId: todayCompany.id,
@@ -410,7 +410,7 @@ export function createClarteTodayApi(options: TodayApiOptions = {}) {
       return path.endsWith('/versions')
         ? ok({ versions: [offer.version], nextCursor: null })
         : ok({ offer });
-    // No other affaire of the fixture has an Offer.
+    // No other deal of the fixture has an Offer.
     if (path.startsWith('/api/offers/opportunities/'))
       return ok({ offer: null });
     if (path === '/api/commercial-intake/requests' && method === 'GET')

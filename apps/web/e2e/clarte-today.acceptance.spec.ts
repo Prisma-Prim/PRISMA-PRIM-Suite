@@ -139,7 +139,7 @@ test('walks Today in order, reviews an Offer, records a Client Request and conti
   expect(api.writes).toEqual(['POST /api/commercial-intake/requests']);
   await capture.getByRole('button', { name: 'Close' }).click();
 
-  // A direct Contract starts from the affaire it belongs to.
+  // A direct Contract starts from the deal it belongs to.
   await page.getByRole('button', { name: 'Direct Contract' }).click();
   const direct = page.getByRole('dialog', { name: 'Direct Contract' });
   await direct

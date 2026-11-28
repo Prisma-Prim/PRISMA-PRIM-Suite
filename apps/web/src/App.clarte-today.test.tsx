@@ -98,7 +98,6 @@ describe('Clarté Today', () => {
     });
     for (const entry of [
       'Today',
-      'Affaires',
       'Clients',
       'Missions and audits',
       'Tasks',
@@ -466,7 +465,7 @@ describe('Clarté Today', () => {
       },
     });
     fireEvent.click(
-      within(panel).getByRole('button', { name: 'Open it in Affaires' }),
+      within(panel).getByRole('button', { name: 'Open the Request' }),
     );
     await waitFor(() => expect(window.location.hash).toBe('#requests'));
     expect(
@@ -599,7 +598,7 @@ describe('Clarté Today', () => {
     );
   });
 
-  it('opens the existing direct Contract form for a chosen affaire in a side panel', async () => {
+  it('opens the existing direct Contract form for a chosen deal in a side panel', async () => {
     const { api } = serve();
     openToday();
     fireEvent.click(
@@ -627,15 +626,15 @@ describe('Clarté Today', () => {
       `GET /api/pricing/opportunities/${todayDirectRequest.initialOpportunity.id}/snapshots?limit=25`,
     );
     fireEvent.click(
-      within(panel).getByRole('button', { name: 'Choose another affaire' }),
+      within(panel).getByRole('button', { name: 'Choose another deal' }),
     );
     expect(
-      await within(panel).findByRole('heading', { name: 'Choose the affaire' }),
+      await within(panel).findByRole('heading', { name: 'Choose the deal' }),
     ).toBeVisible();
     expect(api.writes).toEqual([]);
   });
 
-  it('refuses a chosen affaire that another Company answers', async () => {
+  it('refuses a chosen deal that another Company answers', async () => {
     const { api } = serve();
     const fetch = vi.mocked(globalThis.fetch);
     const answer = fetch.getMockImplementation();
@@ -665,7 +664,7 @@ describe('Clarté Today', () => {
       }),
     );
     expect(
-      await within(panel).findByText('The affaire could not be loaded.'),
+      await within(panel).findByText('The deal could not be loaded.'),
     ).toBeVisible();
     expect(
       within(panel).queryByLabelText('Internal direct reason'),

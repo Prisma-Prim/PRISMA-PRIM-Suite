@@ -33,7 +33,7 @@ export type TodayCapture = Readonly<{
   onOpenRequest?: (clientRequestId: string) => void;
 }>;
 
-/** The affaire a direct Contract is prepared for. */
+/** The deal a direct Contract is prepared for. */
 export type DirectContractTarget = Readonly<{
   opportunityId: string;
   opportunityTitle: string;
@@ -150,25 +150,25 @@ export function CapturePanel({
   );
 }
 
-type Affaire = Readonly<{
+type Deal = Readonly<{
   clientRequestId: string;
   opportunityTitle: string;
   clientDisplayName: string;
 }>;
-type AffairePage = Readonly<{ affaires: Affaire[]; nextCursor?: string }>;
+type DealPage = Readonly<{ deals: Deal[]; nextCursor?: string }>;
 type Choices =
   | { kind: 'loading' | 'error' | 'denied' }
-  | { kind: 'ready'; affaires: Affaire[]; nextCursor?: string; older: boolean };
+  | { kind: 'ready'; deals: Deal[]; nextCursor?: string; older: boolean };
 type Step =
   | { kind: 'choose' }
-  | { kind: 'reading'; affaire: Affaire }
-  | { kind: 'failed' | 'without-client'; affaire: Affaire }
+  | { kind: 'reading'; deal: Deal }
+  | { kind: 'failed' | 'without-client'; deal: Deal }
   | { kind: 'contract'; target: DirectContractTarget };
 
 /**
  * The quick action "Direct Contract" (#1532, EX-103). A direct Contract
  * belongs to an Opportunity whose Request has a Client, so the panel first
- * lists the Company's affaires from the existing Request list read, reads
+ * lists the Company's deals from the existing Request list read, reads
  * the chosen Request for its Opportunity and current Client, then shows the
  * existing Contract panel with its direct Contract form, validation, retry
  * and permissions. The panel stays open while that panel protects work.
@@ -198,7 +198,7 @@ export function DirectContractPanel({
   const listRead = useScopedOperation(`${scope}:list`);
   const detailRead = useScopedOperation(`${scope}:detail`);
 
-  function readAffaires(cursor?: string) {
+  function readDeals(cursor?: string) {
     const requestSignal = listRead.begin();
     if (!requestSignal) return;
     setChoices((current) =>
@@ -222,13 +222,13 @@ export function DirectContractPanel({
           setChoices({ kind: 'denied' });
         else if (result.status !== 'ok') setChoices({ kind: 'error' });
         else {
-          const page = readAffairePage(result.value);
+          const page = readDealPage(result.value);
           setChoices((current) => ({
             kind: 'ready',
-            affaires:
+            deals:
               cursor && current.kind === 'ready'
-                ? [...current.affaires, ...page.affaires]
-                : page.affaires,
+                ? [...current.deals, ...page.deals]
+                : page.deals,
             nextCursor: page.nextCursor,
             older: false,
           }));
@@ -238,39 +238,39 @@ export function DirectContractPanel({
     });
   }
   useEffect(() => {
-    readAffaires();
+    readDeals();
   }, [scope]);
 
-  function choose(affaire: Affaire) {
+  function choose(deal: Deal) {
     const requestSignal = detailRead.begin();
     if (!requestSignal) return;
-    setStep({ kind: 'reading', affaire });
+    setStep({ kind: 'reading', deal });
     void runLatestAuthenticatedRequest({
       signal: requestSignal,
       identity,
       execute: (api, signal) =>
         api.request(
-          `/commercial-intake/requests/${encodeURIComponent(affaire.clientRequestId)}`,
+          `/commercial-intake/requests/${encodeURIComponent(deal.clientRequestId)}`,
           { companyContextId: companyId, signal },
         ),
       onResult: async (result, signal) => {
         if (result.status === 'unauthorized') {
           await identity.rejectSession();
-          if (!signal.aborted) setStep({ kind: 'failed', affaire });
-        } else if (result.status !== 'ok') setStep({ kind: 'failed', affaire });
+          if (!signal.aborted) setStep({ kind: 'failed', deal });
+        } else if (result.status !== 'ok') setStep({ kind: 'failed', deal });
         else {
           const target = readDirectContractTarget(result.value, {
             companyId,
-            clientRequestId: affaire.clientRequestId,
+            clientRequestId: deal.clientRequestId,
           });
           setStep(
             target
               ? { kind: 'contract', target }
-              : { kind: 'without-client', affaire },
+              : { kind: 'without-client', deal },
           );
         }
       },
-      onError: () => setStep({ kind: 'failed', affaire }),
+      onError: () => setStep({ kind: 'failed', deal }),
     });
   }
   const chooseOther = (
@@ -291,24 +291,24 @@ export function DirectContractPanel({
   switch (step.kind) {
     case 'choose':
       body = (
-        <AffaireChoices
+        <DealChoices
           choices={choices}
           onChoose={choose}
-          onRetry={() => readAffaires()}
-          onOlder={(cursor) => readAffaires(cursor)}
+          onRetry={() => readDeals()}
+          onOlder={(cursor) => readDeals(cursor)}
         />
       );
       break;
     case 'reading':
-      body = <ClarteLoadingState label={copy.message('affaireLoading')} />;
+      body = <ClarteLoadingState label={copy.message('dealLoading')} />;
       break;
     case 'failed':
       body = (
         <ClarteErrorState
-          title={copy.message('affaireError')}
+          title={copy.message('dealError')}
           action={
             <div className="clarte-today-receipt-actions">
-              <ClarteButton size="small" onClick={() => choose(step.affaire)}>
+              <ClarteButton size="small" onClick={() => choose(step.deal)}>
                 {copy.message('retry')}
               </ClarteButton>
               {chooseOther}
@@ -320,7 +320,7 @@ export function DirectContractPanel({
     case 'without-client':
       body = (
         <ClarteEmptyState
-          title={copy.message('affaireWithoutClient')}
+          title={copy.message('dealWithoutClient')}
           action={chooseOther}
         />
       );
@@ -328,7 +328,7 @@ export function DirectContractPanel({
     case 'contract':
       body = (
         <div className="clarte-today-contract">
-          <p className="clarte-today-contract-affaire">
+          <p className="clarte-today-contract-deal">
             <strong>{step.target.opportunityTitle}</strong>
             {chooseOther}
           </p>
@@ -370,27 +370,27 @@ function useReportedHold(held: boolean, onHeld: (held: boolean) => void) {
   useLayoutEffect(() => () => report.current(false), []);
 }
 
-function AffaireChoices({
+function DealChoices({
   choices,
   onChoose,
   onRetry,
   onOlder,
 }: Readonly<{
   choices: Choices;
-  onChoose: (affaire: Affaire) => void;
+  onChoose: (deal: Deal) => void;
   onRetry: () => void;
   onOlder: (cursor: string) => void;
 }>) {
   const copy = useClarteTodayCopy();
   switch (choices.kind) {
     case 'loading':
-      return <ClarteLoadingState label={copy.message('affairesLoading')} />;
+      return <ClarteLoadingState label={copy.message('dealsLoading')} />;
     case 'denied':
-      return <ClarteEmptyState title={copy.message('affairesDenied')} />;
+      return <ClarteEmptyState title={copy.message('dealsDenied')} />;
     case 'error':
       return (
         <ClarteErrorState
-          title={copy.message('affairesError')}
+          title={copy.message('dealsError')}
           action={
             <ClarteButton size="small" onClick={onRetry}>
               {copy.message('retry')}
@@ -401,26 +401,26 @@ function AffaireChoices({
     case 'ready': {
       const { nextCursor } = choices;
       return (
-        <div className="clarte-today-affaires">
-          <h3>{copy.message('chooseAffaire')}</h3>
-          {choices.affaires.length === 0 ? (
-            <ClarteEmptyState title={copy.message('affairesEmpty')} />
+        <div className="clarte-today-deals">
+          <h3>{copy.message('chooseDeal')}</h3>
+          {choices.deals.length === 0 ? (
+            <ClarteEmptyState title={copy.message('dealsEmpty')} />
           ) : (
             <ul className="clarte-list">
-              {choices.affaires.map((affaire) => (
-                <li key={affaire.clientRequestId}>
+              {choices.deals.map((deal) => (
+                <li key={deal.clientRequestId}>
                   <button
                     type="button"
-                    className="clarte-today-affaire"
-                    aria-label={copy.affaireChoice({
-                      title: affaire.opportunityTitle,
-                      client: affaire.clientDisplayName,
+                    className="clarte-today-deal"
+                    aria-label={copy.dealChoice({
+                      title: deal.opportunityTitle,
+                      client: deal.clientDisplayName,
                     })}
-                    onClick={() => onChoose(affaire)}
+                    onClick={() => onChoose(deal)}
                   >
                     <span>
-                      <strong>{affaire.opportunityTitle}</strong>
-                      <small>{affaire.clientDisplayName}</small>
+                      <strong>{deal.opportunityTitle}</strong>
+                      <small>{deal.clientDisplayName}</small>
                     </span>
                     <ChevronRight aria-hidden="true" />
                   </button>
@@ -434,7 +434,7 @@ function AffaireChoices({
               disabled={choices.older}
               onClick={() => onOlder(nextCursor)}
             >
-              {copy.message('affairesMore')}
+              {copy.message('dealsMore')}
             </ClarteButton>
           )}
         </div>
@@ -449,28 +449,28 @@ function AffaireChoices({
 
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
-    throw new Error('Invalid affaire response.');
+    throw new Error('Invalid deal response.');
   return Object.fromEntries(Object.entries(value));
 }
 function text(value: unknown): string {
   if (typeof value !== 'string' || !value.trim())
-    throw new Error('Invalid affaire text.');
+    throw new Error('Invalid deal text.');
   return value;
 }
 
 /**
  * The fields of the existing Request list this chooser consumes. Only rows
  * whose Request shows a Client can take a direct Contract; the others stay
- * in Affaires.
+ * in Deals.
  */
-function readAffairePage(value: unknown): AffairePage {
+function readDealPage(value: unknown): DealPage {
   const page = record(value);
-  if (!Array.isArray(page.items)) throw new Error('Invalid affaire page.');
+  if (!Array.isArray(page.items)) throw new Error('Invalid deal page.');
   const nextCursor =
     page.nextCursor === undefined || page.nextCursor === null
       ? undefined
       : text(page.nextCursor);
-  const affaires = page.items.flatMap((item: unknown): Affaire[] => {
+  const deals = page.items.flatMap((item: unknown): Deal[] => {
     const row = record(item);
     const opportunity = record(row.initialOpportunity);
     const client = row.clientDisplayName;
@@ -483,7 +483,7 @@ function readAffairePage(value: unknown): AffairePage {
       },
     ];
   });
-  return { affaires, nextCursor };
+  return { deals, nextCursor };
 }
 
 /**
@@ -499,7 +499,7 @@ function readDirectContractTarget(
     request.id !== expected.clientRequestId ||
     request.companyId !== expected.companyId
   )
-    throw new Error('Invalid affaire Request.');
+    throw new Error('Invalid deal Request.');
   const opportunity = record(request.initialOpportunity);
   const reference =
     request.clientReference === undefined
