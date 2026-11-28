@@ -1,5 +1,12 @@
 import { createHash } from 'node:crypto';
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import {
+  expect,
+  test,
+  type Locator,
+  type Page,
+  type Route,
+} from '@playwright/test';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { companyGrants } from '../src/access/company-grants.test-fixture';
 import { actorContextFixture } from './actor-context.fixture';
@@ -732,6 +739,38 @@ function financeView(page: Page, name: string) {
     .getByRole('link', { name, exact: true });
 }
 
+async function expectExactSource(page: Page, panel: Locator, fileName: string) {
+  const source = panel.getByRole('region', { name: 'PDF beside the form' });
+  const download = source.getByRole('link', { name: 'Download verified PDF' });
+  await expect(download).toHaveAttribute('href', /^blob:/u);
+  await expect(download).toHaveAttribute('download', fileName);
+  const frame = source.getByTitle(`Exact source PDF ${fileName}`);
+  const hasViewer = await page.evaluate(() => navigator.pdfViewerEnabled);
+  if (hasViewer) {
+    await expect(frame).toBeVisible();
+    expect((await frame.getAttribute('data'))?.split('#')[0]).toBe(
+      await download.getAttribute('href'),
+    );
+    await expect(
+      source.getByText('This browser cannot display the PDF inside the page.'),
+    ).toBeHidden();
+  } else {
+    await expect(frame).toHaveCount(0);
+    await expect(
+      source.getByText('This browser cannot display the PDF inside the page.'),
+    ).toBeVisible();
+  }
+  return download;
+}
+
+async function expectPhoneList(title: Locator, page: Page) {
+  if (!isPhoneLayout(page)) return;
+  await expect(title.locator('..')).toHaveCSS('display', 'block');
+  await expect(
+    page.getByRole('navigation', { name: 'Finance views' }).locator('ul'),
+  ).toHaveCSS('flex-wrap', 'wrap');
+}
+
 test('records an invoice and a collection beside their exact source, confirms, reverses and replaces it, then registers a payment proof', async ({
   page,
 }) => {
@@ -757,9 +796,15 @@ test('records an invoice and a collection beside their exact source, confirms, r
 
   // Invoices: the inventory, then a transcription beside its exact PDF.
   const invoices = page.getByRole('region', { name: 'Transcribed invoices' });
-  await expect(
-    invoices.getByRole('button', { name: 'FIC-2026-118' }),
-  ).toBeVisible();
+  const invoiceTitle = invoices.getByRole('button', { name: 'FIC-2026-118' });
+  await expect(invoiceTitle).toBeVisible();
+  const invoiceRow = invoiceTitle.locator('xpath=ancestor::tr');
+  await expect(invoiceRow).not.toContainText('2026-11-02');
+  await expect(invoiceRow).toContainText('2026-12-15');
+  const invoiceChevron = invoiceRow.locator('.clarte-finance-chevron');
+  const chevronIcon = invoiceChevron.locator('svg');
+  await expect(chevronIcon).toBeInViewport();
+  await expectPhoneList(invoiceTitle, page);
   await screenshot(page, `clarte-finance-invoices-${width}`);
   await invoices
     .getByRole('button', { name: 'Record an external invoice' })
@@ -772,10 +817,7 @@ test('records an invoice and a collection beside their exact source, confirms, r
       'Fictional invoice FIC-2026-131 · Version 1 (Official Version) · fic-2026-131.pdf · CTR-FIC-029 · Version 1 · Fictional Grain SRL',
   });
   // Beside a transcription form the exact PDF opens at once.
-  const beside = create.getByRole('region', { name: 'PDF beside the form' });
-  await expect(
-    beside.getByTitle('Exact source PDF fic-2026-131.pdf'),
-  ).toBeVisible();
+  await expectExactSource(page, create, 'fic-2026-131.pdf');
   await create
     .getByLabel('Declared external process or system')
     .fill(invoiceValues.externalSystem);
@@ -800,9 +842,7 @@ test('records an invoice and a collection beside their exact source, confirms, r
 
   // Correct the transcription with the exact PDF still beside the form.
   await invoice.getByRole('button', { name: 'Correct transcription' }).click();
-  await expect(
-    invoice.getByTitle('Exact source PDF fic-2026-131.pdf'),
-  ).toBeVisible();
+  await expectExactSource(page, invoice, 'fic-2026-131.pdf');
   await invoice.getByLabel('Declared due date (optional)').fill('2026-12-20');
   await invoice
     .getByLabel('Literal reason')
@@ -818,14 +858,41 @@ test('records an invoice and a collection beside their exact source, confirms, r
   ).toBeVisible();
   await invoice.getByRole('button', { name: 'Close', exact: true }).click();
 
+  const newInvoiceTitle = invoices.getByRole('button', {
+    name: invoiceValues.externalNumber,
+  });
+  const newInvoiceRow = newInvoiceTitle.locator('xpath=ancestor::tr');
+  const invoiceDetails = page.getByRole('dialog', {
+    name: invoiceValues.externalNumber,
+  });
+  const newInvoiceChevron = newInvoiceRow.locator('.clarte-finance-chevron');
+  if (test.info().project.use.hasTouch) await newInvoiceChevron.tap();
+  else await newInvoiceChevron.click();
+  await expect(
+    invoiceDetails.getByText(invoiceValues.issuedOn, { exact: true }).first(),
+  ).toBeVisible();
+  await invoiceDetails
+    .getByRole('button', { name: 'Close', exact: true })
+    .click();
+  await newInvoiceTitle.press('Enter');
+  await expect(invoiceDetails).toBeVisible();
+  await invoiceDetails
+    .getByRole('button', { name: 'Close', exact: true })
+    .click();
+
   // Collections: record, confirm after review, reverse and replace.
-  await financeView(page, 'Manual incoming Payment observations').click();
+  await financeView(page, 'Collections').click();
   const collections = page.getByRole('region', {
     name: 'Payment observations',
   });
+  const paymentTitle = collections.getByRole('button', {
+    name: 'Bank transfer · Oct 9',
+  });
+  await expect(paymentTitle).toBeVisible();
+  await expectPhoneList(paymentTitle, page);
   await expect(
-    collections.getByRole('button', { name: '2026-10-09 · Bank transfer' }),
-  ).toBeVisible();
+    collections.getByRole('button', { name: 'Reload and review' }),
+  ).toHaveCount(0);
   await screenshot(page, `clarte-finance-collections-${width}`);
   await collections
     .getByRole('button', { name: 'New manual observation' })
@@ -834,9 +901,19 @@ test('records an invoice and a collection beside their exact source, confirms, r
   await observe
     .getByRole('button', { name: 'Select an authorized exact source 1' })
     .click();
-  await expect(
-    observe.getByTitle('Exact source PDF transfer-notice-448.pdf'),
-  ).toBeVisible();
+  const sourceDownload = await expectExactSource(
+    page,
+    observe,
+    'transfer-notice-448.pdf',
+  );
+  const downloadEvent = page.waitForEvent('download');
+  await sourceDownload.click();
+  const downloadedPdf = await downloadEvent;
+  expect(
+    createHash('sha256')
+      .update(await readFile(await downloadedPdf.path()))
+      .digest('hex'),
+  ).toBe(paymentPdf.sha256);
   await observe.getByLabel('Declared amount').fill('12600.00');
   await selectOption(observe.getByLabel('Currency'), 'MDL');
   await observe.getByLabel('Declared effective date').fill('2026-11-28');
@@ -859,9 +936,7 @@ test('records an invoice and a collection beside their exact source, confirms, r
   await payment
     .getByRole('button', { name: 'Confirm reviewed observation' })
     .click();
-  await expect(
-    payment.getByTitle('Exact source PDF transfer-notice-448.pdf'),
-  ).toBeVisible();
+  await expectExactSource(page, payment, 'transfer-notice-448.pdf');
   const review = payment.getByRole('region', {
     name: 'Confirm reviewed observation',
   });
@@ -916,13 +991,15 @@ test('records an invoice and a collection beside their exact source, confirms, r
   await payment.getByRole('button', { name: 'Close', exact: true }).click();
 
   // Payment proofs: the inventory, one proof's Versions, then a registration.
-  await financeView(page, 'Payment proofs').click();
+  await financeView(page, 'Proofs').click();
   const proofs = page.getByRole('region', {
     name: 'Preserved payment proofs',
   });
-  await expect(
-    proofs.getByRole('button', { name: 'Fictional transfer notice 448' }),
-  ).toBeVisible();
+  const proofTitle = proofs.getByRole('button', {
+    name: 'Fictional transfer notice 448',
+  });
+  await expect(proofTitle).toBeVisible();
+  await expectPhoneList(proofTitle, page);
   await screenshot(page, `clarte-finance-proofs-${width}`);
   await proofs
     .getByRole('button', { name: 'Fictional transfer notice 448' })

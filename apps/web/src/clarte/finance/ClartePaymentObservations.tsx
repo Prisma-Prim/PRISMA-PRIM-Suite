@@ -73,6 +73,10 @@ function ClartePaymentOwner(
   const { selected, detail, liveInventory, status, protectedWork } = owner;
   const editor = owner.activeEditor;
   const creating = !selected && Boolean(owner.chooser || editor);
+  const listNeedsReload =
+    !selected &&
+    !creating &&
+    (status === 'error' || status === 'changed' || owner.conflict);
   const statusView = (
     <>
       {status === 'loading' && <ClarteLoadingState label={copy.loading} />}
@@ -143,7 +147,7 @@ function ClartePaymentOwner(
         title={finance.text('collectionsHeading')}
         actions={
           <>
-            {!selected && reload}
+            {listNeedsReload && reload}
             {a.createKey && (
               <ClarteButton
                 variant="primary"
@@ -274,6 +278,11 @@ function ClartePaymentTable({
   const finance = useClarteFinanceCopy();
   const inventory = owner.liveInventory;
   if (!inventory) return null;
+  const shortDate = new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
   return (
     <>
       {inventory.items.length === 0 && <ClarteEmptyState title={copy.empty} />}
@@ -298,17 +307,17 @@ function ClartePaymentTable({
                     if (!owner.protectedWork) onOpen(payment.id);
                   })}
                 >
-                  <td data-label={finance.text('paymentColumn')}>
+                  <td>
                     <button
                       type="button"
                       className="clarte-finance-row-open"
                       disabled={owner.protectedWork}
                       onClick={() => onOpen(payment.id)}
                     >
+                      {payment.values.method} ·{' '}
                       <time dateTime={payment.values.effectiveOn}>
-                        {payment.values.effectiveOn}
-                      </time>{' '}
-                      · {payment.values.method}
+                        {shortDate.format(new Date(payment.values.effectiveOn))}
+                      </time>
                     </button>
                     <small>
                       {payment.values.externalReference ?? copy.notRecorded}

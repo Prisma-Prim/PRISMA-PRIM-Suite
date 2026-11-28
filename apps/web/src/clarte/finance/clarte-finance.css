@@ -454,6 +454,20 @@
 }
 
 @media (max-width: 768px) {
+  .clarte-frame
+    .clarte-tabs
+    ul:has(
+      > li
+        > a[aria-current='page']:is(
+          [href='#invoice-records'],
+          [href='#payments'],
+          [href='#payment-proofs']
+        )
+    ) {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+
   /* Tables become one card per row */
   .clarte-frame .clarte-finance-table thead {
     position: absolute;
@@ -484,7 +498,11 @@
     border: 0;
   }
 
-  .clarte-frame .clarte-finance-table td::before {
+  .clarte-frame .clarte-finance-table td:first-child {
+    display: block;
+  }
+
+  .clarte-frame .clarte-finance-table td[data-label]::before {
     content: attr(data-label);
     grid-row: span 2;
     color: var(--clarte-muted);
@@ -503,6 +521,24 @@
 
   .clarte-frame .clarte-finance-table .clarte-finance-chevron {
     display: none;
+  }
+
+  .clarte-frame #invoice-records .clarte-finance-row {
+    position: relative;
+  }
+
+  .clarte-frame #invoice-records .clarte-finance-row > td:first-child {
+    padding-inline-end: 28px;
+  }
+
+  .clarte-frame #invoice-records .clarte-finance-row > .clarte-finance-chevron {
+    position: absolute;
+    inset-block-start: 16px;
+    inset-inline-end: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--clarte-touch-target);
   }
 
   .clarte-frame .clarte-finance .clarte-finance-row-open {
