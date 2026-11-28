@@ -62,7 +62,6 @@ export function DealPage({
   companyId,
   context,
   readAuthority,
-  initialStage,
   leaveHeld,
   onBack,
   onProtectedChange,
@@ -77,7 +76,6 @@ export function DealPage({
    * once and rereads the deal.
    */
   readAuthority: string;
-  initialStage?: DealStage;
   /** The Request stage protects pending or uncertain work: Back waits. */
   leaveHeld: boolean;
   onBack: () => void;
@@ -95,7 +93,7 @@ export function DealPage({
     scope: 'clarte-deal',
   });
   const [state, setState] = useState<PageState>({ kind: 'loading' });
-  const [selected, setSelected] = useState(initialStage);
+  const [selected, setSelected] = useState<DealStage>();
   const [command, setCommand] =
     useState<DealStagePanelContext['requestCommand']>();
   const opportunity = useRef(

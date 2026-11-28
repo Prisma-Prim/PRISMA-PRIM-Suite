@@ -375,12 +375,15 @@ export class DealService {
     const offers = can.offer
       ? await this.presence.latestOfferVersions(scope, ids)
       : undefined;
+    const hidden = can.contract
+      ? await this.hiddenContracts(actor, scope, ids, can.client)
+      : [];
     const agreements = can.contract
-      ? await this.readableContractTimes(actor, scope, ids, can.client)
+      ? await this.presence.latestContractVersions(scope, ids, hidden)
       : undefined;
     const links =
       can.contract && can.project
-        ? await this.readableLinkedProjects(actor, scope, ids)
+        ? await this.readableLinkedProjects(actor, scope, ids, hidden)
         : undefined;
     const delivery = links && latestByOpportunity(links);
     const closure =
@@ -446,16 +449,17 @@ export class DealService {
   }
 
   /**
-   * Contract presence as the Contract owner shows it: an executed
+   * The Contracts their owner hides from the actor: an executed
    * Company-model Contract also needs its reference Client read
-   * (ContractVersionReader.view), so without it that Contract counts as none.
+   * (ContractVersionReader.view). Their Versions and linked Projects then
+   * count as none.
    */
-  private async readableContractTimes(
+  private async hiddenContracts(
     actor: ActorContext,
     scope: DealScope,
     opportunityIds: readonly string[],
     clientRead: boolean,
-  ): Promise<LatestRecordTimes> {
+  ): Promise<readonly string[]> {
     const shown = new Map<string, boolean>();
     const hidden: string[] = [];
     for (const contract of await this.presence.executedCompanyModelContracts(
@@ -473,16 +477,24 @@ export class DealService {
       }
       if (!readable) hidden.push(contract.contractId);
     }
-    return this.presence.latestContractVersions(scope, opportunityIds, hidden);
+    return hidden;
   }
 
-  /** Linked Projects the Project owner lets the actor read, per Opportunity. */
+  /**
+   * Linked Projects the Project owner lets the actor read, per Opportunity,
+   * through the Contracts their owner shows it.
+   */
   private async readableLinkedProjects(
     actor: ActorContext,
     scope: DealScope,
     opportunityIds: readonly string[],
+    hiddenContracts: readonly string[],
   ) {
-    const links = await this.presence.linkedProjects(scope, opportunityIds);
+    const links = await this.presence.linkedProjects(
+      scope,
+      opportunityIds,
+      hiddenContracts,
+    );
     const readable = new Map<string, boolean>();
     for (const projectId of new Set(links.map((link) => link.projectId)))
       readable.set(

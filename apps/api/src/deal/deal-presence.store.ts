@@ -230,8 +230,15 @@ export class DealPresenceStore {
       );
   }
 
-  /** Projects linked to any Contract, Precontract or Addendum parent of each Opportunity. */
-  async linkedProjects(scope: DealScope, opportunityIds: readonly string[]) {
+  /**
+   * Projects linked to any Contract, Precontract or Addendum parent of each
+   * Opportunity, leaving out the links of the excluded Contracts.
+   */
+  async linkedProjects(
+    scope: DealScope,
+    opportunityIds: readonly string[],
+    excludedContractIds: readonly string[],
+  ) {
     if (opportunityIds.length === 0) return [];
     return this.database.connection
       .select({
@@ -253,6 +260,11 @@ export class DealPresenceStore {
           eq(contractProjectLinks.workspaceId, scope.workspaceId),
           eq(contractProjectLinks.companyId, scope.companyId),
           inArray(contracts.opportunityId, [...opportunityIds]),
+          excludedContractIds.length === 0
+            ? undefined
+            : notInArray(contractProjectLinks.contractId, [
+                ...excludedContractIds,
+              ]),
         ),
       );
   }

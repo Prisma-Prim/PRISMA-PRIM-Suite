@@ -627,4 +627,94 @@ withPostgres('Deal reads REST', () => {
     expect(markers(archived).contract).toBe('not_available');
     await sameAsDetail(ESTIMATE_OFFER_PREPARER, archived);
   }, 60_000);
+
+  it('leaves out the linked Projects of a Contract its owner hides after a Client union', async () => {
+    const signing = await prepareReportedSigning(fixture);
+    const source = signing.f.ready.source;
+    const command = (path: string, body: unknown) =>
+      fixture.command({
+        path,
+        body,
+        companyId: source.companyId,
+        headers: ESTIMATE_OFFER_PREPARER,
+      });
+    await command(signing.path, signing.body);
+
+    // The executed Contract's original Client is united into a canonical
+    // one, and the Project created from the Contract afterwards records the
+    // canonical Client.
+    const canonical = responseString(
+      responseRecord(
+        await command('/clients', {
+          displayName: 'Synthetic canonical Client',
+        }),
+      ),
+      'id',
+    );
+    // A historical duplicate import, modelled at the storage boundary as in
+    // the Client owner's union tests.
+    await fixture.pool.query(
+      "UPDATE client_accounts SET tax_id='SYNTHETIC-UNION-DEAL' WHERE id=ANY($1::uuid[])",
+      [[source.clientId, canonical]],
+    );
+    const review = responseString(
+      responseRecord(
+        await command(`/clients/${source.clientId}/union-reviews`, {}),
+      ),
+      'reviewReference',
+    );
+    await command(`/client-union-reviews/${review}/confirm`, {
+      canonicalClientId: canonical,
+      fields: {
+        displayName: source.clientId,
+        taxId: source.clientId,
+        address: source.clientId,
+        telephone: source.clientId,
+        generalEmail: source.clientId,
+        businessActivity: source.clientId,
+      },
+      companyIds: [source.companyId],
+      reviewedDifferences: true,
+      reason: 'Synthetic duplicate identity review',
+    });
+    await fixture.grant({
+      path: '/company-project-assignments',
+      companyId: source.companyId,
+      membershipId: source.preparerMembershipId,
+    });
+    await command(`${signing.f.ready.path}/projects/create`, {
+      expectedContractRevision: 3,
+      title: 'Synthetic delivery mission',
+      acknowledgedCandidateProjectIds: [],
+    });
+    expect(
+      markers(await detail(source.opportunityId, source.companyId)),
+    ).toMatchObject({ contract: 'done', delivery: 'current' });
+
+    // Archiving the original Client's relationship makes the Contract owner
+    // hide that Contract; the Project stays readable through the canonical
+    // Client.
+    await fixture.pool.query(
+      "UPDATE client_company_relationships SET status='archived' WHERE company_id=$1 AND client_account_id=$2",
+      [source.companyId, source.clientId],
+    );
+    const united = await detail(source.opportunityId, source.companyId);
+    expect(markers(united)).toMatchObject({
+      contract: 'not_available',
+      delivery: 'not_available',
+      closure: 'not_available',
+    });
+    const row = await listedRow(
+      source.opportunityId,
+      source.companyId,
+      ESTIMATE_OFFER_PREPARER,
+    );
+    expect({
+      thread: row.thread,
+      lastChangedAt: row.lastChangedAt,
+    }).toEqual({
+      thread: united.thread,
+      lastChangedAt: united.lastChangedAt,
+    });
+  }, 60_000);
 });

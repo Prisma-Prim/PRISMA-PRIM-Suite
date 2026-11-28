@@ -113,6 +113,7 @@ The page shows the header, the seven-stage thread, the Next step card and the se
 1. Write the panel under `deals/`, typed `DealStagePanel`. It receives the deal, its stage's `view` and the `context` App composed (Actor, identity, rejection and revalidation callbacks, navigation). Narrow `view` to your stage; the page shows a stage that is not available itself.
 2. Reuse the owner's existing transports and components, and call `context.onDealChanged()` after each confirmed change, so the thread and the Next step card reread.
 3. Replace only your stage's entry in `dealStagePanels`.
+4. Until your stage can show an exact version, an Activity Log event that names an Offer or agreement version opens in the current Request screens (`CommercialIntakeWorkspace`) inside the Deals screen, as `ClarteDeals` does today ([#1570](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1570)); move that target to your panel once it opens the named version.
 
 The Request stage embeds Commercial Intake's own detail through `CommercialIntakeWorkspace`'s `requestStage` presentation, so drafts, retries and receipts stay the existing ones. `src/test/deal-responses.ts` builds the deal reads from a Request fixture, and `src/test/deal-interface.tsx` holds the steps of Request App tests that differ between the two interfaces.
 
