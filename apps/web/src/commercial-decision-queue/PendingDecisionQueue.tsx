@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from 'react';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
@@ -68,10 +69,39 @@ type Props<Item extends Row> = PendingDecisionContext & {
     item: Item,
     reportProtectedWork: (locked: boolean) => void,
   ) => ReactNode;
+  /**
+   * Another interface's rendering of this same owner (the Clarté Today
+   * screen, #1532). Absent, the owner renders the current queue unchanged.
+   */
+  present?: (queue: DecisionQueueState<Item>) => ReactNode;
 };
-type View<Item> =
+export type DecisionQueueView<Item> =
   | { kind: 'loading' | 'error' | 'denied' }
   | { kind: 'ready'; page: Page<Item> };
+type View<Item> = DecisionQueueView<Item>;
+
+/**
+ * One decision queue owner as another interface presents it: its current
+ * page, paging and retry, and the existing review of one item. The owner
+ * keeps its gating, keys, reads, recovery and protected-work hold.
+ */
+export type DecisionQueueState<Item> = Readonly<{
+  view: DecisionQueueView<Item>;
+  /** The 1-based number of the current page. */
+  page: number;
+  heading: RefObject<HTMLHeadingElement | null>;
+  refresh: () => void;
+  previous: () => void;
+  next: () => void;
+  retry: () => void;
+  renderReview: (
+    item: Item,
+    controls: Readonly<{
+      reportProtectedWork: (locked: boolean) => void;
+      close: () => void;
+    }>,
+  ) => ReactNode;
+}>;
 
 export function PendingDecisionQueue<Item extends Row>(props: Props<Item>) {
   const generation = useRequestLifetime(props.identity, props.authorityKey);
@@ -183,6 +213,26 @@ function QueueOwner<Item extends Row>(
     setCursors(next);
     void load(next.at(-1), true);
   }
+  if (props.present)
+    return props.present({
+      view,
+      page: cursors.length,
+      heading,
+      refresh: () => move([undefined]),
+      previous: () => {
+        if (cursors.length > 1) move(cursors.slice(0, -1));
+      },
+      next: () => {
+        if (view.kind === 'ready' && view.page.nextCursor)
+          move([...cursors, view.page.nextCursor]);
+      },
+      retry: () => void load(cursor, true),
+      renderReview: (item, controls) =>
+        props.renderSelected(item, (locked) => {
+          reportProtectedWork(locked);
+          controls.reportProtectedWork(locked);
+        }),
+    });
   return (
     <section
       className={`pending-decision-queue ${props.className}`}
