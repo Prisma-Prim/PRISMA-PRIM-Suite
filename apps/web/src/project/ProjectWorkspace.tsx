@@ -1310,6 +1310,7 @@ export function ProjectWorkspace({
                 actor={actor}
                 identity={identity}
                 projectId={selected.project.id}
+                projectTitle={selected.project.title}
                 onActorRevalidated={onActorRevalidated}
                 onCompanyContextRejected={onCompanyContextRejected}
                 onWorkspaceAccessRejected={onWorkspaceAccessRejected}

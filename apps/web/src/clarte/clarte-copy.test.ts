@@ -6,6 +6,7 @@ const clarteCopyModules = import.meta.glob('./**/*.copy.ts', { eager: true });
 
 it('has every Clarté frame and component text in the four interface languages', () => {
   expect(assertEveryLocalizedCatalogCovered(clarteCopyModules)).toEqual([
+    'certification/clarte-certification.copy.ts#clarteCertificationMessages',
     'clarte-frame.copy.ts#clarteFrameMessages',
     'components/clarte-components.copy.ts#clarteComponentMessages',
     'deals/deals.copy.ts#dealMessages',
