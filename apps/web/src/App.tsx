@@ -98,6 +98,10 @@ import type { RecentChangesProps } from './operational-home/RecentChanges';
 import type { CompanySummaryKind } from './operational-home/operational-home-response';
 import { useProductionShellContext } from './production-shell/useProductionShellContext';
 import { ClarteFrame } from './clarte/ClarteFrame';
+import {
+  ClarteAccessState,
+  type ClarteAccessStateKind,
+} from './clarte/entry/ClarteAccessState';
 import { useInterfacePreference } from './clarte/InterfacePreferenceProvider';
 import { ClarteInvoiceRecords } from './clarte/finance/ClarteInvoiceRecords';
 import { ClartePaymentObservations } from './clarte/finance/ClartePaymentObservations';
@@ -109,6 +113,16 @@ import { useClarteFinanceCopy } from './clarte/finance/clarte-finance.copy';
 import type { InvoiceContractTarget } from './invoice-record/InvoiceRecordContractLink';
 import { paymentEvidenceAuthority } from './payment-evidence/payment-evidence-authority';
 import { usePaymentEvidenceCopy } from './payment-evidence/payment-evidence.copy';
+
+/** The Clarté access state shown for each access status before the frame. */
+const clarteAccessStates = {
+  checking: 'checking',
+  forbidden: 'inactive',
+  error: 'error',
+} as const satisfies Record<
+  'checking' | 'forbidden' | 'error',
+  ClarteAccessStateKind
+>;
 
 type HomeScopeLifetime = {
   readonly scope: string;
@@ -498,7 +512,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   ]);
 
   if (!identity.loaded)
-    return (
+    return interfacePreference === 'clarte' ? (
+      <ClarteAccessState state="checking" />
+    ) : (
       <main className="production-access-state">
         <p role="status">{copy.checkingAccess}</p>
       </main>
@@ -507,6 +523,8 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   if (access.status === 'signed-out') return <>{identity.signedOutView}</>;
 
   if (access.status !== 'active') {
+    if (interfacePreference === 'clarte')
+      return <ClarteAccessState state={clarteAccessStates[access.status]} />;
     const messages: Record<'checking' | 'forbidden' | 'error', string> = {
       checking: copy.checkingAccess,
       forbidden: copy.inactiveAccess,

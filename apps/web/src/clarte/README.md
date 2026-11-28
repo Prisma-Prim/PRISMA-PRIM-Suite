@@ -84,6 +84,10 @@ Intercept every API read with `page.route('**/api/**', …)` and fictional data.
 
 Screens not migrated yet keep their own markup; zero-specificity rules in `clarte-frame.css` give their plain controls a quiet Clarté look until their slice replaces them.
 
+## Screens outside the frame
+
+The public welcome, the access states, the invitation entry and the ChatGPT callback window ([#1531](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1531)) come before the frame. Their owners keep the behaviour (`ApplicationRoot`, App's access states, `access-composition.tsx`, `WorkspaceInvitationEntry`, `WorkspaceInvitationAcceptance`, `ChatGptCallback`) and choose the `entry/` renderer when the preference is `clarte`. Each renders inside `ClartePage`: one card on a light page whose root carries `clarte-frame` for the tokens and base components and `clarte-page` instead of the frame's layout. The page offers the four interface languages and claims the language control, so the floating selector steps aside. `src/test/entry-interface.tsx` holds the steps that differ between the two interfaces on these screens.
+
 ## Fonts
 
 DM Sans and Manrope are served from `public/clarte/fonts` under the Clarté-owned families `Clarte DM Sans` and `Clarte Manrope`, with their SIL Open Font License notices. They are byte-identical copies of the unmodified variable fonts from [Google Fonts](https://github.com/google/fonts/tree/f2bd09badbc763d8757951d52deec29da27e85fb/ofl), commit `f2bd09badbc763d8757951d52deec29da27e85fb`:

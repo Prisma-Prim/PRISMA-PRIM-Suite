@@ -1,12 +1,38 @@
 import { useEffect, useState } from 'react';
+import { useInterfacePreference } from '../clarte/InterfacePreferenceProvider';
+import { ClarteChatGptCallback } from '../clarte/entry/ClarteChatGptCallback';
 import { useHarnessCopy } from './harness-copy';
+
+/** How handing the authorization code to the opening window stands. */
+export type ChatGptCallbackDelivery = 'waiting' | 'received' | 'failed';
 
 /** Authorization codes are transient; tokens never enter the browser. */
 export function ChatGptCallback() {
   const c = useHarnessCopy();
-  const [delivery, setDelivery] = useState<'waiting' | 'received' | 'failed'>(
-    'waiting',
+  const { preference } = useInterfacePreference();
+  const delivery = useChatGptCallbackDelivery();
+  if (preference === 'clarte')
+    return <ClarteChatGptCallback delivery={delivery} />;
+  return (
+    <main>
+      <p role="status">
+        {delivery === 'received'
+          ? c.callback
+          : delivery === 'waiting'
+            ? c.callbackWaiting
+            : c.callbackError}
+      </p>
+    </main>
   );
+}
+
+/**
+ * Hands the code of this callback URL to the window that opened it, once, and
+ * closes this window when that window confirms. The URL loses its parameters
+ * without a navigation.
+ */
+function useChatGptCallbackDelivery(): ChatGptCallbackDelivery {
+  const [delivery, setDelivery] = useState<ChatGptCallbackDelivery>('waiting');
   const [result] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return {
@@ -56,15 +82,5 @@ export function ChatGptCallback() {
       window.removeEventListener('message', receive);
     };
   }, [result]);
-  return (
-    <main>
-      <p role="status">
-        {delivery === 'received'
-          ? c.callback
-          : delivery === 'waiting'
-            ? c.callbackWaiting
-            : c.callbackError}
-      </p>
-    </main>
-  );
+  return delivery;
 }

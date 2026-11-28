@@ -10,6 +10,11 @@ import {
 } from './invitation-acceptance-intent';
 import { useInvitationAcceptanceCopy } from './invitation-acceptance.copy';
 import { isUuid, selectWorkspace } from './workspace-selection';
+import { useInterfacePreference } from '../clarte/InterfacePreferenceProvider';
+import {
+  ClarteInvitationAcceptance,
+  ClarteInvitationIdentityCheck,
+} from '../clarte/entry/ClarteInvitation';
 
 type AcceptanceState =
   'ready' | 'loading' | 'error' | 'denied' | 'unauthorized' | 'accepted';
@@ -22,6 +27,7 @@ export function WorkspaceInvitationAcceptance({
   intent: AcceptanceIntent;
 }) {
   const copy = useInvitationAcceptanceCopy();
+  const { preference } = useInterfacePreference();
   const lifetime = useRequestLifetime(
     identity,
     JSON.stringify([
@@ -123,7 +129,9 @@ export function WorkspaceInvitationAcceptance({
   }
 
   if (!identity.loaded)
-    return (
+    return preference === 'clarte' ? (
+      <ClarteInvitationIdentityCheck />
+    ) : (
       <main className="production-access-state">
         <p role="status">{copy.checking}</p>
       </main>
@@ -131,6 +139,14 @@ export function WorkspaceInvitationAcceptance({
   if (!identity.signedIn || state === 'unauthorized')
     return <>{identity.signedOutView}</>;
   if (state === 'accepted') return <App identity={identity} />;
+  if (preference === 'clarte')
+    return (
+      <ClarteInvitationAcceptance
+        step={state}
+        onAccept={() => void accept()}
+        onUseAnotherAccount={() => void identity.signOut()}
+      />
+    );
   return (
     <main className="production-access-state">
       <section className="production-content-surface invitation-entry">

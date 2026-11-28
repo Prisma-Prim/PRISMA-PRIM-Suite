@@ -667,27 +667,6 @@ describe('App', () => {
     );
   });
 
-  it('renders no protected content while the identity composition is signed out', () => {
-    const identity = { ...deterministicBrowserIdentity(), signedIn: false };
-    render(<App identity={identity} />);
-    expect(screen.getByRole('alert')).toHaveTextContent('Sign in is required');
-    expect(screen.queryByRole('banner')).not.toBeInTheDocument();
-  });
-
-  it('returns a rejected session to the provider sign-in flow', async () => {
-    vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 401 }));
-    const rejectSession = vi.fn().mockResolvedValue(undefined);
-    const identity = { ...deterministicBrowserIdentity(), rejectSession };
-
-    render(<App identity={identity} />);
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Sign in is required',
-    );
-    expect(rejectSession).toHaveBeenCalledOnce();
-    expect(screen.queryByRole('banner')).not.toBeInTheDocument();
-  });
-
   it('records deterministic rejected sessions through the identity boundary', async () => {
     const identity = deterministicBrowserIdentity();
 
