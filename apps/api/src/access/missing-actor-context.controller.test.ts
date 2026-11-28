@@ -1,3 +1,4 @@
+import { AffaireController } from '../affaire/affaire.controller.js';
 import { DossierAnalysisController } from '../dossier-analysis/dossier-analysis.controller.js';
 import { DossierHarnessController } from '../dossier-harness/harness.controller.js';
 import {
@@ -116,6 +117,7 @@ const actorControllers: readonly Type[] = [
   DossierHarnessController,
   AccessController,
   ActivityLogController,
+  AffaireController,
   CertificationController,
   ClientController,
   ClientDuplicateReviewController,
