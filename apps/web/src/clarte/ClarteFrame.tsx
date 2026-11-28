@@ -26,6 +26,8 @@ import {
   renderCurrentScreen,
   type ClarteDestinationId,
   type ClarteEntry,
+  type ClarteEntryViews,
+  type ClarteOnlyScreen,
   type ClarteScreen,
   type ClarteTabRenderer,
 } from './clarte-entries';
@@ -59,6 +61,11 @@ export type ClarteFrameProps = Readonly<{
   overview: ReactNode;
   /** Today's Clarté screen, once the Today slice composes one in App. */
   clarteOverview?: ReactNode;
+  /**
+   * Destinations only Clarté shows, composed by App with the same gates as
+   * its sections. They are selected, mounted and placed like sections.
+   */
+  clarteScreens?: readonly ClarteOnlyScreen[];
   /** The latest Activity Log changes, offered exactly where the current overview shows them. */
   recentChanges: RecentChangesProps | undefined;
   /** Retires a pending continuation when the user deliberately leaves its view. */
@@ -121,6 +128,7 @@ export function ClarteFrame({
   user,
   overview,
   clarteOverview,
+  clarteScreens = [],
   recentChanges,
   onNavigate,
   navigationProtected = false,
@@ -142,9 +150,15 @@ export function ClarteFrame({
   const returnFocus = useRef<HTMLElement | null>(null);
   const previousHash = useRef(window.location.hash);
   const url = new URL(location);
-  // URL fragments only select from the sections already authorized by App.
-  const entered = useRef(new Set<ApplicationSection['id']>());
-  const selected = sections.find((section) => `#${section.id}` === url.hash);
+  // URL fragments only select from the destinations already authorized by App.
+  const entered = useRef(new Set<ClarteDestinationId>());
+  const onlyClarte = clarteScreens.map((screen): ClarteScreen => ({
+    ...screen,
+    content: null,
+  }));
+  const selected = [...sections, ...onlyClarte].find(
+    (section) => `#${section.id}` === url.hash,
+  );
   if (selected) entered.current.add(selected.id);
 
   // The frame offers the interface language in its user menu while mounted.
@@ -299,10 +313,9 @@ export function ClarteFrame({
   };
   const screens = new Map<ClarteDestinationId, ClarteScreen>([
     ['overview', overviewScreen],
-    ...sections.map((section): [ClarteDestinationId, ClarteScreen] => [
-      section.id,
-      section,
-    ]),
+    ...[...sections, ...onlyClarte].map(
+      (section): [ClarteDestinationId, ClarteScreen] => [section.id, section],
+    ),
   ]);
   const entries = offeredEntries(screens, (entry) => copy.entry(entry.id));
   const selectedId: ClarteDestinationId = selected?.id ?? 'overview';
@@ -310,16 +323,32 @@ export function ClarteFrame({
     offered.tabs.some((tab) => tab.screen.id === selectedId),
   );
   const selectedScreen = selected ?? overviewScreen;
+  const screenDrawsViews = activeEntry?.entry.viewNavigation === 'screen';
   const renderers = new Map(
-    entries.flatMap((offered) =>
-      offered.tabs.map((tab): [ClarteDestinationId, ClarteTabRenderer] => [
-        tab.screen.id,
-        tab.render,
-      ]),
-    ),
+    entries.flatMap((offered) => {
+      const views: ClarteEntryViews = {
+        views: offered.tabs.map((tab) => ({
+          id: tab.screen.id,
+          label: tab.screen.label,
+          description: tab.screen.description,
+          href: `#${tab.screen.id}`,
+        })),
+        onNavigate: navigate,
+      };
+      return offered.tabs.map(
+        (tab): [ClarteDestinationId, (screen: ClarteScreen) => ReactNode] => [
+          tab.screen.id,
+          (screen) => tab.render(screen, views),
+        ],
+      );
+    }),
   );
-  const renderScreen = (screen: ClarteScreen) =>
-    (renderers.get(screen.id) ?? renderCurrentScreen)(screen);
+  const renderScreen = (screen: ClarteScreen) => {
+    const render = renderers.get(screen.id);
+    return render
+      ? render(screen)
+      : renderCurrentScreen(screen, { views: [], onNavigate: navigate });
+  };
   const jumpDestinations: ClarteJumpDestination[] = entries.flatMap((offered) =>
     offered.tabs.map((tab) => ({
       id: tab.screen.id,
@@ -498,20 +527,24 @@ export function ClarteFrame({
             <h1 id="clarte-screen-title" tabIndex={-1} ref={titleRef}>
               {activeEntry?.label ?? overviewScreen.label}
             </h1>
-            <p className="clarte-screen-description">
-              {selectedScreen.description}
-            </p>
-            {activeEntry && activeEntry.tabs.length > 1 && (
-              <ClarteTabs
-                label={copy.tabsLabel(activeEntry.label)}
-                tabs={activeEntry.tabs.map((tab) => ({
-                  href: `#${tab.screen.id}`,
-                  label: tab.screen.label,
-                  current: tab.screen.id === selectedId,
-                }))}
-                onNavigate={navigate}
-              />
+            {!screenDrawsViews && (
+              <p className="clarte-screen-description">
+                {selectedScreen.description}
+              </p>
             )}
+            {activeEntry &&
+              !screenDrawsViews &&
+              activeEntry.tabs.length > 1 && (
+                <ClarteTabs
+                  label={copy.tabsLabel(activeEntry.label)}
+                  tabs={activeEntry.tabs.map((tab) => ({
+                    href: `#${tab.screen.id}`,
+                    label: tab.screen.label,
+                    current: tab.screen.id === selectedId,
+                  }))}
+                  onNavigate={navigate}
+                />
+              )}
           </div>
           {!selected && (
             <div className="clarte-overview">
@@ -541,6 +574,19 @@ export function ClarteFrame({
                     {renderScreen(section)}
                   </SectionVisibility>
                 ) : null}
+              </div>
+            ))}
+            {onlyClarte.map((screen) => (
+              <div
+                className="clarte-section"
+                key={screen.id}
+                id={screen.id}
+                tabIndex={-1}
+                hidden={selected?.id !== screen.id}
+              >
+                <SectionVisibility value={selected?.id === screen.id}>
+                  {renderScreen(screen)}
+                </SectionVisibility>
               </div>
             ))}
           </div>

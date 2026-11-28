@@ -115,6 +115,11 @@ import { useClarteFinanceCopy } from './clarte/finance/clarte-finance.copy';
 import type { InvoiceContractTarget } from './invoice-record/InvoiceRecordContractLink';
 import { paymentEvidenceAuthority } from './payment-evidence/payment-evidence-authority';
 import { usePaymentEvidenceCopy } from './payment-evidence/payment-evidence.copy';
+import { ClarteActivityLog } from './clarte/settings/ClarteActivityLog';
+import { ClarteCompanies } from './clarte/settings/ClarteCompanies';
+import { ClarteInvitations } from './clarte/settings/ClarteInvitations';
+import { ClarteTeamAccess } from './clarte/settings/ClarteTeamAccess';
+import { useSettingsConsoleScreens } from './clarte/settings/settings-screens';
 
 type HomeScopeLifetime = {
   readonly scope: string;
@@ -126,6 +131,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const { locale } = useInterfaceLocale();
   // Presentation only: both interfaces receive the same composition.
   const { preference: interfacePreference } = useInterfacePreference();
+  const settingsScreens = useSettingsConsoleScreens();
   const invoiceCopy = useInvoiceRecordCopy();
   const modelCopy = useOfferModelCopy();
   const contractModelCopy = useContractModelCopy();
@@ -1380,6 +1386,20 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           }
         />
       ),
+      clarteContent: (
+        <ClarteTeamAccess
+          key={`access:${access.sessionGeneration}`}
+          actor={access.actor}
+          identity={identity}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContextAndRefreshActivity}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          onActivityRecorded={refreshActivityLog}
+          onClientAuthorityChanged={() =>
+            setClientAuthorityGeneration((generation) => generation + 1)
+          }
+        />
+      ),
     });
   if (access.actor.workspacePermissions.includes('company.manage'))
     sections.push({
@@ -1387,6 +1407,17 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ...prismeCopy.sections.companies,
       content: (
         <CompanyRegistration
+          key={`company-registration:${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
+          actor={access.actor}
+          identity={identity}
+          onCompanyContextRejected={rejectCompanyContext}
+          onActorRevalidated={acceptRevalidatedActor}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          onCompanyRegistered={includeCompany}
+        />
+      ),
+      clarteContent: (
+        <ClarteCompanies
           key={`company-registration:${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
           actor={access.actor}
           identity={identity}
@@ -1407,6 +1438,13 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         onOpenRequest={openRequest}
       />
     ),
+    clarteContent: (
+      <ClarteActivityLog
+        state={access.activityLog}
+        activeCompanyId={activeCompanyId}
+        onOpenRequest={openRequest}
+      />
+    ),
   });
   if (access.actor.workspacePermissions.includes('member.invite'))
     sections.push({
@@ -1414,6 +1452,15 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ...prismeCopy.sections.invitations,
       content: (
         <WorkspaceInvitations
+          key={`invitations:${access.sessionGeneration}`}
+          actor={access.actor}
+          identity={identity}
+          onActivityRecorded={refreshActivityLog}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
+      ),
+      clarteContent: (
+        <ClarteInvitations
           key={`invitations:${access.sessionGeneration}`}
           actor={access.actor}
           identity={identity}
@@ -1449,6 +1496,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           companyName: access.actor.activeCompany?.displayName,
         }}
         sections={sections}
+        clarteScreens={settingsScreens}
         onNavigate={retireMultiCompanyNavigation}
         navigationProtected={navigationProtected}
         companyContext={companyContext}

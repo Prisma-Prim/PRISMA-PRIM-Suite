@@ -1,198 +1,38 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
+import { useRef } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
-import {
-  useScopedOperation,
-  useScopedOperationGroup,
-} from '../api/use-scoped-operation';
-import { useWorkspaceRequestScope } from './use-workspace-request-scope';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import {
-  invitationPageResponse,
-  invitationResponse,
-  type InvitationPage,
-} from './workspace-invitation-response';
+  useWorkspaceInvitations,
+  type InvitationValidationErrors,
+} from './use-workspace-invitations';
 import { useWorkspaceInvitationsCopy } from './workspace-invitations.copy';
 import './workspace-invitations.css';
 
-type PageState =
-  | { status: 'loading' | 'error' | 'forbidden' }
-  | { status: 'ready'; page: InvitationPage };
-type Command = { path: string; body: string; key: string };
-type FieldValidationError = 'required' | 'invalid' | null;
-type ValidationErrors = {
-  email: FieldValidationError;
-  expiry: FieldValidationError;
-};
-
-const noValidationErrors = {
-  email: null,
-  expiry: null,
-} satisfies ValidationErrors;
-
-export function WorkspaceInvitations({
-  actor,
-  identity,
-  onActivityRecorded,
-  onWorkspaceAccessRejected,
-}: {
-  actor: ActorContext;
-  identity: BrowserIdentity;
-  onActivityRecorded: () => void | Promise<void>;
-  onWorkspaceAccessRejected: () => void | Promise<void>;
-}) {
+export function WorkspaceInvitations(
+  props: Readonly<{
+    actor: ActorContext;
+    identity: BrowserIdentity;
+    onActivityRecorded: () => void | Promise<void>;
+    onWorkspaceAccessRejected: () => void | Promise<void>;
+  }>,
+) {
   const copy = useWorkspaceInvitationsCopy();
   const { formatDateTime, formatNumber } = useInterfaceLocale();
-  const [state, setState] = useState<PageState>({ status: 'loading' });
-  const [email, setEmail] = useState('');
-  const [days, setDays] = useState('7');
-  const [validationErrors, setValidationErrors] =
-    useState<ValidationErrors>(noValidationErrors);
-  const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const [reviewing, setReviewing] = useState<string | null>(null);
-  const retry = useRef<Command | undefined>(undefined);
-  const { allowed, scope, captureRecovery } = useWorkspaceRequestScope({
-    actor,
-    identity,
-    permission: 'member.invite',
-  });
-  const listing = useScopedOperation(scope);
-  const commands = useScopedOperationGroup(scope);
+  const invitations = useWorkspaceInvitations(props);
+  const {
+    allowed,
+    state,
+    email,
+    days,
+    validationErrors,
+    busy,
+    failed,
+    reviewing,
+    load,
+  } = invitations;
   const emailInput = useRef<HTMLInputElement>(null);
   const expiryInput = useRef<HTMLInputElement>(null);
-  const callbacks = useRef({ onActivityRecorded, onWorkspaceAccessRejected });
-  useLayoutEffect(() => {
-    callbacks.current = { onActivityRecorded, onWorkspaceAccessRejected };
-  });
-
-  const load = useCallback(
-    async (after?: string) => {
-      if (!allowed || commands.isPending()) return;
-      const signal = listing.begin();
-      if (!signal) return;
-      const recoveryLive = captureRecovery();
-      setState({ status: 'loading' });
-      try {
-        const api = await createAuthenticatedApiClient(identity);
-        if (signal.aborted) return;
-        const result = await api.request(
-          `/workspace-invitations${after ? `?after=${encodeURIComponent(after)}` : ''}`,
-          { signal },
-        );
-        if (signal.aborted) return;
-        if (result.status === 'unauthorized' || result.status === 'forbidden') {
-          setState({ status: 'forbidden' });
-          retry.current = undefined;
-          if (recoveryLive()) {
-            if (result.status === 'unauthorized')
-              await identity.rejectSession();
-            else await callbacks.current.onWorkspaceAccessRejected();
-          }
-          return;
-        }
-        if (result.status !== 'ok')
-          throw new Error('Invitation listing failed.');
-        setState({
-          status: 'ready',
-          page: invitationPageResponse(result.value),
-        });
-      } catch {
-        if (!signal.aborted) setState({ status: 'error' });
-      }
-    },
-    [identity, allowed, commands, listing, captureRecovery],
-  );
-
-  useEffect(() => {
-    retry.current = undefined;
-    setEmail('');
-    setValidationErrors(noValidationErrors);
-    setReviewing(null);
-    setFailed(false);
-    setBusy(false);
-    if (allowed) void load();
-    return () => {
-      listing.retire();
-      commands.retire();
-    };
-  }, [scope, allowed, load, listing, commands]);
-
-  async function submit(path: string, body: object) {
-    if (!allowed || busy || state.status !== 'ready' || commands.isPending())
-      return;
-    const operation = commands.begin();
-    if (!operation) return;
-    const current = () => commands.isLive() && !operation.signal.aborted;
-    const recoveryLive = captureRecovery();
-    const serialized = JSON.stringify(body);
-    const command =
-      retry.current?.path === path && retry.current.body === serialized
-        ? retry.current
-        : { path, body: serialized, key: crypto.randomUUID() };
-    retry.current = command;
-    listing.retire();
-    setBusy(true);
-    setFailed(false);
-    try {
-      const api = await createAuthenticatedApiClient(identity);
-      if (!current()) return;
-      const result = await api.request(`/workspace-invitations${path}`, {
-        method: 'POST',
-        body: command.body,
-        headers: {
-          'content-type': 'application/json',
-          'idempotency-key': command.key,
-        },
-        signal: operation.signal,
-      });
-      if (!current()) return;
-      if (result.status === 'unauthorized' || result.status === 'forbidden') {
-        setState({ status: 'forbidden' });
-        retry.current = undefined;
-        if (recoveryLive()) {
-          if (result.status === 'unauthorized') await identity.rejectSession();
-          else await callbacks.current.onWorkspaceAccessRejected();
-        }
-        return;
-      }
-      if (result.status !== 'ok')
-        throw new Error('Invitation command unconfirmed.');
-      const invitation = invitationResponse(result.value);
-      setState((current) =>
-        current.status === 'ready'
-          ? {
-              status: 'ready',
-              page: {
-                ...current.page,
-                invitations: [
-                  invitation,
-                  ...current.page.invitations.filter(
-                    (entry) => entry.id !== invitation.id,
-                  ),
-                ],
-              },
-            }
-          : current,
-      );
-      retry.current = undefined;
-      setReviewing(null);
-      if (path === '') setEmail('');
-      await callbacks.current.onActivityRecorded();
-    } catch {
-      if (current()) setFailed(true);
-    } finally {
-      if (current()) setBusy(false);
-      operation.release();
-    }
-  }
 
   if (!allowed) return null;
   return (
@@ -236,8 +76,8 @@ export function WorkspaceInvitations({
                   : expiryElement.validity.valid
                     ? null
                     : 'invalid',
-              } satisfies ValidationErrors;
-              setValidationErrors(errors);
+              } satisfies InvitationValidationErrors;
+              invitations.setValidationErrors(errors);
               if (errors.email !== null) {
                 emailElement.focus();
                 return;
@@ -246,7 +86,7 @@ export function WorkspaceInvitations({
                 expiryElement.focus();
                 return;
               }
-              void submit('', { email, expiresInDays: Number(days) });
+              void invitations.invite();
             }}
           >
             <label htmlFor="invitation-email">{copy.email}</label>
@@ -264,14 +104,7 @@ export function WorkspaceInvitations({
                   ? undefined
                   : 'invitation-email-error'
               }
-              onChange={(event) => {
-                setEmail(event.target.value);
-                setValidationErrors((current) => ({
-                  ...current,
-                  email: null,
-                }));
-                retry.current = undefined;
-              }}
+              onChange={(event) => invitations.changeEmail(event.target.value)}
             />
             {validationErrors.email !== null && (
               <p
@@ -304,14 +137,7 @@ export function WorkspaceInvitations({
                   ? undefined
                   : 'invitation-days-error'
               }
-              onChange={(event) => {
-                setDays(event.target.value);
-                setValidationErrors((current) => ({
-                  ...current,
-                  expiry: null,
-                }));
-                retry.current = undefined;
-              }}
+              onChange={(event) => invitations.changeDays(event.target.value)}
             />
             {validationErrors.expiry !== null && (
               <p
@@ -364,7 +190,7 @@ export function WorkspaceInvitations({
                 <button
                   className="workspace-invitation-secondary-action"
                   disabled={busy}
-                  onClick={() => void submit(`/${invitation.id}/refresh`, {})}
+                  onClick={() => void invitations.checkStatus(invitation.id)}
                 >
                   {copy.refresh}
                 </button>
@@ -375,7 +201,9 @@ export function WorkspaceInvitations({
                     <button
                       className="workspace-invitation-danger-action"
                       disabled={busy}
-                      onClick={() => setReviewing(invitation.id)}
+                      onClick={() =>
+                        invitations.reviewRevocation(invitation.id)
+                      }
                     >
                       {copy.revoke}
                     </button>
@@ -386,16 +214,14 @@ export function WorkspaceInvitations({
                     <button
                       className="workspace-invitation-secondary-action"
                       disabled={busy}
-                      onClick={() => setReviewing(null)}
+                      onClick={() => invitations.reviewRevocation(null)}
                     >
                       {copy.cancel}
                     </button>
                     <button
                       className="workspace-invitation-danger-action"
                       disabled={busy}
-                      onClick={() =>
-                        void submit(`/${invitation.id}/revoke`, {})
-                      }
+                      onClick={() => void invitations.revoke(invitation.id)}
                     >
                       {copy.confirm}
                     </button>

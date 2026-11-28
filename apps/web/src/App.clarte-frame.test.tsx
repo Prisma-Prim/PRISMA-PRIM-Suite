@@ -411,10 +411,6 @@ describe('Clarté entries for actors with different grants', () => {
         ['My Tasks', 'Unassigned Tasks', 'Blocked Tasks', 'Team Tasks'],
       ],
       ['Improvement', ['Ideas', 'Operational risks']],
-      [
-        'Settings',
-        ['Companies', 'Team & access', 'Invitations', 'Activity Log'],
-      ],
     ];
     for (const [entry, tabs] of views) {
       openEntry(entry);
@@ -425,6 +421,22 @@ describe('Clarté entries for actors with different grants', () => {
         ),
       ).toEqual(tabs);
     }
+    openEntry('Settings');
+    expect(
+      screen.queryByRole('navigation', { name: 'Settings views' }),
+    ).not.toBeInTheDocument();
+    expect(
+      names(
+        screen.getByRole('navigation', { name: 'Settings sections' }),
+        'link',
+      ),
+    ).toEqual([
+      'Language and region',
+      'Companies',
+      'Team & access',
+      'Invitations',
+      'Activity Log',
+    ]);
     for (const single of ['Clients', 'Missions and audits', 'Documents']) {
       openEntry(single);
       expect(
@@ -444,6 +456,8 @@ describe('Clarté entries for actors with different grants', () => {
       'Working DocumentsDocuments',
       'IdeasImprovement',
       'Operational risksImprovement',
+      'All settingsSettings',
+      'Language and regionSettings',
       'CompaniesSettings',
       'Team & accessSettings',
       'InvitationsSettings',
@@ -471,10 +485,16 @@ describe('Clarté entries for actors with different grants', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: 'Settings' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Activity Log' })).toBeVisible();
+    expect(screen.getByRole('region', { name: 'All settings' })).toBeVisible();
     expect(
       screen.queryByRole('navigation', { name: 'Settings views' }),
     ).not.toBeInTheDocument();
+    expect(
+      names(
+        screen.getByRole('navigation', { name: 'Settings sections' }),
+        'link',
+      ),
+    ).toEqual(['Language and region', 'Activity Log']);
     const phone = screen.getByRole('navigation', { name: 'Quick navigation' });
     expect(names(phone, 'link')).toEqual(['Today', 'Documents']);
     fireEvent.click(within(phone).getByRole('button', { name: 'More' }));
@@ -487,6 +507,8 @@ describe('Clarté entries for actors with different grants', () => {
       'Today',
       'Clients',
       'Working DocumentsDocuments',
+      'All settingsSettings',
+      'Language and regionSettings',
       'Activity LogSettings',
     ]);
     const field = within(jump).getByRole('combobox', { name: 'Screen name' });
