@@ -13,6 +13,8 @@ const keys = [
   'stepPosition',
   'stepWaiting',
   'projectNamed',
+  'reviewItem',
+  'projectSources',
 ] as const;
 
 export type ClarteCertificationMessageKey = (typeof keys)[number];
@@ -37,6 +39,8 @@ export const clarteCertificationMessages = defineMessages(keys, {
     stepWaiting:
       'Această etapă se deschide după înregistrarea etapelor anterioare.',
     projectNamed: 'Proiect: {title}',
+    reviewItem: 'Element verificat',
+    projectSources: 'Surse din Proiect',
   },
   ru: {
     casesHeading: 'Дела по сертификации Проекта',
@@ -51,6 +55,8 @@ export const clarteCertificationMessages = defineMessages(keys, {
     stepPosition: 'Этап {position} из {total}',
     stepWaiting: 'Этот этап откроется после записи предыдущих этапов.',
     projectNamed: 'Проект: {title}',
+    reviewItem: 'Проверяемый пункт',
+    projectSources: 'Источники Проекта',
   },
   fr: {
     casesHeading: 'Dossiers de certification du Projet',
@@ -66,6 +72,8 @@ export const clarteCertificationMessages = defineMessages(keys, {
     stepWaiting:
       'Cette étape s’ouvre une fois les étapes précédentes enregistrées.',
     projectNamed: 'Projet : {title}',
+    reviewItem: 'Élément vérifié',
+    projectSources: 'Sources du Projet',
   },
   en: {
     casesHeading: 'Certification Cases of this Project',
@@ -80,6 +88,8 @@ export const clarteCertificationMessages = defineMessages(keys, {
     stepPosition: 'Step {position} of {total}',
     stepWaiting: 'This step opens once the earlier steps are recorded.',
     projectNamed: 'Project: {title}',
+    reviewItem: 'Review item',
+    projectSources: 'Project sources',
   },
 });
 

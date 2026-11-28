@@ -253,7 +253,11 @@ export function useCertificationClosing({
    * The closing steps in Case order; the Clarté Case page asks for one part
    * at a time, the current interface for all of them.
    */
-  function render(busy: boolean, part: ClosingPart | 'all' = 'all') {
+  function render(
+    busy: boolean,
+    part: ClosingPart | 'all' = 'all',
+    presentation?: { reviewItem: string },
+  ) {
     if (!view) return null;
     const caseView = view;
     /** Sends one closing-step command for the read Case, reusing an uncertain key. */
@@ -552,7 +556,10 @@ export function useCertificationClosing({
     ) {
       const titleId = `${prefix}-${kind}-title`;
       return (
-        <section aria-labelledby={titleId}>
+        <section
+          aria-labelledby={titleId}
+          className={presentation ? 'clarte-case-closing' : undefined}
+        >
           <h5 id={titleId}>{copy(title)}</h5>
           {record}
           {feedbackMessage(kind, closingFeedback[kind])}
@@ -643,6 +650,7 @@ export function useCertificationClosing({
             <DossierReviewView
               review={recorded.value}
               register={view.register}
+              itemColumn={presentation?.reviewItem}
             />
           </>
         ) : (
@@ -725,6 +733,7 @@ export function useCertificationClosing({
             <CertificationDecisionView
               decision={recorded.value}
               register={view.register}
+              layout={presentation ? 'table' : 'facts'}
             />
             {earlier.length > 0 && (
               <details className="certification-history">
@@ -740,6 +749,7 @@ export function useCertificationClosing({
                       <CertificationDecisionView
                         decision={entry.value}
                         register={view.register}
+                        layout={presentation ? 'table' : 'facts'}
                       />
                     </li>
                   ))}
@@ -862,6 +872,7 @@ export function useCertificationClosing({
             <CertificateDataView
               data={recorded.value}
               register={view.register}
+              layout={presentation ? 'table' : 'facts'}
             />
             {differences.length > 0 && (
               <CertificateTextDifferences differences={differences} />

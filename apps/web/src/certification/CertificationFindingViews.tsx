@@ -450,22 +450,34 @@ export function FindingHistory({
   register: DocumentRegister;
 }) {
   const copy = useCertificationCopy();
-  const title = useFindingRecordTitle();
   return (
     <details className="certification-history">
       <summary>
         {formatMessage(copy('findingHistory'), { sequence: finding.sequence })}
       </summary>
-      <ol>
-        {finding.records.map((record) => (
-          <li key={record.id}>
-            <strong>{title(record)}</strong>
-            <VersionAttribution version={record} />
-            <FindingRecordValues record={record} register={register} />
-          </li>
-        ))}
-      </ol>
+      <FindingHistoryRecords finding={finding} register={register} />
     </details>
+  );
+}
+
+export function FindingHistoryRecords({
+  finding,
+  register,
+}: {
+  finding: Finding;
+  register: DocumentRegister;
+}) {
+  const title = useFindingRecordTitle();
+  return (
+    <ol>
+      {finding.records.map((record) => (
+        <li key={record.id}>
+          <strong>{title(record)}</strong>
+          <VersionAttribution version={record} />
+          <FindingRecordValues record={record} register={register} />
+        </li>
+      ))}
+    </ol>
   );
 }
 

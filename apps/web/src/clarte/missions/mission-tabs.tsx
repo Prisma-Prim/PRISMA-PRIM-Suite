@@ -192,6 +192,24 @@ export const missionTabs = [
         identity={context.identity}
         projectId={context.project.id}
         projectTitle={context.project.title}
+        projectSources={
+          <>
+            <ProjectDocuments
+              actor={context.actor}
+              identity={context.identity}
+              projectId={context.project.id}
+              projectStatus={context.project.status}
+              browseOnly
+              onOpenDocument={context.onOpenDocument}
+            />
+            <ProjectPdfBundle
+              actor={context.actor}
+              identity={context.identity}
+              projectId={context.project.id}
+              originalClientId={context.project.clientAccountId}
+            />
+          </>
+        }
         {...recovery(context)}
       />
     ),

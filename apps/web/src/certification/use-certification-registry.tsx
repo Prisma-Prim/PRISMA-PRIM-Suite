@@ -1,5 +1,12 @@
 import { describedFeedbackId, unexpected } from './certification-command';
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import {
@@ -67,6 +74,8 @@ export interface CertificationWorkspaceProps {
   projectId: string;
   /** The Project's title, which the Clarté Case page names in its header. */
   projectTitle?: string;
+  /** The Project's existing source list and PDF selection, mounted in the Case documents register. */
+  projectSources?: ReactNode;
   onActorRevalidated?: (actor: ActorContext) => void | Promise<void>;
   onCompanyContextRejected?: (companyId: string) => void;
   onWorkspaceAccessRejected?: () => void | Promise<void>;

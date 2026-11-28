@@ -75,8 +75,10 @@ export type ExchangeRoles = {
 };
 
 export type ExchangePaging = 'idle' | 'loading' | 'stale' | 'error';
+export type ExchangeRegisterPart = 'exchanges' | 'deadlines' | 'reverification';
 
 export interface ExchangesRegionProps {
+  part?: ExchangeRegisterPart;
   paging: ExchangePaging;
   onLoadMore: () => void;
   onReload: () => void;
@@ -111,7 +113,7 @@ export interface ExchangesRegionProps {
  */
 export function ExchangesRegion(props: ExchangesRegionProps) {
   const t = useExchangeCopy();
-  const { formatDateTime } = useInterfaceLocale();
+  const { formatDate, formatDateTime } = useInterfaceLocale();
   const [filter, setFilter] = useState<ExchangeFilter>({
     direction: 'all',
     itemKind: 'all',
@@ -797,12 +799,9 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
     (finding) => finding.responseDueOn !== null,
   );
   const items = exchanges.reverification.items;
-  return (
-    <section aria-labelledby={titleId} className="certification-exchanges">
-      <h5 id={titleId}>{t('title')}</h5>
-      <p>{t('introduction')}</p>
-
-      <h6>{t('deadlinesTitle')}</h6>
+  const deadlines = (
+    <>
+      {!props.part && <h6>{t('deadlinesTitle')}</h6>}
       {exchanges.deadlines.set === null ? (
         <p>{t('noDeadlines')}</p>
       ) : (
@@ -822,7 +821,7 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
           {exchanges.deadlines.entries.map(deadline)}
         </ul>
       )}
-      {props.administration}
+      {!props.part && props.administration}
       <p>
         <strong>{t('derivedTitle')}</strong>
       </p>
@@ -831,7 +830,10 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
           <li key={finding.id}>
             {formatMessage(t('responseDue'), {
               sequence: finding.sequence,
-              date: finding.responseDueOn ?? '',
+              date:
+                props.part && finding.responseDueOn !== null
+                  ? formatDate(finding.responseDueOn)
+                  : (finding.responseDueOn ?? ''),
             })}
           </li>
         ))}
@@ -839,12 +841,17 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
           {exchanges.reverification.firstSurveillanceBy === null
             ? t('firstSurveillancePending')
             : formatMessage(t('firstSurveillance'), {
-                date: exchanges.reverification.firstSurveillanceBy,
+                date: props.part
+                  ? formatDate(exchanges.reverification.firstSurveillanceBy)
+                  : exchanges.reverification.firstSurveillanceBy,
               })}
         </li>
       </ul>
-
-      <h6>{t('registerTitle')}</h6>
+    </>
+  );
+  const register = (
+    <>
+      {!props.part && <h6>{t('registerTitle')}</h6>}
       {exchanges.records.length === 0 ? (
         <p>{t('empty')}</p>
       ) : (
@@ -970,8 +977,11 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
             </button>
           </div>
         ))}
-
-      <h6>{t('reverificationTitle')}</h6>
+    </>
+  );
+  const reverification = (
+    <>
+      {!props.part && <h6>{t('reverificationTitle')}</h6>}
       <p>{t('reverificationIntroduction')}</p>
       {items.length === 0 ? (
         <p>{t('noItems')}</p>
@@ -1000,6 +1010,30 @@ export function ExchangesRegion(props: ExchangesRegionProps) {
             </button>
           </div>
         ))}
+    </>
+  );
+  const parts = { deadlines, exchanges: register, reverification };
+  const headings = {
+    deadlines: t('deadlinesTitle'),
+    exchanges: t('registerTitle'),
+    reverification: t('reverificationTitle'),
+  };
+  if (props.part)
+    return (
+      <section
+        aria-label={headings[props.part]}
+        className="clarte-case-register"
+      >
+        {parts[props.part]}
+      </section>
+    );
+  return (
+    <section aria-labelledby={titleId} className="certification-exchanges">
+      <h5 id={titleId}>{t('title')}</h5>
+      <p>{t('introduction')}</p>
+      {deadlines}
+      {register}
+      {reverification}
     </section>
   );
 }

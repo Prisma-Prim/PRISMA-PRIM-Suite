@@ -52,6 +52,7 @@ import {
 } from './case-steps';
 import { useClarteCertificationCopy } from './clarte-certification.copy';
 import './clarte-certification.css';
+import './clarte-case-workflow.css';
 
 /** The step or register the Case page shows, pinned to the Case it was chosen on. */
 type Shown = Readonly<{
@@ -75,7 +76,11 @@ export function ClarteCertification(
       {registry.selectedId === undefined ? (
         <CaseList registry={registry} />
       ) : (
-        <CasePage registry={registry} projectTitle={props.projectTitle} />
+        <CasePage
+          registry={registry}
+          projectTitle={props.projectTitle}
+          projectSources={props.projectSources}
+        />
       )}
       {registry.opening ? (
         <OpenCasePanel registry={registry} />
@@ -297,9 +302,11 @@ function OpenCasePanel({ registry }: { registry: CertificationRegistry }) {
 function CasePage({
   registry,
   projectTitle,
+  projectSources,
 }: {
   registry: CertificationRegistry;
   projectTitle: string | undefined;
+  projectSources: ReactNode;
 }) {
   const { copy, busy, detail, caseView, selectedId, prefix, heading } =
     registry;
@@ -363,6 +370,7 @@ function CasePage({
           registry={registry}
           view={caseView}
           projectTitle={projectTitle}
+          projectSources={projectSources}
           onReload={reload}
           target={
             shown?.caseId === caseView.caseDetail.id
@@ -382,6 +390,7 @@ function CaseContent({
   registry,
   view,
   projectTitle,
+  projectSources,
   onReload,
   target,
   onChoose,
@@ -389,6 +398,7 @@ function CaseContent({
   registry: CertificationRegistry;
   view: CertificationCaseView;
   projectTitle: string | undefined;
+  projectSources: ReactNode;
   onReload: () => void;
   target: Shown['target'];
   onChoose: (target: Shown['target']) => void;
@@ -405,7 +415,7 @@ function CaseContent({
     step.covers.some((covered) => covered === detail.nextStep),
   );
   const download = registry.documents.registerPdfDownload(busy);
-  const context = { registry, view, busy };
+  const context = { registry, view, busy, reload: onReload, projectSources };
   const registerLabel = (label: CaseRegisterLabel) => {
     switch (label.catalogue) {
       case 'certification':
