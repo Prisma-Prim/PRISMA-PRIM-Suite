@@ -1,23 +1,33 @@
 import {
   act,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
 } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { holds } from './access/company-grants';
 import {
   companyGrants,
   withoutCompanyGrants,
 } from './access/company-grants.test-fixture';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import type { ClientRequest } from './commercial-intake/CommercialIntakeWorkspace';
+import type { InterfacePreference } from './clarte/interface-preference';
 import {
   buildClientRequest,
   requestListItemFor,
 } from './test/commercial-intake-responses';
+import { dealDetailFor, dealSummaryFor } from './test/deal-responses';
+import {
+  leaveRequestInInterface,
+  navigateInInterface,
+  openRequestInInterface,
+  publishAccessInInterface,
+} from './test/deal-interface';
+import { appInterfaces, renderInInterface } from './test/app-interface';
 import { changeValue } from './test/select-option';
 import { commercialIntakeCopy as copy } from './commercial-intake/commercial-intake.copy';
 
@@ -122,6 +132,17 @@ function transport() {
   let detailResponse = () => Promise.resolve(Response.json(detail));
   let listClient:
     { clientDisplayName: string; clientDossierId: string } | undefined;
+  // The deal reads of Clarté state the same Request as the server holds,
+  // with its Client only under the member's current Client read.
+  let stored: ClientRequest = detail;
+  const dealRequest = (): ClientRequest =>
+    holds(
+      currentActor.activeCompany,
+      'company_director_client_access',
+      'client.read',
+    )
+      ? stored
+      : { ...stored, clientReference: undefined };
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -160,6 +181,10 @@ function transport() {
         });
       if (path.endsWith('/commercial-intake/requests/request-1'))
         return detailResponse();
+      if (path.startsWith('/api/deals?'))
+        return Response.json({ items: [dealSummaryFor(dealRequest())] });
+      if (path === `/api/deals/${detail.initialOpportunity.id}`)
+        return Response.json(dealDetailFor(dealRequest()));
       if (
         path.endsWith(
           '/commercial-intake/requests/request-1/client-association',
@@ -190,6 +215,12 @@ function transport() {
       detailResponse = next;
     },
     loadAssociated() {
+      stored = {
+        ...detail,
+        version: 2,
+        clientAssociationStatus: 'visible',
+        clientReference: associated.request.clientReference,
+      };
       detailResponse = () => Promise.resolve(Response.json(associated.request));
       listClient = {
         clientDisplayName: client.displayName,
@@ -216,23 +247,20 @@ function transport() {
     },
   };
 }
+// Each test runs in both interfaces until the Clarté switch-over (#1548).
+let shownInterface: InterfacePreference = 'current';
 function navigate(label: string) {
-  fireEvent.click(
-    within(
-      screen.getByRole('navigation', { name: 'Primary navigation' }),
-    ).getByRole('link', { name: label }),
-  );
+  navigateInInterface(shownInterface, label);
 }
 async function openRequest() {
-  render(<App identity={deterministicBrowserIdentity()} />);
-  const button = await screen.findByRole('button', {
-    name: /^Saved Request/u,
+  renderInInterface(
+    shownInterface,
+    <App identity={deterministicBrowserIdentity()} />,
+  );
+  return openRequestInInterface(shownInterface, {
+    subject: detail.subject,
+    title: detail.initialOpportunity.title,
   });
-  // Settle initial detail effects before typing into the association form.
-  await act(async () => {
-    fireEvent.click(button);
-  });
-  return screen.findByRole('article', { name: detail.subject });
 }
 async function selectClient() {
   fireEvent.change(screen.getByLabelText(copy.clientSearch), {
@@ -262,257 +290,256 @@ async function revalidate() {
   navigate('Client Requests');
 }
 
+// An unrelated grant in another Company makes App refresh its authority.
 async function refreshAuthority() {
-  navigate('Team & access');
-  const access = await screen.findByRole('region', { name: 'Company access' });
-  changeValue(within(access).getByLabelText('Workspace member'), 'member-1');
-  changeValue(
-    within(access).getByLabelText('Company', { exact: true }),
-    otherCompany.id,
-  );
-  changeValue(
-    within(access).getByLabelText('Access bundle'),
-    'director-client',
-  );
-  fireEvent.click(within(access).getByRole('button', { name: 'Grant access' }));
-  await screen.findByText('Access granted. Server state refreshed.');
+  await publishAccessInInterface(shownInterface, {
+    operation: 'grant',
+    member: { workspaceMembershipId: 'member-1', displayName: 'Ada' },
+    company: otherCompany,
+    bundle: 'director-client',
+    bundleLabel: 'Company Director Client Access',
+  });
   navigate('Client Requests');
 }
 
-describe('Request Client association authority through App', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn(
-        (query: string) =>
-          ({
-            matches: true,
-            media: query,
-            onchange: null,
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            dispatchEvent: vi.fn(() => false),
-          }) satisfies MediaQueryList,
-      ),
-    );
-    window.history.replaceState(null, '', '/#requests');
-  });
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-    window.history.replaceState(null, '', '/');
-  });
-
-  it('withdraws loaded Client identity immediately on read loss while keeping Request evidence and the Opportunity draft', async () => {
-    const api = transport();
-    api.loadAssociated();
-    await openRequest();
-    expect(screen.getByText(client.displayName)).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: copy.editNextAction }));
-    changeValue(screen.getByLabelText(copy.nextAction), 'Preserved draft');
-    const freshProjection = deferredReply();
-    api.detailWith(freshProjection.response);
-    api.loseClientRead();
-    await revalidate();
-    expect(screen.queryByText(client.displayName)).not.toBeInTheDocument();
-    expect(screen.getByText(copy.clientAssociationHidden)).toBeVisible();
-    expect(screen.getByText(detail.originalText)).toBeVisible();
-    expect(screen.getByLabelText(copy.nextAction)).toHaveValue(
-      'Preserved draft',
-    );
-    expect(
-      screen.queryByRole('button', { name: copy.openClientDossier }),
-    ).not.toBeInTheDocument();
-    await freshProjection.settle({
-      ...associated.request,
-      clientAssociationStatus: 'hidden',
-      clientReference: undefined,
+describe.each(appInterfaces)(
+  'Request Client association authority through App in the %s interface',
+  (appInterface) => {
+    beforeEach(() => {
+      shownInterface = appInterface;
+      localStorage.clear();
+      sessionStorage.clear();
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn(
+          (query: string) =>
+            ({
+              matches: true,
+              media: query,
+              onchange: null,
+              addListener: vi.fn(),
+              removeListener: vi.fn(),
+              addEventListener: vi.fn(),
+              removeEventListener: vi.fn(),
+              dispatchEvent: vi.fn(() => false),
+            }) satisfies MediaQueryList,
+        ),
+      );
+      window.history.replaceState(null, '', '/#requests');
     });
-    expect(screen.queryByText(client.displayName)).not.toBeInTheDocument();
-    expect(screen.getByLabelText(copy.nextAction)).toHaveValue(
-      'Preserved draft',
-    );
-    fireEvent.click(
-      screen.getByRole('button', { name: copy.cancelNextAction }),
-    );
-    fireEvent.click(screen.getByRole('button', { name: copy.back }));
-    expect(
-      screen.queryByText(new RegExp(client.displayName)),
-    ).not.toBeInTheDocument();
-    expect(api.unexpected).toEqual([]);
-  });
-
-  it('withdraws loaded Client projections through the App authority signal until a fresh read settles', async () => {
-    const api = transport();
-    api.loadAssociated();
-    await openRequest();
-    const current = deferredReply();
-    api.detailWith(current.response);
-    await refreshAuthority();
-    expect(screen.queryByText(client.displayName)).not.toBeInTheDocument();
-    expect(screen.getByText(copy.clientAssociationHidden)).toBeVisible();
-    await current.settle({
-      ...associated.request,
-      clientReference: {
-        ...associated.request.clientReference,
-        displayName: 'Fresh authorized Client',
-      },
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+      window.history.replaceState(null, '', '/');
     });
-    expect(screen.getByText('Fresh authorized Client')).toBeVisible();
-    expect(api.unexpected).toEqual([]);
-  });
 
-  it('clears a selected Client on replacement read authority while preserving the Request and Opportunity draft', async () => {
-    const api = transport();
-    await openRequest();
-    await selectClient();
-    fireEvent.click(screen.getByRole('button', { name: copy.editNextAction }));
-    changeValue(
-      screen.getByLabelText(copy.nextAction),
-      'Preserved Opportunity draft',
-    );
-    api.replaceAssignment();
-    await revalidate();
-    expect(screen.getByRole('article', { name: detail.subject })).toBeVisible();
-    expect(screen.getByLabelText(copy.nextAction)).toHaveValue(
-      'Preserved Opportunity draft',
-    );
-    expect(screen.getByLabelText(copy.clientSearch)).toHaveValue('');
-    expect(
-      screen.queryByRole('combobox', { name: copy.existingClient }),
-    ).not.toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole('button', { name: copy.cancelNextAction }),
-    );
-    fireEvent.click(
-      screen.getByRole('button', { name: copy.confirmClientAssociation }),
-    );
-    await screen.findByText(copy.clientAssociationValidation);
-    expect(api.commands).toHaveLength(0);
-    expect(api.unexpected).toEqual([]);
-  });
-
-  it('retains exact uncertain retry under unchanged authority, then retires it on a still-readable replacement', async () => {
-    const api = transport();
-    await openRequest();
-    await selectClient();
-    fireEvent.click(
-      screen.getByRole('button', { name: copy.confirmClientAssociation }),
-    );
-    await screen.findByText(copy.clientAssociationUncertain);
-    fireEvent.click(
-      screen.getByRole('button', { name: copy.retryClientAssociation }),
-    );
-    await screen.findByText(copy.clientAssociationUncertain);
-    expect(api.commands).toHaveLength(2);
-    expect(api.commands[1]?.key).toBe(api.commands[0]?.key);
-    expect(api.commands[1]?.body).toBe(api.commands[0]?.body);
-    api.replaceAssignment();
-    await revalidate();
-    expect(
-      screen.queryByText(copy.clientAssociationUncertain),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: copy.retryClientAssociation }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByLabelText(copy.clientSearch)).toHaveValue('');
-    fireEvent.click(
-      screen.getByRole('button', { name: copy.confirmClientAssociation }),
-    );
-    await screen.findByText(copy.clientAssociationValidation);
-    expect(api.commands).toHaveLength(2);
-    api.commandWith(() => Promise.resolve(Response.json(associated)));
-    await selectClient();
-    fireEvent.click(
-      screen.getByRole('button', { name: copy.confirmClientAssociation }),
-    );
-    await screen.findByText(copy.clientAssociationSuccess);
-    expect(api.commands).toHaveLength(3);
-    expect(api.commands[2]?.key).toBeTruthy();
-    expect(api.commands[2]?.key).not.toBe(api.commands[0]?.key);
-    expect(api.unexpected).toEqual([]);
-  });
-
-  it.each<'search' | 'command'>(['search', 'command'])(
-    'aborts and suppresses a late %s response from the replaced Client assignment',
-    async (operation) => {
+    it('withdraws loaded Client identity immediately on read loss while keeping Request evidence and the Opportunity draft', async () => {
       const api = transport();
-      const late = deferredReply();
+      api.loadAssociated();
+      const request = await openRequest();
+      expect(within(request).getByText(client.displayName)).toBeVisible();
+      fireEvent.click(
+        screen.getByRole('button', { name: copy.editNextAction }),
+      );
+      changeValue(screen.getByLabelText(copy.nextAction), 'Preserved draft');
+      const freshProjection = deferredReply();
+      api.detailWith(freshProjection.response);
+      api.loseClientRead();
+      await revalidate();
+      expect(screen.queryByText(client.displayName)).not.toBeInTheDocument();
+      expect(screen.getByText(copy.clientAssociationHidden)).toBeVisible();
+      expect(screen.getByText(detail.originalText)).toBeVisible();
+      expect(screen.getByLabelText(copy.nextAction)).toHaveValue(
+        'Preserved draft',
+      );
+      expect(
+        screen.queryByRole('button', { name: copy.openClientDossier }),
+      ).not.toBeInTheDocument();
+      await freshProjection.settle({
+        ...associated.request,
+        clientAssociationStatus: 'hidden',
+        clientReference: undefined,
+      });
+      expect(screen.queryByText(client.displayName)).not.toBeInTheDocument();
+      expect(screen.getByLabelText(copy.nextAction)).toHaveValue(
+        'Preserved draft',
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: copy.cancelNextAction }),
+      );
+      leaveRequestInInterface(appInterface);
+      expect(
+        screen.queryByText(new RegExp(client.displayName)),
+      ).not.toBeInTheDocument();
+      expect(api.unexpected).toEqual([]);
+    });
+
+    it('withdraws loaded Client projections through the App authority signal until a fresh read settles', async () => {
+      const api = transport();
+      api.loadAssociated();
       await openRequest();
-      if (operation === 'command') {
-        await selectClient();
-        api.commandWith(late.response);
-        fireEvent.click(
-          screen.getByRole('button', { name: copy.confirmClientAssociation }),
-        );
-        await waitFor(() => expect(api.commands).toHaveLength(1));
-      } else {
-        api.searchWith(late.response);
-        changeValue(screen.getByLabelText(copy.clientSearch), 'Selected');
-        fireEvent.click(
-          screen.getByRole('button', { name: copy.searchClients }),
-        );
-        await waitFor(() => expect(api.searches).toHaveLength(1));
-      }
-      const signal =
-        operation === 'command' ? api.commands[0]?.signal : api.searches[0];
+      const current = deferredReply();
+      api.detailWith(current.response);
+      await refreshAuthority();
+      // The Request detail withdraws its own Client projection; Clarté's
+      // deal header shows what its own fresh deal read returned.
+      const request = screen.getByRole('article', { name: detail.subject });
+      expect(
+        within(request).queryByText(client.displayName),
+      ).not.toBeInTheDocument();
+      expect(
+        within(request).getByText(copy.clientAssociationHidden),
+      ).toBeVisible();
+      await current.settle({
+        ...associated.request,
+        clientReference: {
+          ...associated.request.clientReference,
+          displayName: 'Fresh authorized Client',
+        },
+      });
+      expect(
+        within(request).getByText('Fresh authorized Client'),
+      ).toBeVisible();
+      expect(api.unexpected).toEqual([]);
+    });
+
+    it('clears a selected Client on replacement read authority while preserving the Request and Opportunity draft', async () => {
+      const api = transport();
+      await openRequest();
+      await selectClient();
+      fireEvent.click(
+        screen.getByRole('button', { name: copy.editNextAction }),
+      );
+      changeValue(
+        screen.getByLabelText(copy.nextAction),
+        'Preserved Opportunity draft',
+      );
       api.replaceAssignment();
       await revalidate();
-      expect(signal?.aborted).toBe(true);
-      await late.settle(operation === 'command' ? associated : [client]);
       expect(
         screen.getByRole('article', { name: detail.subject }),
       ).toBeVisible();
-      expect(screen.getByText(copy.noClientAssociated)).toBeVisible();
+      expect(screen.getByLabelText(copy.nextAction)).toHaveValue(
+        'Preserved Opportunity draft',
+      );
       expect(screen.getByLabelText(copy.clientSearch)).toHaveValue('');
       expect(
         screen.queryByRole('combobox', { name: copy.existingClient }),
       ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText(copy.clientAssociationSuccess),
-      ).not.toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: copy.cancelNextAction }),
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: copy.confirmClientAssociation }),
+      );
+      await screen.findByText(copy.clientAssociationValidation);
+      expect(api.commands).toHaveLength(0);
+      expect(api.unexpected).toEqual([]);
+    });
+
+    it('retains exact uncertain retry under unchanged authority, then retires it on a still-readable replacement', async () => {
+      const api = transport();
+      await openRequest();
+      await selectClient();
+      fireEvent.click(
+        screen.getByRole('button', { name: copy.confirmClientAssociation }),
+      );
+      await screen.findByText(copy.clientAssociationUncertain);
+      fireEvent.click(
+        screen.getByRole('button', { name: copy.retryClientAssociation }),
+      );
+      await screen.findByText(copy.clientAssociationUncertain);
+      expect(api.commands).toHaveLength(2);
+      expect(api.commands[1]?.key).toBe(api.commands[0]?.key);
+      expect(api.commands[1]?.body).toBe(api.commands[0]?.body);
+      api.replaceAssignment();
+      await revalidate();
       expect(
         screen.queryByText(copy.clientAssociationUncertain),
       ).not.toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: copy.editNextAction }),
-      ).toBeEnabled();
+        screen.queryByRole('button', { name: copy.retryClientAssociation }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByLabelText(copy.clientSearch)).toHaveValue('');
+      fireEvent.click(
+        screen.getByRole('button', { name: copy.confirmClientAssociation }),
+      );
+      await screen.findByText(copy.clientAssociationValidation);
+      expect(api.commands).toHaveLength(2);
+      api.commandWith(() => Promise.resolve(Response.json(associated)));
+      await selectClient();
+      fireEvent.click(
+        screen.getByRole('button', { name: copy.confirmClientAssociation }),
+      );
+      await screen.findByText(copy.clientAssociationSuccess);
+      expect(api.commands).toHaveLength(3);
+      expect(api.commands[2]?.key).toBeTruthy();
+      expect(api.commands[2]?.key).not.toBe(api.commands[0]?.key);
       expect(api.unexpected).toEqual([]);
-    },
-  );
-
-  it('retires selection through the existing App authority signal without replacing the Requests workspace', async () => {
-    const api = transport();
-    await openRequest();
-    await selectClient();
-    navigate('Team & access');
-    const access = await screen.findByRole('region', {
-      name: 'Company access',
     });
-    changeValue(within(access).getByLabelText('Workspace member'), 'member-1');
-    changeValue(
-      within(access).getByLabelText('Company', { exact: true }),
-      otherCompany.id,
+
+    it.each<'search' | 'command'>(['search', 'command'])(
+      'aborts and suppresses a late %s response from the replaced Client assignment',
+      async (operation) => {
+        const api = transport();
+        const late = deferredReply();
+        await openRequest();
+        if (operation === 'command') {
+          await selectClient();
+          api.commandWith(late.response);
+          fireEvent.click(
+            screen.getByRole('button', { name: copy.confirmClientAssociation }),
+          );
+          await waitFor(() => expect(api.commands).toHaveLength(1));
+        } else {
+          api.searchWith(late.response);
+          changeValue(screen.getByLabelText(copy.clientSearch), 'Selected');
+          fireEvent.click(
+            screen.getByRole('button', { name: copy.searchClients }),
+          );
+          await waitFor(() => expect(api.searches).toHaveLength(1));
+        }
+        const signal =
+          operation === 'command' ? api.commands[0]?.signal : api.searches[0];
+        api.replaceAssignment();
+        await revalidate();
+        expect(signal?.aborted).toBe(true);
+        await late.settle(operation === 'command' ? associated : [client]);
+        expect(
+          screen.getByRole('article', { name: detail.subject }),
+        ).toBeVisible();
+        expect(screen.getByText(copy.noClientAssociated)).toBeVisible();
+        expect(screen.getByLabelText(copy.clientSearch)).toHaveValue('');
+        expect(
+          screen.queryByRole('combobox', { name: copy.existingClient }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(copy.clientAssociationSuccess),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(copy.clientAssociationUncertain),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: copy.editNextAction }),
+        ).toBeEnabled();
+        expect(api.unexpected).toEqual([]);
+      },
     );
-    changeValue(
-      within(access).getByLabelText('Access bundle'),
-      'director-client',
-    );
-    fireEvent.click(
-      within(access).getByRole('button', { name: 'Grant access' }),
-    );
-    await screen.findByText('Access granted. Server state refreshed.');
-    navigate('Client Requests');
-    expect(screen.getByRole('article', { name: detail.subject })).toBeVisible();
-    expect(screen.getByLabelText(copy.clientSearch)).toHaveValue('');
-    expect(
-      screen.queryByRole('combobox', { name: copy.existingClient }),
-    ).not.toBeInTheDocument();
-    expect(api.commands).toHaveLength(0);
-    expect(api.unexpected).toEqual([]);
-  });
-});
+
+    it('retires selection through the existing App authority signal without replacing the Requests workspace', async () => {
+      const api = transport();
+      await openRequest();
+      await selectClient();
+      await refreshAuthority();
+      expect(
+        screen.getByRole('article', { name: detail.subject }),
+      ).toBeVisible();
+      expect(screen.getByLabelText(copy.clientSearch)).toHaveValue('');
+      expect(
+        screen.queryByRole('combobox', { name: copy.existingClient }),
+      ).not.toBeInTheDocument();
+      expect(api.commands).toHaveLength(0);
+      expect(api.unexpected).toEqual([]);
+    });
+  },
+);

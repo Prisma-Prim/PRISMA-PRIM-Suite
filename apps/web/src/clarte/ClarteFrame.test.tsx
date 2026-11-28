@@ -123,7 +123,7 @@ describe('Clarté entries and tabs', () => {
 
     expect(linkNames(primaryNavigation())).toEqual([
       'Today',
-      'Affaires',
+      'Deals',
       'Clients',
       'Missions and audits',
       'Tasks',
@@ -133,7 +133,7 @@ describe('Clarté entries and tabs', () => {
       'Settings',
     ]);
     const expected: ReadonlyArray<readonly [string, readonly string[]]> = [
-      ['Affaires', ['Client Requests']],
+      ['Deals', ['Client Requests']],
       ['Clients', ['Clients']],
       ['Missions and audits', ['Projects']],
       [
@@ -438,7 +438,7 @@ describe('Clarté navigation', () => {
       within(phone)
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['Today', 'Affaires', 'Tasks', 'Documents']);
+    ).toEqual(['Today', 'Deals', 'Tasks', 'Documents']);
     fireEvent.click(within(phone).getByRole('button', { name: 'More' }));
     const more = screen.getByRole('group', { name: 'More screens' });
     expect(linkNames(more)).toEqual([

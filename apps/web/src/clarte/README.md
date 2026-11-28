@@ -104,13 +104,26 @@ await openClarteEntry(page, 'Tasks'); // left menu, or bottom bar and More on ph
 
 Intercept every API read with `page.route('**/api/**', …)` and fictional data. Save screenshots through `test.info().outputPath(...)` and inspect the 1440 px and 390 px ones. `clarte-frame.acceptance.spec.ts` holds the frame journey; add your area's journey as `e2e/clarte-<area>.acceptance.spec.ts` so parallel slices never edit one spec file.
 
+## Deals
+
+[#1533](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1533) replaces the Deals tab with `deals/ClarteDeals.tsx`: the list and board of deals and one deal page. A deal is a read-side view of one Opportunity, never a stored object. The API module `apps/api/src/deal/` serves `GET /api/deals` (Commercial Intake's page, views and cursor, with each row's current stage) and `GET /api/deals/:opportunityId` (the facts of each stage from its owner). `deal-thread.ts` there holds the stage rule; a stage its owner refuses is "not available", whether or not records exist.
+
+The page shows the header, the seven-stage thread, the Next step card and the selected stage's panel from the registry `dealStagePanels` in `deals/stage-panels.tsx`. To give a stage its commands (Costing and Offer in #1534, Contract and Delivery in #1535):
+
+1. Write the panel under `deals/`, typed `DealStagePanel`. It receives the deal, its stage's `view` and the `context` App composed (Actor, identity, rejection and revalidation callbacks, navigation). Narrow `view` to your stage; the page shows a stage that is not available itself.
+2. Reuse the owner's existing transports and components, and call `context.onDealChanged()` after each confirmed change, so the thread and the Next step card reread.
+3. Replace only your stage's entry in `dealStagePanels`.
+4. Until your stage can show an exact version, an Activity Log event that names an Offer or agreement version opens in the current Request screens (`CommercialIntakeWorkspace`) inside the Deals screen, as `ClarteDeals` does today ([#1570](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1570)); move that target to your panel once it opens the named version.
+
+The Request stage embeds Commercial Intake's own detail through `CommercialIntakeWorkspace`'s `requestStage` presentation, so drafts, retries and receipts stay the existing ones. `src/test/deal-responses.ts` builds the deal reads from a Request fixture, and `src/test/deal-interface.tsx` holds the steps of Request App tests that differ between the two interfaces.
+
 ## Today
 
 [#1532](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1532) renders Today with `today/ClarteToday.tsx`, passed as `clarteOverview`. It renders the existing owners, each once: the Company summary through `useCompanySummary` (shared with the current overview), the three decision queues through their `present` prop, `MyAttention`, `UpcomingDeadlines`, `OverdueTasksPanel`, `MultiCompanySummary`, the Request capture through `CommercialIntakeWorkspace`'s `requestCapture` presentation and the direct Contract through `ContractPanel`. A decision opens its existing review in a side panel. `today/work-order.ts` documents the order of work in order; it presents the lists the server returned and adds no priority rule. `today/clarte-today.test-fixture.ts` is the fictional API of the App tests and the `clarte-today` journey.
 
 ## Tokens and base components
 
-`clarte-tokens.css` defines the tokens on `.clarte-frame`: surfaces and ink (`--clarte-bg`, `--clarte-surface`, `--clarte-ink`, `--clarte-muted`, `--clarte-line`), the single accent (`--clarte-accent`, `--clarte-accent-soft`, `--clarte-accent-text` for text on soft accent), status tones (`--clarte-success`, `--clarte-warning`, `--clarte-danger`, `--clarte-info` and their `-soft`), radii, shadows, `--clarte-touch-target` (44 px on phone) and the fonts `--clarte-font-body` and `--clarte-font-heading`. The prism sequence `--clarte-stage-1` to `--clarte-stage-7` is reserved for the seven affaire stages.
+`clarte-tokens.css` defines the tokens on `.clarte-frame`: surfaces and ink (`--clarte-bg`, `--clarte-surface`, `--clarte-ink`, `--clarte-muted`, `--clarte-line`), the single accent (`--clarte-accent`, `--clarte-accent-soft`, `--clarte-accent-text` for text on soft accent), status tones (`--clarte-success`, `--clarte-warning`, `--clarte-danger`, `--clarte-info` and their `-soft`), radii, shadows, `--clarte-touch-target` (44 px on phone) and the fonts `--clarte-font-body` and `--clarte-font-heading`. The prism sequence `--clarte-stage-1` to `--clarte-stage-7` is reserved for the seven deal stages.
 
 | Need                      | Use                                                                                  |
 | ------------------------- | ------------------------------------------------------------------------------------ |

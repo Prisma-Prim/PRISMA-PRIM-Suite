@@ -177,6 +177,24 @@ type RequestedRequest = {
   requestId: number;
 };
 
+/** How the Clarté deal page embeds one Request's detail. */
+export type RequestStagePresentation = {
+  loadingLabel: string;
+  /**
+   * A new object opens the named Opportunity editor once the detail is shown
+   * and no other edit is open; `requestId` numbers each request.
+   */
+  command?: { kind: 'next-action' | 'outcome'; requestId: number };
+  /** After a confirmed change of the Request, its Opportunity or follow-up. */
+  onChanged: () => void;
+  /**
+   * While true, a command is pending or uncertain, or the follow-up panel
+   * owns protected work: leaving the Request would discard its retry, as the
+   * workspace's own Back button would.
+   */
+  onProtectedChange: (active: boolean) => void;
+};
+
 /**
  * How the Clarté Today quick action (#1532) embeds the capture: only the
  * form, with the same validation, idempotent retry, access recovery and
@@ -353,6 +371,7 @@ export function CommercialIntakeWorkspace({
   onOpenClientDossier,
   requestedRequest,
   onOpenProject,
+  requestStage,
   requestCapture,
 }: {
   actor: ActorContext;
@@ -375,6 +394,14 @@ export function CommercialIntakeWorkspace({
    */
   requestedRequest?: RequestedRequest;
   onOpenProject?: (projectId: string) => void;
+  /**
+   * The Clarté deal page's Request stage (#1533): only the requested
+   * Request's detail and its Opportunity commands, with the same transports,
+   * drafts, retries and receipts. It reads no list and offers no capture,
+   * Sales Stage settings or later-stage panel. Absent, the workspace renders
+   * the current interface's Requests section unchanged.
+   */
+  requestStage?: RequestStagePresentation;
   /**
    * The capture alone, for the Clarté Today quick action (#1532). Absent,
    * the workspace renders the current interface's Requests section.
@@ -937,11 +964,13 @@ export function CommercialIntakeWorkspace({
     [identity],
   );
 
-  // The capture alone shows no list, so it never reads one.
+  // The Request stage shows one requested detail and the capture alone shows
+  // only its form: neither reads the list.
   const capturesOnly = requestCapture !== undefined;
+  const listsRequests = requestStage === undefined && !capturesOnly;
   const loadRequests = useCallback(
     async (companyContextId: string, cursor?: string): Promise<void> => {
-      if (capturesOnly) return;
+      if (!listsRequests) return;
       const operation = listReads.beginLatest();
       if (!operation) return;
       // An authority or identity change retires the old page, including late
@@ -996,7 +1025,7 @@ export function CommercialIntakeWorkspace({
         operation.release();
       }
     },
-    [handleAccess, request, listReads, capturesOnly],
+    [handleAccess, request, listReads, listsRequests],
   );
 
   // Confirmation refreshes the current projection, independent of its old reader.
@@ -1344,12 +1373,58 @@ export function CommercialIntakeWorkspace({
   }, [responsibleAuthority]);
 
   async function refreshRecordedActivity(): Promise<void> {
+    requestStage?.onChanged();
     try {
       await onActivityRecorded();
     } catch {
       // A failed UI refresh cannot unconfirm the server's committed receipt.
     }
   }
+
+  // The Request stage's owner rereads its deal when a follow-up edit ends,
+  // saved or not; the follow-up panel owns its own command and receipt.
+  const stageChanged = useRef(requestStage?.onChanged);
+  const stageProtected = useRef(requestStage?.onProtectedChange);
+  useLayoutEffect(() => {
+    stageChanged.current = requestStage?.onChanged;
+    stageProtected.current = requestStage?.onProtectedChange;
+  });
+  // The same condition that disables the workspace's own Back button.
+  const leavingDiscardsWork = pending || followUpProtected;
+  useEffect(() => {
+    stageProtected.current?.(leavingDiscardsWork);
+  }, [leavingDiscardsWork]);
+  const followUpWasProtected = useRef(false);
+  useEffect(() => {
+    if (followUpWasProtected.current && !followUpProtected)
+      stageChanged.current?.();
+    followUpWasProtected.current = followUpProtected;
+  }, [followUpProtected]);
+
+  // The deal page's Next step card asks for one Opportunity editor. It
+  // opens like its own button would, and never over another open edit.
+  const stageCommand = requestStage?.command;
+  const consumedStageCommand = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (
+      !stageCommand ||
+      stageCommand.requestId === consumedStageCommand.current ||
+      !selected ||
+      opportunityEditInProgress.current
+    )
+      return;
+    consumedStageCommand.current = stageCommand.requestId;
+    setFeedback('');
+    if (stageCommand.kind === 'next-action' && canEditNextAction)
+      setNextActionEdit({
+        kind: 'editing',
+        draft: selected.request.initialOpportunity.nextAction,
+      });
+    if (stageCommand.kind === 'outcome' && canChangeOutcome) {
+      outcomeRetry.current = undefined;
+      setOutcomeEdit({ kind: 'editing', draft: EMPTY_OUTCOME_DRAFT });
+    }
+  }, [stageCommand, selected, canEditNextAction, canChangeOutcome]);
 
   // The embedded capture reports the same hold the Requests section applies.
   const captureCallbacks = useRef(requestCapture);
@@ -2494,6 +2569,291 @@ export function CommercialIntakeWorkspace({
       ? restriction
       : undefined;
   const dossierTarget = visibleRequest?.clientReference?.currentClientId;
+  const feedbackMessage = feedback ? (
+    <p role="alert">
+      {typeof feedback === 'string'
+        ? feedback
+        : 'outcomeMessage' in feedback
+          ? outcomeCopy[feedback.outcomeMessage]
+          : copy[feedback.requestMessage]}
+    </p>
+  ) : null;
+  const heldRequest =
+    requestToOpen && protectedWork ? (
+      <p role="status" className="commercial-intake-held-request">
+        {protectedWork === 'capture'
+          ? copy.requestedAfterCapture
+          : protectedWork === 'client-association'
+            ? copy.requestedAfterClientAssociation
+            : protectedWork === 'responsible-edit'
+              ? copy.requestedAfterResponsibleEdit
+              : protectedWork === 'outcome-edit'
+                ? outcomeCopy.requestedAfterOutcomeEdit
+                : protectedWork === 'stage-edit'
+                  ? stageCopy('requestedAfterStageEdit')
+                  : protectedWork === 'follow-up-edit'
+                    ? followUpCopy('requestedAfterFollowUpEdit')
+                    : copy.requestedAfterNextActionEdit}
+      </p>
+    ) : null;
+  const detail =
+    selected && visibleRequest ? (
+      <RequestDetail
+        embedded={requestStage !== undefined}
+        onOpenProject={onOpenProject}
+        actor={actor}
+        identity={identity}
+        request={visibleRequest}
+        requestedFocusId={
+          requestedRequest?.focusTarget === 'request-detail' &&
+          requestedRequest.clientRequestId === visibleRequest.id &&
+          requestedRequest.version === undefined
+            ? requestedRequest.requestId
+            : undefined
+        }
+        requestedVersion={
+          requestedVersion?.clientRequestId === visibleRequest.id
+            ? requestedVersion
+            : undefined
+        }
+        clientAuthority={clientReadAuthority}
+        onBack={closeDetail}
+        pending={pending || followUpProtected}
+        onOpenClientDossier={
+          dossierTarget && onOpenClientDossier
+            ? () => onOpenClientDossier(dossierTarget)
+            : undefined
+        }
+        responsible={
+          canChangeResponsible
+            ? {
+                edit: responsibleEdit,
+                current: selected.request.initialOpportunity.responsibleActor,
+                blocked:
+                  followUpProtected ||
+                  nextActionEdit.kind !== 'idle' ||
+                  outcomeEdit.kind !== 'idle' ||
+                  stageEdit.kind !== 'idle',
+                onOpen: () => void openResponsibleEditor(),
+                onSelect: (workspaceMembershipId) =>
+                  setResponsibleEdit((current) =>
+                    current.kind === 'choosing'
+                      ? { ...current, selection: workspaceMembershipId }
+                      : current,
+                  ),
+                onSave: () => void saveResponsible(),
+                onCancel: () => {
+                  responsibleMembers.retire();
+                  setResponsibleEdit({ kind: 'idle' });
+                  responsibleRetry.current = undefined;
+                  setFeedback('');
+                },
+                onReloadList: () => void openResponsibleEditor(),
+                onReloadRequest: () =>
+                  void selectRequest(selected.request.id, true),
+              }
+            : undefined
+        }
+        nextAction={
+          canEditNextAction
+            ? {
+                edit: nextActionEdit,
+                blocked:
+                  followUpProtected ||
+                  responsibleEdit.kind !== 'idle' ||
+                  outcomeEdit.kind !== 'idle' ||
+                  stageEdit.kind !== 'idle',
+                onEdit: () => {
+                  setFeedback('');
+                  setNextActionEdit({
+                    kind: 'editing',
+                    draft: selected.request.initialOpportunity.nextAction,
+                  });
+                },
+                onDraftChange: (draft) =>
+                  setNextActionEdit((current) =>
+                    current.kind === 'editing'
+                      ? { ...current, draft }
+                      : current,
+                  ),
+                onSave: () => void saveNextAction(),
+                onCancel: () => {
+                  setNextActionEdit({ kind: 'idle' });
+                  nextActionRetry.current = undefined;
+                  setFeedback('');
+                },
+                onReload: () => void selectRequest(selected.request.id, true),
+              }
+            : undefined
+        }
+        outcome={
+          canChangeOutcome
+            ? {
+                edit: outcomeEdit,
+                current: selected.request.initialOpportunity.status,
+                blocked:
+                  followUpProtected ||
+                  nextActionEdit.kind !== 'idle' ||
+                  responsibleEdit.kind !== 'idle' ||
+                  stageEdit.kind !== 'idle',
+                onOpen: () => {
+                  setFeedback('');
+                  outcomeRetry.current = undefined;
+                  setOutcomeEdit({
+                    kind: 'editing',
+                    draft: EMPTY_OUTCOME_DRAFT,
+                  });
+                },
+                onDraftChange: (draft) =>
+                  setOutcomeEdit((current) =>
+                    current.kind === 'editing'
+                      ? { ...current, draft }
+                      : current,
+                  ),
+                onSave: () => void saveOutcome(),
+                onCancel: () => {
+                  setOutcomeEdit({ kind: 'idle' });
+                  outcomeRetry.current = undefined;
+                  setFeedback('');
+                },
+                onReload: () => void selectRequest(selected.request.id, true),
+              }
+            : undefined
+        }
+        loadOlderOutcomeHistory={loadOlderOutcomeHistory}
+        stage={
+          canSetStage
+            ? {
+                edit: stageEdit,
+                blocked:
+                  followUpProtected ||
+                  nextActionEdit.kind !== 'idle' ||
+                  responsibleEdit.kind !== 'idle' ||
+                  outcomeEdit.kind !== 'idle',
+                onOpen: () => void openStageEditor(),
+                onSelect: (selection) =>
+                  setStageEdit((current) =>
+                    current.kind === 'choosing'
+                      ? { ...current, selection }
+                      : current,
+                  ),
+                onSave: () => void saveStage(),
+                onCancel: () => {
+                  stageChoices.retire();
+                  setStageEdit({ kind: 'idle' });
+                  stageRetry.current = undefined;
+                  setFeedback('');
+                },
+                onReloadList: () => void openStageEditor(),
+                onReloadRequest: () =>
+                  void selectRequest(selected.request.id, true),
+              }
+            : undefined
+        }
+        loadOlderStageHistory={loadOlderStageHistory}
+        followUp={
+          <OpportunityFollowUpPanel
+            actor={actor}
+            identity={identity}
+            requestId={visibleRequest.id}
+            opportunityId={visibleRequest.initialOpportunity.id}
+            nativeVersion={visibleRequest.initialOpportunity.version}
+            nativeStatus={visibleRequest.initialOpportunity.status}
+            nativeOutcomeObservation={followUpOutcomeObservation(
+              visibleRequest,
+            )}
+            editorAvailable={
+              !pending &&
+              !nextActionEditOpen &&
+              !responsibleEditOpen &&
+              !outcomeEditOpen &&
+              !stageEditOpen
+            }
+            onProtectedChange={(active) => {
+              if (followUpGeneration.current !== followUpOwner) return;
+              setFollowUpProtection({ generation: followUpOwner, active });
+            }}
+            onCompanyContextRejected={onCompanyContextRejected}
+            onActorRevalidated={onActorRevalidated}
+            onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+          />
+        }
+        clientAssociation={
+          companyId &&
+          canAssociateClient &&
+          selected.request.clientAssociationStatus === 'absent' ? (
+            <RequestClientAssociation
+              key={clientAssociationAuthority}
+              identity={identity}
+              companyId={companyId}
+              requestId={selected.request.id}
+              expectedVersion={selected.request.version}
+              clientIdentityRevision={clientIdentityRevision}
+              blocked={
+                followUpProtected ||
+                nextActionEditOpen ||
+                responsibleEditOpen ||
+                outcomeEditOpen ||
+                stageEditOpen
+              }
+              request={request}
+              handleAccess={handleAccess}
+              onProtectionChange={setAssociationProtection}
+              onAssociated={async (value, startedUnderRevision) => {
+                if (
+                  !isClientRequest(value) ||
+                  clientProjection.current.revision !==
+                    clientProjectionRevision ||
+                  startedUnderRevision !== identityRevision.current
+                )
+                  return false;
+                setAssociationProtection('idle');
+                setSelected({
+                  request: value,
+                  clientProjectionRevision,
+                });
+                if (startedUnderRevision === identityRevision.current)
+                  setLoad((current) =>
+                    current.kind !== 'ready' ||
+                    current.clientProjectionRevision !==
+                      clientProjectionRevision ||
+                    !value.clientReference
+                      ? current
+                      : {
+                          ...current,
+                          items: current.items.map((item) =>
+                            item.id === value.id && value.clientReference
+                              ? listItemWithClientProjection(
+                                  item,
+                                  value.clientReference,
+                                )
+                              : item,
+                          ),
+                        },
+                  );
+                setFeedback({ requestMessage: 'clientAssociationSuccess' });
+                await refreshRecordedActivity();
+                return true;
+              }}
+            />
+          ) : undefined
+        }
+        onCompanyContextRejected={onCompanyContextRejected}
+        onActorRevalidated={onActorRevalidated}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />
+    ) : null;
+  if (requestStage)
+    return (
+      <div className="commercial-intake-request-stage">
+        {feedbackMessage}
+        {heldRequest}
+        {detail ??
+          (inFlight === 'read' ? (
+            <p role="status">{requestStage.loadingLabel}</p>
+          ) : null)}
+      </div>
+    );
   return (
     <section
       id="requests"
@@ -2544,276 +2904,10 @@ export function CommercialIntakeWorkspace({
         <strong>{copy.manualSource}</strong>
         <p>{copy.manualSourceDetail}</p>
       </aside>
-      {feedback ? (
-        <p role="alert">
-          {typeof feedback === 'string'
-            ? feedback
-            : 'outcomeMessage' in feedback
-              ? outcomeCopy[feedback.outcomeMessage]
-              : copy[feedback.requestMessage]}
-        </p>
-      ) : null}
-      {requestToOpen && protectedWork ? (
-        <p role="status" className="commercial-intake-held-request">
-          {protectedWork === 'capture'
-            ? copy.requestedAfterCapture
-            : protectedWork === 'client-association'
-              ? copy.requestedAfterClientAssociation
-              : protectedWork === 'responsible-edit'
-                ? copy.requestedAfterResponsibleEdit
-                : protectedWork === 'outcome-edit'
-                  ? outcomeCopy.requestedAfterOutcomeEdit
-                  : protectedWork === 'stage-edit'
-                    ? stageCopy('requestedAfterStageEdit')
-                    : protectedWork === 'follow-up-edit'
-                      ? followUpCopy('requestedAfterFollowUpEdit')
-                      : copy.requestedAfterNextActionEdit}
-        </p>
-      ) : null}
-      {selected && visibleRequest ? (
-        <RequestDetail
-          onOpenProject={onOpenProject}
-          actor={actor}
-          identity={identity}
-          request={visibleRequest}
-          requestedFocusId={
-            requestedRequest?.focusTarget === 'request-detail' &&
-            requestedRequest.clientRequestId === visibleRequest.id &&
-            requestedRequest.version === undefined
-              ? requestedRequest.requestId
-              : undefined
-          }
-          requestedVersion={
-            requestedVersion?.clientRequestId === visibleRequest.id
-              ? requestedVersion
-              : undefined
-          }
-          clientAuthority={clientReadAuthority}
-          onBack={closeDetail}
-          pending={pending || followUpProtected}
-          onOpenClientDossier={
-            dossierTarget && onOpenClientDossier
-              ? () => onOpenClientDossier(dossierTarget)
-              : undefined
-          }
-          responsible={
-            canChangeResponsible
-              ? {
-                  edit: responsibleEdit,
-                  current: selected.request.initialOpportunity.responsibleActor,
-                  blocked:
-                    followUpProtected ||
-                    nextActionEdit.kind !== 'idle' ||
-                    outcomeEdit.kind !== 'idle' ||
-                    stageEdit.kind !== 'idle',
-                  onOpen: () => void openResponsibleEditor(),
-                  onSelect: (workspaceMembershipId) =>
-                    setResponsibleEdit((current) =>
-                      current.kind === 'choosing'
-                        ? { ...current, selection: workspaceMembershipId }
-                        : current,
-                    ),
-                  onSave: () => void saveResponsible(),
-                  onCancel: () => {
-                    responsibleMembers.retire();
-                    setResponsibleEdit({ kind: 'idle' });
-                    responsibleRetry.current = undefined;
-                    setFeedback('');
-                  },
-                  onReloadList: () => void openResponsibleEditor(),
-                  onReloadRequest: () =>
-                    void selectRequest(selected.request.id, true),
-                }
-              : undefined
-          }
-          nextAction={
-            canEditNextAction
-              ? {
-                  edit: nextActionEdit,
-                  blocked:
-                    followUpProtected ||
-                    responsibleEdit.kind !== 'idle' ||
-                    outcomeEdit.kind !== 'idle' ||
-                    stageEdit.kind !== 'idle',
-                  onEdit: () => {
-                    setFeedback('');
-                    setNextActionEdit({
-                      kind: 'editing',
-                      draft: selected.request.initialOpportunity.nextAction,
-                    });
-                  },
-                  onDraftChange: (draft) =>
-                    setNextActionEdit((current) =>
-                      current.kind === 'editing'
-                        ? { ...current, draft }
-                        : current,
-                    ),
-                  onSave: () => void saveNextAction(),
-                  onCancel: () => {
-                    setNextActionEdit({ kind: 'idle' });
-                    nextActionRetry.current = undefined;
-                    setFeedback('');
-                  },
-                  onReload: () => void selectRequest(selected.request.id, true),
-                }
-              : undefined
-          }
-          outcome={
-            canChangeOutcome
-              ? {
-                  edit: outcomeEdit,
-                  current: selected.request.initialOpportunity.status,
-                  blocked:
-                    followUpProtected ||
-                    nextActionEdit.kind !== 'idle' ||
-                    responsibleEdit.kind !== 'idle' ||
-                    stageEdit.kind !== 'idle',
-                  onOpen: () => {
-                    setFeedback('');
-                    outcomeRetry.current = undefined;
-                    setOutcomeEdit({
-                      kind: 'editing',
-                      draft: EMPTY_OUTCOME_DRAFT,
-                    });
-                  },
-                  onDraftChange: (draft) =>
-                    setOutcomeEdit((current) =>
-                      current.kind === 'editing'
-                        ? { ...current, draft }
-                        : current,
-                    ),
-                  onSave: () => void saveOutcome(),
-                  onCancel: () => {
-                    setOutcomeEdit({ kind: 'idle' });
-                    outcomeRetry.current = undefined;
-                    setFeedback('');
-                  },
-                  onReload: () => void selectRequest(selected.request.id, true),
-                }
-              : undefined
-          }
-          loadOlderOutcomeHistory={loadOlderOutcomeHistory}
-          stage={
-            canSetStage
-              ? {
-                  edit: stageEdit,
-                  blocked:
-                    followUpProtected ||
-                    nextActionEdit.kind !== 'idle' ||
-                    responsibleEdit.kind !== 'idle' ||
-                    outcomeEdit.kind !== 'idle',
-                  onOpen: () => void openStageEditor(),
-                  onSelect: (selection) =>
-                    setStageEdit((current) =>
-                      current.kind === 'choosing'
-                        ? { ...current, selection }
-                        : current,
-                    ),
-                  onSave: () => void saveStage(),
-                  onCancel: () => {
-                    stageChoices.retire();
-                    setStageEdit({ kind: 'idle' });
-                    stageRetry.current = undefined;
-                    setFeedback('');
-                  },
-                  onReloadList: () => void openStageEditor(),
-                  onReloadRequest: () =>
-                    void selectRequest(selected.request.id, true),
-                }
-              : undefined
-          }
-          loadOlderStageHistory={loadOlderStageHistory}
-          followUp={
-            <OpportunityFollowUpPanel
-              actor={actor}
-              identity={identity}
-              requestId={visibleRequest.id}
-              opportunityId={visibleRequest.initialOpportunity.id}
-              nativeVersion={visibleRequest.initialOpportunity.version}
-              nativeStatus={visibleRequest.initialOpportunity.status}
-              nativeOutcomeObservation={followUpOutcomeObservation(
-                visibleRequest,
-              )}
-              editorAvailable={
-                !pending &&
-                !nextActionEditOpen &&
-                !responsibleEditOpen &&
-                !outcomeEditOpen &&
-                !stageEditOpen
-              }
-              onProtectedChange={(active) => {
-                if (followUpGeneration.current !== followUpOwner) return;
-                setFollowUpProtection({ generation: followUpOwner, active });
-              }}
-              onCompanyContextRejected={onCompanyContextRejected}
-              onActorRevalidated={onActorRevalidated}
-              onWorkspaceAccessRejected={onWorkspaceAccessRejected}
-            />
-          }
-          clientAssociation={
-            companyId &&
-            canAssociateClient &&
-            selected.request.clientAssociationStatus === 'absent' ? (
-              <RequestClientAssociation
-                key={clientAssociationAuthority}
-                identity={identity}
-                companyId={companyId}
-                requestId={selected.request.id}
-                expectedVersion={selected.request.version}
-                clientIdentityRevision={clientIdentityRevision}
-                blocked={
-                  followUpProtected ||
-                  nextActionEditOpen ||
-                  responsibleEditOpen ||
-                  outcomeEditOpen ||
-                  stageEditOpen
-                }
-                request={request}
-                handleAccess={handleAccess}
-                onProtectionChange={setAssociationProtection}
-                onAssociated={async (value, startedUnderRevision) => {
-                  if (
-                    !isClientRequest(value) ||
-                    clientProjection.current.revision !==
-                      clientProjectionRevision ||
-                    startedUnderRevision !== identityRevision.current
-                  )
-                    return false;
-                  setAssociationProtection('idle');
-                  setSelected({
-                    request: value,
-                    clientProjectionRevision,
-                  });
-                  if (startedUnderRevision === identityRevision.current)
-                    setLoad((current) =>
-                      current.kind !== 'ready' ||
-                      current.clientProjectionRevision !==
-                        clientProjectionRevision ||
-                      !value.clientReference
-                        ? current
-                        : {
-                            ...current,
-                            items: current.items.map((item) =>
-                              item.id === value.id && value.clientReference
-                                ? listItemWithClientProjection(
-                                    item,
-                                    value.clientReference,
-                                  )
-                                : item,
-                            ),
-                          },
-                    );
-                  setFeedback({ requestMessage: 'clientAssociationSuccess' });
-                  await refreshRecordedActivity();
-                  return true;
-                }}
-              />
-            ) : undefined
-          }
-          onCompanyContextRejected={onCompanyContextRejected}
-          onActorRevalidated={onActorRevalidated}
-          onWorkspaceAccessRejected={onWorkspaceAccessRejected}
-        />
+      {feedbackMessage}
+      {heldRequest}
+      {detail ? (
+        detail
       ) : settingsOpen && companyId ? (
         <SalesStageSettings
           key={companyId}
@@ -3179,6 +3273,7 @@ type NextActionEditor = {
 };
 
 function RequestDetail({
+  embedded,
   onOpenProject,
   clientAuthority,
   actor,
@@ -3201,6 +3296,8 @@ function RequestDetail({
   onActorRevalidated,
   onWorkspaceAccessRejected,
 }: {
+  /** The Clarté Request stage: no Back and no later-stage panels. */
+  embedded: boolean;
   actor: ActorContext;
   onOpenProject?: (projectId: string) => void;
   identity: BrowserIdentity;
@@ -3319,9 +3416,11 @@ function RequestDetail({
       className="commercial-intake-detail"
       aria-labelledby="commercial-intake-detail-title"
     >
-      <button type="button" onClick={onBack} disabled={pending}>
-        {copy.back}
-      </button>
+      {embedded ? null : (
+        <button type="button" onClick={onBack} disabled={pending}>
+          {copy.back}
+        </button>
+      )}
       <p>{copy.detail}</p>
       <h3 id="commercial-intake-detail-title" tabIndex={-1} ref={heading}>
         {request.subject ?? copy.title}
@@ -3437,75 +3536,79 @@ function RequestDetail({
         ) : null}
         {followUp}
       </section>
-      <ProfitabilityEstimatePanel
-        actor={actor}
-        identity={identity}
-        opportunityId={request.initialOpportunity.id}
-        onCompanyContextRejected={onCompanyContextRejected}
-        onActorRevalidated={onActorRevalidated}
-        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
-      />
-      <PricingSnapshotPanel
-        key={`${clientAuthority}:${request.initialOpportunity.id}:${JSON.stringify([grantOf(actor.activeCompany, 'company_pricing_user') ?? null, grantOf(actor.activeCompany, 'company_pricing_adjustment') ?? null])}`}
-        actor={actor}
-        identity={identity}
-        opportunityId={request.initialOpportunity.id}
-        onCompanyContextRejected={onCompanyContextRejected}
-        onActorRevalidated={onActorRevalidated}
-        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
-      />
-      <OfferMessagePreparation
-        actor={actor}
-        identity={identity}
-        target={
-          messageTarget?.navigationGeneration ===
-          messageOwner.current.generation
-            ? messageTarget
-            : null
-        }
-        onCompanyContextRejected={onCompanyContextRejected}
-        onActorRevalidated={onActorRevalidated}
-        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
-      />
-      {offerPdf.controls}
-      <OfferPanel
-        key={`offer:${requestedOffer?.requestId ?? 'head'}:${clientAuthority}:${actor.internalUserId}:${actor.workspaceId}:${actor.workspaceMembershipId}:${request.id}:${request.initialOpportunity.id}:${offerPreparer?.assignmentId ?? 'no-assignment'}:${offerPreparer?.permissionSetVersion ?? 'no-version'}:${offerPermissions.join(',')}:${request.clientReference?.currentClientId ?? 'no-client'}`}
-        pdf={offerPdf.callbacks}
-        onPrepareMessage={prepareMessage}
-        onMessageNavigate={retireMessage}
-        actor={actor}
-        identity={identity}
-        opportunityId={request.initialOpportunity.id}
-        requestedVersionId={requestedOffer?.offerVersionId}
-        currentClientId={request.clientReference?.currentClientId}
-        clientDisplayName={request.clientReference?.displayName}
-        onCompanyContextRejected={onCompanyContextRejected}
-        onActorRevalidated={onActorRevalidated}
-        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
-      />
-      {contractPdf.controls}
-      <ContractPanel
-        pdf={contractPdf.callbacks}
-        currentClientId={request.clientReference?.currentClientId}
-        onOpenProject={onOpenProject}
-        opportunityTitle={request.initialOpportunity.title}
-        key={
-          (requestedContract?.requestId ?? 'head') +
-          ':' +
-          clientAuthority +
-          ':' +
-          request.id +
-          ':' +
-          request.initialOpportunity.id
-        }
-        requestedVersion={requestedContract?.version}
-        actor={actor}
-        identity={identity}
-        opportunityId={request.initialOpportunity.id}
-        onCompanyContextRejected={onCompanyContextRejected}
-        onActorRevalidated={onActorRevalidated}
-        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
-      />
+      {embedded ? null : (
+        <>
+          <ProfitabilityEstimatePanel
+            actor={actor}
+            identity={identity}
+            opportunityId={request.initialOpportunity.id}
+            onCompanyContextRejected={onCompanyContextRejected}
+            onActorRevalidated={onActorRevalidated}
+            onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+          />
+          <PricingSnapshotPanel
+            key={`${clientAuthority}:${request.initialOpportunity.id}:${JSON.stringify([grantOf(actor.activeCompany, 'company_pricing_user') ?? null, grantOf(actor.activeCompany, 'company_pricing_adjustment') ?? null])}`}
+            actor={actor}
+            identity={identity}
+            opportunityId={request.initialOpportunity.id}
+            onCompanyContextRejected={onCompanyContextRejected}
+            onActorRevalidated={onActorRevalidated}
+            onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+          />
+          <OfferMessagePreparation
+            actor={actor}
+            identity={identity}
+            target={
+              messageTarget?.navigationGeneration ===
+              messageOwner.current.generation
+                ? messageTarget
+                : null
+            }
+            onCompanyContextRejected={onCompanyContextRejected}
+            onActorRevalidated={onActorRevalidated}
+            onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+          />
+          {offerPdf.controls}
+          <OfferPanel
+            key={`offer:${requestedOffer?.requestId ?? 'head'}:${clientAuthority}:${actor.internalUserId}:${actor.workspaceId}:${actor.workspaceMembershipId}:${request.id}:${request.initialOpportunity.id}:${offerPreparer?.assignmentId ?? 'no-assignment'}:${offerPreparer?.permissionSetVersion ?? 'no-version'}:${offerPermissions.join(',')}:${request.clientReference?.currentClientId ?? 'no-client'}`}
+            pdf={offerPdf.callbacks}
+            onPrepareMessage={prepareMessage}
+            onMessageNavigate={retireMessage}
+            actor={actor}
+            identity={identity}
+            opportunityId={request.initialOpportunity.id}
+            requestedVersionId={requestedOffer?.offerVersionId}
+            currentClientId={request.clientReference?.currentClientId}
+            clientDisplayName={request.clientReference?.displayName}
+            onCompanyContextRejected={onCompanyContextRejected}
+            onActorRevalidated={onActorRevalidated}
+            onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+          />
+          {contractPdf.controls}
+          <ContractPanel
+            pdf={contractPdf.callbacks}
+            currentClientId={request.clientReference?.currentClientId}
+            onOpenProject={onOpenProject}
+            opportunityTitle={request.initialOpportunity.title}
+            key={
+              (requestedContract?.requestId ?? 'head') +
+              ':' +
+              clientAuthority +
+              ':' +
+              request.id +
+              ':' +
+              request.initialOpportunity.id
+            }
+            requestedVersion={requestedContract?.version}
+            actor={actor}
+            identity={identity}
+            opportunityId={request.initialOpportunity.id}
+            onCompanyContextRejected={onCompanyContextRejected}
+            onActorRevalidated={onActorRevalidated}
+            onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+          />
+        </>
+      )}
     </article>
   );
 }
