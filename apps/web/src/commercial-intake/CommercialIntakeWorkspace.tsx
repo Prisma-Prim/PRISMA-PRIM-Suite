@@ -176,7 +176,7 @@ type RequestedRequest = {
   requestId: number;
 };
 
-/** How the Clarté affaire page embeds one Request's detail. */
+/** How the Clarté deal page embeds one Request's detail. */
 export type RequestStagePresentation = {
   loadingLabel: string;
   /**
@@ -378,7 +378,7 @@ export function CommercialIntakeWorkspace({
   requestedRequest?: RequestedRequest;
   onOpenProject?: (projectId: string) => void;
   /**
-   * The Clarté affaire page's Request stage (#1533): only the requested
+   * The Clarté deal page's Request stage (#1533): only the requested
    * Request's detail and its Opportunity commands, with the same transports,
    * drafts, retries and receipts. It reads no list and offers no capture,
    * Sales Stage settings or later-stage panel. Absent, the workspace renders
@@ -1356,7 +1356,7 @@ export function CommercialIntakeWorkspace({
     }
   }
 
-  // The Request stage's owner rereads its affaire when a follow-up edit ends,
+  // The Request stage's owner rereads its deal when a follow-up edit ends,
   // saved or not; the follow-up panel owns its own command and receipt.
   const stageChanged = useRef(requestStage?.onChanged);
   const stageProtected = useRef(requestStage?.onProtectedChange);
@@ -1376,7 +1376,7 @@ export function CommercialIntakeWorkspace({
     followUpWasProtected.current = followUpProtected;
   }, [followUpProtected]);
 
-  // The affaire page's Next step card asks for one Opportunity editor. It
+  // The deal page's Next step card asks for one Opportunity editor. It
   // opens like its own button would, and never over another open edit.
   const stageCommand = requestStage?.command;
   const consumedStageCommand = useRef<number | undefined>(undefined);

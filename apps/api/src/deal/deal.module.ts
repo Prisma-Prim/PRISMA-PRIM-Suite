@@ -10,8 +10,8 @@ import { OpportunityFollowUpModule } from '../opportunity-follow-up/opportunity-
 import { PricingConfigurationModule } from '../pricing-configuration/pricing-configuration.module.js';
 import { ProfitabilityEstimateModule } from '../profitability-estimate/profitability-estimate.module.js';
 import { ProjectModule } from '../project/project.module.js';
-import { AffairePresenceStore } from './affaire-presence.store.js';
-import { AffaireService } from './affaire.service.js';
+import { DealPresenceStore } from './deal-presence.store.js';
+import { DealService } from './deal.service.js';
 
 /** Composes the stage owners' reads; no owner depends on it. */
 @Module({
@@ -28,7 +28,7 @@ import { AffaireService } from './affaire.service.js';
     ProfitabilityEstimateModule,
     ProjectModule,
   ],
-  providers: [AffairePresenceStore, AffaireService],
-  exports: [AffaireService],
+  providers: [DealPresenceStore, DealService],
+  exports: [DealService],
 })
-export class AffaireModule {}
+export class DealModule {}

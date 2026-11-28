@@ -12,22 +12,22 @@ import { ClarteButton } from '../components/ClarteButton';
 import { ClarteCard } from '../components/ClarteCard';
 import { ClarteEmptyState } from '../components/ClarteState';
 import type {
-  AffaireDetail,
-  AffaireStage,
-  AffaireStageView,
+  DealDetail,
+  DealStage,
+  DealStageView,
   AgreementFact,
   CertificationCaseFact,
   DecisionState,
   OfferFact,
   ProjectFact,
-} from './affaire-response';
-import { useAffaireCopy, type AffaireMessageKey } from './affaires.copy';
+} from './deal-response';
+import { useDealCopy, type DealMessageKey } from './deals.copy';
 
 /**
- * What App composed for the affaire page, handed to every stage panel with
+ * What App composed for the deal page, handed to every stage panel with
  * the same gates, keys and callbacks as the current interface.
  */
-export type AffaireStagePanelContext = {
+export type DealStagePanelContext = {
   actor: ActorContext;
   identity: BrowserIdentity;
   onCompanyContextRejected: (companyContextId: string) => void;
@@ -40,32 +40,30 @@ export type AffaireStagePanelContext = {
   onOpenProject?: (projectId: string) => void;
   /** The authorized Finance section, when App offers one. */
   financeDestination?: 'invoice-records' | 'payments';
-  /** Rereads the affaire after a confirmed change made in a panel. */
-  onAffaireChanged: () => void;
-  /** Holds leaving the affaire while the Request stage protects its work. */
+  /** Rereads the deal after a confirmed change made in a panel. */
+  onDealChanged: () => void;
+  /** Holds leaving the deal while the Request stage protects its work. */
   onRequestProtectedChange: (active: boolean) => void;
   /** The Next step card's latest request for a Request stage editor. */
   requestCommand?: RequestStagePresentation['command'];
 };
 
-export type AffaireStagePanelProps = Readonly<{
-  affaire: AffaireDetail;
+export type DealStagePanelProps = Readonly<{
+  deal: DealDetail;
   /** The stage's facts; never `not_available`, which the page shows itself. */
-  view: AffaireStageView;
-  context: AffaireStagePanelContext;
+  view: DealStageView;
+  context: DealStagePanelContext;
 }>;
 
-export type AffaireStagePanel = (props: AffaireStagePanelProps) => ReactNode;
+export type DealStagePanel = (props: DealStagePanelProps) => ReactNode;
 
 /**
- * The stage-panel registry of the affaire page. Later slices replace their
+ * The stage-panel registry of the deal page. Later slices replace their
  * own entry: Costing and Offer (#1534), Contract and Delivery (#1535). Each
  * panel narrows `view` to its own stage and reuses the owner's existing
  * transports; see README.md.
  */
-export const affaireStagePanels: Readonly<
-  Record<AffaireStage, AffaireStagePanel>
-> = {
+export const dealStagePanels: Readonly<Record<DealStage, DealStagePanel>> = {
   request: RequestStagePanel,
   costing: CostingSummary,
   offer: OfferSummary,
@@ -80,11 +78,11 @@ export const affaireStagePanels: Readonly<
  * commands (EX-056 to EX-066): drafts, retries, receipts and permission
  * states stay exactly those of the existing workspace.
  */
-function RequestStagePanel({ affaire, context }: AffaireStagePanelProps) {
-  const copy = useAffaireCopy();
+function RequestStagePanel({ deal, context }: DealStagePanelProps) {
+  const copy = useDealCopy();
   // One requested Request per mounted page; it never reopens on rerender.
   const [requested] = useState(() => ({
-    clientRequestId: affaire.clientRequestId,
+    clientRequestId: deal.clientRequestId,
     requestId: 1,
   }));
   return (
@@ -104,7 +102,7 @@ function RequestStagePanel({ affaire, context }: AffaireStagePanelProps) {
         requestStage={{
           loadingLabel: copy('requestLoading'),
           command: context.requestCommand,
-          onChanged: context.onAffaireChanged,
+          onChanged: context.onDealChanged,
           onProtectedChange: context.onRequestProtectedChange,
         }}
       />
@@ -112,8 +110,8 @@ function RequestStagePanel({ affaire, context }: AffaireStagePanelProps) {
   );
 }
 
-function CostingSummary({ view }: AffaireStagePanelProps) {
-  const copy = useAffaireCopy();
+function CostingSummary({ view }: DealStagePanelProps) {
+  const copy = useDealCopy();
   const { formatDateTime } = useInterfaceLocale();
   if (view.stage !== 'costing' || view.marker === 'not_available') return null;
   const snapshot = view.pricingSnapshot;
@@ -163,8 +161,8 @@ function CostingSummary({ view }: AffaireStagePanelProps) {
   );
 }
 
-function OfferSummary({ view }: AffaireStagePanelProps) {
-  const copy = useAffaireCopy();
+function OfferSummary({ view }: DealStagePanelProps) {
+  const copy = useDealCopy();
   const { formatDate } = useInterfaceLocale();
   if (view.stage !== 'offer' || view.marker === 'not_available') return null;
   if (!view.offer) return <EmptyStage />;
@@ -200,8 +198,8 @@ function OfferSummary({ view }: AffaireStagePanelProps) {
   );
 }
 
-function ContractSummary({ view }: AffaireStagePanelProps) {
-  const copy = useAffaireCopy();
+function ContractSummary({ view }: DealStagePanelProps) {
+  const copy = useDealCopy();
   if (view.stage !== 'contract' || view.marker === 'not_available') return null;
   if (view.agreements.length === 0) return <EmptyStage />;
   return (
@@ -236,8 +234,8 @@ function ContractSummary({ view }: AffaireStagePanelProps) {
   );
 }
 
-function DeliverySummary({ view, context }: AffaireStagePanelProps) {
-  const copy = useAffaireCopy();
+function DeliverySummary({ view, context }: DealStagePanelProps) {
+  const copy = useDealCopy();
   if (view.stage !== 'delivery' || view.marker === 'not_available') return null;
   if (view.projects.length === 0) return <EmptyStage />;
   return (
@@ -265,8 +263,8 @@ function DeliverySummary({ view, context }: AffaireStagePanelProps) {
   );
 }
 
-function ClosureSummary({ view }: AffaireStagePanelProps) {
-  const copy = useAffaireCopy();
+function ClosureSummary({ view }: DealStagePanelProps) {
+  const copy = useDealCopy();
   if (view.stage !== 'closure' || view.marker === 'not_available') return null;
   if (view.certificationCases.length === 0) return <EmptyStage />;
   return (
@@ -285,8 +283,8 @@ function ClosureSummary({ view }: AffaireStagePanelProps) {
   );
 }
 
-function CollectionSummary({ context }: AffaireStagePanelProps) {
-  const copy = useAffaireCopy();
+function CollectionSummary({ context }: DealStagePanelProps) {
+  const copy = useDealCopy();
   return (
     <ClarteEmptyState
       title={copy('collectionNotLinked')}
@@ -307,11 +305,11 @@ function CollectionSummary({ context }: AffaireStagePanelProps) {
 }
 
 function EmptyStage() {
-  const copy = useAffaireCopy();
+  const copy = useDealCopy();
   return <ClarteEmptyState title={copy('panelEmpty')} />;
 }
 
-function decisionLabel(state: DecisionState): AffaireMessageKey {
+function decisionLabel(state: DecisionState): DealMessageKey {
   switch (state) {
     case 'PENDING':
       return 'decisionPending';
@@ -336,7 +334,7 @@ function decisionTone(state: DecisionState): ClarteTone {
 
 function estimateLabel(
   decision: 'APPROVE' | 'MODIFY' | 'REJECT' | null,
-): AffaireMessageKey {
+): DealMessageKey {
   switch (decision) {
     case 'APPROVE':
       return 'estimateApprove';
@@ -370,10 +368,7 @@ function responseLabel(state: OfferFact['clientResponseState']) {
     ACCEPTED: 'responseAccepted',
     REJECTED: 'responseRejected',
     EXPIRED: 'responseExpired',
-  } as const satisfies Record<
-    OfferFact['clientResponseState'],
-    AffaireMessageKey
-  >;
+  } as const satisfies Record<OfferFact['clientResponseState'], DealMessageKey>;
   return labels[state];
 }
 
@@ -382,7 +377,7 @@ function agreementLabel(kind: AgreementFact['kind']) {
     CONTRACT: 'agreementContract',
     PRECONTRACT: 'agreementPrecontract',
     ADDENDUM: 'agreementAddendum',
-  } as const satisfies Record<AgreementFact['kind'], AffaireMessageKey>;
+  } as const satisfies Record<AgreementFact['kind'], DealMessageKey>;
   return labels[kind];
 }
 
@@ -393,7 +388,7 @@ function projectLabel(status: ProjectFact['status']) {
     on_hold: 'projectOnHold',
     completed: 'projectCompleted',
     cancelled: 'projectCancelled',
-  } as const satisfies Record<ProjectFact['status'], AffaireMessageKey>;
+  } as const satisfies Record<ProjectFact['status'], DealMessageKey>;
   return labels[status];
 }
 
@@ -413,10 +408,7 @@ function caseLabel(status: CertificationCaseFact['status']) {
     rejected: 'caseRejected',
     refused: 'caseRefused',
     certified: 'caseCertified',
-  } as const satisfies Record<
-    CertificationCaseFact['status'],
-    AffaireMessageKey
-  >;
+  } as const satisfies Record<CertificationCaseFact['status'], DealMessageKey>;
   return labels[status];
 }
 

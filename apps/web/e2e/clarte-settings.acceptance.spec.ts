@@ -356,7 +356,7 @@ test('administers access from the Settings console and switches the interface la
   await screenshot(page, 'clarte-settings-activity');
   await log.getByRole('button', { name: 'Open Offer Version' }).click();
   await expect(page).toHaveURL(/#requests$/u);
-  await expect(screenTitle(page)).toHaveText('Affaires');
+  await expect(screenTitle(page)).toHaveText('Deals');
 
   // Language and region: French, as in the user menu.
   await openClarteEntry(page, 'Settings');

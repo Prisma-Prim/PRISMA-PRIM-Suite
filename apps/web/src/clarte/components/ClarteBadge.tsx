@@ -5,7 +5,7 @@ export type ClarteTone =
 
 /**
  * A chip or status badge. Its text states the status; the tone only adds
- * colour. The prism colours stay reserved for the seven affaire stages.
+ * colour. The prism colours stay reserved for the seven deal stages.
  */
 export function ClarteBadge({
   tone = 'neutral',

@@ -6,10 +6,10 @@ import { changeValue } from './select-option';
  * The steps of the Request App tests that differ between the interfaces
  * (#1533). The current interface lists sections in its left menu; Clarté
  * lists entries, each section a view of its entry, and opens a Request's
- * detail inside its affaire page. Everything after these steps is the same.
+ * detail inside its deal page. Everything after these steps is the same.
  */
 const clarteEntryOf: Readonly<Record<string, string>> = {
-  'Client Requests': 'Affaires',
+  'Client Requests': 'Deals',
   Clients: 'Clients',
   'Team & access': 'Settings',
 };
@@ -102,7 +102,7 @@ export async function publishAccessInInterface(
 
 /**
  * Opens a Request detail from the loaded list: its row in the current
- * interface, its affaire's row and then its Request stage in Clarté.
+ * interface, its deal's row and then its Request stage in Clarté.
  */
 export async function openRequestInInterface(
   appInterface: InterfacePreference,
@@ -125,8 +125,7 @@ export async function openRequestInInterface(
 export function leaveRequestInInterface(appInterface: InterfacePreference) {
   fireEvent.click(
     screen.getByRole('button', {
-      name:
-        appInterface === 'current' ? 'Back to Requests' : 'Back to affaires',
+      name: appInterface === 'current' ? 'Back to Requests' : 'Back to deals',
     }),
   );
 }

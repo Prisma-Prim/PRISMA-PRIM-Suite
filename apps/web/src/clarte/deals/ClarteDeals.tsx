@@ -7,40 +7,36 @@ import {
 } from 'react';
 import { SectionVisibility } from '../../production-shell/section-visibility';
 import type { RequestedVersion } from '../../commercial-intake/CommercialIntakeWorkspace';
-import { AffaireList, rowTarget, type ClientRestriction } from './AffaireList';
-import {
-  AffairePage,
-  type AffaireTarget,
-  type AffaireUpdate,
-} from './AffairePage';
-import type { AffaireStage } from './affaire-response';
-import type { AffaireStagePanelContext } from './stage-panels';
-import './clarte-affaires.css';
+import { DealList, rowTarget, type ClientRestriction } from './DealList';
+import { DealPage, type DealTarget, type DealUpdate } from './DealPage';
+import type { DealStage } from './deal-response';
+import type { DealStagePanelContext } from './stage-panels';
+import './clarte-deals.css';
 
-type OpenedAffaire = {
-  target: AffaireTarget;
-  initialStage?: AffaireStage;
-  /** Numbers each opening, so reopening the same affaire remounts its page. */
+type OpenedDeal = {
+  target: DealTarget;
+  initialStage?: DealStage;
+  /** Numbers each opening, so reopening the same deal remounts its page. */
   opening: number;
 };
 
 /**
- * The Clarté Affaires screen (#1533): the list and board of affaires and one
- * affaire page. App composes it with the gates, keys and callbacks of the
- * current Requests section; it replaces only the Affaires tab renderer.
+ * The Clarté Deals screen (#1533): the list and board of deals and one
+ * deal page. App composes it with the gates, keys and callbacks of the
+ * current Requests section; it replaces only the Deals tab renderer.
  */
-export function ClarteAffaires({
+export function ClarteDeals({
   clientRestriction,
   requestedRequest,
   ...context
 }: Omit<
-  AffaireStagePanelContext,
-  'onAffaireChanged' | 'onRequestProtectedChange' | 'requestCommand'
+  DealStagePanelContext,
+  'onDealChanged' | 'onRequestProtectedChange' | 'requestCommand'
 > &
   Readonly<{
     /** A new object restricts the loaded rows to one dossier; none clears it. */
     clientRestriction?: ClientRestriction;
-    /** A new object opens that Request's affaire; none retires it. */
+    /** A new object opens that Request's deal; none retires it. */
     requestedRequest?: {
       clientRequestId: string;
       version?: RequestedVersion;
@@ -50,19 +46,19 @@ export function ClarteAffaires({
   }>) {
   const company = context.actor.activeCompany;
   // The frame keeps every section mounted; the list reads only once the
-  // Affaires screen is first shown, then keeps its rows.
+  // Deals screen is first shown, then keeps its rows.
   const visible = useContext(SectionVisibility);
   const [entered, setEntered] = useState(visible);
   useEffect(() => {
     if (visible) setEntered(true);
   }, [visible]);
-  const [opened, setOpened] = useState<OpenedAffaire>();
+  const [opened, setOpened] = useState<OpenedDeal>();
   const [restriction, setRestriction] = useState(clientRestriction);
-  const [updated, setUpdated] = useState<AffaireUpdate>();
+  const [updated, setUpdated] = useState<DealUpdate>();
   // While the Request stage protects a pending or uncertain command, the
-  // page stays: a requested affaire waits, as in the current workspace.
+  // page stays: a requested deal waits, as in the current workspace.
   const [pageProtected, setPageProtected] = useState(false);
-  const [held, setHeld] = useState<Omit<OpenedAffaire, 'opening'>>();
+  const [held, setHeld] = useState<Omit<OpenedDeal, 'opening'>>();
 
   const protection = useRef(pageProtected);
   useLayoutEffect(() => {
@@ -110,7 +106,7 @@ export function ClarteAffaires({
     context.actor.workspacePermissions,
     company,
   ]);
-  const open = (target: AffaireTarget) =>
+  const open = (target: DealTarget) =>
     setOpened((current) => ({
       target,
       opening: (current?.opening ?? 0) + 1,
@@ -125,20 +121,20 @@ export function ClarteAffaires({
       );
   };
   return (
-    <div id="requests" tabIndex={-1} className="clarte-affaires">
+    <div id="requests" tabIndex={-1} className="clarte-deals">
       <div hidden={opened !== undefined}>
         {entered ? (
-          <AffaireList
+          <DealList
             companyId={company.id}
             context={context}
             readAuthority={readAuthority}
             restriction={restriction}
             onClearRestriction={() => setRestriction(undefined)}
             updated={updated}
-            onOpen={(affaire) =>
+            onOpen={(deal) =>
               open({
                 kind: 'opportunity',
-                opportunityId: affaire.opportunityId,
+                opportunityId: deal.opportunityId,
               })
             }
             onOpenRequest={(clientRequestId) =>
@@ -148,7 +144,7 @@ export function ClarteAffaires({
         ) : null}
       </div>
       {opened ? (
-        <AffairePage
+        <DealPage
           key={opened.opening}
           target={opened.target}
           companyId={company.id}

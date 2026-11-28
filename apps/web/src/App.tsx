@@ -100,7 +100,7 @@ import type { RecentChangesProps } from './operational-home/RecentChanges';
 import type { CompanySummaryKind } from './operational-home/operational-home-response';
 import { useProductionShellContext } from './production-shell/useProductionShellContext';
 import { ClarteFrame } from './clarte/ClarteFrame';
-import { ClarteAffaires } from './clarte/affaires/ClarteAffaires';
+import { ClarteDeals } from './clarte/deals/ClarteDeals';
 import {
   ClarteAccessState,
   type ClarteAccessStateKind,
@@ -1020,8 +1020,8 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         />
       ),
       clarteContent: (
-        <ClarteAffaires
-          key={`clarte-affaires:${requestsMount}`}
+        <ClarteDeals
+          key={`clarte-deals:${requestsMount}`}
           actor={access.actor}
           identity={identity}
           onCompanyContextRejected={rejectCompanyContext}

@@ -3,9 +3,9 @@ import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { companyGrants } from './access/company-grants.test-fixture';
-import type { AffaireStageView } from './clarte/affaires/affaire-response';
+import type { DealStageView } from './clarte/deals/deal-response';
 import type { ClientRequest } from './commercial-intake/CommercialIntakeWorkspace';
-import { affaireDetailFor, affaireSummaryFor } from './test/affaire-responses';
+import { dealDetailFor, dealSummaryFor } from './test/deal-responses';
 import { renderInInterface } from './test/app-interface';
 import {
   buildClientRequest,
@@ -21,8 +21,8 @@ import {
 } from './test/render-with-interface-locale';
 import { changeValue } from './test/select-option';
 
-// Fictional Company, members, Clients and affaires only.
-const company = { id: 'company-affaires', displayName: 'Fictional Company' };
+// Fictional Company, members, Clients and deals only.
+const company = { id: 'company-deals', displayName: 'Fictional Company' };
 const ada = { workspaceMembershipId: 'member-ada', displayName: 'Ada Ionescu' };
 const ion = { workspaceMembershipId: 'member-ion', displayName: 'Ion Popa' };
 const negotiation = { id: 'stage-negotiation', label: 'Negotiation' };
@@ -33,7 +33,7 @@ function actor(
   return {
     internalUserId: 'user-ada',
     workspaceMembershipId: ada.workspaceMembershipId,
-    workspaceId: 'workspace-affaires',
+    workspaceId: 'workspace-deals',
     workspaceName: 'Fictional Workspace',
     displayName: ada.displayName,
     email: 'ada@example.test',
@@ -66,7 +66,7 @@ function actor(
   };
 }
 
-function affaireRequest(
+function dealRequest(
   key: string,
   title: string,
   owner: typeof ada,
@@ -99,8 +99,8 @@ function affaireRequest(
   });
 }
 
-// The stage rule's markers for an affaire at the Offer stage, or lost there.
-const offerStages = (request: ClientRequest): AffaireStageView[] => {
+// The stage rule's markers for a deal at the Offer stage, or lost there.
+const offerStages = (request: ClientRequest): DealStageView[] => {
   const lost = request.initialOpportunity.status === 'LOST';
   return [
     {
@@ -142,20 +142,20 @@ const offerStages = (request: ClientRequest): AffaireStageView[] => {
 };
 
 function server(initialActor = actor()) {
-  let stored = affaireRequest(
+  let stored = dealRequest(
     'offer',
     'Certification ISO 22000',
     ada,
     '2026-11-20T08:00:00.000Z',
     'Valea Verde SRL',
   );
-  const fresh = affaireRequest(
+  const fresh = dealRequest(
     'fresh',
     'HACCP set-up',
     ada,
     '2026-11-26T08:00:00.000Z',
   );
-  const closed = affaireRequest(
+  const closed = dealRequest(
     'closed',
     'ISO 14001 certification',
     ion,
@@ -165,11 +165,11 @@ function server(initialActor = actor()) {
   const calls: string[] = [];
   const unexpected: string[] = [];
   let listResponse: (() => Response | Promise<Response>) | undefined;
-  let affaireResponse: (() => Response | Promise<Response>) | undefined;
+  let dealResponse: (() => Response | Promise<Response>) | undefined;
   let commandResponse: (() => Response | Promise<Response>) | undefined;
   let currentActor = initialActor;
   const offerSummary = () =>
-    affaireSummaryFor(stored, {
+    dealSummaryFor(stored, {
       thread:
         stored.initialOpportunity.status === 'LOST'
           ? { kind: 'closed', status: 'LOST' }
@@ -177,10 +177,10 @@ function server(initialActor = actor()) {
       lastChangedAt: '2026-11-27T09:00:00.000Z',
     });
   const rows = {
-    fresh: affaireSummaryFor(fresh, {
+    fresh: dealSummaryFor(fresh, {
       followUpOn: { readable: true, value: '2026-12-02' },
     }),
-    closed: affaireSummaryFor(closed, {
+    closed: dealSummaryFor(closed, {
       status: 'LOST',
       thread: { kind: 'closed', status: 'LOST' },
     }),
@@ -204,7 +204,7 @@ function server(initialActor = actor()) {
       if (path === '/api/clients') return Response.json([]);
       if (path.startsWith('/api/client-duplicate-reviews?'))
         return Response.json({ items: [], next_cursor: null });
-      if (path.startsWith('/api/affaires?')) {
+      if (path.startsWith('/api/deals?')) {
         if (listResponse) return listResponse();
         const url = new URL(path, 'http://application.test');
         if (url.searchParams.get('view') === 'mine_open')
@@ -217,11 +217,11 @@ function server(initialActor = actor()) {
         });
       }
       const opportunity = stored.initialOpportunity;
-      if (path === `/api/affaires/${opportunity.id}` && affaireResponse)
-        return affaireResponse();
-      if (path === `/api/affaires/${opportunity.id}`)
+      if (path === `/api/deals/${opportunity.id}` && dealResponse)
+        return dealResponse();
+      if (path === `/api/deals/${opportunity.id}`)
         return Response.json(
-          affaireDetailFor(stored, {
+          dealDetailFor(stored, {
             ...offerSummary(),
             stages: offerStages(stored),
           }),
@@ -346,14 +346,14 @@ function server(initialActor = actor()) {
   return {
     calls,
     unexpected,
-    affaireReads: () =>
-      calls.filter((call) => call === 'GET /api/affaires/opportunity-offer')
+    dealReads: () =>
+      calls.filter((call) => call === 'GET /api/deals/opportunity-offer')
         .length,
     respondToList(next: () => Response | Promise<Response>) {
       listResponse = next;
     },
-    respondToAffaire(next: (() => Response | Promise<Response>) | undefined) {
-      affaireResponse = next;
+    respondToDeal(next: (() => Response | Promise<Response>) | undefined) {
+      dealResponse = next;
     },
     /** Answers only the next command, then the store answers again. */
     respondToNextCommand(next: () => Response | Promise<Response>) {
@@ -400,7 +400,7 @@ function rowTitles() {
     .map((button) => button.textContent);
 }
 
-async function openOfferAffaire() {
+async function openOfferDeal() {
   renderClarte();
   const row = await screen.findByRole('button', {
     name: 'Certification ISO 22000',
@@ -434,8 +434,8 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-describe('Affaires in the Clarté interface', () => {
-  it('lists affaires with their current stage, sorts and filters the loaded rows, loads older ones and shows My open dossiers', async () => {
+describe('Deals in the Clarté interface', () => {
+  it('lists deals with their current stage, sorts and filters the loaded rows, loads older ones and shows My open dossiers', async () => {
     const api = server();
     renderClarte();
     await screen.findByRole('button', { name: 'HACCP set-up' });
@@ -447,9 +447,7 @@ describe('Affaires in the Clarté interface', () => {
     expect(within(table).getByText('Request')).toBeVisible();
     expect(within(table).getByText('Not available to you')).toBeVisible();
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Load older affaires' }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Load older deals' }));
     await screen.findByRole('button', { name: 'ISO 14001 certification' });
     expect(rowTitles()).toEqual([
       'HACCP set-up',
@@ -457,7 +455,7 @@ describe('Affaires in the Clarté interface', () => {
       'ISO 14001 certification',
     ]);
     expect(
-      screen.queryByRole('button', { name: 'Load older affaires' }),
+      screen.queryByRole('button', { name: 'Load older deals' }),
     ).not.toBeInTheDocument();
 
     const stage = screen.getByRole('columnheader', { name: /Stage/u });
@@ -473,19 +471,19 @@ describe('Affaires in the Clarté interface', () => {
     expect(rowTitles()[0]).toBe('ISO 14001 certification');
 
     changeValue(
-      screen.getByRole('searchbox', { name: 'Filter loaded affaires' }),
+      screen.getByRole('searchbox', { name: 'Filter loaded deals' }),
       'popa',
     );
     expect(rowTitles()).toEqual(['ISO 14001 certification']);
     changeValue(
-      screen.getByRole('searchbox', { name: 'Filter loaded affaires' }),
+      screen.getByRole('searchbox', { name: 'Filter loaded deals' }),
       'nothing like this',
     );
     expect(
-      screen.getByText('No loaded affaire matches the filter.'),
+      screen.getByText('No loaded deal matches the filter.'),
     ).toBeVisible();
     changeValue(
-      screen.getByRole('searchbox', { name: 'Filter loaded affaires' }),
+      screen.getByRole('searchbox', { name: 'Filter loaded deals' }),
       '',
     );
 
@@ -494,7 +492,7 @@ describe('Affaires in the Clarté interface', () => {
       screen.getByRole('button', { name: 'My open dossiers' }),
     ).toHaveAttribute('aria-pressed', 'true');
     await waitFor(() =>
-      expect(api.calls).toContain('GET /api/affaires?limit=25&view=mine_open'),
+      expect(api.calls).toContain('GET /api/deals?limit=25&view=mine_open'),
     );
     await waitFor(() =>
       expect(rowTitles()).toEqual(['Certification ISO 22000', 'HACCP set-up']),
@@ -502,26 +500,24 @@ describe('Affaires in the Clarté interface', () => {
     expect(api.unexpected).toEqual([]);
   });
 
-  it('groups the loaded affaires by current stage on the board and says it shows loaded rows only', async () => {
+  it('groups the loaded deals by current stage on the board and says it shows loaded rows only', async () => {
     const api = server();
     renderClarte();
     await screen.findByRole('button', { name: 'HACCP set-up' });
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Load older affaires' }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Load older deals' }));
     await screen.findByRole('button', { name: 'ISO 14001 certification' });
     fireEvent.click(screen.getByRole('button', { name: 'Board' }));
 
     expect(
       screen.getByText(
-        'The board groups only the affaires loaded so far by their current stage.',
+        'The board groups only the deals loaded so far by their current stage.',
       ),
     ).toBeVisible();
     const column = (name: RegExp) => screen.getByRole('region', { name });
     expect(column(/^Request/u)).toHaveTextContent('HACCP set-up');
     expect(column(/^Offer/u)).toHaveTextContent('Certification ISO 22000');
     expect(column(/^Closed/u)).toHaveTextContent('ISO 14001 certification');
-    expect(column(/^Costing/u)).toHaveTextContent('No affaire');
+    expect(column(/^Costing/u)).toHaveTextContent('No deal');
     expect(
       screen.queryByRole('region', { name: /^Collection/u }),
     ).not.toBeInTheDocument();
@@ -541,9 +537,9 @@ describe('Affaires in the Clarté interface', () => {
 
   it('shows the seven-stage thread, one Next step card, the Request details and the selected stage panel', async () => {
     const api = server();
-    const request = await openOfferAffaire();
+    const request = await openOfferDeal();
 
-    const thread = screen.getByRole('list', { name: 'Affaire stages' });
+    const thread = screen.getByRole('list', { name: 'Deal stages' });
     expect(
       within(thread)
         .getAllByRole('button')
@@ -600,10 +596,10 @@ describe('Affaires in the Clarté interface', () => {
     expect(api.unexpected).toEqual([]);
   });
 
-  it('changes the next action from the Next step card and rereads the affaire without a reload', async () => {
+  it('changes the next action from the Next step card and rereads the deal without a reload', async () => {
     const api = server();
-    await openOfferAffaire();
-    expect(api.affaireReads()).toBe(1);
+    await openOfferDeal();
+    expect(api.dealReads()).toBe(1);
 
     fireEvent.click(
       within(nextStep()).getByRole('button', {
@@ -620,8 +616,8 @@ describe('Affaires in the Clarté interface', () => {
     await waitFor(() =>
       expect(nextStep()).toHaveTextContent('Send the signed questionnaire'),
     );
-    expect(api.affaireReads()).toBe(2);
-    fireEvent.click(screen.getByRole('button', { name: 'Back to affaires' }));
+    expect(api.dealReads()).toBe(2);
+    fireEvent.click(screen.getByRole('button', { name: 'Back to deals' }));
     expect(
       screen.getByRole('row', { name: /Certification ISO 22000/u }),
     ).toHaveTextContent('Send the signed questionnaire');
@@ -630,9 +626,9 @@ describe('Affaires in the Clarté interface', () => {
 
   it('changes the owner, the status with its reason and the Sales Stage, and reads their histories', async () => {
     const api = server();
-    const request = await openOfferAffaire();
+    const request = await openOfferDeal();
     fireEvent.click(
-      within(screen.getByRole('list', { name: 'Affaire stages' })).getByRole(
+      within(screen.getByRole('list', { name: 'Deal stages' })).getByRole(
         'button',
         { name: /Request/u },
       ),
@@ -689,18 +685,18 @@ describe('Affaires in the Clarté interface', () => {
     expect(
       within(request).getByText('No Sales Stage → Negotiation'),
     ).toBeVisible();
-    // Each confirmed command reread the affaire once.
-    expect(api.affaireReads()).toBe(4);
+    // Each confirmed command reread the deal once.
+    expect(api.dealReads()).toBe(4);
     expect(api.unexpected).toEqual([]);
   });
 
-  it('shows a closed affaire with its status instead of a current stage and offers the status change', async () => {
+  it('shows a closed deal with its status instead of a current stage and offers the status change', async () => {
     const api = server();
     api.lose();
-    await openOfferAffaire();
-    expect(screen.getByText('This affaire is closed: Lost.')).toBeVisible();
+    await openOfferDeal();
+    expect(screen.getByText('This deal is closed: Lost.')).toBeVisible();
     expect(
-      within(screen.getByRole('list', { name: 'Affaire stages' })).queryByRole(
+      within(screen.getByRole('list', { name: 'Deal stages' })).queryByRole(
         'button',
         { current: 'step' },
       ),
@@ -725,16 +721,16 @@ describe('Affaires in the Clarté interface', () => {
         }),
     );
     renderClarte();
-    expect(await screen.findByText('Loading affaires…')).toBeVisible();
+    expect(await screen.findByText('Loading deals…')).toBeVisible();
     await act(async () => {
       respond(Response.json({ items: [] }));
     });
-    expect(await screen.findByText('No affaire yet.')).toBeVisible();
+    expect(await screen.findByText('No deal yet.')).toBeVisible();
 
     api.respondToList(() => Response.json({}, { status: 500 }));
     fireEvent.click(screen.getByRole('button', { name: 'My open dossiers' }));
     expect(
-      await screen.findByText('The affaires could not be loaded.'),
+      await screen.findByText('The deals could not be loaded.'),
     ).toBeVisible();
     api.respondToList(() => Response.json({}, { status: 403 }));
     await act(async () => {
@@ -742,14 +738,14 @@ describe('Affaires in the Clarté interface', () => {
     });
     expect(
       await screen.findByText(
-        'You do not have access to the affaires of this Company.',
+        'You do not have access to the deals of this Company.',
       ),
     ).toBeVisible();
   });
 
-  it('answers an affaire that became hidden or missing with one unavailable state and retries a failed read', async () => {
+  it('answers a deal that became hidden or missing with one unavailable state and retries a failed read', async () => {
     const api = server(actor('reader'));
-    api.respondToAffaire(() => Response.json({}, { status: 500 }));
+    api.respondToDeal(() => Response.json({}, { status: 500 }));
     renderClarte();
     const row = await screen.findByRole('button', {
       name: 'Certification ISO 22000',
@@ -758,31 +754,31 @@ describe('Affaires in the Clarté interface', () => {
       fireEvent.click(row);
     });
     expect(
-      await screen.findByText('The affaire could not be loaded.'),
+      await screen.findByText('The deal could not be loaded.'),
     ).toBeVisible();
-    api.respondToAffaire(() => Response.json({}, { status: 404 }));
+    api.respondToDeal(() => Response.json({}, { status: 404 }));
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     });
     expect(
-      await screen.findByText('This affaire is not available.'),
+      await screen.findByText('This deal is not available.'),
     ).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Back to affaires' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to deals' }));
     expect(screen.getByRole('button', { name: 'HACCP set-up' })).toBeVisible();
     expect(api.unexpected).toEqual([]);
   });
 
   it('offers no Next step command without the next-action permission', async () => {
     server(actor('reader'));
-    await openOfferAffaire();
+    await openOfferDeal();
     expect(nextStep()).toHaveTextContent('Call the Client');
     expect(within(nextStep()).queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('withdraws every stage fact at once when a grant changes and rereads them under the new grants', async () => {
     const api = server();
-    await openOfferAffaire();
-    const thread = screen.getByRole('list', { name: 'Affaire stages' });
+    await openOfferDeal();
+    const thread = screen.getByRole('list', { name: 'Deal stages' });
     expect(screen.getByRole('region', { name: 'Offer' })).toHaveTextContent(
       'Version 1',
     );
@@ -791,15 +787,15 @@ describe('Affaires in the Clarté interface', () => {
     api.setActor(actor('intake'));
     api.respondToNextCommand(() => Response.json({}, { status: 403 }));
     let release: () => void = () => undefined;
-    api.respondToAffaire(
+    api.respondToDeal(
       () =>
         new Promise<Response>((resolve) => {
           release = () => {
-            api.respondToAffaire(undefined);
+            api.respondToDeal(undefined);
             resolve(
               Response.json({
-                ...affaireDetailFor(
-                  affaireRequest(
+                ...dealDetailFor(
+                  dealRequest(
                     'offer',
                     'Certification ISO 22000',
                     ada,
@@ -812,7 +808,7 @@ describe('Affaires in the Clarté interface', () => {
                   },
                 ),
                 stages: offerStages(
-                  affaireRequest(
+                  dealRequest(
                     'offer',
                     'Certification ISO 22000',
                     ada,
@@ -846,7 +842,7 @@ describe('Affaires in the Clarté interface', () => {
     const header = screen
       .getByRole('heading', { level: 2, name: 'Certification ISO 22000' })
       .closest('header');
-    if (!header) throw new Error('Expected the affaire header.');
+    if (!header) throw new Error('Expected the deal header.');
     expect(
       within(header).queryByText('Valea Verde SRL'),
     ).not.toBeInTheDocument();
@@ -862,9 +858,9 @@ describe('Affaires in the Clarté interface', () => {
     expect(screen.getByText('Version 1')).toBeVisible();
   });
 
-  it('keeps the affaire open while a Request command is pending', async () => {
+  it('keeps the deal open while a Request command is pending', async () => {
     const api = server();
-    await openOfferAffaire();
+    await openOfferDeal();
     let respond: (response: Response) => void = () => undefined;
     api.respondToNextCommand(
       () =>
@@ -881,7 +877,7 @@ describe('Affaires in the Clarté interface', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
     });
-    const back = screen.getByRole('button', { name: 'Back to affaires' });
+    const back = screen.getByRole('button', { name: 'Back to deals' });
     await waitFor(() => expect(back).toBeDisabled());
     fireEvent.click(back);
     expect(
@@ -897,7 +893,7 @@ describe('Affaires in the Clarté interface', () => {
     await waitFor(() => expect(back).toBeEnabled());
   });
 
-  it('removes an affaire from My open dossiers once it is reassigned', async () => {
+  it('removes a deal from My open dossiers once it is reassigned', async () => {
     server();
     renderClarte();
     await screen.findByRole('button', { name: 'HACCP set-up' });
@@ -913,7 +909,7 @@ describe('Affaires in the Clarté interface', () => {
       hidden: true,
     });
     fireEvent.click(
-      within(screen.getByRole('list', { name: 'Affaire stages' })).getByRole(
+      within(screen.getByRole('list', { name: 'Deal stages' })).getByRole(
         'button',
         { name: /Request/u },
       ),
@@ -929,7 +925,7 @@ describe('Affaires in the Clarté interface', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Save responsible' }));
     });
     await waitFor(() => expect(nextStep()).toHaveTextContent('Ion Popa'));
-    fireEvent.click(screen.getByRole('button', { name: 'Back to affaires' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to deals' }));
     expect(rowTitles()).toEqual(['HACCP set-up']);
   });
 });

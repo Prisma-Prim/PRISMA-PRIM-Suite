@@ -1,10 +1,7 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 import { companyGrants } from '../src/access/company-grants.test-fixture';
 import type { ClientRequest } from '../src/commercial-intake/CommercialIntakeWorkspace';
-import {
-  affaireDetailFor,
-  affaireSummaryFor,
-} from '../src/test/affaire-responses';
+import { dealDetailFor, dealSummaryFor } from '../src/test/deal-responses';
 import {
   buildClientRequest,
   buildStageHistoryEntry,
@@ -13,7 +10,7 @@ import { actorContextFixture } from './actor-context.fixture';
 import { isPhoneLayout, openClarte } from './clarte.fixture';
 import { selectOption } from './select-option';
 
-// Every API response is intercepted: fictional Clients, affaires and people.
+// Every API response is intercepted: fictional Clients, deals and people.
 const company = {
   id: '00000000-0000-4000-8000-000000001533',
   displayName: 'PRISMA-PRIM',
@@ -111,15 +108,15 @@ const stages = [
   { id: '00000000-0000-4000-8000-000000001902', label: 'Negotiation' },
 ];
 
-function serveAffaires(page: Page) {
+function serveDeals(page: Page) {
   let detail = atOffer;
   const reads: string[] = [];
   const atOfferStage = {
     thread: { kind: 'in_progress', currentStage: 'offer' },
     lastChangedAt: '2026-11-27T09:00:00.000Z',
   } as const;
-  const affaire = () =>
-    affaireDetailFor(detail, {
+  const deal = () =>
+    dealDetailFor(detail, {
       ...atOfferStage,
       stages: [
         {
@@ -162,16 +159,16 @@ function serveAffaires(page: Page) {
       ],
     });
   const rows = () => [
-    affaireSummaryFor(atRequest, {
+    dealSummaryFor(atRequest, {
       lastChangedAt: '2026-11-26T08:00:00.000Z',
     }),
-    affaireSummaryFor(detail, atOfferStage),
-    affaireSummaryFor(atContract, {
+    dealSummaryFor(detail, atOfferStage),
+    dealSummaryFor(atContract, {
       thread: { kind: 'in_progress', currentStage: 'contract' },
       followUpOn: { readable: true, value: '2026-12-02' },
       lastChangedAt: '2026-11-25T08:00:00.000Z',
     }),
-    affaireSummaryFor(lost, {
+    dealSummaryFor(lost, {
       status: 'LOST',
       thread: { kind: 'closed', status: 'LOST' },
       lastChangedAt: '2026-11-15T08:00:00.000Z',
@@ -200,7 +197,7 @@ function serveAffaires(page: Page) {
       if (path === '/api/clients') return route.fulfill({ json: [] });
       if (path === '/api/client-duplicate-reviews')
         return route.fulfill({ json: { items: [], next_cursor: null } });
-      if (path === '/api/affaires') {
+      if (path === '/api/deals') {
         const mine = url.searchParams.get('view') === 'mine_open';
         return route.fulfill({
           json: {
@@ -214,8 +211,8 @@ function serveAffaires(page: Page) {
           },
         });
       }
-      if (path === `/api/affaires/${detail.initialOpportunity.id}`)
-        return route.fulfill({ json: affaire() });
+      if (path === `/api/deals/${detail.initialOpportunity.id}`)
+        return route.fulfill({ json: deal() });
       if (path === `/api/commercial-intake/requests/${detail.id}`)
         return route.fulfill({ json: detail });
       if (path === '/api/sales-stages')
@@ -313,14 +310,14 @@ async function screenshot(page: Page, name: string) {
   });
 }
 
-test('lists, sorts and groups affaires, then follows one affaire through its Request stage commands', async ({
+test('lists, sorts and groups deals, then follows one deal through its Request stage commands', async ({
   page,
 }) => {
-  const reads = await serveAffaires(page);
+  const reads = await serveDeals(page);
   await openClarte(page, '/#requests');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Affaires');
-  const affaireLinks = page.locator('.clarte-row-link');
-  await expect(affaireLinks).toHaveText([
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Deals');
+  const dealLinks = page.locator('.clarte-row-link');
+  await expect(dealLinks).toHaveText([
     'HACCP set-up',
     'Certification ISO 22000',
     'ISO 9001 surveillance',
@@ -330,38 +327,36 @@ test('lists, sorts and groups affaires, then follows one affaire through its Req
 
   // Sort by stage, then by stage descending.
   await page.getByRole('button', { name: 'Stage', exact: true }).click();
-  await expect(affaireLinks).toHaveText([
+  await expect(dealLinks).toHaveText([
     'HACCP set-up',
     'Certification ISO 22000',
     'ISO 9001 surveillance',
     'ISO 14001 certification',
   ]);
   await page.getByRole('button', { name: 'Stage', exact: true }).click();
-  await expect(affaireLinks.first()).toHaveText('ISO 14001 certification');
-  await screenshot(page, 'clarte-affaires-list');
+  await expect(dealLinks.first()).toHaveText('ISO 14001 certification');
+  await screenshot(page, 'clarte-deals-list');
 
   // Filter the loaded rows by owner, then My open dossiers.
   await page
-    .getByRole('searchbox', { name: 'Filter loaded affaires' })
+    .getByRole('searchbox', { name: 'Filter loaded deals' })
     .fill('Popa');
-  await expect(affaireLinks).toHaveText([
+  await expect(dealLinks).toHaveText([
     'ISO 14001 certification',
     'ISO 9001 surveillance',
   ]);
-  await page
-    .getByRole('searchbox', { name: 'Filter loaded affaires' })
-    .fill('');
+  await page.getByRole('searchbox', { name: 'Filter loaded deals' }).fill('');
   await page.getByRole('button', { name: 'My open dossiers' }).click();
-  await expect(affaireLinks).toHaveCount(2);
-  expect(reads).toContain('GET /api/affaires?limit=25&view=mine_open');
+  await expect(dealLinks).toHaveCount(2);
+  expect(reads).toContain('GET /api/deals?limit=25&view=mine_open');
 
   // The board groups the loaded rows by current stage.
-  await page.getByRole('button', { name: 'All affaires' }).click();
-  await expect(affaireLinks).toHaveCount(4);
+  await page.getByRole('button', { name: 'All deals' }).click();
+  await expect(dealLinks).toHaveCount(4);
   await page.getByRole('button', { name: 'Board' }).click();
   await expect(
     page.getByText(
-      'The board groups only the affaires loaded so far by their current stage.',
+      'The board groups only the deals loaded so far by their current stage.',
     ),
   ).toBeVisible();
   const offerColumn = page.getByRole('region', { name: /^Offer/u });
@@ -369,14 +364,14 @@ test('lists, sorts and groups affaires, then follows one affaire through its Req
   await expect(page.getByRole('region', { name: /^Closed/u })).toContainText(
     'Prut Grain SA',
   );
-  await screenshot(page, 'clarte-affaires-board');
+  await screenshot(page, 'clarte-deals-board');
 
-  // Open the affaire at the Offer stage.
+  // Open the deal at the Offer stage.
   await offerColumn.getByRole('button').click();
   await expect(
     page.getByRole('heading', { level: 2, name: 'Certification ISO 22000' }),
   ).toBeFocused();
-  const thread = page.getByRole('list', { name: 'Affaire stages' });
+  const thread = page.getByRole('list', { name: 'Deal stages' });
   await expect(thread.getByRole('button')).toHaveText([
     /Request.*Done/u,
     /Costing.*Done/u,
@@ -402,7 +397,7 @@ test('lists, sorts and groups affaires, then follows one affaire through its Req
       await thread.evaluate((list) => list.scrollWidth > list.clientWidth),
     ).toBe(true);
   }
-  await screenshot(page, 'clarte-affaire-page');
+  await screenshot(page, 'clarte-deal-page');
 
   // Change the next action from the Next step card.
   await nextStep
@@ -420,21 +415,21 @@ test('lists, sorts and groups affaires, then follows one affaire through its Req
     label: 'Negotiation',
   });
   await page.getByRole('button', { name: 'Save Sales Stage' }).click();
-  await expect(page.locator('.clarte-affaire-kicker')).toContainText(
+  await expect(page.locator('.clarte-deal-kicker')).toContainText(
     'Sales Stage: Negotiation',
   );
   await page.evaluate(() => window.scrollTo(0, 0));
-  await screenshot(page, 'clarte-affaire-request-stage');
+  await screenshot(page, 'clarte-deal-request-stage');
 
-  // Each confirmed command reread the affaire without a page reload.
+  // Each confirmed command reread the deal without a page reload.
   expect(
     reads.filter((read) =>
-      read.startsWith(`GET /api/affaires/${atOffer.initialOpportunity.id}`),
+      read.startsWith(`GET /api/deals/${atOffer.initialOpportunity.id}`),
     ),
   ).toHaveLength(3);
 
   // Back to the list: the row shows the new next action.
-  await page.getByRole('button', { name: 'Back to affaires' }).click();
+  await page.getByRole('button', { name: 'Back to deals' }).click();
   await page.getByRole('button', { name: 'List', exact: true }).click();
   await expect(
     page.getByRole('row', { name: /Certification ISO 22000/u }),

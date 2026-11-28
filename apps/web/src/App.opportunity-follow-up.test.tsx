@@ -15,13 +15,13 @@ import {
   buildClientRequest,
   requestListItemFor,
 } from './test/commercial-intake-responses';
-import { affaireDetailFor, affaireSummaryFor } from './test/affaire-responses';
+import { dealDetailFor, dealSummaryFor } from './test/deal-responses';
 import {
   actorNameShown,
   navigateInInterface,
   openRequestInInterface,
   publishAccessInInterface,
-} from './test/affaire-interface';
+} from './test/deal-interface';
 import { appInterfaces, renderInInterface } from './test/app-interface';
 import {
   act,
@@ -308,11 +308,11 @@ function installTransport(initial: ActorContext) {
         nativeReads.push(path);
         return Response.json(detail);
       }
-      // Clarté's affaire reads of the same Request and Opportunity.
-      if (path.startsWith('/api/affaires?'))
-        return Response.json({ items: [affaireSummaryFor(detail)] });
-      if (path === `/api/affaires/${opportunityId}`)
-        return Response.json(affaireDetailFor(detail));
+      // Clarté's deal reads of the same Request and Opportunity.
+      if (path.startsWith('/api/deals?'))
+        return Response.json({ items: [dealSummaryFor(detail)] });
+      if (path === `/api/deals/${opportunityId}`)
+        return Response.json(dealDetailFor(detail));
       if (path === datePath && method === 'GET') {
         dateReads.push(path);
         if (denyDate) {
@@ -421,9 +421,9 @@ describe.each(appInterfaces)(
     });
 
     // The current Requests section shows its follow-up discovery beside an open
-    // Request; Clarté shows it in the Affaires list, never beside an affaire.
+    // Request; Clarté shows it in the Deals list, never beside a deal.
     it.runIf(appInterface === 'clarte')(
-      'retires the list discovery’s optional Client pages and an ignored-abort reply, and opens a discovered affaire',
+      'retires the list discovery’s optional Client pages and an ignored-abort reply, and opens a discovered deal',
       async () => {
         const server = installTransport(projectionOwner());
         renderInInterface(
@@ -588,7 +588,7 @@ describe.each(appInterfaces)(
           screen.queryByRole('heading', { name: 'Opportunity follow-up' }),
         ).not.toBeInTheDocument();
         expect(server.dateReads).toEqual([]);
-        // Clarté lists affaires, not Requests, and reads only the opened one.
+        // Clarté lists deals, not Requests, and reads only the opened one.
         expect(
           server.nativeReads.filter((path) => path.includes('/requests?')),
         ).toHaveLength(appInterface === 'current' ? 1 : 0);

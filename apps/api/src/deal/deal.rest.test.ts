@@ -19,7 +19,7 @@ import {
 const withPostgres = process.env.TEST_DATABASE_URL ? describe : describe.skip;
 
 // Synthetic identities, Companies, Clients and prices only.
-withPostgres('Affaire reads REST', () => {
+withPostgres('Deal reads REST', () => {
   let fixture: Awaited<ReturnType<typeof openEstimateOfferFixture>>;
   let scanner: Awaited<ReturnType<typeof openDocumentScannerFixture>>;
 
@@ -44,7 +44,7 @@ withPostgres('Affaire reads REST', () => {
    * The preparer reads every commercial owner but no Project, Certification
    * or follow-up owner; the reader holds Commercial Intake and Offer reads only.
    */
-  async function affaireAtContract() {
+  async function dealAtContract() {
     const source = await fixture.prepare();
     await fixture.command({
       path: `/offers/opportunities/${source.opportunityId}/from-approved-estimate`,
@@ -107,15 +107,15 @@ withPostgres('Affaire reads REST', () => {
   ) {
     return responseRecord(
       await fixture.read({
-        path: `/affaires/${opportunityId}`,
+        path: `/deals/${opportunityId}`,
         companyId,
         headers,
       }),
     );
   }
 
-  function markers(affaire: Record<string, unknown>) {
-    const stages = affaire.stages;
+  function markers(deal: Record<string, unknown>) {
+    const stages = deal.stages;
     if (!Array.isArray(stages)) throw new Error('Expected stages.');
     return Object.fromEntries(
       stages.map((stage: unknown) => {
@@ -125,12 +125,12 @@ withPostgres('Affaire reads REST', () => {
     );
   }
 
-  it('returns the stage facts and current stage of an affaire with a Request, an Offer and a Contract', async () => {
-    const source = await affaireAtContract();
+  it('returns the stage facts and current stage of a deal with a Request, an Offer and a Contract', async () => {
+    const source = await dealAtContract();
 
-    const affaire = await detail(source.opportunityId, source.companyId);
+    const deal = await detail(source.opportunityId, source.companyId);
 
-    expect(affaire).toMatchObject({
+    expect(deal).toMatchObject({
       opportunityId: source.opportunityId,
       title: 'Synthetic internal Offer',
       subject: 'Synthetic approved-price handoff',
@@ -142,7 +142,7 @@ withPostgres('Affaire reads REST', () => {
       opportunityVersion: 1,
       thread: { kind: 'in_progress', currentStage: 'contract' },
     });
-    expect(affaire.stages).toEqual([
+    expect(deal.stages).toEqual([
       expect.objectContaining({ stage: 'request', marker: 'done' }),
       expect.objectContaining({
         stage: 'costing',
@@ -186,9 +186,9 @@ withPostgres('Affaire reads REST', () => {
   });
 
   it('marks a stage the actor cannot read as not available whether or not records exist', async () => {
-    const source = await affaireAtContract();
+    const source = await dealAtContract();
 
-    const affaire = await detail(
+    const deal = await detail(
       source.opportunityId,
       source.companyId,
       ESTIMATE_OFFER_READER,
@@ -196,11 +196,11 @@ withPostgres('Affaire reads REST', () => {
 
     // The reader holds Commercial Intake and Offer reads only: the Costing and
     // Contract records exist but are not available, so the Offer is current.
-    expect(affaire.thread).toEqual({
+    expect(deal.thread).toEqual({
       kind: 'in_progress',
       currentStage: 'offer',
     });
-    expect(markers(affaire)).toEqual({
+    expect(markers(deal)).toEqual({
       request: 'done',
       costing: 'not_available',
       offer: 'current',
@@ -209,13 +209,13 @@ withPostgres('Affaire reads REST', () => {
       closure: 'not_available',
       collection: 'not_applicable',
     });
-    const serialized = JSON.stringify(affaire);
+    const serialized = JSON.stringify(deal);
     expect(serialized).not.toContain(source.contractId);
     expect(serialized).not.toContain('APPROVE"');
   });
 
-  it('answers hidden and missing affaires with one identical denial', async () => {
-    const source = await affaireAtContract();
+  it('answers hidden and missing deals with one identical denial', async () => {
+    const source = await dealAtContract();
     const foreign = await fixture.prepare({
       companyDisplayName: 'Synthetic foreign Company',
       clientDisplayName: 'Synthetic foreign Client',
@@ -228,7 +228,7 @@ withPostgres('Affaire reads REST', () => {
       'not-an-opportunity',
     ]) {
       const response = await fixture.request({
-        path: `/affaires/${opportunityId}`,
+        path: `/deals/${opportunityId}`,
         companyId: source.companyId,
         headers: ESTIMATE_OFFER_PREPARER,
       });
@@ -239,12 +239,12 @@ withPostgres('Affaire reads REST', () => {
     expect(bodies[0]).toEqual(bodies[2]);
     expect(JSON.stringify(bodies)).not.toContain('foreign');
 
-    // Without the Commercial Intake read, existing and missing affaires get the
+    // Without the Commercial Intake read, existing and missing deals get the
     // same refusal before any lookup.
     const refusals = [];
     for (const opportunityId of [source.opportunityId, randomUUID()]) {
       const response = await fixture.request({
-        path: `/affaires/${opportunityId}`,
+        path: `/deals/${opportunityId}`,
         companyId: source.companyId,
         headers: ESTIMATE_OFFER_OWNER,
       });
@@ -254,11 +254,11 @@ withPostgres('Affaire reads REST', () => {
     expect(refusals[0]).toEqual(refusals[1]);
   });
 
-  it("lists the current stage of each affaire of the actor's Company only, page by page", async () => {
-    const source = await affaireAtContract();
+  it("lists the current stage of each deal of the actor's Company only, page by page", async () => {
+    const source = await dealAtContract();
     const fresh = await captureRequest(
       source.companyId,
-      'Synthetic fresh affaire',
+      'Synthetic fresh deal',
     );
     const foreign = await fixture.prepare({
       companyDisplayName: 'Synthetic foreign Company',
@@ -268,7 +268,7 @@ withPostgres('Affaire reads REST', () => {
 
     const page = responseRecord(
       await fixture.read({
-        path: '/affaires',
+        path: '/deals',
         companyId: source.companyId,
         headers: ESTIMATE_OFFER_PREPARER,
       }),
@@ -279,7 +279,7 @@ withPostgres('Affaire reads REST', () => {
       expect.objectContaining({
         opportunityId: fresh.opportunityId,
         clientRequestId: fresh.clientRequestId,
-        title: 'Synthetic fresh affaire',
+        title: 'Synthetic fresh deal',
         client: null,
         owner: expect.objectContaining({
           workspaceMembershipId: source.preparerMembershipId,
@@ -302,14 +302,14 @@ withPostgres('Affaire reads REST', () => {
     for (const headers of [ESTIMATE_OFFER_PREPARER, ESTIMATE_OFFER_READER]) {
       const rows = responseRecord(
         await fixture.read({
-          path: '/affaires?limit=1',
+          path: '/deals?limit=1',
           companyId: source.companyId,
           headers,
         }),
       );
       const older = responseRecord(
         await fixture.read({
-          path: `/affaires?limit=1&cursor=${encodeURIComponent(responseString(rows, 'nextCursor'))}`,
+          path: `/deals?limit=1&cursor=${encodeURIComponent(responseString(rows, 'nextCursor'))}`,
           companyId: source.companyId,
           headers,
         }),
@@ -330,7 +330,7 @@ withPostgres('Affaire reads REST', () => {
     // My open dossiers keep Commercial Intake's view: the reader owns none.
     const mine = responseRecord(
       await fixture.read({
-        path: '/affaires?view=mine_open',
+        path: '/deals?view=mine_open',
         companyId: source.companyId,
         headers: ESTIMATE_OFFER_READER,
       }),
@@ -339,7 +339,7 @@ withPostgres('Affaire reads REST', () => {
   });
 
   it('reads Delivery, Closure and the follow-up date through their own owners', async () => {
-    const source = await affaireAtContract();
+    const source = await dealAtContract();
     const path = `/contracts/opportunities/${source.opportunityId}`;
     const versionId = source.contractVersionId;
     for (const grant of [
@@ -433,7 +433,7 @@ withPostgres('Affaire reads REST', () => {
     });
     const page = responseRecord(
       await fixture.read({
-        path: '/affaires',
+        path: '/deals',
         companyId: source.companyId,
         headers: ESTIMATE_OFFER_PREPARER,
       }),
@@ -468,13 +468,13 @@ withPostgres('Affaire reads REST', () => {
     });
     expect(lost.status).toBe(200);
 
-    const affaire = await detail(source.opportunityId, source.companyId);
+    const deal = await detail(source.opportunityId, source.companyId);
 
-    expect(affaire.status).toBe('LOST');
-    expect(affaire.thread).toEqual({ kind: 'closed', status: 'LOST' });
+    expect(deal.status).toBe('LOST');
+    expect(deal.thread).toEqual({ kind: 'closed', status: 'LOST' });
     // Records are done, readable stages without one are not applicable, and
     // the Contract owner still refuses this actor.
-    expect(markers(affaire)).toEqual({
+    expect(markers(deal)).toEqual({
       request: 'done',
       costing: 'done',
       offer: 'not_applicable',
@@ -491,18 +491,18 @@ withPostgres('Affaire reads REST', () => {
     headers: Readonly<Record<string, string>>,
   ) {
     const page = responseRecord(
-      await fixture.read({ path: '/affaires', companyId, headers }),
+      await fixture.read({ path: '/deals', companyId, headers }),
     );
     const rows = Array.isArray(page.items)
       ? page.items.map(responseRecord)
       : [];
     const row = rows.find((item) => item.opportunityId === opportunityId);
-    if (!row) throw new Error('Expected the listed affaire.');
+    if (!row) throw new Error('Expected the listed deal.');
     return row;
   }
 
   it("holds each stage owner's grant through the list's presence reads, so a revocation waits for the list", async () => {
-    const source = await affaireAtContract();
+    const source = await dealAtContract();
     const barrier = await fixture.pool.connect();
     const pending: Promise<unknown>[] = [];
     try {
@@ -514,7 +514,7 @@ withPostgres('Affaire reads REST', () => {
         'LOCK TABLE contract_versions IN ACCESS EXCLUSIVE MODE',
       );
       const listing = fixture.request({
-        path: '/affaires',
+        path: '/deals',
         companyId: source.companyId,
         headers: ESTIMATE_OFFER_PREPARER,
       });
@@ -591,7 +591,7 @@ withPostgres('Affaire reads REST', () => {
     expect(JSON.stringify(reader)).not.toContain(signing.f.contractId);
 
     // The list counts that Contract only where its owner shows it, so the
-    // reader's row is the one of an affaire without a readable Contract.
+    // reader's row is the one of a deal without a readable Contract.
     const sameAsDetail = async (
       headers: Readonly<Record<string, string>>,
       shown: Record<string, unknown>,
@@ -614,7 +614,7 @@ withPostgres('Affaire reads REST', () => {
 
     // With Client read but its reference Client no longer readable, the
     // Contract owner refuses the Contract with 404: the stage is not
-    // available and the rest of the affaire is still read.
+    // available and the rest of the deal is still read.
     await fixture.pool.query(
       "UPDATE client_company_relationships SET status='archived' WHERE company_id=$1 AND client_account_id=$2",
       [source.companyId, source.clientId],

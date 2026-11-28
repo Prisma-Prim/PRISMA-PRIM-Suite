@@ -26,16 +26,16 @@ import {
   ClarteErrorState,
   ClarteLoadingState,
 } from '../components/ClarteState';
-import { stageLabelKeys, stageNumber } from './affaire-labels';
+import { stageLabelKeys, stageNumber } from './deal-labels';
 import {
-  affaireStages,
-  parseAffairePage,
-  type AffaireStage,
-  type AffaireSummary,
-} from './affaire-response';
-import { useAffaireCopy, type AffaireMessageKey } from './affaires.copy';
-import type { AffaireUpdate } from './AffairePage';
-import type { AffaireStagePanelContext } from './stage-panels';
+  dealStages,
+  parseDealPage,
+  type DealStage,
+  type DealSummary,
+} from './deal-response';
+import { useDealCopy, type DealMessageKey } from './deals.copy';
+import type { DealUpdate } from './DealPage';
+import type { DealStagePanelContext } from './stage-panels';
 
 type ListView = 'all' | 'mine_open';
 type Layout = 'list' | 'board';
@@ -43,7 +43,7 @@ type ListState =
   | { kind: 'loading' | 'denied' | 'error' }
   | {
       kind: 'ready';
-      items: AffaireSummary[];
+      items: DealSummary[];
       nextCursor?: string;
       older: 'idle' | 'loading' | 'error';
       /** The Client projection the rows' Client names belong to. */
@@ -51,7 +51,7 @@ type ListState =
     };
 const sortColumns = [
   'client',
-  'affaire',
+  'deal',
   'stage',
   'owner',
   'nextAction',
@@ -63,16 +63,16 @@ type Sort = { column: SortColumn; direction: 'ascending' | 'descending' };
 
 const columnLabels = {
   client: 'columnClient',
-  affaire: 'columnAffaire',
+  deal: 'columnDeal',
   stage: 'columnStage',
   owner: 'columnOwner',
   nextAction: 'columnNextAction',
   followUp: 'columnFollowUp',
   lastChange: 'columnLastChange',
-} as const satisfies Record<SortColumn, AffaireMessageKey>;
+} as const satisfies Record<SortColumn, DealMessageKey>;
 
-/** Stages an affaire can stand at; Collection is never linked in PRISMA. */
-const boardStages = affaireStages.filter((stage) => stage !== 'collection');
+/** Stages a deal can stand at; Collection is never linked in PRISMA. */
+const boardStages = dealStages.filter((stage) => stage !== 'collection');
 
 /** A Client dossier restricting the loaded rows, as the shell requested it. */
 export type ClientRestriction = {
@@ -81,12 +81,12 @@ export type ClientRestriction = {
 };
 
 /**
- * The Affaires list (EX-054, EX-055, EX-067): one row per affaire with its
+ * The Deals list (EX-054, EX-055, EX-067): one row per deal with its
  * current stage, sorting and text filtering over the loaded rows, All or My
  * open dossiers, follow-ups due until a date, and older pages. The board
  * groups the same loaded rows by current stage.
  */
-export function AffaireList({
+export function DealList({
   companyId,
   context,
   readAuthority,
@@ -98,7 +98,7 @@ export function AffaireList({
 }: Readonly<{
   companyId: string;
   context: Pick<
-    AffaireStagePanelContext,
+    DealStagePanelContext,
     | 'actor'
     | 'identity'
     | 'onCompanyContextRejected'
@@ -113,12 +113,12 @@ export function AffaireList({
   readAuthority: string;
   restriction: ClientRestriction | undefined;
   onClearRestriction: () => void;
-  /** The latest reread of an opened affaire, replacing its loaded row. */
-  updated: AffaireUpdate | undefined;
-  onOpen: (affaire: AffaireSummary) => void;
+  /** The latest reread of an opened deal, replacing its loaded row. */
+  updated: DealUpdate | undefined;
+  onOpen: (deal: DealSummary) => void;
   onOpenRequest: (clientRequestId: string) => void;
 }>) {
-  const copy = useAffaireCopy();
+  const copy = useDealCopy();
   const requests = useActorRequests({
     actor: context.actor,
     identity: context.identity,
@@ -126,7 +126,7 @@ export function AffaireList({
     onActorRevalidated: context.onActorRevalidated,
     onWorkspaceAccessRejected: context.onWorkspaceAccessRejected,
     companyId,
-    scope: 'clarte-affaires',
+    scope: 'clarte-deals',
   });
   const latestRequest = useRef(requests.request);
   const projection = useRef(readAuthority);
@@ -150,15 +150,14 @@ export function AffaireList({
         current.kind === 'ready' ? { ...current, older: 'loading' } : current,
       );
     const result = await latestRequest.current(
-      `/affaires?limit=25${listView === 'mine_open' ? '&view=mine_open' : ''}${
+      `/deals?limit=25${listView === 'mine_open' ? '&view=mine_open' : ''}${
         cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''
       }`,
     );
     if (result.status === 'retired' || attempt !== sequence.current) return;
-    let page: ReturnType<typeof parseAffairePage> | undefined;
+    let page: ReturnType<typeof parseDealPage> | undefined;
     try {
-      page =
-        result.status === 'ok' ? parseAffairePage(result.value) : undefined;
+      page = result.status === 'ok' ? parseDealPage(result.value) : undefined;
     } catch {
       page = undefined;
     }
@@ -213,7 +212,7 @@ export function AffaireList({
     void load(shownView.current);
   }, [readAuthority, load]);
 
-  // A reread affaire replaces its loaded row, so returning shows its state;
+  // A reread deal replaces its loaded row, so returning shows its state;
   // a row that left My open dossiers leaves that view.
   const member = context.actor.workspaceMembershipId;
   useEffect(() => {
@@ -257,9 +256,9 @@ export function AffaireList({
       : [];
 
   return (
-    <div className="clarte-affaires-list">
-      <p className="clarte-affaires-intro">{copy('listIntro')}</p>
-      <div className="clarte-affaires-toolbar">
+    <div className="clarte-deals-list">
+      <p className="clarte-deals-intro">{copy('listIntro')}</p>
+      <div className="clarte-deals-toolbar">
         <div
           className="clarte-segmented"
           role="group"
@@ -298,7 +297,7 @@ export function AffaireList({
             {copy('layoutBoard')}
           </button>
         </div>
-        <label className="clarte-affaires-filter">
+        <label className="clarte-deals-filter">
           <Search aria-hidden="true" />
           <span className="clarte-visually-hidden">{copy('filterLabel')}</span>
           <input
@@ -311,7 +310,7 @@ export function AffaireList({
         </label>
       </div>
       {restriction ? (
-        <p className="clarte-affaires-restriction">
+        <p className="clarte-deals-restriction">
           <ClarteBadge tone="accent">
             {formatMessage(copy('restriction'), {
               client: restriction.displayName,
@@ -326,7 +325,7 @@ export function AffaireList({
           </ClarteButton>
         </p>
       ) : null}
-      <div className="clarte-affaires-follow-ups">
+      <div className="clarte-deals-follow-ups">
         <OpportunityFollowUpDiscovery
           actor={context.actor}
           identity={context.identity}
@@ -358,7 +357,7 @@ export function AffaireList({
       ) : rows.length === 0 ? (
         <ClarteEmptyState title={copy('emptyFilter')} />
       ) : layout === 'list' ? (
-        <AffaireTable
+        <DealTable
           rows={rows}
           sort={sort}
           onSort={(column) =>
@@ -373,10 +372,10 @@ export function AffaireList({
           onOpen={onOpen}
         />
       ) : (
-        <AffaireBoard rows={rows} onOpen={onOpen} />
+        <DealBoard rows={rows} onOpen={onOpen} />
       )}
       {visible.kind === 'ready' && visible.nextCursor ? (
-        <div className="clarte-affaires-older">
+        <div className="clarte-deals-older">
           {visible.older === 'error' ? (
             <p role="alert">{copy('olderError')}</p>
           ) : null}
@@ -392,22 +391,22 @@ export function AffaireList({
   );
 }
 
-function AffaireTable({
+function DealTable({
   rows,
   sort,
   onSort,
   onOpen,
 }: Readonly<{
-  rows: readonly AffaireSummary[];
+  rows: readonly DealSummary[];
   sort: Sort | undefined;
   onSort: (column: SortColumn) => void;
-  onOpen: (affaire: AffaireSummary) => void;
+  onOpen: (deal: DealSummary) => void;
 }>) {
-  const copy = useAffaireCopy();
+  const copy = useDealCopy();
   const { formatDate, formatDateTime } = useInterfaceLocale();
   return (
     <div className="clarte-table-wrap">
-      <table className="clarte-table clarte-affaires-table">
+      <table className="clarte-table clarte-deals-table">
         <caption className="clarte-visually-hidden">{copy('sortHint')}</caption>
         <thead>
           <tr>
@@ -442,10 +441,7 @@ function AffaireTable({
                   <span className="clarte-muted">{copy('noClient')}</span>
                 )}
               </td>
-              <td
-                className="clarte-cell-lead"
-                data-label={copy('columnAffaire')}
-              >
+              <td className="clarte-cell-lead" data-label={copy('columnDeal')}>
                 <button
                   type="button"
                   id={rowTarget(row.opportunityId)}
@@ -457,7 +453,7 @@ function AffaireTable({
                 {row.subject ? <small>{row.subject}</small> : null}
               </td>
               <td data-label={copy('columnStage')}>
-                <ThreadChip affaire={row} />
+                <ThreadChip deal={row} />
               </td>
               <td data-label={copy('columnOwner')}>{row.owner.displayName}</td>
               <td data-label={copy('columnNextAction')}>{row.nextAction}</td>
@@ -483,17 +479,17 @@ function AffaireTable({
   );
 }
 
-function AffaireBoard({
+function DealBoard({
   rows,
   onOpen,
 }: Readonly<{
-  rows: readonly AffaireSummary[];
-  onOpen: (affaire: AffaireSummary) => void;
+  rows: readonly DealSummary[];
+  onOpen: (deal: DealSummary) => void;
 }>) {
-  const copy = useAffaireCopy();
+  const copy = useDealCopy();
   const { formatDate } = useInterfaceLocale();
   const id = useId();
-  const columns: { key: AffaireStage | 'closed'; label: string }[] = [
+  const columns: { key: DealStage | 'closed'; label: string }[] = [
     ...boardStages.map((stage) => ({
       key: stage,
       label: copy(stageLabelKeys[stage]),
@@ -558,66 +554,63 @@ function AffaireBoard({
   );
 }
 
-function ThreadChip({ affaire }: Readonly<{ affaire: AffaireSummary }>) {
-  const copy = useAffaireCopy();
+function ThreadChip({ deal }: Readonly<{ deal: DealSummary }>) {
+  const copy = useDealCopy();
   const request = useCommercialRequestCopy();
-  if (affaire.thread.kind === 'closed')
+  if (deal.thread.kind === 'closed')
     return (
       <ClarteBadge tone="neutral">
-        {request.opportunityStatusLabels[affaire.thread.status]}
+        {request.opportunityStatusLabels[deal.thread.status]}
       </ClarteBadge>
     );
   return (
     <span
       className="clarte-stage-chip"
-      data-stage={stageNumber(affaire.thread.currentStage)}
+      data-stage={stageNumber(deal.thread.currentStage)}
     >
-      {copy(stageLabelKeys[affaire.thread.currentStage])}
+      {copy(stageLabelKeys[deal.thread.currentStage])}
     </span>
   );
 }
 
-/** The id of a row's open button, where focus returns from the affaire page. */
+/** The id of a row's open button, where focus returns from the deal page. */
 export function rowTarget(opportunityId: string) {
-  return `clarte-affaire-${opportunityId}`;
+  return `clarte-deal-${opportunityId}`;
 }
 
-function summaryOf(affaire: AffaireSummary): AffaireSummary {
+function summaryOf(deal: DealSummary): DealSummary {
   return {
-    opportunityId: affaire.opportunityId,
-    clientRequestId: affaire.clientRequestId,
-    title: affaire.title,
-    subject: affaire.subject,
-    client: affaire.client,
-    status: affaire.status,
-    owner: affaire.owner,
-    nextAction: affaire.nextAction,
-    salesStage: affaire.salesStage,
-    followUpOn: affaire.followUpOn,
-    lastChangedAt: affaire.lastChangedAt,
-    thread: affaire.thread,
+    opportunityId: deal.opportunityId,
+    clientRequestId: deal.clientRequestId,
+    title: deal.title,
+    subject: deal.subject,
+    client: deal.client,
+    status: deal.status,
+    owner: deal.owner,
+    nextAction: deal.nextAction,
+    salesStage: deal.salesStage,
+    followUpOn: deal.followUpOn,
+    lastChangedAt: deal.lastChangedAt,
+    thread: deal.thread,
   };
 }
 
 /** Commercial Intake's My open cases: Open or On hold and owned by the member. */
-function isMineOpen(item: AffaireSummary, workspaceMembershipId: string) {
+function isMineOpen(item: DealSummary, workspaceMembershipId: string) {
   return (
     item.owner.workspaceMembershipId === workspaceMembershipId &&
     (item.status === 'OPEN' || item.status === 'ON_HOLD')
   );
 }
 
-function matches(item: AffaireSummary, normalized: string) {
+function matches(item: DealSummary, normalized: string) {
   if (!normalized) return true;
   return [item.subject ?? '', item.title, item.owner.displayName].some(
     (value) => value.toLowerCase().includes(normalized),
   );
 }
 
-function sortRows(
-  rows: AffaireSummary[],
-  sort: Sort | undefined,
-): AffaireSummary[] {
+function sortRows(rows: DealSummary[], sort: Sort | undefined): DealSummary[] {
   if (!sort) return rows;
   const factor = sort.direction === 'ascending' ? 1 : -1;
   return [...rows].sort((left, right) => {
@@ -631,11 +624,11 @@ function sortRows(
   });
 }
 
-function sortKey(row: AffaireSummary, column: SortColumn): string {
+function sortKey(row: DealSummary, column: SortColumn): string {
   switch (column) {
     case 'client':
       return row.client?.displayName.toLowerCase() ?? '';
-    case 'affaire':
+    case 'deal':
       return row.title.toLowerCase();
     case 'stage':
       return row.thread.kind === 'in_progress'

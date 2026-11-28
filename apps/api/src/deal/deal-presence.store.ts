@@ -14,7 +14,7 @@ import {
 } from '../database/schema/index.js';
 
 /** One Company of one Workspace, always taken from the server actor context. */
-export interface AffaireScope {
+export interface DealScope {
   readonly workspaceId: string;
   readonly companyId: string;
 }
@@ -23,19 +23,19 @@ export interface AffaireScope {
 export type LatestRecordTimes = ReadonlyMap<string, Date>;
 
 /**
- * Batched, read-only existence facts for one page of affaires. Each query is
+ * Batched, read-only existence facts for one page of deals. Each query is
  * scoped to the actor's Company and is asked only after the stage owner's
  * read permission was proven by the caller, in the transaction that holds
  * that permission's grants; it answers only whether and when a record
  * exists, never a record's content.
  */
 @Injectable()
-export class AffairePresenceStore {
+export class DealPresenceStore {
   constructor(private readonly database: DatabaseContext) {}
 
   /** The initial Opportunity of each Request with its last own change. */
   async initialOpportunities(
-    scope: AffaireScope,
+    scope: DealScope,
     clientRequestIds: readonly string[],
   ): Promise<
     ReadonlyMap<
@@ -71,7 +71,7 @@ export class AffairePresenceStore {
   }
 
   /** The last own change of one Opportunity. */
-  async opportunityChangedAt(scope: AffaireScope, opportunityId: string) {
+  async opportunityChangedAt(scope: DealScope, opportunityId: string) {
     const [row] = await this.database.connection
       .select({
         changedAt:
@@ -91,7 +91,7 @@ export class AffairePresenceStore {
   }
 
   async latestPricingSnapshots(
-    scope: AffaireScope,
+    scope: DealScope,
     opportunityIds: readonly string[],
   ): Promise<LatestRecordTimes> {
     if (opportunityIds.length === 0) return new Map();
@@ -114,7 +114,7 @@ export class AffairePresenceStore {
   }
 
   async latestProfitabilityEstimates(
-    scope: AffaireScope,
+    scope: DealScope,
     opportunityIds: readonly string[],
   ): Promise<LatestRecordTimes> {
     if (opportunityIds.length === 0) return new Map();
@@ -139,7 +139,7 @@ export class AffairePresenceStore {
   }
 
   async latestOfferVersions(
-    scope: AffaireScope,
+    scope: DealScope,
     opportunityIds: readonly string[],
   ): Promise<LatestRecordTimes> {
     if (opportunityIds.length === 0) return new Map();
@@ -163,7 +163,7 @@ export class AffairePresenceStore {
 
   /** Versions of the excluded Contracts, which the caller may not show, are left out. */
   async latestContractVersions(
-    scope: AffaireScope,
+    scope: DealScope,
     opportunityIds: readonly string[],
     excludedContractIds: readonly string[],
   ): Promise<LatestRecordTimes> {
@@ -196,7 +196,7 @@ export class AffairePresenceStore {
    * Client, whose read the Contract owner also requires to show it.
    */
   async executedCompanyModelContracts(
-    scope: AffaireScope,
+    scope: DealScope,
     opportunityIds: readonly string[],
   ): Promise<
     readonly {
@@ -231,7 +231,7 @@ export class AffairePresenceStore {
   }
 
   /** Projects linked to any Contract, Precontract or Addendum parent of each Opportunity. */
-  async linkedProjects(scope: AffaireScope, opportunityIds: readonly string[]) {
+  async linkedProjects(scope: DealScope, opportunityIds: readonly string[]) {
     if (opportunityIds.length === 0) return [];
     return this.database.connection
       .select({
@@ -259,7 +259,7 @@ export class AffairePresenceStore {
 
   /** The latest opened Certification Case of each given Project. */
   async latestCertificationCases(
-    scope: AffaireScope,
+    scope: DealScope,
     projectIds: readonly string[],
   ): Promise<LatestRecordTimes> {
     if (projectIds.length === 0) return new Map();
@@ -283,7 +283,7 @@ export class AffairePresenceStore {
   }
 
   /** The recorded follow-up date of each Opportunity that has one. */
-  async followUpDates(scope: AffaireScope, opportunityIds: readonly string[]) {
+  async followUpDates(scope: DealScope, opportunityIds: readonly string[]) {
     if (opportunityIds.length === 0) return new Map<string, string | null>();
     const rows = await this.database.connection
       .select({

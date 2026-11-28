@@ -7,8 +7,8 @@ import {
   type OpportunitySalesStage,
 } from '../../commercial-intake/sales-stage';
 
-/** The seven stages of an affaire's thread, in order. */
-export const affaireStages = [
+/** The seven stages of a deal's thread, in order. */
+export const dealStages = [
   'request',
   'costing',
   'offer',
@@ -17,28 +17,28 @@ export const affaireStages = [
   'closure',
   'collection',
 ] as const;
-export type AffaireStage = (typeof affaireStages)[number];
+export type DealStage = (typeof dealStages)[number];
 
-export const affaireStageMarkers = [
+export const dealStageMarkers = [
   'done',
   'current',
   'upcoming',
   'not_applicable',
   'not_available',
 ] as const;
-export type AffaireStageMarker = (typeof affaireStageMarkers)[number];
-type AvailableMarker = Exclude<AffaireStageMarker, 'not_available'>;
+export type DealStageMarker = (typeof dealStageMarkers)[number];
+type AvailableMarker = Exclude<DealStageMarker, 'not_available'>;
 
 export type ClosedStatus = 'LOST' | 'DISQUALIFIED' | 'ARCHIVED';
-export type AffaireThread =
-  | { kind: 'in_progress'; currentStage: AffaireStage }
+export type DealThread =
+  | { kind: 'in_progress'; currentStage: DealStage }
   | { kind: 'closed'; status: ClosedStatus };
 
 /** A fact its owner may refuse the actor, whether or not records exist. */
 export type OwnerFact<Value> =
   { readable: false } | { readable: true; value: Value };
 
-export type AffaireSummary = {
+export type DealSummary = {
   opportunityId: string;
   clientRequestId: string;
   title: string;
@@ -50,10 +50,10 @@ export type AffaireSummary = {
   salesStage: OpportunitySalesStage | null;
   followUpOn: OwnerFact<string | null>;
   lastChangedAt: string;
-  thread: AffaireThread;
+  thread: DealThread;
 };
 
-export type AffairePage = { items: AffaireSummary[]; nextCursor?: string };
+export type DealPage = { items: DealSummary[]; nextCursor?: string };
 
 export type DecisionState = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type OfferFact = {
@@ -82,7 +82,7 @@ export type CertificationCaseFact = {
   status: 'open' | 'rejected' | 'refused' | 'certified';
 };
 
-export type AffaireStageView =
+export type DealStageView =
   | {
       stage: 'request';
       marker: AvailableMarker;
@@ -116,54 +116,54 @@ export type AffaireStageView =
     }
   | { stage: 'collection'; marker: 'not_applicable'; link: 'not_linked' };
 
-export type AffaireDetail = AffaireSummary & {
+export type DealDetail = DealSummary & {
   opportunityVersion: number;
   /** Exactly one view per stage, in thread order. */
-  stages: AffaireStageView[];
+  stages: DealStageView[];
 };
 
-/** Reads one page of `GET /affaires`; a malformed page fails closed. */
-export function parseAffairePage(value: unknown): AffairePage {
+/** Reads one page of `GET /deals`; a malformed page fails closed. */
+export function parseDealPage(value: unknown): DealPage {
   if (
     !isRecord(value) ||
     !Array.isArray(value.items) ||
     value.items.length > 50
   )
-    throw new Error('Invalid affaire page.');
+    throw new Error('Invalid deal page.');
   const ids = new Set<string>();
   const items = value.items.map((item: unknown) => {
     const summary = parseSummary(item);
-    if (ids.has(summary.opportunityId)) throw new Error('Duplicate affaire.');
+    if (ids.has(summary.opportunityId)) throw new Error('Duplicate deal.');
     ids.add(summary.opportunityId);
     return summary;
   });
   if (value.nextCursor === undefined) return { items };
   if (typeof value.nextCursor !== 'string' || !value.nextCursor)
-    throw new Error('Invalid affaire continuation.');
+    throw new Error('Invalid deal continuation.');
   return { items, nextCursor: value.nextCursor };
 }
 
-/** Reads `GET /affaires/:opportunityId` for exactly the requested affaire. */
-export function parseAffaireDetail(
+/** Reads `GET /deals/:opportunityId` for exactly the requested deal. */
+export function parseDealDetail(
   value: unknown,
   opportunityId: string,
-): AffaireDetail {
+): DealDetail {
   const summary = parseSummary(value);
   if (
     !isRecord(value) ||
     summary.opportunityId !== opportunityId ||
     !isPositiveInteger(value.opportunityVersion) ||
     !Array.isArray(value.stages) ||
-    value.stages.length !== affaireStages.length
+    value.stages.length !== dealStages.length
   )
-    throw new Error('Invalid affaire.');
+    throw new Error('Invalid deal.');
   const stages = value.stages.map((stage: unknown, index) =>
-    parseStage(stage, affaireStages[index]),
+    parseStage(stage, dealStages[index]),
   );
   return { ...summary, opportunityVersion: value.opportunityVersion, stages };
 }
 
-function parseSummary(value: unknown): AffaireSummary {
+function parseSummary(value: unknown): DealSummary {
   if (
     !isRecord(value) ||
     !isText(value.opportunityId) ||
@@ -178,7 +178,7 @@ function parseSummary(value: unknown): AffaireSummary {
     !isOpportunitySalesStage(value.salesStage) ||
     !isTimestamp(value.lastChangedAt)
   )
-    throw new Error('Invalid affaire summary.');
+    throw new Error('Invalid deal summary.');
   return {
     opportunityId: value.opportunityId,
     clientRequestId: value.clientRequestId,
@@ -202,10 +202,10 @@ function parseSummary(value: unknown): AffaireSummary {
   };
 }
 
-function parseClient(value: unknown): AffaireSummary['client'] {
+function parseClient(value: unknown): DealSummary['client'] {
   if (value === null) return null;
   if (!isRecord(value) || typeof value.displayName !== 'string')
-    throw new Error('Invalid affaire Client.');
+    throw new Error('Invalid deal Client.');
   if (value.clientDossierId === undefined)
     return { displayName: value.displayName };
   if (!isText(value.clientDossierId)) throw new Error('Invalid dossier.');
@@ -215,7 +215,7 @@ function parseClient(value: unknown): AffaireSummary['client'] {
   };
 }
 
-function parseThread(value: unknown): AffaireThread {
+function parseThread(value: unknown): DealThread {
   if (!isRecord(value)) throw new Error('Invalid thread.');
   if (value.kind === 'in_progress' && isStage(value.currentStage))
     return { kind: 'in_progress', currentStage: value.currentStage };
@@ -231,15 +231,15 @@ function parseThread(value: unknown): AffaireThread {
 
 function parseStage(
   value: unknown,
-  expected: AffaireStage | undefined,
-): AffaireStageView {
+  expected: DealStage | undefined,
+): DealStageView {
   if (
     !isRecord(value) ||
     !isStage(value.stage) ||
     value.stage !== expected ||
     !isMarker(value.marker)
   )
-    throw new Error('Invalid affaire stage.');
+    throw new Error('Invalid deal stage.');
   const stage = value.stage;
   const marker = value.marker;
   if (marker === 'not_available') {
@@ -445,12 +445,12 @@ function list<Value>(value: unknown, parse: (item: unknown) => Value): Value[] {
   return value.map((item: unknown) => parse(item));
 }
 
-function isStage(value: unknown): value is AffaireStage {
-  return affaireStages.some((stage) => stage === value);
+function isStage(value: unknown): value is DealStage {
+  return dealStages.some((stage) => stage === value);
 }
 
-function isMarker(value: unknown): value is AffaireStageMarker {
-  return affaireStageMarkers.some((marker) => marker === value);
+function isMarker(value: unknown): value is DealStageMarker {
+  return dealStageMarkers.some((marker) => marker === value);
 }
 
 function isDecision(value: unknown): value is DecisionState {

@@ -25,36 +25,33 @@ import { PricingSnapshotService } from '../pricing-configuration/pricing-snapsho
 import { ProfitabilityEstimateService } from '../profitability-estimate/profitability-estimate.service.js';
 import { ProjectService } from '../project/project.service.js';
 import {
-  AffairePresenceStore,
-  type AffaireScope,
+  DealPresenceStore,
+  type DealScope,
   type LatestRecordTimes,
-} from './affaire-presence.store.js';
+} from './deal-presence.store.js';
 import {
-  affaireThread,
-  type AffaireStage,
-  type AffaireStageMarker,
-  type AffaireStagePresence,
-} from './affaire-thread.js';
+  dealThread,
+  type DealStage,
+  type DealStageMarker,
+  type DealStagePresence,
+} from './deal-thread.js';
 import type {
-  AffaireDetail,
-  AffaireListPage,
-  AffaireStageView,
-  AffaireSummary,
+  DealDetail,
+  DealListPage,
+  DealStageView,
+  DealSummary,
   AgreementFact,
   CertificationCaseFact,
   OfferFact,
   OwnerFact,
   ProjectFact,
-} from './affaire.types.js';
+} from './deal.types.js';
 
-type ReadableStages = Awaited<ReturnType<AffaireService['readableStages']>>;
+type ReadableStages = Awaited<ReturnType<DealService['readableStages']>>;
 
 /** A stage's latest record time; `null` for none, `undefined` when refused. */
 type StageTimes = Readonly<
-  Record<
-    Exclude<AffaireStage, 'request' | 'collection'>,
-    Date | null | undefined
-  >
+  Record<Exclude<DealStage, 'request' | 'collection'>, Date | null | undefined>
 >;
 
 /** Client read, as the Client owner requires it (ClientOperationalReferenceService). */
@@ -71,22 +68,22 @@ const PROJECT_READ: CapturedPermissionRequest = {
 };
 
 /**
- * The read-side affaire (#1533): one Opportunity and the facts each stage
+ * The read-side deal (#1533): one Opportunity and the facts each stage
  * owner already holds around it. It adds no command and stores nothing.
  * Scope always comes from the server actor context. The Commercial Intake
- * read decides whether the affaire exists for the actor, so hidden and
- * missing affaires share the owner's single 404; every later stage is read
+ * read decides whether the deal exists for the actor, so hidden and
+ * missing deals share the owner's single 404; every later stage is read
  * through its own owner's existing permission and is "not available" when
  * that owner refuses the actor. Presence reads run in one repeatable-read
  * snapshot that holds the grants proving each owner's read, so a revocation
  * is ordered before or after them, never between.
  */
 @Injectable()
-export class AffaireService {
+export class DealService {
   constructor(
     private readonly database: DatabaseContext,
     private readonly authorization: CompanyContextAuthorization,
-    private readonly presence: AffairePresenceStore,
+    private readonly presence: DealPresenceStore,
     private readonly clients: ClientOperationalReferenceService,
     private readonly intake: CommercialIntakeService,
     private readonly pricing: PricingSnapshotService,
@@ -101,7 +98,7 @@ export class AffaireService {
   async detail(
     actor: ActorContext,
     opportunityId: string,
-  ): Promise<AffaireDetail> {
+  ): Promise<DealDetail> {
     await this.intakeScope(actor, false);
     const target = await this.intake.requireReadableOfferOpportunity(
       actor,
@@ -153,7 +150,7 @@ export class AffaireService {
     });
     // The Contract owner refuses an executed Company-model Contract whose
     // reference Client the actor cannot read with 403 or 404
-    // (ContractVersionReader.view). The affaire exists, so either refusal
+    // (ContractVersionReader.view). The deal exists, so either refusal
     // leaves the Contract stage not available.
     const agreements = await ownerRead(() => this.readAgreements(actor, id), {
       refusesWithNotFound: true,
@@ -189,8 +186,8 @@ export class AffaireService {
       delivery: factPresence(delivery, (value) => value.length > 0),
       closure: factPresence(certificationCases, (value) => value.length > 0),
       collection: 'not_linked',
-    } as const satisfies Record<AffaireStage, AffaireStagePresence>;
-    const { thread, markers } = affaireThread({
+    } as const satisfies Record<DealStage, DealStagePresence>;
+    const { thread, markers } = dealThread({
       status: request.initialOpportunity.status,
       presence,
     });
@@ -218,8 +215,8 @@ export class AffaireService {
     );
     if (!changedAt) throw new NotFoundException();
 
-    const available = (stage: AffaireStage) => availableMarker(markers[stage]);
-    const stages: AffaireStageView[] = [
+    const available = (stage: DealStage) => availableMarker(markers[stage]);
+    const stages: DealStageView[] = [
       {
         stage: 'request',
         marker: available('request') ?? 'current',
@@ -285,7 +282,7 @@ export class AffaireService {
       readonly cursor: unknown;
       readonly viewQuery: unknown;
     },
-  ): Promise<AffaireListPage> {
+  ): Promise<DealListPage> {
     const page = await this.intake.list(actor, query);
     // Each readability check holds its grants until the presence reads that
     // rely on it end, in one snapshot.
@@ -314,9 +311,9 @@ export class AffaireService {
       },
     );
     return {
-      items: rows.map(({ item, opportunityId, changedAt }): AffaireSummary => {
+      items: rows.map(({ item, opportunityId, changedAt }): DealSummary => {
         const times = recorded(opportunityId);
-        const { thread } = affaireThread({
+        const { thread } = dealThread({
           status: item.initialOpportunity.status,
           presence: {
             request: 'record',
@@ -365,7 +362,7 @@ export class AffaireService {
    */
   private async recordTimes(
     actor: ActorContext,
-    scope: AffaireScope,
+    scope: DealScope,
     ids: readonly string[],
     can: ReadableStages,
   ): Promise<(opportunityId: string) => StageTimes> {
@@ -407,7 +404,7 @@ export class AffaireService {
   private async intakeScope(
     actor: ActorContext,
     lock: boolean,
-  ): Promise<AffaireScope> {
+  ): Promise<DealScope> {
     const { companyId } = await this.authorization.requirePermissions(actor, {
       permissions: commercialIntakeRequiredPermissions('read'),
       lock,
@@ -455,7 +452,7 @@ export class AffaireService {
    */
   private async readableContractTimes(
     actor: ActorContext,
-    scope: AffaireScope,
+    scope: DealScope,
     opportunityIds: readonly string[],
     clientRead: boolean,
   ): Promise<LatestRecordTimes> {
@@ -482,7 +479,7 @@ export class AffaireService {
   /** Linked Projects the Project owner lets the actor read, per Opportunity. */
   private async readableLinkedProjects(
     actor: ActorContext,
-    scope: AffaireScope,
+    scope: DealScope,
     opportunityIds: readonly string[],
   ) {
     const links = await this.presence.linkedProjects(scope, opportunityIds);
@@ -496,7 +493,7 @@ export class AffaireService {
   }
 
   private async latestCases(
-    scope: AffaireScope,
+    scope: DealScope,
     links: readonly { opportunityId: string; projectId: string }[],
   ): Promise<LatestRecordTimes> {
     const cases = await this.presence.latestCertificationCases(scope, [
@@ -627,14 +624,14 @@ function mapFact<Value, Result>(
 function factPresence<Value>(
   fact: OwnerFact<Value>,
   holdsRecord: (value: Value) => boolean,
-): AffaireStagePresence {
+): DealStagePresence {
   if (!fact.readable) return 'not_available';
   return holdsRecord(fact.value) ? 'record' : 'none';
 }
 
 function availableMarker(
-  marker: AffaireStageMarker,
-): Exclude<AffaireStageMarker, 'not_available'> | undefined {
+  marker: DealStageMarker,
+): Exclude<DealStageMarker, 'not_available'> | undefined {
   return marker === 'not_available' ? undefined : marker;
 }
 
@@ -658,7 +655,7 @@ function lastChange(opportunityChangedAt: Date, times: StageTimes): Date {
   ]);
 }
 
-function timePresence(time: Date | null | undefined): AffaireStagePresence {
+function timePresence(time: Date | null | undefined): DealStagePresence {
   if (time === undefined) return 'not_available';
   return time === null ? 'none' : 'record';
 }
@@ -667,11 +664,9 @@ function stageView<
   Stage extends 'costing' | 'offer' | 'contract' | 'delivery' | 'closure',
 >(
   stage: Stage,
-  marker: Exclude<AffaireStageMarker, 'not_available'> | undefined,
-  view: (
-    marker: Exclude<AffaireStageMarker, 'not_available'>,
-  ) => AffaireStageView,
-): AffaireStageView {
+  marker: Exclude<DealStageMarker, 'not_available'> | undefined,
+  view: (marker: Exclude<DealStageMarker, 'not_available'>) => DealStageView,
+): DealStageView {
   return marker === undefined
     ? { stage, marker: 'not_available' }
     : view(marker);
@@ -679,7 +674,7 @@ function stageView<
 
 function summaryOf(
   request: CommercialIntakeDetail,
-): Omit<AffaireSummary, 'followUpOn' | 'lastChangedAt' | 'thread'> {
+): Omit<DealSummary, 'followUpOn' | 'lastChangedAt' | 'thread'> {
   const opportunity = request.initialOpportunity;
   return {
     opportunityId: opportunity.id,
@@ -725,7 +720,7 @@ function latestOf(
   const dated = times.filter((time): time is Date => time !== undefined);
   if (dated.length === 0) {
     if (none === null) return null;
-    throw new Error('An affaire always has a dated change.');
+    throw new Error('A deal always has a dated change.');
   }
   return new Date(Math.max(...dated.map((time) => time.getTime())));
 }

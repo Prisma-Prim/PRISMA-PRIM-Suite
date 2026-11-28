@@ -1,20 +1,20 @@
 import type {
-  AffaireDetail,
-  AffaireStageView,
-  AffaireSummary,
-} from '../clarte/affaires/affaire-response';
+  DealDetail,
+  DealStageView,
+  DealSummary,
+} from '../clarte/deals/deal-response';
 import type { ClientRequest } from '../commercial-intake/CommercialIntakeWorkspace';
 
 /**
- * Typed builders for the `GET /affaires` responses web unit tests and
+ * Typed builders for the `GET /deals` responses web unit tests and
  * Playwright specs mock, derived from the Request detail they describe so the
- * list, the affaire page and the Request stage agree. Only types are
+ * list, the deal page and the Request stage agree. Only types are
  * imported: Playwright specs load this module without the screens.
  */
-export function affaireSummaryFor(
+export function dealSummaryFor(
   request: ClientRequest,
-  overrides: Partial<AffaireSummary> = {},
-): AffaireSummary {
+  overrides: Partial<DealSummary> = {},
+): DealSummary {
   const opportunity = request.initialOpportunity;
   return {
     opportunityId: opportunity.id,
@@ -40,8 +40,8 @@ export function affaireSummaryFor(
   };
 }
 
-/** The stages of an affaire that holds only its Request. */
-export function requestOnlyStages(request: ClientRequest): AffaireStageView[] {
+/** The stages of a deal that holds only its Request. */
+export function requestOnlyStages(request: ClientRequest): DealStageView[] {
   return [
     {
       stage: 'request',
@@ -63,12 +63,12 @@ export function requestOnlyStages(request: ClientRequest): AffaireStageView[] {
   ];
 }
 
-export function affaireDetailFor(
+export function dealDetailFor(
   request: ClientRequest,
-  overrides: Partial<AffaireDetail> = {},
-): AffaireDetail {
+  overrides: Partial<DealDetail> = {},
+): DealDetail {
   return {
-    ...affaireSummaryFor(request),
+    ...dealSummaryFor(request),
     opportunityVersion: request.initialOpportunity.version,
     stages: requestOnlyStages(request),
     ...overrides,

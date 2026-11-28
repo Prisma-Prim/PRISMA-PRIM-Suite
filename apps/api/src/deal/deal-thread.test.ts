@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { affaireThread, type AffaireStagePresences } from './affaire-thread.js';
+import { dealThread, type DealStagePresences } from './deal-thread.js';
 
-const nothingYet: AffaireStagePresences = {
+const nothingYet: DealStagePresences = {
   request: 'record',
   costing: 'none',
   offer: 'none',
@@ -11,9 +11,9 @@ const nothingYet: AffaireStagePresences = {
   collection: 'not_linked',
 };
 
-describe('affaire stage rule', () => {
+describe('deal stage rule', () => {
   it('makes the Request current while no later stage holds a record', () => {
-    expect(affaireThread({ status: 'OPEN', presence: nothingYet })).toEqual({
+    expect(dealThread({ status: 'OPEN', presence: nothingYet })).toEqual({
       thread: { kind: 'in_progress', currentStage: 'request' },
       markers: {
         request: 'current',
@@ -29,7 +29,7 @@ describe('affaire stage rule', () => {
 
   it('makes the furthest stage holding a record current and skips empty earlier stages', () => {
     expect(
-      affaireThread({
+      dealThread({
         status: 'ON_HOLD',
         presence: { ...nothingYet, offer: 'record', contract: 'record' },
       }),
@@ -49,7 +49,7 @@ describe('affaire stage rule', () => {
 
   it('never derives the current stage from a stage the actor cannot read', () => {
     expect(
-      affaireThread({
+      dealThread({
         status: 'WON',
         presence: {
           ...nothingYet,
@@ -78,7 +78,7 @@ describe('affaire stage rule', () => {
     'shows the %s status instead of a current stage',
     (status) => {
       expect(
-        affaireThread({
+        dealThread({
           status,
           presence: {
             ...nothingYet,

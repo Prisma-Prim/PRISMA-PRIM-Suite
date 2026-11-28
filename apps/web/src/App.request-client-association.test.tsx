@@ -20,13 +20,13 @@ import {
   buildClientRequest,
   requestListItemFor,
 } from './test/commercial-intake-responses';
-import { affaireDetailFor, affaireSummaryFor } from './test/affaire-responses';
+import { dealDetailFor, dealSummaryFor } from './test/deal-responses';
 import {
   leaveRequestInInterface,
   navigateInInterface,
   openRequestInInterface,
   publishAccessInInterface,
-} from './test/affaire-interface';
+} from './test/deal-interface';
 import { appInterfaces, renderInInterface } from './test/app-interface';
 import { changeValue } from './test/select-option';
 import { commercialIntakeCopy as copy } from './commercial-intake/commercial-intake.copy';
@@ -132,10 +132,10 @@ function transport() {
   let detailResponse = () => Promise.resolve(Response.json(detail));
   let listClient:
     { clientDisplayName: string; clientDossierId: string } | undefined;
-  // The affaire reads of Clarté state the same Request as the server holds,
+  // The deal reads of Clarté state the same Request as the server holds,
   // with its Client only under the member's current Client read.
   let stored: ClientRequest = detail;
-  const affaireRequest = (): ClientRequest =>
+  const dealRequest = (): ClientRequest =>
     holds(
       currentActor.activeCompany,
       'company_director_client_access',
@@ -181,10 +181,10 @@ function transport() {
         });
       if (path.endsWith('/commercial-intake/requests/request-1'))
         return detailResponse();
-      if (path.startsWith('/api/affaires?'))
-        return Response.json({ items: [affaireSummaryFor(affaireRequest())] });
-      if (path === `/api/affaires/${detail.initialOpportunity.id}`)
-        return Response.json(affaireDetailFor(affaireRequest()));
+      if (path.startsWith('/api/deals?'))
+        return Response.json({ items: [dealSummaryFor(dealRequest())] });
+      if (path === `/api/deals/${detail.initialOpportunity.id}`)
+        return Response.json(dealDetailFor(dealRequest()));
       if (
         path.endsWith(
           '/commercial-intake/requests/request-1/client-association',
@@ -382,7 +382,7 @@ describe.each(appInterfaces)(
       api.detailWith(current.response);
       await refreshAuthority();
       // The Request detail withdraws its own Client projection; Clarté's
-      // affaire header shows what its own fresh affaire read returned.
+      // deal header shows what its own fresh deal read returned.
       const request = screen.getByRole('article', { name: detail.subject });
       expect(
         within(request).queryByText(client.displayName),

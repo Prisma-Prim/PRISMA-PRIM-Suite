@@ -22,45 +22,42 @@ import {
   ClarteErrorState,
   ClarteLoadingState,
 } from '../components/ClarteState';
-import { markerLabelKeys, stageLabelKeys, stageNumber } from './affaire-labels';
+import { markerLabelKeys, stageLabelKeys, stageNumber } from './deal-labels';
 import {
-  parseAffaireDetail,
-  type AffaireDetail,
-  type AffaireStage,
-  type AffaireStageView,
-  type AffaireSummary,
-} from './affaire-response';
-import { useAffaireCopy } from './affaires.copy';
-import {
-  affaireStagePanels,
-  type AffaireStagePanelContext,
-} from './stage-panels';
+  parseDealDetail,
+  type DealDetail,
+  type DealStage,
+  type DealStageView,
+  type DealSummary,
+} from './deal-response';
+import { useDealCopy } from './deals.copy';
+import { dealStagePanels, type DealStagePanelContext } from './stage-panels';
 
-/** One affaire, by its Opportunity or, from another screen, by its Request. */
-export type AffaireTarget =
+/** One deal, by its Opportunity or, from another screen, by its Request. */
+export type DealTarget =
   | { kind: 'opportunity'; opportunityId: string }
   | { kind: 'request'; clientRequestId: string };
 
 type PageState =
   | { kind: 'loading' }
-  | { kind: 'ready'; affaire: AffaireDetail; projection: string }
+  | { kind: 'ready'; deal: DealDetail; projection: string }
   | { kind: 'unavailable' | 'denied' | 'error' };
 
-/** A reread affaire and the Client projection it was read under. */
-export type AffaireUpdate = { summary: AffaireSummary; projection: string };
+/** A reread deal and the Client projection it was read under. */
+export type DealUpdate = { summary: DealSummary; projection: string };
 
 type PageContext = Omit<
-  AffaireStagePanelContext,
-  'onAffaireChanged' | 'onRequestProtectedChange' | 'requestCommand'
+  DealStagePanelContext,
+  'onDealChanged' | 'onRequestProtectedChange' | 'requestCommand'
 >;
 
 /**
- * The affaire page: header, the seven-stage thread, one Next step card and
- * the selected stage's panel. Every fact comes from `GET /affaires/:id`;
+ * The deal page: header, the seven-stage thread, one Next step card and
+ * the selected stage's panel. Every fact comes from `GET /deals/:id`;
  * after a confirmed change the page rereads it, so the thread and the Next
  * step card follow without a reload.
  */
-export function AffairePage({
+export function DealPage({
   target,
   companyId,
   context,
@@ -71,23 +68,23 @@ export function AffairePage({
   onProtectedChange,
   onSummary,
 }: Readonly<{
-  target: AffaireTarget;
+  target: DealTarget;
   companyId: string;
   context: PageContext;
   /**
    * The grants, captures and Client authority and identity the shown facts
    * belong to. A change withdraws the Client name and every stage fact at
-   * once and rereads the affaire.
+   * once and rereads the deal.
    */
   readAuthority: string;
-  initialStage?: AffaireStage;
+  initialStage?: DealStage;
   /** The Request stage protects pending or uncertain work: Back waits. */
   leaveHeld: boolean;
   onBack: () => void;
   onProtectedChange: (active: boolean) => void;
-  onSummary: (update: AffaireUpdate) => void;
+  onSummary: (update: DealUpdate) => void;
 }>) {
-  const copy = useAffaireCopy();
+  const copy = useDealCopy();
   const requests = useActorRequests({
     actor: context.actor,
     identity: context.identity,
@@ -95,12 +92,12 @@ export function AffairePage({
     onActorRevalidated: context.onActorRevalidated,
     onWorkspaceAccessRejected: context.onWorkspaceAccessRejected,
     companyId,
-    scope: 'clarte-affaire',
+    scope: 'clarte-deal',
   });
   const [state, setState] = useState<PageState>({ kind: 'loading' });
   const [selected, setSelected] = useState(initialStage);
   const [command, setCommand] =
-    useState<AffaireStagePanelContext['requestCommand']>();
+    useState<DealStagePanelContext['requestCommand']>();
   const opportunity = useRef(
     target.kind === 'opportunity' ? target.opportunityId : undefined,
   );
@@ -134,12 +131,10 @@ export function AffairePage({
     }
     const opportunityId = opportunity.current;
     if (!opportunityId) return;
-    const result = await request(
-      `/affaires/${encodeURIComponent(opportunityId)}`,
-    );
+    const result = await request(`/deals/${encodeURIComponent(opportunityId)}`);
     if (result.status === 'retired' || !current()) return;
     if (result.status !== 'ok') {
-      // A failed reread keeps the shown affaire; a refusal never does.
+      // A failed reread keeps the shown deal; a refusal never does.
       setState((shown) =>
         shown.kind === 'ready' && result.status === 'error'
           ? shown
@@ -148,9 +143,9 @@ export function AffairePage({
       return;
     }
     try {
-      const affaire = parseAffaireDetail(result.value, opportunityId);
-      setState({ kind: 'ready', affaire, projection: readUnder });
-      summary.current({ summary: affaire, projection: readUnder });
+      const deal = parseDealDetail(result.value, opportunityId);
+      setState({ kind: 'ready', deal, projection: readUnder });
+      summary.current({ summary: deal, projection: readUnder });
     } catch {
       setState({ kind: 'error' });
     }
@@ -189,22 +184,22 @@ export function AffairePage({
   );
   if (state.kind === 'loading')
     return (
-      <div className="clarte-affaire">
+      <div className="clarte-deal">
         {back}
-        <ClarteLoadingState label={copy('loadingAffaire')} />
+        <ClarteLoadingState label={copy('loadingDeal')} />
       </div>
     );
   if (state.kind !== 'ready')
     return (
-      <div className="clarte-affaire">
+      <div className="clarte-deal">
         {back}
         <ClarteErrorState
           title={
             state.kind === 'unavailable'
-              ? copy('affaireUnavailable')
+              ? copy('dealUnavailable')
               : state.kind === 'denied'
-                ? copy('affaireDenied')
-                : copy('affaireError')
+                ? copy('dealDenied')
+                : copy('dealError')
           }
           action={
             state.kind === 'error' ? (
@@ -217,18 +212,14 @@ export function AffairePage({
       </div>
     );
 
-  const affaire: AffaireDetail =
-    state.projection === readAuthority
-      ? state.affaire
-      : withdrawn(state.affaire);
+  const deal: DealDetail =
+    state.projection === readAuthority ? state.deal : withdrawn(state.deal);
   const current =
-    affaire.thread.kind === 'in_progress'
-      ? affaire.thread.currentStage
-      : undefined;
-  const shown: AffaireStage = selected ?? current ?? 'request';
-  const panelContext: AffaireStagePanelContext = {
+    deal.thread.kind === 'in_progress' ? deal.thread.currentStage : undefined;
+  const shown: DealStage = selected ?? current ?? 'request';
+  const panelContext: DealStagePanelContext = {
     ...context,
-    onAffaireChanged: () => void load(),
+    onDealChanged: () => void load(),
     onRequestProtectedChange: onProtectedChange,
     requestCommand: command,
   };
@@ -240,24 +231,20 @@ export function AffairePage({
     }));
   };
   return (
-    <div className="clarte-affaire">
+    <div className="clarte-deal">
       {back}
-      <AffaireHeader affaire={affaire} heading={heading} context={context} />
-      <AffaireThread
-        affaire={affaire}
+      <DealHeader deal={deal} heading={heading} context={context} />
+      <DealThread
+        deal={deal}
         shown={shown}
         onSelect={(stage) => setSelected(stage)}
       />
-      <div className="clarte-affaire-layout">
-        <aside className="clarte-affaire-side">
-          <NextStepCard
-            affaire={affaire}
-            context={context}
-            onCommand={openCommand}
-          />
+      <div className="clarte-deal-layout">
+        <aside className="clarte-deal-side">
+          <NextStepCard deal={deal} context={context} onCommand={openCommand} />
         </aside>
         <StagePanel
-          affaire={affaire}
+          deal={deal}
           shown={shown}
           current={current}
           context={panelContext}
@@ -268,61 +255,59 @@ export function AffairePage({
   );
 }
 
-function AffaireHeader({
-  affaire,
+function DealHeader({
+  deal,
   heading,
   context,
 }: Readonly<{
-  affaire: AffaireDetail;
+  deal: DealDetail;
   heading: RefObject<HTMLHeadingElement | null>;
   context: PageContext;
 }>) {
-  const copy = useAffaireCopy();
+  const copy = useDealCopy();
   const request = useCommercialRequestCopy();
   const stageCopy = useSalesStageCopy();
   const stage =
-    affaire.thread.kind === 'in_progress'
-      ? affaire.thread.currentStage
-      : undefined;
-  const dossier = affaire.client?.clientDossierId;
+    deal.thread.kind === 'in_progress' ? deal.thread.currentStage : undefined;
+  const dossier = deal.client?.clientDossierId;
   return (
-    <header className="clarte-affaire-head">
-      <p className="clarte-affaire-kicker">
+    <header className="clarte-deal-head">
+      <p className="clarte-deal-kicker">
         {stage ? (
           <span className="clarte-stage-chip" data-stage={stageNumber(stage)}>
             {copy(stageLabelKeys[stage])}
           </span>
         ) : null}
-        <ClarteBadge tone={statusTone(affaire.status)}>
-          {request.opportunityStatusLabels[affaire.status]}
+        <ClarteBadge tone={statusTone(deal.status)}>
+          {request.opportunityStatusLabels[deal.status]}
         </ClarteBadge>
-        {affaire.salesStage ? (
+        {deal.salesStage ? (
           <ClarteBadge tone="neutral">
-            {stageCopy('salesStage')}: {affaire.salesStage.label}
+            {stageCopy('salesStage')}: {deal.salesStage.label}
           </ClarteBadge>
         ) : null}
       </p>
       <h2 ref={heading} tabIndex={-1}>
-        {affaire.title}
+        {deal.title}
       </h2>
-      {affaire.subject ? (
-        <p className="clarte-affaire-subject">{affaire.subject}</p>
+      {deal.subject ? (
+        <p className="clarte-deal-subject">{deal.subject}</p>
       ) : null}
-      <dl className="clarte-affaire-meta">
+      <dl className="clarte-deal-meta">
         <div>
           <dt>{copy('headerClient')}</dt>
           <dd>
-            {affaire.client ? (
+            {deal.client ? (
               dossier && context.onOpenClientDossier ? (
                 <button
                   type="button"
                   className="clarte-link"
                   onClick={() => context.onOpenClientDossier?.(dossier)}
                 >
-                  {affaire.client.displayName}
+                  {deal.client.displayName}
                 </button>
               ) : (
-                affaire.client.displayName
+                deal.client.displayName
               )
             ) : (
               copy('noClient')
@@ -331,23 +316,23 @@ function AffaireHeader({
         </div>
         <div>
           <dt>{copy('headerOwner')}</dt>
-          <dd>{affaire.owner.displayName}</dd>
+          <dd>{deal.owner.displayName}</dd>
         </div>
       </dl>
     </header>
   );
 }
 
-function AffaireThread({
-  affaire,
+function DealThread({
+  deal,
   shown,
   onSelect,
 }: Readonly<{
-  affaire: AffaireDetail;
-  shown: AffaireStage;
-  onSelect: (stage: AffaireStage) => void;
+  deal: DealDetail;
+  shown: DealStage;
+  onSelect: (stage: DealStage) => void;
 }>) {
-  const copy = useAffaireCopy();
+  const copy = useDealCopy();
   const request = useCommercialRequestCopy();
   const list = useRef<HTMLOListElement>(null);
   // On a narrow screen the thread scrolls sideways: show the current stage.
@@ -365,7 +350,7 @@ function AffaireThread({
   return (
     <div className="clarte-thread-wrap">
       <ol ref={list} className="clarte-thread" aria-label={copy('threadLabel')}>
-        {affaire.stages.map((view) => (
+        {deal.stages.map((view) => (
           <li
             key={view.stage}
             data-stage={stageNumber(view.stage)}
@@ -390,10 +375,10 @@ function AffaireThread({
           </li>
         ))}
       </ol>
-      {affaire.thread.kind === 'closed' ? (
+      {deal.thread.kind === 'closed' ? (
         <p className="clarte-thread-closed" role="status">
           {formatMessage(copy('threadClosed'), {
-            status: request.opportunityStatusLabels[affaire.thread.status],
+            status: request.opportunityStatusLabels[deal.thread.status],
           })}
         </p>
       ) : null}
@@ -402,15 +387,15 @@ function AffaireThread({
 }
 
 function NextStepCard({
-  affaire,
+  deal,
   context,
   onCommand,
 }: Readonly<{
-  affaire: AffaireDetail;
+  deal: DealDetail;
   context: PageContext;
   onCommand: (kind: 'next-action' | 'outcome') => void;
 }>) {
-  const copy = useAffaireCopy();
+  const copy = useDealCopy();
   const request = useCommercialRequestCopy();
   const { formatDate } = useInterfaceLocale();
   const company = context.actor.activeCompany;
@@ -429,26 +414,24 @@ function NextStepCard({
       'company_opportunity_manager',
       'commercial.opportunity.outcome.change',
     ) && intakeReads;
-  const closed = affaire.thread.kind === 'closed';
-  const followUpOn = affaire.followUpOn.readable
-    ? affaire.followUpOn.value
-    : null;
+  const closed = deal.thread.kind === 'closed';
+  const followUpOn = deal.followUpOn.readable ? deal.followUpOn.value : null;
   return (
     <ClarteCard title={copy('nextStepTitle')}>
       <div className="clarte-next-step">
         <p className="clarte-next-step-stage">
-          {affaire.thread.kind === 'in_progress'
+          {deal.thread.kind === 'in_progress'
             ? formatMessage(copy('nextStepCurrent'), {
-                stage: copy(stageLabelKeys[affaire.thread.currentStage]),
+                stage: copy(stageLabelKeys[deal.thread.currentStage]),
               })
             : formatMessage(copy('nextStepClosed'), {
-                status: request.opportunityStatusLabels[affaire.thread.status],
+                status: request.opportunityStatusLabels[deal.thread.status],
               })}
         </p>
         <p className="clarte-next-step-label">{copy('nextStepAction')}</p>
-        <p className="clarte-next-step-action">{affaire.nextAction}</p>
+        <p className="clarte-next-step-action">{deal.nextAction}</p>
         <p className="clarte-next-step-meta">
-          <span>{affaire.owner.displayName}</span>
+          <span>{deal.owner.displayName}</span>
           {followUpOn ? (
             <ClarteBadge tone="warning">
               {formatMessage(copy('nextStepFollowUp'), {
@@ -482,24 +465,24 @@ function NextStepCard({
 }
 
 function StagePanel({
-  affaire,
+  deal,
   shown,
   current,
   context,
   onReturn,
 }: Readonly<{
-  affaire: AffaireDetail;
-  shown: AffaireStage;
-  current: AffaireStage | undefined;
-  context: AffaireStagePanelContext;
+  deal: DealDetail;
+  shown: DealStage;
+  current: DealStage | undefined;
+  context: DealStagePanelContext;
   onReturn: () => void;
 }>) {
-  const copy = useAffaireCopy();
+  const copy = useDealCopy();
   const titleId = useId();
-  const Panel = affaireStagePanels[shown];
-  const view = affaire.stages.find((stage) => stage.stage === shown);
-  const requestView = affaire.stages.find((stage) => stage.stage === 'request');
-  const RequestPanel = affaireStagePanels.request;
+  const Panel = dealStagePanels[shown];
+  const view = deal.stages.find((stage) => stage.stage === shown);
+  const requestView = deal.stages.find((stage) => stage.stage === 'request');
+  const RequestPanel = dealStagePanels.request;
   return (
     <section className="clarte-stage-panel" aria-labelledby={titleId}>
       <h3 id={titleId} data-stage={stageNumber(shown)}>
@@ -518,11 +501,7 @@ function StagePanel({
       {/* The Request stage stays mounted so its drafts and retries survive. */}
       {requestView ? (
         <div hidden={shown !== 'request'}>
-          <RequestPanel
-            affaire={affaire}
-            view={requestView}
-            context={context}
-          />
+          <RequestPanel deal={deal} view={requestView} context={context} />
         </div>
       ) : null}
       {shown === 'request' || !view ? null : view.marker === 'not_available' ? (
@@ -530,13 +509,13 @@ function StagePanel({
           <p>{copy('panelNotAvailableHelp')}</p>
         </ClarteEmptyState>
       ) : (
-        <Panel affaire={affaire} view={view} context={context} />
+        <Panel deal={deal} view={view} context={context} />
       )}
     </section>
   );
 }
 
-function statusTone(status: AffaireDetail['status']) {
+function statusTone(status: DealDetail['status']) {
   switch (status) {
     case 'OPEN':
       return 'info' as const;
@@ -561,16 +540,16 @@ function statusTone(status: AffaireDetail['status']) {
  * the Commercial Intake summary, never a Client name, follow-up date or any
  * later stage's facts or presence.
  */
-function withdrawn(affaire: AffaireDetail): AffaireDetail {
-  const closed = affaire.thread.kind === 'closed';
+function withdrawn(deal: DealDetail): DealDetail {
+  const closed = deal.thread.kind === 'closed';
   return {
-    ...affaire,
+    ...deal,
     client: null,
     followUpOn: { readable: false },
     thread: closed
-      ? affaire.thread
+      ? deal.thread
       : { kind: 'in_progress', currentStage: 'request' },
-    stages: affaire.stages.map((view): AffaireStageView => {
+    stages: deal.stages.map((view): DealStageView => {
       switch (view.stage) {
         case 'request':
           return { ...view, marker: closed ? 'done' : 'current' };

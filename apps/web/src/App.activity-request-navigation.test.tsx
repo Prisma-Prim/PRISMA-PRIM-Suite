@@ -17,7 +17,7 @@ import {
   buildClientRequest,
   requestListItemFor,
 } from './test/commercial-intake-responses';
-import { affaireDetailFor, affaireSummaryFor } from './test/affaire-responses';
+import { dealDetailFor, dealSummaryFor } from './test/deal-responses';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -180,17 +180,17 @@ function installTransport(
         const reply = state.detailReplies.shift();
         return reply ? reply() : respond(requestDetail());
       }
-      // Clarté shows the Requests as affaires and opens each in its affaire page.
-      if (path.includes('/affaires?'))
+      // Clarté shows the Requests as deals and opens each in its deal page.
+      if (path.includes('/deals?'))
         return respond({
           items:
             companyContextId === companyA.id
-              ? [affaireSummaryFor(requestDetail())]
+              ? [dealSummaryFor(requestDetail())]
               : [],
         });
-      if (path.endsWith(`/affaires/${opportunityId}`)) {
+      if (path.endsWith(`/deals/${opportunityId}`)) {
         if (state.forbidDetail) return respond({}, 403);
-        return respond(affaireDetailFor(requestDetail()));
+        return respond(dealDetailFor(requestDetail()));
       }
       throw new Error('Unexpected API request: ' + path);
     }),
@@ -220,7 +220,7 @@ function navigation() {
 type Section = 'Activity Log' | 'Client Requests';
 /**
  * The menu link that opens a section: the section itself in the current
- * interface; in Clarté, the entry that holds it (Affaires holds only the
+ * interface; in Clarté, the entry that holds it (Deals holds only the
  * Requests, and the Settings console lists the Activity Log).
  */
 function queryMenuLink(appInterface: AppInterface, section: Section) {
@@ -228,7 +228,7 @@ function queryMenuLink(appInterface: AppInterface, section: Section) {
     appInterface === 'current'
       ? section
       : section === 'Client Requests'
-        ? 'Affaires'
+        ? 'Deals'
         : 'Settings';
   return within(navigation()).queryByRole('link', { name });
 }
@@ -248,17 +248,16 @@ function navigateTo(appInterface: AppInterface, section: Section) {
 }
 /**
  * Where the Requests show: their own section in the current interface; in
- * Clarté, the Affaires screen that lists them and opens each affaire's page.
+ * Clarté, the Deals screen that lists them and opens each deal's page.
  */
 function requestsRegion(appInterface: AppInterface) {
   if (appInterface === 'current')
     return screen.getByRole('region', { name: 'Client Requests' });
-  const affaires = document.getElementById('requests');
-  if (!(affaires instanceof HTMLElement))
-    throw new Error('Expected the Affaires.');
-  return affaires;
+  const deals = document.getElementById('requests');
+  if (!(deals instanceof HTMLElement)) throw new Error('Expected the Deals.');
+  return deals;
 }
-/** The opened Request takes focus: its section, or its affaire page's heading. */
+/** The opened Request takes focus: its section, or its deal page's heading. */
 async function expectOpenedRequestFocused(appInterface: AppInterface) {
   await waitFor(() =>
     expect(
@@ -271,7 +270,7 @@ async function expectOpenedRequestFocused(appInterface: AppInterface) {
     ).toHaveFocus(),
   );
 }
-/** The listed Request: its row in the current interface, its affaire's row in Clarté. */
+/** The listed Request: its row in the current interface, its deal's row in Clarté. */
 function findListedRequest(appInterface: AppInterface) {
   return screen.findByRole('button', {
     name:
@@ -356,7 +355,7 @@ describe.each(appInterfaces)(
       ).toBeVisible();
       expect(window.location.hash).toBe('#requests');
       await expectOpenedRequestFocused(appInterface);
-      // Clarté's affaire page first reads the Request to find its Opportunity;
+      // Clarté's deal page first reads the Request to find its Opportunity;
       // its Request stage then reads it once, as the current section does.
       expect(transport.detailReads).toEqual(
         appInterface === 'current' ? [companyA.id] : [companyA.id, companyA.id],
@@ -518,7 +517,7 @@ describe.each(appInterfaces)(
       ).not.toBeInTheDocument();
     });
 
-    // Clarté's affaire page does not yet hold a requested affaire behind an open
+    // Clarté's deal page does not yet hold a requested deal behind an open
     // editor; #1558 owns that, and this test then runs in Clarté too.
     it.skipIf(appInterface === 'clarte')(
       'holds the requested Request behind an open next-action edit and opens it on cancel',
@@ -605,7 +604,7 @@ describe.each(appInterfaces)(
         await within(requestsRegion(appInterface)).findByText(
           appInterface === 'current'
             ? 'No Client Requests for Company B yet.'
-            : 'No affaire yet.',
+            : 'No deal yet.',
         ),
       ).toBeVisible();
 

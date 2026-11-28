@@ -1,38 +1,38 @@
-/* Clarté Affaires (#1533). Scoped to the frame; light background only. */
+/* Clarté Deals (#1533). Scoped to the frame; light background only. */
 
-.clarte-frame .clarte-affaires {
+.clarte-frame .clarte-deals {
   display: grid;
   gap: 16px;
   outline: none;
 }
 
-.clarte-frame .clarte-affaires [data-stage='1'] {
+.clarte-frame .clarte-deals [data-stage='1'] {
   --stage-color: var(--clarte-stage-1);
 }
-.clarte-frame .clarte-affaires [data-stage='2'] {
+.clarte-frame .clarte-deals [data-stage='2'] {
   --stage-color: var(--clarte-stage-2);
 }
-.clarte-frame .clarte-affaires [data-stage='3'] {
+.clarte-frame .clarte-deals [data-stage='3'] {
   --stage-color: var(--clarte-stage-3);
 }
-.clarte-frame .clarte-affaires [data-stage='4'] {
+.clarte-frame .clarte-deals [data-stage='4'] {
   --stage-color: var(--clarte-stage-4);
 }
-.clarte-frame .clarte-affaires [data-stage='5'] {
+.clarte-frame .clarte-deals [data-stage='5'] {
   --stage-color: var(--clarte-stage-5);
 }
-.clarte-frame .clarte-affaires [data-stage='6'] {
+.clarte-frame .clarte-deals [data-stage='6'] {
   --stage-color: var(--clarte-stage-6);
 }
-.clarte-frame .clarte-affaires [data-stage='7'] {
+.clarte-frame .clarte-deals [data-stage='7'] {
   --stage-color: var(--clarte-stage-7);
 }
 
-.clarte-frame .clarte-affaires .clarte-muted {
+.clarte-frame .clarte-deals .clarte-muted {
   color: var(--clarte-muted);
 }
 
-.clarte-frame .clarte-affaires .clarte-link {
+.clarte-frame .clarte-deals .clarte-link {
   min-height: 0;
   padding: 0;
   border: 0;
@@ -45,17 +45,17 @@
 }
 
 /* List */
-.clarte-frame .clarte-affaires-list {
+.clarte-frame .clarte-deals-list {
   display: grid;
   gap: 14px;
 }
 
-.clarte-frame .clarte-affaires-intro {
+.clarte-frame .clarte-deals-intro {
   margin: 0;
   color: var(--clarte-muted);
 }
 
-.clarte-frame .clarte-affaires-toolbar {
+.clarte-frame .clarte-deals-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -95,7 +95,7 @@
   box-shadow: var(--clarte-shadow);
 }
 
-.clarte-frame .clarte-affaires-filter {
+.clarte-frame .clarte-deals-filter {
   position: relative;
   display: block;
   flex: 1 1 240px;
@@ -103,7 +103,7 @@
   margin-left: auto;
 }
 
-.clarte-frame .clarte-affaires-filter > svg {
+.clarte-frame .clarte-deals-filter > svg {
   position: absolute;
   top: 50%;
   left: 12px;
@@ -113,12 +113,12 @@
   transform: translateY(-50%);
 }
 
-.clarte-frame .clarte-affaires-filter input {
+.clarte-frame .clarte-deals-filter input {
   width: 100%;
   padding-left: 36px;
 }
 
-.clarte-frame .clarte-affaires-restriction {
+.clarte-frame .clarte-deals-restriction {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -127,11 +127,11 @@
 }
 
 /* The existing follow-up discovery, set in a Clarté card. */
-.clarte-frame .clarte-affaires-follow-ups:empty {
+.clarte-frame .clarte-deals-follow-ups:empty {
   display: none;
 }
 
-.clarte-frame .clarte-affaires-follow-ups > section {
+.clarte-frame .clarte-deals-follow-ups > section {
   display: grid;
   gap: 10px;
   padding: 16px 20px;
@@ -141,12 +141,12 @@
   box-shadow: var(--clarte-shadow);
 }
 
-.clarte-frame .clarte-affaires-follow-ups h3 {
+.clarte-frame .clarte-deals-follow-ups h3 {
   margin: 0;
   font-size: 15px;
 }
 
-.clarte-frame .clarte-affaires-follow-ups :where(input, button) {
+.clarte-frame .clarte-deals-follow-ups :where(input, button) {
   min-height: 36px;
   padding: 0 12px;
   border: 1px solid var(--clarte-line);
@@ -154,7 +154,7 @@
   background: var(--clarte-surface);
 }
 
-.clarte-frame .clarte-affaires-table {
+.clarte-frame .clarte-deals-table {
   border: 1px solid var(--clarte-line);
   border-radius: var(--clarte-radius-lg);
   background: var(--clarte-surface);
@@ -164,12 +164,12 @@
   overflow: hidden;
 }
 
-.clarte-frame .clarte-affaires-table th {
+.clarte-frame .clarte-deals-table th {
   padding: 0;
   background: var(--clarte-surface-muted);
 }
 
-.clarte-frame .clarte-affaires-table th button {
+.clarte-frame .clarte-deals-table th button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -185,21 +185,21 @@
   cursor: pointer;
 }
 
-.clarte-frame .clarte-affaires-table th button svg {
+.clarte-frame .clarte-deals-table th button svg {
   width: 13px;
   height: 13px;
   opacity: 0.6;
 }
 
-.clarte-frame .clarte-affaires-table td {
+.clarte-frame .clarte-deals-table td {
   padding: 12px;
 }
 
-.clarte-frame .clarte-affaires-table tbody tr:hover {
+.clarte-frame .clarte-deals-table tbody tr:hover {
   background: var(--clarte-surface-muted);
 }
 
-.clarte-frame .clarte-affaires-table td small {
+.clarte-frame .clarte-deals-table td small {
   display: block;
   color: var(--clarte-muted);
 }
@@ -240,7 +240,7 @@
   content: '';
 }
 
-.clarte-frame .clarte-affaires-older {
+.clarte-frame .clarte-deals-older {
   display: grid;
   justify-items: center;
   gap: 8px;
@@ -329,22 +329,22 @@
   font-size: 12.5px;
 }
 
-/* Affaire page */
-.clarte-frame .clarte-affaire {
+/* Deal page */
+.clarte-frame .clarte-deal {
   display: grid;
   gap: 16px;
 }
 
-.clarte-frame .clarte-affaire > .clarte-button {
+.clarte-frame .clarte-deal > .clarte-button {
   justify-self: start;
 }
 
-.clarte-frame .clarte-affaire-head {
+.clarte-frame .clarte-deal-head {
   display: grid;
   gap: 6px;
 }
 
-.clarte-frame .clarte-affaire-kicker {
+.clarte-frame .clarte-deal-kicker {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -352,35 +352,35 @@
   margin: 0;
 }
 
-.clarte-frame .clarte-affaire-head h2 {
+.clarte-frame .clarte-deal-head h2 {
   margin: 0;
   font-size: 28px;
   line-height: 1.2;
   outline: none;
 }
 
-.clarte-frame .clarte-affaire-subject {
+.clarte-frame .clarte-deal-subject {
   margin: 0;
   color: var(--clarte-ink-soft);
 }
 
-.clarte-frame .clarte-affaire-meta {
+.clarte-frame .clarte-deal-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 6px 22px;
   margin: 0;
 }
 
-.clarte-frame .clarte-affaire-meta div {
+.clarte-frame .clarte-deal-meta div {
   display: flex;
   gap: 6px;
 }
 
-.clarte-frame .clarte-affaire-meta dt {
+.clarte-frame .clarte-deal-meta dt {
   color: var(--clarte-muted);
 }
 
-.clarte-frame .clarte-affaire-meta dd {
+.clarte-frame .clarte-deal-meta dd {
   margin: 0;
   font-weight: 600;
 }
@@ -480,7 +480,7 @@
   font-weight: 600;
 }
 
-.clarte-frame .clarte-affaire-layout {
+.clarte-frame .clarte-deal-layout {
   display: grid;
   grid-template-areas: 'panel side';
   grid-template-columns: minmax(0, 1fr) 340px;
@@ -488,13 +488,13 @@
   gap: 16px;
 }
 
-.clarte-frame .clarte-affaire-side {
+.clarte-frame .clarte-deal-side {
   grid-area: side;
   display: grid;
   gap: 16px;
 }
 
-.clarte-frame .clarte-affaire-side .clarte-card {
+.clarte-frame .clarte-deal-side .clarte-card {
   border-color: var(--clarte-accent-line);
   box-shadow:
     inset 4px 0 0 var(--clarte-accent),
@@ -674,7 +674,7 @@
 }
 
 @media (max-width: 960px) {
-  .clarte-frame .clarte-affaire-layout {
+  .clarte-frame .clarte-deal-layout {
     grid-template-areas:
       'side'
       'panel';
@@ -683,12 +683,12 @@
 }
 
 @media (max-width: 768px) {
-  .clarte-frame .clarte-affaires-filter {
+  .clarte-frame .clarte-deals-filter {
     max-width: none;
     margin-left: 0;
   }
 
-  .clarte-frame .clarte-affaire-head h2 {
+  .clarte-frame .clarte-deal-head h2 {
     font-size: 23px;
   }
 
@@ -698,21 +698,21 @@
   }
 
   /* Each row becomes a card; cells carry their column name. */
-  .clarte-frame .clarte-affaires-table,
-  .clarte-frame .clarte-affaires-table tbody,
-  .clarte-frame .clarte-affaires-table tr,
-  .clarte-frame .clarte-affaires-table td {
+  .clarte-frame .clarte-deals-table,
+  .clarte-frame .clarte-deals-table tbody,
+  .clarte-frame .clarte-deals-table tr,
+  .clarte-frame .clarte-deals-table td {
     display: block;
   }
 
-  .clarte-frame .clarte-affaires-table {
+  .clarte-frame .clarte-deals-table {
     border: 0;
     background: none;
     box-shadow: none;
   }
 
   /* The sort controls stay one row that scrolls sideways. */
-  .clarte-frame .clarte-affaires-table thead {
+  .clarte-frame .clarte-deals-table thead {
     display: flex;
     gap: 6px;
     margin-bottom: 8px;
@@ -720,22 +720,22 @@
     overflow-x: auto;
   }
 
-  .clarte-frame .clarte-affaires-table thead tr {
+  .clarte-frame .clarte-deals-table thead tr {
     display: contents;
   }
 
-  .clarte-frame .clarte-affaires-table th {
+  .clarte-frame .clarte-deals-table th {
     border: 0;
     border-radius: 999px;
     background: var(--clarte-surface-sunken);
   }
 
-  .clarte-frame .clarte-affaires-table th button {
+  .clarte-frame .clarte-deals-table th button {
     min-height: var(--clarte-touch-target);
     white-space: nowrap;
   }
 
-  .clarte-frame .clarte-affaires-table tbody tr {
+  .clarte-frame .clarte-deals-table tbody tr {
     display: grid;
     gap: 6px;
     margin-bottom: 10px;
@@ -746,19 +746,19 @@
     box-shadow: var(--clarte-shadow);
   }
 
-  .clarte-frame .clarte-affaires-table td {
+  .clarte-frame .clarte-deals-table td {
     padding: 0;
     border: 0;
   }
 
-  .clarte-frame .clarte-affaires-table td:not(.clarte-cell-lead) {
+  .clarte-frame .clarte-deals-table td:not(.clarte-cell-lead) {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: 2px 8px;
   }
 
-  .clarte-frame .clarte-affaires-table td:not(.clarte-cell-lead)::before {
+  .clarte-frame .clarte-deals-table td:not(.clarte-cell-lead)::before {
     min-width: 96px;
     color: var(--clarte-muted);
     font-size: 12px;
@@ -766,7 +766,7 @@
     content: attr(data-label);
   }
 
-  .clarte-frame .clarte-affaires-table td.clarte-cell-lead:first-child {
+  .clarte-frame .clarte-deals-table td.clarte-cell-lead:first-child {
     color: var(--clarte-muted);
     font-size: 12.5px;
     font-weight: 600;

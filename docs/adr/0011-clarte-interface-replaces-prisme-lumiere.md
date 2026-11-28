@@ -17,9 +17,9 @@ The owner found the current interface not intuitive. It has 22 sections in one f
 
 The web application moves to the Clarté interface.
 
-- **Navigation.** Seven primary entries: Today, Affaires, Clients, Missions and audits, Tasks, Documents and Finance, plus Improvement and Settings. Everything else lives in tabs or side panels.
+- **Navigation.** Seven primary entries: Today, Deals, Clients, Missions and audits, Tasks, Documents and Finance, plus Improvement and Settings. Everything else lives in tabs or side panels.
 - **Frame.** A top bar holds a jump list (Ctrl K), the active Company, notifications and the user menu. Phones get a bottom bar instead.
-- **Affaire.** An affaire is a read-side aggregation of existing records: Client Request, Opportunity, Offer, Contract, Project, Certification Case and invoice facts. It is shown as a seven-stage thread (Request, Costing, Offer, Contract, Delivery, Closure, Collection) with a single next step. It is not a new business object; NestJS composes it on the server and stays the authority.
+- **Deal.** A deal is a read-side aggregation of existing records: Client Request, Opportunity, Offer, Contract, Project, Certification Case and invoice facts. It is shown as a seven-stage thread (Request, Costing, Offer, Contract, Delivery, Closure, Collection) with a single next step. It is not a new business object; NestJS composes it on the server and stays the authority. The French interface labels deals "Affaires".
 - **Proposals.** Every approval of an AI or imported proposal happens with the source passage beside it, with effort proportional to risk.
 - **Dossier discrepancies.** They are reviewed one at a time, with the originals side by side and the compared values highlighted.
 - **Settings.** One console with sections. The interface language is chosen in Settings and in the user menu, not shown permanently.

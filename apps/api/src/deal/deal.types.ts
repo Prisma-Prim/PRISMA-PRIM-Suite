@@ -3,7 +3,7 @@ import type {
   OpportunitySalesStage,
 } from '../commercial-intake/commercial-intake.types.js';
 import type { OpportunityOutcomeStatus } from '../commercial-intake/opportunity-outcome.js';
-import type { AffaireStageMarker, AffaireThread } from './affaire-thread.js';
+import type { DealStageMarker, DealThread } from './deal-thread.js';
 
 /**
  * A fact whose owner may refuse the actor: `readable: false` when the actor
@@ -14,21 +14,21 @@ export type OwnerFact<Value> =
   | { readonly readable: true; readonly value: Value };
 
 /** The Client as Client projects it for the Request; no identifier leaks. */
-export interface AffaireClient {
+export interface DealClient {
   readonly displayName: string;
   readonly clientDossierId?: string;
 }
 
 /**
- * One affaire as the list row and the page header show it: a read-side view
+ * One deal as the list row and the page header show it: a read-side view
  * of one Opportunity and its Client Request, never a stored business object.
  */
-export interface AffaireSummary {
+export interface DealSummary {
   readonly opportunityId: string;
   readonly clientRequestId: string;
   readonly title: string;
   readonly subject: string | null;
-  readonly client: AffaireClient | null;
+  readonly client: DealClient | null;
   readonly status: OpportunityOutcomeStatus;
   readonly owner: CommercialIntakeResponsibleActor;
   readonly nextAction: string;
@@ -37,15 +37,15 @@ export interface AffaireSummary {
   readonly followUpOn: OwnerFact<string | null>;
   /** The latest dated change among the Opportunity and its readable stage records. */
   readonly lastChangedAt: string;
-  readonly thread: AffaireThread;
+  readonly thread: DealThread;
 }
 
-export interface AffaireListPage {
-  readonly items: readonly AffaireSummary[];
+export interface DealListPage {
+  readonly items: readonly DealSummary[];
   readonly nextCursor?: string;
 }
 
-type AvailableMarker = Exclude<AffaireStageMarker, 'not_available'>;
+type AvailableMarker = Exclude<DealStageMarker, 'not_available'>;
 
 export interface PricingSnapshotFact {
   readonly calculatedAt: string;
@@ -96,7 +96,7 @@ type UnavailableStage = {
 };
 
 /** The facts of one stage the actor may read, from that stage's owner. */
-export type AffaireStageView =
+export type DealStageView =
   | {
       readonly stage: 'request';
       readonly marker: AvailableMarker;
@@ -137,7 +137,7 @@ export type AffaireStageView =
       readonly link: 'not_linked';
     };
 
-export interface AffaireDetail extends AffaireSummary {
+export interface DealDetail extends DealSummary {
   readonly opportunityVersion: number;
-  readonly stages: readonly AffaireStageView[];
+  readonly stages: readonly DealStageView[];
 }
