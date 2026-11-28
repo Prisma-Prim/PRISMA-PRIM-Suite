@@ -9,39 +9,39 @@
   "figuresSource": "claude-code-transcript",
   "time": {
     "start": "2026-11-28T07:32:44.199Z",
-    "end": "2026-11-28T08:42:28.160Z",
-    "durationSeconds": 4184
+    "end": "2026-11-28T09:55:37.041Z",
+    "durationSeconds": 8573
   },
   "tokens": {
-    "input": 468,
-    "output": 183564,
-    "cacheCreation": 456151,
-    "cacheRead": 73666974
+    "input": 688,
+    "output": 253402,
+    "cacheCreation": 1569148,
+    "cacheRead": 129798776
   },
   "models": [
     {
       "model": "claude-opus-5-5",
       "tokens": {
-        "input": 468,
-        "output": 183564,
-        "cacheCreation": 456151,
-        "cacheRead": 73666974
+        "input": 688,
+        "output": 253402,
+        "cacheCreation": 1569148,
+        "cacheRead": 129798776
       },
-      "estimatedPriceUsd": 20.687302
+      "estimatedPriceUsd": 38.876287
     }
   ],
   "price": {
-    "estimatedUsd": 20.687302,
+    "estimatedUsd": 38.876287,
     "priceTable": "2026-11-11"
   },
   "outcome": {
     "result": "pass",
     "findings": {
       "P0": 0,
-      "P1": 2,
-      "P2": 0,
+      "P1": 3,
+      "P2": 1,
       "P3": 0
     },
-    "notes": "Second correction round: two review P1 findings fixed with PostgreSQL REST tests red then green; main merged; French term renamed Deal in code"
+    "notes": "Second and third correction rounds: three review P1 findings and one P2 regression fixed with tests red then green; main merged twice; French term renamed Deal in code"
   }
 }
