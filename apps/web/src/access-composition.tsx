@@ -9,6 +9,8 @@ import { clearWorkspaceSelection } from './access/workspace-selection';
 import { clerkAuthenticationLocalization } from './access/clerk-authentication-localization';
 import { useAppCopy } from './app.copy';
 import { useInterfaceLocale } from './localization/interface-locale';
+import { useInterfacePreference } from './clarte/InterfacePreferenceProvider';
+import { ClarteAccessState } from './clarte/entry/ClarteAccessState';
 
 export interface BrowserIdentity {
   loaded: boolean;
@@ -96,6 +98,8 @@ export function deterministicBrowserIdentity(
 
 function DeterministicSignedOutView() {
   const copy = useAppCopy();
+  const { preference } = useInterfacePreference();
+  if (preference === 'clarte') return <ClarteAccessState state="signed-out" />;
   return (
     <main className="production-access-state">
       <p role="alert">{copy.signInRequired}</p>

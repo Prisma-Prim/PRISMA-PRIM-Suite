@@ -1,10 +1,22 @@
 import type { ActorContext } from './access-types';
 import { baseActor } from './production-shell/production-shell-context.test-fixtures';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from './access-composition';
 import { ApplicationRoot } from './ApplicationRoot';
 import { interfaceLocaleStorageKey } from './localization/interface-locale';
+import { appInterfaces } from './test/app-interface';
+import {
+  chooseEntryLanguage,
+  expectEntryInterface,
+  storeInterfacePreference,
+} from './test/entry-interface';
 
 describe('ApplicationRoot', () => {
   beforeEach(() => {
@@ -59,66 +71,155 @@ describe('ApplicationRoot', () => {
     window.history.replaceState(null, '', '/');
   });
 
-  it('starts the public journey in Romanian without using the browser language', () => {
-    localStorage.removeItem(interfaceLocaleStorageKey);
-    sessionStorage.setItem('deterministic-auth-state', 'signed-out');
-    vi.spyOn(window.navigator, 'language', 'get').mockReturnValue('en-US');
+  describe.each(appInterfaces)(
+    'public welcome language in the %s interface',
+    (appInterface) => {
+      beforeEach(() => storeInterfacePreference(appInterface));
 
-    render(
-      <ApplicationRoot
-        pathname="/"
-        identity={deterministicBrowserIdentity()}
-      />,
-    );
+      it('starts the public journey in Romanian without using the browser language', () => {
+        localStorage.removeItem(interfaceLocaleStorageKey);
+        sessionStorage.setItem('deterministic-auth-state', 'signed-out');
+        vi.spyOn(window.navigator, 'language', 'get').mockReturnValue('en-US');
 
-    expect(
-      screen.getByRole('heading', {
-        name: 'Faceți fiecare decizie trasabilă.',
-      }),
-    ).toBeInTheDocument();
-    expect(document.documentElement).toHaveAttribute('lang', 'ro');
-  });
+        render(
+          <ApplicationRoot
+            pathname="/"
+            identity={deterministicBrowserIdentity()}
+          />,
+        );
 
-  it.each([
-    ['ro', 'Faceți fiecare decizie trasabilă.', 'Limba interfeței'],
-    ['ru', 'Сделайте каждое решение отслеживаемым.', 'Язык интерфейса'],
-    ['fr', 'Rendez chaque décision traçable.', 'Langue de l’interface'],
-    ['en', 'Make every decision traceable.', 'Interface language'],
-  ])('uses the saved %s interface locale', (locale, heading, label) => {
-    localStorage.setItem(interfaceLocaleStorageKey, locale);
-    sessionStorage.setItem('deterministic-auth-state', 'signed-out');
+        expect(
+          screen.getByRole('heading', {
+            name: 'Faceți fiecare decizie trasabilă.',
+          }),
+        ).toBeInTheDocument();
+        expect(document.documentElement).toHaveAttribute('lang', 'ro');
+        expectEntryInterface(appInterface);
+      });
 
-    render(
-      <ApplicationRoot
-        pathname="/"
-        identity={deterministicBrowserIdentity()}
-      />,
-    );
+      it.each([
+        [
+          'ro',
+          'Faceți fiecare decizie trasabilă.',
+          'Limba interfeței',
+          'Română',
+        ],
+        [
+          'ru',
+          'Сделайте каждое решение отслеживаемым.',
+          'Язык интерфейса',
+          'Русский',
+        ],
+        [
+          'fr',
+          'Rendez chaque décision traçable.',
+          'Langue de l’interface',
+          'Français',
+        ],
+        [
+          'en',
+          'Make every decision traceable.',
+          'Interface language',
+          'English',
+        ],
+      ] as const)(
+        'uses the saved %s interface locale',
+        (locale, heading, label, language) => {
+          localStorage.setItem(interfaceLocaleStorageKey, locale);
+          sessionStorage.setItem('deterministic-auth-state', 'signed-out');
 
-    expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: label })).toHaveAttribute(
-      'data-value',
-      locale,
-    );
-    expect(document.documentElement).toHaveAttribute('lang', locale);
-  });
+          render(
+            <ApplicationRoot
+              pathname="/"
+              identity={deterministicBrowserIdentity()}
+            />,
+          );
 
-  it.each(['de', '{not-json'])(
-    'falls back to Romanian for the invalid preference %s',
-    (preference) => {
-      localStorage.setItem(interfaceLocaleStorageKey, preference);
-      sessionStorage.setItem('deterministic-auth-state', 'signed-out');
-      render(
-        <ApplicationRoot
-          pathname="/"
-          identity={deterministicBrowserIdentity()}
-        />,
+          expect(
+            screen.getByRole('heading', { name: heading }),
+          ).toBeInTheDocument();
+          if (appInterface === 'clarte')
+            expect(
+              within(screen.getByRole('group', { name: label })).getByRole(
+                'radio',
+                { name: language },
+              ),
+            ).toBeChecked();
+          else
+            expect(
+              screen.getByRole('combobox', { name: label }),
+            ).toHaveAttribute('data-value', locale);
+          expect(document.documentElement).toHaveAttribute('lang', locale);
+        },
       );
-      expect(
-        screen.getByRole('heading', {
-          name: 'Faceți fiecare decizie trasabilă.',
-        }),
-      ).toBeInTheDocument();
+
+      it('translates the public welcome when the visitor chooses another language', () => {
+        localStorage.setItem(interfaceLocaleStorageKey, 'en');
+        sessionStorage.setItem('deterministic-auth-state', 'signed-out');
+        render(
+          <ApplicationRoot
+            pathname="/"
+            identity={deterministicBrowserIdentity()}
+          />,
+        );
+
+        for (const [language, heading, signIn, invitationOnly] of [
+          [
+            'Română',
+            'Faceți fiecare decizie trasabilă.',
+            'Continuați pentru autentificare',
+            'Accesul se face numai pe bază de invitație.',
+          ],
+          [
+            'Русский',
+            'Сделайте каждое решение отслеживаемым.',
+            'Перейти ко входу',
+            'Доступ предоставляется только по приглашению.',
+          ],
+          [
+            'Français',
+            'Rendez chaque décision traçable.',
+            'Continuer vers la connexion',
+            'L’accès se fait uniquement sur invitation.',
+          ],
+          [
+            'English',
+            'Make every decision traceable.',
+            'Continue to sign in',
+            'Access is invitation-only.',
+          ],
+        ] as const) {
+          chooseEntryLanguage(appInterface, language);
+          expect(
+            screen.getByRole('heading', { name: heading }),
+          ).toBeInTheDocument();
+          expect(screen.getByRole('link', { name: signIn })).toHaveAttribute(
+            'href',
+            '/sign-in',
+          );
+          expect(screen.getByText(invitationOnly)).toBeInTheDocument();
+        }
+        expect(localStorage.getItem(interfaceLocaleStorageKey)).toBe('en');
+      });
+
+      it.each(['de', '{not-json'])(
+        'falls back to Romanian for the invalid preference %s',
+        (preference) => {
+          localStorage.setItem(interfaceLocaleStorageKey, preference);
+          sessionStorage.setItem('deterministic-auth-state', 'signed-out');
+          render(
+            <ApplicationRoot
+              pathname="/"
+              identity={deterministicBrowserIdentity()}
+            />,
+          );
+          expect(
+            screen.getByRole('heading', {
+              name: 'Faceți fiecare decizie trasabilă.',
+            }),
+          ).toBeInTheDocument();
+        },
+      );
     },
   );
 
@@ -320,46 +421,86 @@ describe('ApplicationRoot', () => {
     );
   });
 
-  it('shows the public welcome at the root without requesting protected data', () => {
-    sessionStorage.setItem('deterministic-auth-state', 'signed-out');
-    const fetch = vi.fn();
-    vi.stubGlobal('fetch', fetch);
+  describe.each(appInterfaces)(
+    'public welcome in the %s interface',
+    (appInterface) => {
+      beforeEach(() => storeInterfacePreference(appInterface));
 
-    render(
-      <ApplicationRoot
-        pathname="/"
-        identity={deterministicBrowserIdentity()}
-      />,
-    );
+      it('shows the public welcome at the root without requesting protected data', () => {
+        sessionStorage.setItem('deterministic-auth-state', 'signed-out');
+        const fetch = vi.fn();
+        vi.stubGlobal('fetch', fetch);
 
-    expect(
-      screen.getByRole('heading', { name: 'Make every decision traceable.' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', { name: 'Continue to sign in' }),
-    ).toHaveAttribute('href', '/sign-in');
-    expect(fetch).not.toHaveBeenCalled();
-  });
+        render(
+          <ApplicationRoot
+            pathname="/"
+            identity={deterministicBrowserIdentity()}
+          />,
+        );
 
-  it('returns a server-rejected root session to the public welcome', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => new Response(null, { status: 401 })),
-    );
+        expect(
+          screen.getByRole('heading', {
+            name: 'Make every decision traceable.',
+          }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('link', { name: 'Continue to sign in' }),
+        ).toHaveAttribute('href', '/sign-in');
+        expect(screen.getByText('Access is invitation-only.')).toBeVisible();
+        expect(screen.getAllByRole('link')).toHaveLength(1);
+        expect(
+          screen.queryByRole('link', { name: /sign up/iu }),
+        ).not.toBeInTheDocument();
+        expect(fetch).not.toHaveBeenCalled();
+        expectEntryInterface(appInterface);
+      });
 
-    render(
-      <ApplicationRoot
-        pathname="/"
-        identity={deterministicBrowserIdentity()}
-      />,
-    );
+      it('returns a server-rejected root session to the public welcome', async () => {
+        vi.stubGlobal(
+          'fetch',
+          vi.fn(async () => new Response(null, { status: 401 })),
+        );
 
-    expect(
-      await screen.findByRole('heading', {
-        name: 'Make every decision traceable.',
-      }),
-    ).toBeInTheDocument();
-  });
+        render(
+          <ApplicationRoot
+            pathname="/"
+            identity={deterministicBrowserIdentity()}
+          />,
+        );
+
+        expect(
+          await screen.findByRole('heading', {
+            name: 'Make every decision traceable.',
+          }),
+        ).toBeInTheDocument();
+        expectEntryInterface(appInterface);
+      });
+
+      it('shows the sign-in requirement outside the root without the welcome', () => {
+        sessionStorage.setItem('deterministic-auth-state', 'signed-out');
+        const fetch = vi.fn();
+        vi.stubGlobal('fetch', fetch);
+
+        render(
+          <ApplicationRoot
+            pathname="/sign-in"
+            identity={deterministicBrowserIdentity()}
+          />,
+        );
+
+        expect(screen.getByRole('alert')).toHaveTextContent(
+          'Sign in is required to access this workspace.',
+        );
+        expect(
+          screen.queryByRole('heading', {
+            name: 'Make every decision traceable.',
+          }),
+        ).not.toBeInTheDocument();
+        expect(fetch).not.toHaveBeenCalled();
+        expectEntryInterface(appInterface);
+      });
+    },
+  );
 
   it('renders the protected production shell with local identity', async () => {
     render(

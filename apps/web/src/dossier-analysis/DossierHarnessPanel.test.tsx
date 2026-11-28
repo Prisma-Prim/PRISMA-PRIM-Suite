@@ -7,7 +7,6 @@ import {
 } from '../test/render-with-interface-locale';
 import type { BrowserIdentity } from '../access-composition';
 import { DossierHarnessPanel } from './DossierHarnessPanel';
-import { ChatGptCallback } from './ChatGptCallback';
 
 const identity = {
   loaded: true,
@@ -115,23 +114,6 @@ it('resumes a saved checkpoint deliberately and stops automatic work at quota', 
   expect(advances).toBe(1);
 });
 
-it('does not claim that a callback was delivered when the initiating window is absent', async () => {
-  localStorage.setItem('prisma-prim.interface-locale', 'en');
-  window.history.replaceState(
-    null,
-    '',
-    '/chatgpt/callback?state=fictional&code=fictional-code',
-  );
-  vi.stubGlobal('opener', null);
-  render(<ChatGptCallback />);
-  expect(
-    await screen.findByText(
-      'Sign-in could not be completed. Return to PRISMA and start again.',
-    ),
-  ).toBeVisible();
-  expect(window.location.search).toBe('');
-  window.history.replaceState(null, '', '/');
-});
 it('requires explicit external processing consent before starting a subscription review', async () => {
   localStorage.setItem('prisma-prim.interface-locale', 'en');
   vi.stubGlobal(

@@ -14,6 +14,7 @@ import {
   InterfacePreferenceProvider,
   useInterfacePreference,
 } from './clarte/InterfacePreferenceProvider';
+import { ClartePublicWelcome } from './clarte/entry/ClartePublicWelcome';
 
 const PrismaCertUiBaseline = lazy(async () => {
   const module = await import('./ui-baseline/PrismaCertUiBaseline');
@@ -26,7 +27,13 @@ interface ApplicationRootProps {
 }
 
 function getPublicSignedOutView(pathname: string): ReactNode | undefined {
-  return pathname === '/' ? <PublicWelcome /> : undefined;
+  return pathname === '/' ? <InterfacePublicWelcome /> : undefined;
+}
+
+/** The public welcome of the interface this browser chose. */
+function InterfacePublicWelcome() {
+  const { preference } = useInterfacePreference();
+  return preference === 'clarte' ? <ClartePublicWelcome /> : <PublicWelcome />;
 }
 
 function withPublicWelcome(
