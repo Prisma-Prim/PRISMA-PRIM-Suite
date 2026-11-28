@@ -1,5 +1,11 @@
 import { useState, type ReactNode } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApplicationRoot } from '../ApplicationRoot';
 import { captureAcceptanceIntent } from './invitation-acceptance-intent';
@@ -558,6 +564,19 @@ describe.each(appInterfaces)(
           window.history.replaceState(null, '', destination);
           view = render(<ApplicationRoot pathname="/accept-invitation" />);
         }
+        if (appInterface === 'clarte' && entry === 'Sign in') {
+          fireEvent.click(
+            screen.getByRole('combobox', { name: 'Interface language' }),
+          );
+          fireEvent.click(screen.getByRole('option', { name: 'Română' }));
+          expect(
+            screen.getByRole('link', { name: 'Conectați-vă' }),
+          ).toBeVisible();
+          fireEvent.click(
+            screen.getByRole('combobox', { name: 'Limba interfeței' }),
+          );
+          fireEvent.click(screen.getByRole('option', { name: 'English' }));
+        }
         navigate(entry);
         auth.signedIn = true;
         navigate('Complete authentication');
@@ -592,6 +611,15 @@ describe.each(appInterfaces)(
 
         expect(screen.getByRole('link', { name: signIn })).toBeVisible();
         expect(screen.getByRole('link', { name: signUp })).toBeVisible();
+        const invitation = screen.getByRole('main');
+        const language = screen.getByRole('combobox');
+        expect(language).toHaveAttribute('data-value', locale);
+        const heading = within(invitation).getByRole('heading', { level: 1 });
+        expect(heading.parentElement).not.toContainElement(language);
+        if (appInterface === 'clarte') {
+          expect(invitation).not.toHaveTextContent('PRISMA-PRIM Suite');
+          expect(within(invitation).queryByRole('radio')).toBeNull();
+        }
       },
     );
 

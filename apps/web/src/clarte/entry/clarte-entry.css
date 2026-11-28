@@ -154,8 +154,26 @@
   white-space: nowrap;
 }
 
+.clarte-frame.clarte-page--invitation {
+  grid-template-rows: auto 1fr;
+  gap: 16px;
+}
+
+.clarte-page--invitation > .interface-locale-control {
+  justify-self: end;
+  margin: 0;
+}
+
 @media (max-width: 768px) {
   .clarte-page-card {
     padding: 22px 20px;
+  }
+
+  .clarte-page--welcome .clarte-page-card {
+    padding-inline: 28px;
+  }
+
+  .clarte-page--welcome .clarte-page-language {
+    padding-inline: 4px;
   }
 }

@@ -88,11 +88,7 @@ describe('ApplicationRoot', () => {
           />,
         );
 
-        expect(
-          screen.getByRole('heading', {
-            name: 'Faceți fiecare decizie trasabilă.',
-          }),
-        ).toBeInTheDocument();
+        expectWelcomePromise(appInterface, 'Faceți fiecare decizie trasabilă.');
         expect(document.documentElement).toHaveAttribute('lang', 'ro');
         expectEntryInterface(appInterface);
       });
@@ -124,7 +120,7 @@ describe('ApplicationRoot', () => {
         ],
       ] as const)(
         'uses the saved %s interface locale',
-        (locale, heading, label, language) => {
+        (locale, promise, label, language) => {
           localStorage.setItem(interfaceLocaleStorageKey, locale);
           sessionStorage.setItem('deterministic-auth-state', 'signed-out');
 
@@ -135,9 +131,7 @@ describe('ApplicationRoot', () => {
             />,
           );
 
-          expect(
-            screen.getByRole('heading', { name: heading }),
-          ).toBeInTheDocument();
+          expectWelcomePromise(appInterface, promise);
           if (appInterface === 'clarte')
             expect(
               within(screen.getByRole('group', { name: label })).getByRole(
@@ -163,7 +157,7 @@ describe('ApplicationRoot', () => {
           />,
         );
 
-        for (const [language, heading, signIn, invitationOnly] of [
+        for (const [language, promise, signIn, invitationOnly] of [
           [
             'Română',
             'Faceți fiecare decizie trasabilă.',
@@ -190,9 +184,7 @@ describe('ApplicationRoot', () => {
           ],
         ] as const) {
           chooseEntryLanguage(appInterface, language);
-          expect(
-            screen.getByRole('heading', { name: heading }),
-          ).toBeInTheDocument();
+          expectWelcomePromise(appInterface, promise);
           expect(screen.getByRole('link', { name: signIn })).toHaveAttribute(
             'href',
             '/sign-in',
@@ -213,11 +205,10 @@ describe('ApplicationRoot', () => {
               identity={deterministicBrowserIdentity()}
             />,
           );
-          expect(
-            screen.getByRole('heading', {
-              name: 'Faceți fiecare decizie trasabilă.',
-            }),
-          ).toBeInTheDocument();
+          expectWelcomePromise(
+            appInterface,
+            'Faceți fiecare decizie trasabilă.',
+          );
         },
       );
     },
@@ -438,11 +429,7 @@ describe('ApplicationRoot', () => {
           />,
         );
 
-        expect(
-          screen.getByRole('heading', {
-            name: 'Make every decision traceable.',
-          }),
-        ).toBeInTheDocument();
+        expectWelcomePromise(appInterface, 'Make every decision traceable.');
         expect(
           screen.getByRole('link', { name: 'Continue to sign in' }),
         ).toHaveAttribute('href', '/sign-in');
@@ -468,11 +455,9 @@ describe('ApplicationRoot', () => {
           />,
         );
 
-        expect(
-          await screen.findByRole('heading', {
-            name: 'Make every decision traceable.',
-          }),
-        ).toBeInTheDocument();
+        await waitFor(() =>
+          expectWelcomePromise(appInterface, 'Make every decision traceable.'),
+        );
         expectEntryInterface(appInterface);
       });
 
@@ -492,9 +477,7 @@ describe('ApplicationRoot', () => {
           'Sign in is required to access this workspace.',
         );
         expect(
-          screen.queryByRole('heading', {
-            name: 'Make every decision traceable.',
-          }),
+          screen.queryByText('Make every decision traceable.'),
         ).not.toBeInTheDocument();
         expect(fetch).not.toHaveBeenCalled();
         expectEntryInterface(appInterface);
@@ -521,6 +504,23 @@ describe('ApplicationRoot', () => {
     expect(screen.getAllByText('PRISMA Workspace')).toHaveLength(3);
   });
 });
+
+function expectWelcomePromise(
+  appInterface: (typeof appInterfaces)[number],
+  promise: string,
+): void {
+  if (appInterface === 'clarte') {
+    const title = screen.getByRole('heading', {
+      level: 1,
+      name: 'PRISMA-PRIM Suite',
+    });
+    expect(title.nextElementSibling).toBe(screen.getByText(promise));
+    return;
+  }
+  expect(
+    screen.getByRole('heading', { level: 1, name: promise }),
+  ).toBeVisible();
+}
 
 function chooseNextLocaleByKeyboard(): void {
   const select = screen.getByRole('combobox', {
