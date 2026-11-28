@@ -34,6 +34,8 @@ export function InvoiceRecordDetail(
       confirmed?: InvoiceReceipt;
       onOpenRecord: (id: string, receipt?: InvoiceReceipt) => void;
       onBack: () => void;
+      /** Reports while a correction, withdrawal or replacement form is open. */
+      onEditingChange?: (editing: boolean) => void;
     },
 ) {
   const copy = useInvoiceRecordCopy();
@@ -176,6 +178,13 @@ export function InvoiceRecordDetail(
       props.onOpenRecord(receipt.recordId, receipt);
     else void refresh(true);
   }
+  const editing = !!activeEdit;
+  const editingChange = useRef(props.onEditingChange);
+  editingChange.current = props.onEditingChange;
+  useEffect(() => {
+    editingChange.current?.(editing);
+  }, [editing]);
+  useEffect(() => () => editingChange.current?.(false), []);
   const current = read.kind === 'ready' ? read.current : undefined;
   const projectionsLive =
     read.kind === 'ready' && read.projection === projection;

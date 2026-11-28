@@ -162,8 +162,9 @@ export const clarteEntries = [
     group: 'primary',
     icon: Wallet,
     tabs: [
-      { destination: 'invoice-records', render: renderCurrentScreen },
-      { destination: 'payments', render: renderCurrentScreen },
+      { destination: 'invoice-records', render: renderClarteScreen },
+      { destination: 'payments', render: renderClarteScreen },
+      { destination: 'payment-proofs', render: renderClarteScreen },
     ],
   },
   {

@@ -33,7 +33,11 @@
 
 Today is not an App section: pass your screen as `clarteOverview` to `ClarteFrame` in App, then set the `overview` tab to `renderClarteScreen`.
 
-A destination only Clarté has, with no current-interface component, is a `ClarteOnlyScreen` that App passes in `clarteScreens`, composed with the same gates as its sections; add its id to `ClarteOnlyDestinationId`. The frame selects, mounts and places it like a section. An entry with `viewNavigation: 'screen'` draws its own list of views: the frame shows only its title, and each tab renderer receives the entry's offered views and the frame's link handler as its second argument.
+A view that exists only in Clarté, such as Finance › Payment proofs (#1544), is a section App pushes only while the preference is `clarte`, with `content: null`, its own id in `ApplicationSection['id']` and a tab in its entry. The current interface never receives it.
+
+A Clarté-only destination can also be a `ClarteOnlyScreen` that App passes in `clarteScreens`, composed with the same gates as its sections, as the Settings console's home and Language and region are; add its id to `ClarteOnlyDestinationId`. The frame selects, mounts and places it like a section. An entry with `viewNavigation: 'screen'` draws its own list of views: the frame shows only its title, and each tab renderer receives the entry's offered views and the frame's link handler as its second argument.
+
+The frame keeps the screen title, the row of views, mounting (hidden sections stay mounted, `mountWhenSelected` and `retainAfterSelection` as today), focus on the destination, Escape, the jump list and the protected-write hold. The section's `id` is the URL fragment and the focus destination, as in the current shell.
 
 ## Settings
 
@@ -50,8 +54,6 @@ To add or migrate a Settings section, change one row of `settingsSections`:
 - `screen`: `current` shows the current component with its own title until a slice migrates it; `clarte` shows the `clarteContent` App composed, under the console's section title (the section's label and description), so the screen starts with its content.
 
 Language and region and the console's home are Clarté-only screens from `useSettingsConsoleScreens`.
-
-The frame keeps the screen title, the row of views, mounting (hidden sections stay mounted, `mountWhenSelected` and `retainAfterSelection` as today), focus on the destination, Escape, the jump list and the protected-write hold. The section's `id` is the URL fragment and the focus destination, as in the current shell.
 
 ## Render App in Clarté in a test
 

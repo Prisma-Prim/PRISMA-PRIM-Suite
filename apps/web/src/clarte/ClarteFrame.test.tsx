@@ -15,6 +15,7 @@ import { clarteEntries } from './clarte-entries';
 const sectionLabels = {
   payments: 'Payment Observations',
   'invoice-records': 'Invoice Records',
+  'payment-proofs': 'Payment proofs',
   'knowledge-evidence': 'Knowledge items',
   'internal-tasks': 'Internal Tasks',
   ideas: 'Ideas',
@@ -144,7 +145,10 @@ describe('Clarté entries and tabs', () => {
         ],
       ],
       ['Documents', ['Working Documents', 'Knowledge items']],
-      ['Finance', ['Invoice Records', 'Payment Observations']],
+      [
+        'Finance',
+        ['Invoice Records', 'Payment Observations', 'Payment proofs'],
+      ],
       ['Improvement', ['Ideas', 'Operational Risks']],
     ];
     for (const [entry, tabs] of expected) {

@@ -293,19 +293,23 @@ function ClarteDocumentSession(props: DocumentWorkspaceProps) {
           onClose={() => setRegistering(false)}
         />
       )}
-      {organizing && canOrganizeByProject && !detail && (
-        <ClarteProjectDocuments
-          actor={actor}
-          identity={identity}
-          onActivityRecorded={onActivityRecorded}
-          onOpenDocument={(documentId) => {
-            setOrganizing(false);
-            void open(documentId);
-          }}
-          onClose={() => setOrganizing(false)}
-        />
-      )}
-      {detail && (
+      {organizing &&
+        canOrganizeByProject &&
+        state.status === 'ready' &&
+        !detail && (
+          <ClarteProjectDocuments
+            actor={actor}
+            identity={identity}
+            onActivityRecorded={onActivityRecorded}
+            onOpenDocument={(documentId) => {
+              setOrganizing(false);
+              void open(documentId);
+            }}
+            onClose={() => setOrganizing(false)}
+          />
+        )}
+      {/* A denied or failed refresh withdraws the Document with the rows. */}
+      {detail && state.status === 'ready' && (
         <DocumentPanel
           props={props}
           session={session}

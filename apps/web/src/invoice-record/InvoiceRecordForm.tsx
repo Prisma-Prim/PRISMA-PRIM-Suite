@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { conflictCode } from '../api/authenticated-api-client';
 import type { InvoiceCurrent, InvoiceSource } from './invoice-record-contract';
 import { useInvoiceRecordCopy } from './invoice-record-copy';
@@ -17,6 +17,7 @@ import {
   InvoiceContextView,
 } from './InvoiceRecordValues';
 import { InvoiceSourcePicker } from './InvoiceSourcePicker';
+import type { InvoiceRelatedCallbacks } from './InvoiceRecordRelations';
 
 export type InvoiceEdit =
   | { kind: 'CREATE'; replaces: string | null }
@@ -39,6 +40,9 @@ export function InvoiceRecordForm(
     onSaved: (receipt: InvoiceReceipt) => void;
     onReload: () => void;
     recoverAccess?: AccessRecovery;
+    renderSourceView?: InvoiceRelatedCallbacks['renderSourceView'];
+    /** Reports while the command must not be abandoned: sending or uncertain. */
+    onLockedChange?: (locked: boolean) => void;
   },
 ) {
   const copy = useInvoiceRecordCopy();
@@ -75,6 +79,13 @@ export function InvoiceRecordForm(
   });
   callbacks.current = { onSaved: props.onSaved, onDenied: props.onDenied };
   const locked = state.kind !== 'editing';
+  const held = state.kind === 'sending' || state.kind === 'uncertain';
+  const lockedChange = useRef(props.onLockedChange);
+  lockedChange.current = props.onLockedChange;
+  useEffect(() => {
+    lockedChange.current?.(held);
+  }, [held]);
+  useEffect(() => () => lockedChange.current?.(false), []);
   async function send(attempt: Attempt) {
     if (pending.current) return;
     pending.current = true;

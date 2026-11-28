@@ -254,7 +254,7 @@
 }
 
 .clarte-frame .clarte-layer--side {
-  /* One row as tall as the screen, so a long panel body scrolls inside it. */
+  /* One row exactly as tall as the screen, so a long panel body scrolls. */
   grid-template-rows: minmax(0, 1fr);
   justify-items: end;
 }
