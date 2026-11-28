@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "9365ae03-c6be-4bc4-9c83-0fcb9ee33156:a6921fcd6ff15dac1",
+  "date": "2026-11-27",
+  "runType": "pull-request-proof",
+  "issue": 1530,
+  "pullRequest": 1550,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-27T21:34:44.383Z",
+    "end": "2026-11-27T22:39:23.944Z",
+    "durationSeconds": 3880
+  },
+  "tokens": {
+    "input": 486,
+    "output": 279918,
+    "cacheCreation": 637302,
+    "cacheRead": 102605678
+  },
+  "models": [
+    {
+      "model": "claude-opus-5-5",
+      "tokens": {
+        "input": 486,
+        "output": 279918,
+        "cacheCreation": 637302,
+        "cacheRead": 102605678
+      },
+      "estimatedPriceUsd": 29.30795
+    }
+  ],
+  "price": {
+    "estimatedUsd": 29.30795,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Clarte foundation: frame, switch, tokens, components; full web suite once (8 load timeouts in 2 files, pass alone); journey 12 runs local"
+  }
+}

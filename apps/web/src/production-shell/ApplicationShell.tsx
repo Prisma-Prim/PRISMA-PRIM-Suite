@@ -14,64 +14,14 @@ import {
   SectionIcon,
 } from './prisme/PrismeOverview';
 import { usePrismeCopy } from './prisme/prisme.copy';
+import {
+  sectionsOwningFocusTarget,
+  type ApplicationSection,
+} from './application-section';
 import './application-shell.css';
 import './prisme/prisme-frame.css';
 
-export interface ApplicationSection {
-  id:
-    | 'payments'
-    | 'invoice-records'
-    | 'knowledge-evidence'
-    | 'internal-tasks'
-    | 'ideas'
-    | 'operational-risks'
-    | 'documents'
-    | 'requests'
-    | 'catalogue'
-    | 'pricing'
-    | 'offer-models'
-    | 'contract-models'
-    | 'projects'
-    | 'my-tasks'
-    | 'unassigned-tasks'
-    | 'blocked-tasks'
-    | 'team-tasks'
-    | 'clients'
-    | 'access'
-    | 'companies'
-    | 'activity'
-    | 'invitations';
-  label: string;
-  description: string;
-  content: ReactNode;
-  /** A fresh read-only view retires requests and rows on section navigation. */
-  mountWhenSelected?: true;
-  /** Retain the scoped owner after deliberate entry; it owns fresh-return reads. */
-  retainAfterSelection?: true;
-}
-
-/**
- * These sections render their own focusable destination; the layout wrapper
- * generates no box, so it cannot receive navigation focus.
- */
-const sectionsOwningFocusTarget: ReadonlySet<ApplicationSection['id']> =
-  new Set([
-    'payments',
-    'invoice-records',
-    'knowledge-evidence',
-    'internal-tasks',
-    'ideas',
-    'operational-risks',
-    'clients',
-    'documents',
-    'projects',
-    'requests',
-    'my-tasks',
-    'unassigned-tasks',
-    'blocked-tasks',
-    'team-tasks',
-    'activity',
-  ]);
+export type { ApplicationSection } from './application-section';
 
 export interface FrameContext {
   actorName: string;

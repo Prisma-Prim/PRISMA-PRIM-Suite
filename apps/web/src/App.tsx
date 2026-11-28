@@ -91,8 +91,11 @@ import { OfferDecisionQueue } from './offer/OfferDecisionQueue';
 import { ContractDecisionQueue } from './contract/ContractDecisionQueue';
 import { OperationalHome } from './operational-home/OperationalHome';
 import { MultiCompanySummary } from './operational-home/MultiCompanySummary';
+import type { RecentChangesProps } from './operational-home/RecentChanges';
 import type { CompanySummaryKind } from './operational-home/operational-home-response';
 import { useProductionShellContext } from './production-shell/useProductionShellContext';
+import { ClarteFrame } from './clarte/ClarteFrame';
+import { useInterfacePreference } from './clarte/InterfacePreferenceProvider';
 
 type HomeScopeLifetime = {
   readonly scope: string;
@@ -102,6 +105,8 @@ type HomeScopeLifetime = {
 export function App({ identity }: { identity: BrowserIdentity }) {
   const copy = useAppCopy();
   const { locale } = useInterfaceLocale();
+  // Presentation only: both interfaces receive the same composition.
+  const { preference: interfacePreference } = useInterfacePreference();
   const invoiceCopy = useInvoiceRecordCopy();
   const modelCopy = useOfferModelCopy();
   const contractModelCopy = useContractModelCopy();
@@ -599,9 +604,21 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   // list and Task reads. Any session, Company, Client authority, assignment or
   // version change remounts it, dropping its late replies and closing its panel.
   const activeCompany = access.actor.activeCompany;
-  const operationalSummary =
+  // The latest Activity Log changes follow the same rule; the Clarté bell
+  // offers exactly these.
+  const recentChanges: RecentChangesProps | undefined =
     activeCompany &&
-    (canAccessClients || canAccessProjects || canReadTasks(access.actor)) ? (
+    (canAccessClients || canAccessProjects || canReadTasks(access.actor))
+      ? {
+          state: access.activityLog,
+          activeCompanyId: activeCompany.id,
+          onRefresh: refreshActivityLog,
+          onOpenActivity: () => navigateToSection('activity'),
+          onOpenRequest: openRequest,
+        }
+      : undefined;
+  const operationalSummary =
+    activeCompany && recentChanges ? (
       <OperationalHome
         workspaceMembershipId={access.actor.workspaceMembershipId}
         key={`operational-home:${access.sessionGeneration}:${clientAuthorityGeneration}:${operationalHomeAuthority(access.actor)}`}
@@ -642,13 +659,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
             ? (target) => openProject({ ...target, focus: 'task' })
             : undefined
         }
-        activity={{
-          state: access.activityLog,
-          activeCompanyId: activeCompany.id,
-          onRefresh: refreshActivityLog,
-          onOpenActivity: () => navigateToSection('activity'),
-          onOpenRequest: openRequest,
-        }}
+        activity={recentChanges}
       />
     ) : null;
   const operationalHome = (
@@ -1305,6 +1316,40 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       onWorkspaceAccessRejected={rejectWorkspaceAccess}
     />
   );
+  const companyContext = (
+    <CompanyContextSelector
+      actor={access.actor}
+      state={access.companyContext}
+      onSelect={selectCompany}
+      disabled={navigationProtected}
+    />
+  );
+  if (interfacePreference === 'clarte')
+    return (
+      <ClarteFrame
+        context={{
+          actorName: access.actor.displayName,
+          workspaceName: access.actor.workspaceName,
+          companyName: access.actor.activeCompany?.displayName,
+        }}
+        sections={sections}
+        onNavigate={retireMultiCompanyNavigation}
+        navigationProtected={navigationProtected}
+        companyContext={companyContext}
+        user={{
+          name: access.actor.displayName,
+          email: access.actor.email,
+          onSignOut: () => void identity.signOut(),
+        }}
+        overview={
+          <>
+            {workingEvidenceResolver}
+            {operationalHome}
+          </>
+        }
+        recentChanges={recentChanges}
+      />
+    );
   return (
     <ApplicationShell
       context={{
@@ -1315,14 +1360,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       sections={sections}
       onNavigate={retireMultiCompanyNavigation}
       navigationProtected={navigationProtected}
-      companyContext={
-        <CompanyContextSelector
-          actor={access.actor}
-          state={access.companyContext}
-          onSelect={selectCompany}
-          disabled={navigationProtected}
-        />
-      }
+      companyContext={companyContext}
       userArea={
         <span>
           <strong>{access.actor.displayName}</strong>

@@ -1,0 +1,386 @@
+/* Clarté base components (#1530). Scoped to the frame; light background only. */
+
+/* Buttons */
+.clarte-frame .clarte-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.clarte-frame .clarte-button svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.clarte-frame .clarte-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.clarte-frame .clarte-button--primary {
+  color: var(--clarte-accent-ink);
+  background: var(--clarte-accent);
+  box-shadow: 0 6px 16px -8px var(--clarte-accent);
+}
+
+.clarte-frame .clarte-button--primary:hover:not(:disabled) {
+  background: var(--clarte-accent-strong);
+}
+
+.clarte-frame .clarte-button--secondary {
+  border-color: var(--clarte-line);
+  color: var(--clarte-ink-soft);
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-button--secondary:hover:not(:disabled) {
+  border-color: var(--clarte-faint);
+  color: var(--clarte-ink);
+}
+
+.clarte-frame .clarte-button--quiet {
+  color: var(--clarte-ink-soft);
+  background: transparent;
+}
+
+.clarte-frame .clarte-button--quiet:hover:not(:disabled) {
+  background: var(--clarte-surface-sunken);
+}
+
+.clarte-frame .clarte-button--danger {
+  color: #fff;
+  background: var(--clarte-danger);
+}
+
+.clarte-frame .clarte-button--small {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+
+/* Fields */
+.clarte-frame .clarte-field {
+  display: grid;
+  gap: 6px;
+}
+
+.clarte-frame .clarte-field > label {
+  color: var(--clarte-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-input {
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-sm);
+  color: var(--clarte-ink);
+  background: var(--clarte-surface);
+  outline: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.clarte-frame .clarte-input:focus {
+  border-color: var(--clarte-accent);
+  box-shadow: var(--clarte-focus);
+}
+
+.clarte-frame .clarte-input[aria-invalid='true'] {
+  border-color: var(--clarte-danger);
+}
+
+.clarte-frame .clarte-field-hint,
+.clarte-frame .clarte-field-error {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-field-hint {
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-field-error {
+  color: var(--clarte-danger);
+  font-weight: 600;
+}
+
+/* Chips and status badges */
+.clarte-frame .clarte-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.clarte-frame .clarte-badge--neutral {
+  color: var(--clarte-ink-soft);
+  background: var(--clarte-surface-sunken);
+}
+
+.clarte-frame .clarte-badge--accent {
+  color: var(--clarte-accent-text);
+  background: var(--clarte-accent-soft);
+}
+
+.clarte-frame .clarte-badge--info {
+  color: var(--clarte-info);
+  background: var(--clarte-info-soft);
+}
+
+.clarte-frame .clarte-badge--success {
+  color: var(--clarte-success);
+  background: var(--clarte-success-soft);
+}
+
+.clarte-frame .clarte-badge--warning {
+  color: var(--clarte-warning);
+  background: var(--clarte-warning-soft);
+}
+
+.clarte-frame .clarte-badge--danger {
+  color: var(--clarte-danger);
+  background: var(--clarte-danger-soft);
+}
+
+/* Cards */
+.clarte-frame .clarte-card {
+  padding: 18px 20px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-lg);
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+.clarte-frame .clarte-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.clarte-frame .clarte-card-head h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.clarte-frame .clarte-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Lists and tables */
+.clarte-frame .clarte-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-list > li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 11px 4px;
+  border-top: 1px solid var(--clarte-line-soft);
+}
+
+.clarte-frame .clarte-list > li:first-child {
+  border-top: 0;
+}
+
+.clarte-frame .clarte-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.clarte-frame .clarte-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.clarte-frame .clarte-table th {
+  padding: 8px;
+  border-bottom: 1px solid var(--clarte-line);
+  color: var(--clarte-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--clarte-line-soft);
+  vertical-align: top;
+}
+
+/* Side panel and confirmation dialog */
+.clarte-frame .clarte-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  background: rgb(13 20 36 / 42%);
+}
+
+.clarte-frame .clarte-layer--side {
+  justify-items: end;
+}
+
+.clarte-frame .clarte-layer--center {
+  place-items: center;
+  padding: 20px;
+}
+
+.clarte-frame .clarte-side-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(100vw, 620px);
+  height: 100%;
+  background: var(--clarte-bg);
+  box-shadow: var(--clarte-shadow-raised);
+}
+
+.clarte-frame .clarte-side-panel:focus {
+  outline: none;
+}
+
+.clarte-frame .clarte-side-panel-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--clarte-line);
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-side-panel-head > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-side-panel-head h2 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.clarte-frame .clarte-side-panel-head p {
+  margin: 4px 0 0;
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-side-panel-body {
+  flex: 1;
+  padding: 18px 20px;
+  overflow-y: auto;
+}
+
+.clarte-frame .clarte-side-panel-foot,
+.clarte-frame .clarte-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-side-panel-foot {
+  padding: 14px 20px;
+  border-top: 1px solid var(--clarte-line);
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-dialog {
+  width: min(100%, 460px);
+  padding: 22px;
+  border: 1px solid var(--clarte-line);
+  border-radius: 20px;
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow-raised);
+}
+
+.clarte-frame .clarte-dialog h2 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.clarte-frame .clarte-dialog p {
+  margin: 8px 0 18px;
+  color: var(--clarte-ink-soft);
+}
+
+/* Empty, loading and error states */
+.clarte-frame .clarte-state {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 30px 16px;
+  color: var(--clarte-muted);
+  text-align: center;
+}
+
+.clarte-frame .clarte-state-title {
+  margin: 0;
+  color: var(--clarte-ink);
+  font-weight: 700;
+}
+
+.clarte-frame .clarte-state--error .clarte-state-title {
+  color: var(--clarte-danger);
+}
+
+.clarte-frame .clarte-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--clarte-accent-soft);
+  border-top-color: var(--clarte-accent);
+  border-radius: 50%;
+  animation: clarte-spin 0.8s linear infinite;
+}
+
+@keyframes clarte-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .clarte-frame .clarte-button,
+  .clarte-frame .clarte-input,
+  .clarte-frame .clarte-list > li {
+    min-height: var(--clarte-touch-target);
+  }
+
+  .clarte-frame .clarte-side-panel {
+    width: 100vw;
+  }
+}
