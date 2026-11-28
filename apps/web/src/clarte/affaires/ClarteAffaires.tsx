@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
+import { SectionVisibility } from '../../production-shell/section-visibility';
 import type { RequestedVersion } from '../../commercial-intake/CommercialIntakeWorkspace';
 import { AffaireList, rowTarget, type ClientRestriction } from './AffaireList';
 import {
@@ -42,6 +49,13 @@ export function ClarteAffaires({
     };
   }>) {
   const company = context.actor.activeCompany;
+  // The frame keeps every section mounted; the list reads only once the
+  // Affaires screen is first shown, then keeps its rows.
+  const visible = useContext(SectionVisibility);
+  const [entered, setEntered] = useState(visible);
+  useEffect(() => {
+    if (visible) setEntered(true);
+  }, [visible]);
   const [opened, setOpened] = useState<OpenedAffaire>();
   const [restriction, setRestriction] = useState(clientRestriction);
   const [updated, setUpdated] = useState<AffaireUpdate>();
@@ -113,20 +127,25 @@ export function ClarteAffaires({
   return (
     <div id="requests" tabIndex={-1} className="clarte-affaires">
       <div hidden={opened !== undefined}>
-        <AffaireList
-          companyId={company.id}
-          context={context}
-          readAuthority={readAuthority}
-          restriction={restriction}
-          onClearRestriction={() => setRestriction(undefined)}
-          updated={updated}
-          onOpen={(affaire) =>
-            open({ kind: 'opportunity', opportunityId: affaire.opportunityId })
-          }
-          onOpenRequest={(clientRequestId) =>
-            open({ kind: 'request', clientRequestId })
-          }
-        />
+        {entered ? (
+          <AffaireList
+            companyId={company.id}
+            context={context}
+            readAuthority={readAuthority}
+            restriction={restriction}
+            onClearRestriction={() => setRestriction(undefined)}
+            updated={updated}
+            onOpen={(affaire) =>
+              open({
+                kind: 'opportunity',
+                opportunityId: affaire.opportunityId,
+              })
+            }
+            onOpenRequest={(clientRequestId) =>
+              open({ kind: 'request', clientRequestId })
+            }
+          />
+        ) : null}
       </div>
       {opened ? (
         <AffairePage
