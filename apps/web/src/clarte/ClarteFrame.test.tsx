@@ -47,15 +47,18 @@ function section(
   options: Partial<ApplicationSection> = {},
 ): ApplicationSection {
   const label = sectionLabels[id];
+  const destination = (
+    <section id={id} tabIndex={-1} aria-label={`${label} screen`}>
+      {label} content
+    </section>
+  );
+  // A migrated tab renders `clarteContent`, a current one `content`.
   return {
     id,
     label,
     description: `${label} description`,
-    content: (
-      <section id={id} tabIndex={-1} aria-label={`${label} screen`}>
-        {label} content
-      </section>
-    ),
+    content: destination,
+    clarteContent: destination,
     ...options,
   };
 }

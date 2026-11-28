@@ -95,6 +95,7 @@ import type { RecentChangesProps } from './operational-home/RecentChanges';
 import type { CompanySummaryKind } from './operational-home/operational-home-response';
 import { useProductionShellContext } from './production-shell/useProductionShellContext';
 import { ClarteFrame } from './clarte/ClarteFrame';
+import { ClarteAffaires } from './clarte/affaires/ClarteAffaires';
 import { useInterfacePreference } from './clarte/InterfacePreferenceProvider';
 
 type HomeScopeLifetime = {
@@ -879,6 +880,42 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           clientAuthorityRevision={clientAuthorityGeneration}
           onOpenClientDossier={
             canReadCompanyClients ? openClientDossier : undefined
+          }
+          requestedRequest={
+            requestedRequest?.requestsMount === requestsMount
+              ? requestedRequest
+              : undefined
+          }
+        />
+      ),
+      clarteContent: (
+        <ClarteAffaires
+          key={`clarte-affaires:${requestsMount}`}
+          actor={access.actor}
+          identity={identity}
+          onCompanyContextRejected={rejectCompanyContext}
+          onActorRevalidated={acceptRevalidatedActor}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          onActivityRecorded={refreshActivityLog}
+          clientRestriction={
+            requestClientFilter?.navigationContext === requestNavigationContext
+              ? requestClientFilter
+              : undefined
+          }
+          clientIdentityRevision={clientIdentityGeneration}
+          clientAuthorityRevision={clientAuthorityGeneration}
+          onOpenClientDossier={
+            canReadCompanyClients ? openClientDossier : undefined
+          }
+          onOpenProject={
+            openProject && ((projectId) => openProject({ projectId }))
+          }
+          financeDestination={
+            invoiceRecordAuthority(access.actor)
+              ? 'invoice-records'
+              : paymentAuthority(access.actor)
+                ? 'payments'
+                : undefined
           }
           requestedRequest={
             requestedRequest?.requestsMount === requestsMount

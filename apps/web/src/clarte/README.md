@@ -64,6 +64,18 @@ await openClarteEntry(page, 'Tasks'); // left menu, or bottom bar and More on ph
 
 Intercept every API read with `page.route('**/api/**', …)` and fictional data. Save screenshots through `test.info().outputPath(...)` and inspect the 1440 px and 390 px ones. `clarte-frame.acceptance.spec.ts` holds the frame journey; add your area's journey as `e2e/clarte-<area>.acceptance.spec.ts` so parallel slices never edit one spec file.
 
+## Affaires
+
+[#1533](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1533) replaces the Affaires tab with `affaires/ClarteAffaires.tsx`: the list and board of affaires and one affaire page. An affaire is a read-side view of one Opportunity, never a stored object. The API module `apps/api/src/affaire/` serves `GET /api/affaires` (Commercial Intake's page, views and cursor, with each row's current stage) and `GET /api/affaires/:opportunityId` (the facts of each stage from its owner). `affaire-thread.ts` there holds the stage rule; a stage its owner refuses is "not available", whether or not records exist.
+
+The page shows the header, the seven-stage thread, the Next step card and the selected stage's panel from the registry `affaireStagePanels` in `affaires/stage-panels.tsx`. To give a stage its commands (Costing and Offer in #1534, Contract and Delivery in #1535):
+
+1. Write the panel under `affaires/`, typed `AffaireStagePanel`. It receives the affaire, its stage's `view` and the `context` App composed (Actor, identity, rejection and revalidation callbacks, navigation). Narrow `view` to your stage; the page shows a stage that is not available itself.
+2. Reuse the owner's existing transports and components, and call `context.onAffaireChanged()` after each confirmed change, so the thread and the Next step card reread.
+3. Replace only your stage's entry in `affaireStagePanels`.
+
+The Request stage embeds Commercial Intake's own detail through `CommercialIntakeWorkspace`'s `requestStage` presentation, so drafts, retries and receipts stay the existing ones. `src/test/affaire-responses.ts` builds the affaire reads from a Request fixture, and `src/test/affaire-interface.tsx` holds the steps of Request App tests that differ between the two interfaces.
+
 ## Tokens and base components
 
 `clarte-tokens.css` defines the tokens on `.clarte-frame`: surfaces and ink (`--clarte-bg`, `--clarte-surface`, `--clarte-ink`, `--clarte-muted`, `--clarte-line`), the single accent (`--clarte-accent`, `--clarte-accent-soft`, `--clarte-accent-text` for text on soft accent), status tones (`--clarte-success`, `--clarte-warning`, `--clarte-danger`, `--clarte-info` and their `-soft`), radii, shadows, `--clarte-touch-target` (44 px on phone) and the fonts `--clarte-font-body` and `--clarte-font-heading`. The prism sequence `--clarte-stage-1` to `--clarte-stage-7` is reserved for the seven affaire stages.

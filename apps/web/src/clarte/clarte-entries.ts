@@ -81,7 +81,7 @@ export const clarteEntries = [
     id: 'affaires',
     group: 'primary',
     icon: Briefcase,
-    tabs: [{ destination: 'requests', render: renderCurrentScreen }],
+    tabs: [{ destination: 'requests', render: renderClarteScreen }],
   },
   {
     id: 'clients',

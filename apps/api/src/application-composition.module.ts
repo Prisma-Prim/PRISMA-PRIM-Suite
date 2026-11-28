@@ -120,6 +120,8 @@ import { OfferDecisionQueueController } from './offer/offer-decision-queue.contr
 import { OfferController } from './offer/offer.controller.js';
 import { OfferModule } from './offer/offer.module.js';
 import { ProfitabilityEstimateModule } from './profitability-estimate/profitability-estimate.module.js';
+import { AffaireModule } from './affaire/affaire.module.js';
+import { AffaireController } from './affaire/affaire.controller.js';
 import { ProfitabilityDecisionQueueController } from './profitability-estimate/profitability-decision-queue.controller.js';
 import { ProfitabilityEstimateController } from './profitability-estimate/profitability-estimate.controller.js';
 @Module({
@@ -158,6 +160,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     OfferModule,
     ContractModule,
     ProfitabilityEstimateModule,
+    AffaireModule,
   ],
   controllers: [
     DossierAnalysisController,
@@ -208,6 +211,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CommercialIntakeController,
     SalesStageController,
     CommercialIntakeOpportunityController,
+    AffaireController,
     CommercialCatalogueController,
     PricingConfigurationController,
     PricingSnapshotController,
