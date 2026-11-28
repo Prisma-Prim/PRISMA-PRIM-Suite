@@ -187,7 +187,6 @@ function ClarteInvoiceTable(
                 <th scope="col">{finance.text('invoiceColumn')}</th>
                 <th scope="col">{finance.text('partyContractColumn')}</th>
                 <th scope="col">{finance.text('amountColumn')}</th>
-                <th scope="col">{finance.text('issuedColumn')}</th>
                 <th scope="col">{copy.due}</th>
                 <th scope="col">{finance.text('statusColumn')}</th>
                 <RowChevronHead />
@@ -202,7 +201,7 @@ function ClarteInvoiceTable(
                     props.onOpen(item.id, item.values.externalNumber),
                   )}
                 >
-                  <td data-label={finance.text('invoiceColumn')}>
+                  <td>
                     <button
                       type="button"
                       className="clarte-finance-row-open"
@@ -230,11 +229,6 @@ function ClarteInvoiceTable(
                       currency: item.values.currency,
                       locale,
                     })}
-                  </td>
-                  <td data-label={finance.text('issuedColumn')}>
-                    <time dateTime={item.values.issuedOn}>
-                      {item.values.issuedOn}
-                    </time>
                   </td>
                   <td data-label={copy.due}>
                     {item.values.dueOn === null ? (

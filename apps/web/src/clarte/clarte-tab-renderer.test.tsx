@@ -4,7 +4,8 @@ import { ClarteFrame } from './ClarteFrame';
 import { InterfacePreferenceProvider } from './InterfacePreferenceProvider';
 
 // As a migrating slice does: only the Clients tab's renderer changes in the
-// table; the frame and every other tab stay as they are.
+// table; the frame and every other tab stay as they are. My Tasks stands for
+// a tab no slice has migrated yet (#1542 migrated the real one).
 vi.mock('./clarte-entries', async (importOriginal) => {
   const table = await importOriginal<typeof import('./clarte-entries')>();
   return {
@@ -17,7 +18,14 @@ vi.mock('./clarte-entries', async (importOriginal) => {
               { destination: 'clients', render: table.renderClarteScreen },
             ],
           }
-        : entry,
+        : entry.id === 'tasks'
+          ? {
+              ...entry,
+              tabs: [
+                { destination: 'my-tasks', render: table.renderCurrentScreen },
+              ],
+            }
+          : entry,
     ),
   };
 });

@@ -93,6 +93,15 @@ export function ClarteSourcePdf(
             {copy.text('showPdf')}
           </ClarteButton>
         )}
+        {view.status === 'ready' && (
+          <a
+            className="clarte-button clarte-button--secondary clarte-button--small"
+            href={view.url}
+            download={source.file.fileName}
+          >
+            {copy.text('downloadVerifiedPdf')}
+          </a>
+        )}
       </div>
       {view.status === 'idle' && (
         <p className="clarte-source-pdf-hint">{copy.text('pdfHint')}</p>
@@ -110,16 +119,19 @@ export function ClarteSourcePdf(
           }
         />
       )}
-      {view.status === 'ready' && (
-        <object
-          className="clarte-source-pdf-frame"
-          type="application/pdf"
-          title={copy.pdfFrame(source.file.fileName)}
-          data={view.url}
-        >
+      {view.status === 'ready' &&
+        (navigator.pdfViewerEnabled === false ? (
           <p className="clarte-source-pdf-hint">{copy.text('pdfNoViewer')}</p>
-        </object>
-      )}
+        ) : (
+          <object
+            className="clarte-source-pdf-frame"
+            type="application/pdf"
+            title={copy.pdfFrame(source.file.fileName)}
+            data={`${view.url}#view=Fit&navpanes=0`}
+          >
+            <p className="clarte-source-pdf-hint">{copy.text('pdfNoViewer')}</p>
+          </object>
+        ))}
     </section>
   );
 }

@@ -289,6 +289,15 @@ describe('Clarté Finance › Invoices', () => {
     expect(row).toHaveTextContent('Fictional Contract №17 · Version 2');
     expect(row).toHaveTextContent('1,255.00 MDL');
     expect(row).toHaveTextContent('Recorded PRISMA entry');
+    expect(
+      within(inventory).queryByRole('columnheader', { name: 'Issue date' }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(inventory).getByRole('columnheader', {
+        name: 'Declared due date (optional)',
+      }),
+    ).toBeInTheDocument();
+    expect(row).not.toHaveTextContent(invoiceValues.issuedOn);
 
     fireEvent.click(
       within(inventory).getByRole('button', {
@@ -307,7 +316,9 @@ describe('Clarté Finance › Invoices', () => {
     });
     expect(beside).toHaveTextContent('fictional-original.pdf');
     const frame = await pdfBeside(beside, 'fictional-original.pdf');
-    expect(frame).toHaveAttribute('data', 'blob:fictional-exact-source');
+    expect(frame.getAttribute('data')?.split('#')[0]).toBe(
+      'blob:fictional-exact-source',
+    );
     expect(
       http.reads(
         `/api/documents/${invoiceIds.document}/versions/${invoiceIds.version}/content/${invoiceIds.representation}`,
@@ -535,6 +546,9 @@ describe('Clarté Finance › Invoices', () => {
       ),
     ).toBeInTheDocument();
     expect(within(beside).queryByTitle(/Exact source PDF/)).toBeNull();
+    expect(
+      within(beside).queryByRole('link', { name: 'Download verified PDF' }),
+    ).not.toBeInTheDocument();
     expect(created).not.toHaveBeenCalled();
   });
 });
@@ -835,7 +849,7 @@ function paymentServer(options: {
 async function openPayment() {
   fireEvent.click(
     await screen.findByRole('button', {
-      name: '2026-01-15 · Fictional bank transfer',
+      name: 'Fictional bank transfer · Jan 15',
     }),
   );
   const dialog = await screen.findByRole('dialog', { name: '1,255.00 MDL' });
@@ -851,10 +865,13 @@ describe('Clarté Finance › Collections', () => {
       name: 'Finance views',
     });
     expect(
-      within(views).getByRole('link', {
-        name: 'Manual incoming Payment observations',
-      }),
+      within(views).getByRole('link', { name: 'Collections' }),
     ).toHaveAttribute('aria-current', 'page');
+    expect(
+      within(views)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Collections', 'Proofs']);
     expect(
       screen.getByText('Allocation is not tracked by this capability.'),
     ).toBeInTheDocument();
@@ -863,12 +880,16 @@ describe('Clarté Finance › Collections', () => {
     });
     const row = (
       await within(inventory).findByRole('button', {
-        name: '2026-01-15 · Fictional bank transfer',
+        name: 'Fictional bank transfer · Jan 15',
       })
     ).closest('tr');
     expect(row).toHaveTextContent('Fictional conserved payer');
     expect(row).toHaveTextContent('1,255.00 MDL');
     expect(row).toHaveTextContent('Draft observation');
+    expect(row).toHaveTextContent('FICTIONAL-REF-7');
+    expect(
+      within(inventory).queryByRole('button', { name: 'Reload and review' }),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(
       within(inventory).getByRole('button', {
@@ -884,7 +905,17 @@ describe('Clarté Finance › Collections', () => {
     const beside = within(dialog).getByRole('region', {
       name: 'PDF beside the form',
     });
-    await pdfBeside(beside, 'fictional-payment-notice.pdf');
+    const frame = await pdfBeside(beside, 'fictional-payment-notice.pdf');
+    const sourceLink = within(beside).getByRole('link', {
+      name: 'Download verified PDF',
+    });
+    expect(frame.getAttribute('data')?.split('#')[0]).toBe(
+      sourceLink.getAttribute('href'),
+    );
+    expect(sourceLink).toHaveAttribute(
+      'download',
+      'fictional-payment-notice.pdf',
+    );
     expect(
       http.reads(
         `/api/documents/${payIds.document}/versions/${payIds.version}/content/${payIds.representation}`,
@@ -1402,6 +1433,21 @@ describe('Clarté Finance › Collections', () => {
         'The requested information could not be safely read. Retry deliberately.',
       ),
     ).toBeInTheDocument();
+    reply = () =>
+      Response.json({
+        format: 'PAYMENT_INVENTORY/1',
+        companyId: payIds.company,
+        readCapture: paymentCapture,
+        items: [],
+        nextCursor: null,
+      });
+    fireEvent.click(screen.getByRole('button', { name: 'Reload and review' }));
+    expect(
+      await screen.findByText('No manual Payment observations.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Reload and review' }),
+    ).not.toBeInTheDocument();
     view.unmount();
     reply = () => new Response(null, { status: 403 });
     renderFinance('payments', deterministicBrowserIdentity());

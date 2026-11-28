@@ -31,6 +31,8 @@ interface EditorProps {
   captureRecovery: () => () => boolean;
   onConfirmed: (receipt: Receipt) => Promise<void>;
   onReload?: () => Promise<boolean>;
+  /** Told whether a command is pending or awaits its exact retry, so a container can hold it open. */
+  onProtectionChange?: (held: boolean) => void;
 }
 export function TaskEditor(props: EditorProps) {
   const copy = useInternalTaskCopy(),
@@ -71,6 +73,13 @@ export function TaskEditor(props: EditorProps) {
     setObservedVersion(props.task?.version ?? 1);
     setMutation({ kind: 'idle' });
   }, [props.review, props.task]);
+  const held = mutation.kind === 'pending' || mutation.kind === 'uncertain';
+  const reportProtection = useRef(props.onProtectionChange);
+  reportProtection.current = props.onProtectionChange;
+  useEffect(() => {
+    reportProtection.current?.(held);
+  }, [held]);
+  useEffect(() => () => reportProtection.current?.(false), []);
   const stale = !!props.task && observedVersion !== props.task.version,
     locked =
       mutation.kind === 'pending' ||

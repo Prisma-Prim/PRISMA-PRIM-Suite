@@ -1,0 +1,969 @@
+import { useAuthorityLifetime } from '../access/use-authority-lifetime';
+import {
+  useActorObservation,
+  useRequestLifetime,
+} from '../api/use-actor-requests';
+import { useScopedOperationGroup } from '../api/use-scoped-operation';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
+import type { BrowserIdentity } from '../access-composition';
+import type { ActorContext } from '../access-types';
+import { projectTaskCompanyAuthority } from './project-authority';
+import { holds } from '../access/company-grants';
+import { canReadTasks } from './MyTasks';
+import {
+  conflictCode,
+  createAuthenticatedApiClient,
+} from '../api/authenticated-api-client';
+import {
+  isClosedProjectStatus,
+  type ProjectStatus,
+} from './project-lifecycle-response';
+import {
+  isOpenTaskState,
+  readTask,
+  type readTaskList,
+  validTaskDate,
+  validTaskReason,
+  validTaskDescription,
+  type Assignee,
+  type TaskEvent,
+  type TaskMove,
+  type TaskPriority,
+  type TaskState,
+  type TaskView,
+} from './task-response';
+import {
+  ProjectTaskReadFailure,
+  useProjectTaskReads,
+} from './project-task-reads';
+import type { Draft, ReasonDraft } from './TaskPresentation';
+
+/** A requested open of one Task of the selected Project. */
+export type RequestedTask = {
+  taskId: string;
+  requestId: number;
+  focus?: 'task';
+  /** Optional originating Client-preview lifetime; never a mutation signal. */
+  sourceSignal?: AbortSignal;
+};
+export type ProjectTaskOwnerProps = {
+  actor: ActorContext;
+  identity: BrowserIdentity;
+  projectId: string;
+  projectStatus: ProjectStatus | null;
+  /** Whether this Project's Tasks are the visible ones; a hidden owner keeps its cache. */
+  active: boolean;
+  clientIdentityRevision?: number;
+  onProjectChanged?: () => void | Promise<void>;
+  onActivityRecorded?: () => void | Promise<void>;
+  /** Opens this Task of the Project as choosing its row would; each new request id once. */
+  requestedTask?: RequestedTask;
+};
+/**
+ * The authority one Project's Task owner consumes: any change remounts it,
+ * dropping its pending replies, drafts and commands.
+ */
+export function projectTaskOwnerAuthority(actor: ActorContext): string {
+  return JSON.stringify([
+    actor.internalUserId,
+    actor.workspaceId,
+    actor.workspaceMembershipId,
+    actor.active,
+    actor.workspacePermissions.includes('client.manage'),
+    projectTaskCompanyAuthority(actor),
+  ]);
+}
+type Listing = ReturnType<typeof readTaskList>;
+type Load =
+  | { kind: 'loading' | 'error' | 'denied' }
+  | { kind: 'ready'; listing: Listing };
+type Detail =
+  | { kind: 'loading' | 'error' | 'missing' }
+  | {
+      kind: 'ready';
+      task: TaskView;
+      mutable: boolean;
+      events: TaskEvent[];
+      requestedOpenId?: number;
+    };
+type Command = { key: string } & (
+  | {
+      action: 'create';
+      taskId: null;
+      body: {
+        title: string;
+        assigneeMembershipId: string | null;
+        dueDate: string | null;
+        priority: TaskPriority;
+        description?: string | null;
+      };
+    }
+  | {
+      action: 'edit';
+      taskId: string;
+      body: {
+        expectedVersion: number;
+        title?: string;
+        assigneeMembershipId?: string | null;
+        dueDate?: string | null;
+        priority?: TaskPriority;
+        description?: string | null;
+      };
+    }
+  | {
+      action: 'complete' | 'reopen';
+      taskId: string;
+      body: { expectedVersion: number };
+    }
+  | {
+      action: 'status';
+      taskId: string;
+      body:
+        | { expectedVersion: number; status: 'todo' | 'in_progress' }
+        | { expectedVersion: number; status: 'blocked'; reason: string };
+    }
+  | {
+      action: 'cancel';
+      taskId: string;
+      body: { expectedVersion: number; reason: string };
+    }
+);
+type Mutation =
+  | { kind: 'idle' | 'blocked' }
+  | { kind: 'pending' | 'uncertain'; command: Command };
+export type TaskFeedback =
+  | 'membersError'
+  | 'closedRefusal'
+  | 'conflict'
+  | 'rejected'
+  | 'confirmed'
+  | 'uncertain'
+  | 'descriptionValidation'
+  | 'validation';
+type TaskFilter = 'all' | TaskState;
+
+function taskFilterText(value: string) {
+  // Fold Romanian spelling only; other distinctions such as й/и remain intact.
+  return value
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(/[ăâ]/gu, 'a')
+    .replace(/î/gu, 'i')
+    .replace(/[șş]/gu, 's')
+    .replace(/[țţ]/gu, 't');
+}
+
+// Responsible members are matched by membership identity so homonymous members stay distinct.
+type AssigneeFilter =
+  | { kind: 'all' }
+  | { kind: 'unassigned' }
+  | { kind: 'member'; workspaceMembershipId: string };
+// A calendar control clears an impossible day such as 30 February, so a cleared bound alone cannot
+// tell an open bound from a rejected one. Each bound keeps that distinction explicitly.
+export type DateBound =
+  { kind: 'open' } | { kind: 'date'; value: string } | { kind: 'invalid' };
+type DateFilter =
+  | { kind: 'all' }
+  | { kind: 'undated' }
+  | { kind: 'range'; from: DateBound; through: DateBound };
+type ResolvedDateFilter =
+  | { kind: 'all' }
+  | { kind: 'undated' }
+  | { kind: 'unusable' }
+  | { kind: 'range'; from: string | null; through: string | null };
+const emptyDraft: Draft = {
+  title: '',
+  description: { kind: 'untouched', text: '' },
+  assigneeMembershipId: '',
+  dueDate: '',
+  priority: 'normal',
+};
+const everyAssignee: AssigneeFilter = { kind: 'all' };
+export const everyDate: DateFilter = { kind: 'all' };
+const openBound: DateBound = { kind: 'open' };
+export const memberValuePrefix = 'member:';
+export function assigneeFilterValue(filter: AssigneeFilter): string {
+  return filter.kind === 'member'
+    ? `${memberValuePrefix}${filter.workspaceMembershipId}`
+    : filter.kind;
+}
+function matchesAssignee(task: TaskView, filter: AssigneeFilter): boolean {
+  switch (filter.kind) {
+    case 'all':
+      return true;
+    case 'unassigned':
+      return task.assignee === null;
+    case 'member':
+      return (
+        task.assignee?.workspaceMembershipId === filter.workspaceMembershipId
+      );
+    default: {
+      const exhaustive: never = filter;
+      return exhaustive;
+    }
+  }
+}
+// The control reports a rejected calendar day as bad input with an empty value, so that flag is the
+// only evidence it was entered. Every other bound text is proved here, once, at the control.
+export function readDateBound(input: HTMLInputElement): DateBound {
+  if (input.validity.badInput) return { kind: 'invalid' };
+  if (input.value === '') return openBound;
+  return validTaskDate(input.value)
+    ? { kind: 'date', value: input.value }
+    : { kind: 'invalid' };
+}
+export function boundText(bound: DateBound): string {
+  return bound.kind === 'date' ? bound.value : '';
+}
+function resolveDateFilter(filter: DateFilter): ResolvedDateFilter {
+  if (filter.kind !== 'range') return filter;
+  if (filter.from.kind === 'invalid' || filter.through.kind === 'invalid')
+    return { kind: 'unusable' };
+  const from = filter.from.kind === 'date' ? filter.from.value : null;
+  const through = filter.through.kind === 'date' ? filter.through.value : null;
+  if (from !== null && through !== null && from > through)
+    return { kind: 'unusable' };
+  return { kind: 'range', from, through };
+}
+function matchesDate(task: TaskView, filter: ResolvedDateFilter): boolean {
+  switch (filter.kind) {
+    case 'all':
+      return true;
+    // An unusable range is reported to the reader instead of hiding rows behind one bound.
+    case 'unusable':
+      return true;
+    case 'undated':
+      return task.dueDate === null;
+    // Exact YYYY-MM-DD values compare as text, so the inclusive bounds stay free of any timezone.
+    case 'range':
+      return (
+        task.dueDate !== null &&
+        (filter.from === null || task.dueDate >= filter.from) &&
+        (filter.through === null || task.dueDate <= filter.through)
+      );
+    default: {
+      const exhaustive: never = filter;
+      return exhaustive;
+    }
+  }
+}
+/**
+ * One Project's Tasks: the listing, the open Task with its history, the
+ * eligible members, the drafts, every command with its exact retry, and
+ * access recovery. Both interfaces present it; only presentation differs.
+ */
+export function useProjectTaskOwner({
+  active,
+  actor,
+  identity,
+  projectId,
+  projectStatus,
+  onActivityRecorded,
+  requestedTask,
+  clientIdentityRevision = 0,
+}: ProjectTaskOwnerProps) {
+  const [load, setLoad] = useState<Load>({ kind: 'loading' });
+  const [readOnlyRevision, setReadOnlyRevision] = useState<number | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [detail, setDetail] = useState<Detail | null>(null);
+  const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [members, setMembers] = useState<Assignee[] | null>(null);
+  const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
+  const [planningProtected, setPlanningProtected] = useState(false);
+  const [reasonDraft, setReasonDraft] = useState<
+    (ReasonDraft & { taskId: string; version: number }) | null
+  >(null);
+  const [feedback, setFeedback] = useState<TaskFeedback | null>(null);
+  const [taskSearch, setTaskSearch] = useState('');
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
+  const [assigneeFilter, setAssigneeFilter] =
+    useState<AssigneeFilter>(everyAssignee);
+  const [dateFilter, setDateFilter] = useState<DateFilter>(everyDate);
+  const drafts = useRef(
+    new Map<string, { version: number | null; draft: Draft }>(),
+  );
+  const refreshedClientRevision = useRef(clientIdentityRevision);
+  /** The latest requested open already applied. */
+  const consumedTaskRequest = useRef<number | undefined>(undefined);
+  const readIdentity = useRef(identity);
+  const previousReadLifetime = useRef<(() => boolean) | undefined>(undefined);
+  const taskHeading = useRef<HTMLHeadingElement>(null);
+  const focusedTaskRequest = useRef<number | undefined>(undefined);
+  const companyId = actor.activeCompany?.id ?? '';
+  const scope = { companyId, projectId };
+  const taskReads = useProjectTaskReads({
+    identity,
+    scope,
+    clientIdentityRevision,
+  });
+  const ownerScope = String(
+    useRequestLifetime(identity, JSON.stringify(scope)),
+  );
+  const reads = useScopedOperationGroup(ownerScope);
+  const writes = useScopedOperationGroup(ownerScope);
+  const captureActiveOwner = useAuthorityLifetime(
+    JSON.stringify([ownerScope, active]),
+    identity,
+  );
+  const activeProject = useRef(active);
+  const reloadOnReturn = useRef(false);
+  const settlingRead = useRef<{
+    signal: AbortSignal;
+    refreshRequested: boolean;
+  } | null>(null);
+  // The hidden Project keeps its authorized Task cache. Shared recovery
+  // requires the exact committed visible Project.
+  useLayoutEffect(() => {
+    activeProject.current = active;
+  }, [active]);
+  const observation = useActorObservation(actor);
+  const captureRecovery = useAuthorityLifetime(String(observation), identity);
+  function captureActiveRecovery() {
+    const capture = captureRecovery();
+    const visible = captureActiveOwner();
+    return () => activeProject.current && visible() && capture();
+  }
+  const canRead = canReadTasks(actor);
+  const canManage =
+    canRead &&
+    holds(actor.activeCompany, 'company_task_manager', 'task.manage');
+  const projectClosed =
+    projectStatus !== null && isClosedProjectStatus(projectStatus);
+  const busy = mutation.kind === 'pending' || planningProtected;
+  const current = detail?.kind === 'ready' ? detail : null;
+  const mutable =
+    !projectClosed &&
+    (current?.mutable ?? (load.kind === 'ready' && load.listing.mutable));
+  const editable =
+    canManage &&
+    mutable &&
+    mutation.kind === 'idle' &&
+    members !== null &&
+    !planningProtected;
+  const normalizedTaskSearch = taskFilterText(taskSearch.trim());
+  const dateSelection = resolveDateFilter(dateFilter);
+  const unusableRange = dateSelection.kind === 'unusable';
+  const visibleTasks =
+    load.kind === 'ready'
+      ? load.listing.tasks.filter(
+          (task) =>
+            (taskFilter === 'all' || task.status === taskFilter) &&
+            matchesAssignee(task, assigneeFilter) &&
+            matchesDate(task, dateSelection) &&
+            taskFilterText(task.title).includes(normalizedTaskSearch),
+        )
+      : [];
+  // Options come only from the loaded rows the reader already sees, never from the eligible-member query.
+  const assigneeOptions = new Map<string, Assignee>();
+  if (load.kind === 'ready')
+    for (const task of load.listing.tasks)
+      if (
+        task.assignee &&
+        !assigneeOptions.has(task.assignee.workspaceMembershipId)
+      )
+        assigneeOptions.set(task.assignee.workspaceMembershipId, task.assignee);
+  function selectAssigneeFilter(value: string) {
+    if (value === 'all') setAssigneeFilter(everyAssignee);
+    else if (value === 'unassigned') setAssigneeFilter({ kind: 'unassigned' });
+    else if (value.startsWith(memberValuePrefix)) {
+      const workspaceMembershipId = value.slice(memberValuePrefix.length);
+      if (assigneeOptions.has(workspaceMembershipId))
+        setAssigneeFilter({ kind: 'member', workspaceMembershipId });
+    }
+  }
+  function selectDateFilter(value: string) {
+    if (value === 'all') setDateFilter(everyDate);
+    else if (value === 'undated') setDateFilter({ kind: 'undated' });
+    // Leaving the range discards its bounds, so a reopened range never reuses a hidden selection.
+    else if (value === 'range')
+      setDateFilter({ kind: 'range', from: openBound, through: openBound });
+  }
+
+  function deny() {
+    reads.retire();
+    writes.retire();
+    setLoad({ kind: 'denied' });
+    setDetail(null);
+    setMembers(null);
+    setDraft(emptyDraft);
+    setReasonDraft(null);
+    setFeedback(null);
+    setMutation({ kind: 'blocked' });
+  }
+  async function refresh(
+    taskId: string | null,
+    signal: AbortSignal,
+    recoveryCurrent: () => boolean,
+    read: {
+      requestedOpenId?: number;
+      onTargetReady?: () => void;
+      isSuperseded?: () => boolean;
+    } = {},
+  ) {
+    const taskRead = taskReads.capture({ signal, recoveryCurrent });
+    const canPublish = () => taskRead.current() && !read.isSuperseded?.();
+    const listing = await taskRead.listing();
+    if (!listing || !canPublish()) return false;
+    if (!listing.mutable) setReadOnlyRevision(taskRead.revision);
+    let nextDetail: Detail | null = null;
+    if (taskId) {
+      const result = await taskRead.detail(taskId);
+      if (!result) return false;
+      nextDetail =
+        result.kind === 'ready'
+          ? { ...result, requestedOpenId: read.requestedOpenId }
+          : result;
+    }
+    if (!canPublish()) return false;
+    // A transport failure cannot undo a read-only observation at the current revision.
+    setReadOnlyRevision(
+      !listing.mutable || (nextDetail?.kind === 'ready' && !nextDetail.mutable)
+        ? taskRead.revision
+        : null,
+    );
+    // Stable target facts are resolved here. An auxiliary member lookup stays
+    // under this owner's authority and must not prolong the originating preview.
+    read.onTargetReady?.();
+    setLoad({ kind: 'ready', listing });
+    // A member the authoritative listing no longer references cannot stay selected.
+    setAssigneeFilter((previous) =>
+      previous.kind === 'member' &&
+      !listing.tasks.some(
+        (task) =>
+          task.assignee?.workspaceMembershipId ===
+          previous.workspaceMembershipId,
+      )
+        ? everyAssignee
+        : previous,
+    );
+    setDetail(nextDetail);
+    // A grouped refresh preserves an independent explanation only while its exact native Task is unchanged.
+    setReasonDraft((previous) =>
+      previous &&
+      listing.mutable &&
+      !projectClosed &&
+      nextDetail?.kind === 'ready' &&
+      nextDetail.mutable &&
+      previous.taskId === nextDetail.task.id &&
+      previous.version === nextDetail.task.version
+        ? previous
+        : null,
+    );
+    const saved = drafts.current.get(taskId ?? 'create');
+    const task = nextDetail?.kind === 'ready' ? nextDetail.task : null;
+    setDraft(
+      saved && saved.version === (task?.version ?? null)
+        ? saved.draft
+        : task
+          ? {
+              title: task.title,
+              description: { kind: 'untouched', text: task.description ?? '' },
+              assigneeMembershipId: task.assignee?.workspaceMembershipId ?? '',
+              dueDate: task.dueDate ?? '',
+              priority: task.priority,
+            }
+          : emptyDraft,
+    );
+    setMembers(null);
+    if (
+      canManage &&
+      !projectClosed &&
+      listing.mutable &&
+      (!nextDetail || (nextDetail.kind === 'ready' && nextDetail.mutable))
+    ) {
+      const eligible = await taskRead.eligibleMembers();
+      if (!canPublish()) return false;
+      if (eligible === null) setFeedback('membersError');
+      else setMembers(eligible);
+    }
+    return canPublish();
+  }
+  async function open(
+    taskId: string | null,
+    options: {
+      reload?: boolean;
+      requestedOpenId?: number;
+      sourceSignal?: AbortSignal;
+      preserveReasonDraft?: boolean;
+      preserveFeedback?: boolean;
+    } = {},
+  ) {
+    if (!activeProject.current) {
+      reloadOnReturn.current = true;
+      return;
+    }
+    if (options.sourceSignal?.aborted) return;
+    const operation = reads.beginLatest();
+    if (!operation) return;
+    const { signal } = operation;
+    const recoveryCurrent = captureActiveRecovery();
+    reloadOnReturn.current = false;
+    const previousLoad = load;
+    setSelected(taskId);
+    setDetail(taskId ? { kind: 'loading' } : null);
+    setDraft(emptyDraft);
+    if (!options.preserveReasonDraft) setReasonDraft(null);
+    setMembers(null);
+    if (mutation.kind !== 'uncertain' && !options.preserveFeedback)
+      setFeedback(null);
+    if (options.reload) {
+      drafts.current.delete(taskId ?? 'create');
+      setMutation((previous) =>
+        previous.kind === 'blocked' ? { kind: 'idle' } : previous,
+      );
+    }
+    if (!canRead || !companyId) {
+      deny();
+      return;
+    }
+    const retireSourceRead = () => {
+      if (signal.aborted) return;
+      operation.retire();
+      setSelected(null);
+      setDetail(null);
+      setLoad(previousLoad.kind === 'ready' ? previousLoad : { kind: 'error' });
+    };
+    options.sourceSignal?.addEventListener('abort', retireSourceRead, {
+      once: true,
+    });
+    const stopSourceRetirement = () =>
+      options.sourceSignal?.removeEventListener('abort', retireSourceRead);
+    setLoad({ kind: 'loading' });
+    try {
+      await refresh(taskId, signal, recoveryCurrent, {
+        requestedOpenId: options.requestedOpenId,
+        onTargetReady: stopSourceRetirement,
+      });
+    } catch (error: unknown) {
+      if (signal.aborted) return;
+      if (error instanceof ProjectTaskReadFailure && error.kind === 'denied')
+        deny();
+      else {
+        setLoad({ kind: 'error' });
+        setDetail(taskId ? { kind: 'error' } : null);
+      }
+    } finally {
+      stopSourceRetirement();
+      operation.release();
+    }
+  }
+  function refreshNativeAfterPlanning() {
+    const settling = settlingRead.current;
+    if (settling && !settling.signal.aborted) {
+      // Its listing may predate the grouped save. Re-read under the same native command owner.
+      settling.refreshRequested = true;
+      return;
+    }
+    return open(selected, {
+      preserveReasonDraft: true,
+      preserveFeedback: feedback === 'confirmed',
+    });
+  }
+
+  useLayoutEffect(() => {
+    if (refreshedClientRevision.current === clientIdentityRevision) return;
+    refreshedClientRevision.current = clientIdentityRevision;
+    // Dossier projections changed; the native immutable target and exact commands remain owned here.
+    if (settlingRead.current && !settlingRead.current.signal.aborted) return;
+    reads.retire();
+    if (mutation.kind !== 'pending' && mutation.kind !== 'uncertain')
+      void open(selected, {
+        preserveReasonDraft: true,
+        preserveFeedback: true,
+      });
+  }, [clientIdentityRevision]);
+  useEffect(() => {
+    // Effect replay cancels the first requested read before it can finish.
+    // A genuinely replaced identity keeps that request consumed permanently.
+    if (
+      readIdentity.current === identity &&
+      previousReadLifetime.current?.() === false
+    )
+      consumedTaskRequest.current = undefined;
+    readIdentity.current = identity;
+    previousReadLifetime.current = reads.capture();
+    drafts.current.clear();
+    setReadOnlyRevision(null);
+    setMutation({ kind: 'idle' });
+    void open(null);
+  }, [identity, reads]);
+  useEffect(() => {
+    if (
+      !active ||
+      !reloadOnReturn.current ||
+      mutation.kind === 'pending' ||
+      mutation.kind === 'uncertain'
+    )
+      return;
+    if (mutation.kind === 'blocked' && feedback === 'confirmed')
+      setMutation({ kind: 'idle' });
+    void open(selected, { preserveReasonDraft: true, preserveFeedback: true });
+  }, [active, mutation.kind]);
+  // A requested open is the same open as choosing the Task's row, so it
+  // supersedes a read still loading, including the first list read. A pending
+  // command is never aborted: the open waits for its outcome and, once
+  // confirmed, for the read of its result, so neither overwrites the other.
+  const commandSettling =
+    planningProtected ||
+    mutation.kind === 'pending' ||
+    (mutation.kind === 'blocked' && load.kind === 'loading');
+  useEffect(() => {
+    if (
+      !requestedTask ||
+      requestedTask.requestId === consumedTaskRequest.current ||
+      commandSettling
+    )
+      return;
+    consumedTaskRequest.current = requestedTask.requestId;
+    if (requestedTask.sourceSignal?.aborted) return;
+    void open(requestedTask.taskId, {
+      requestedOpenId: requestedTask.requestId,
+      sourceSignal: requestedTask.sourceSignal,
+    });
+  }, [requestedTask, commandSettling]);
+  // The section keeps ordinary Task-opening focus. Only an explicit Task-focus
+  // intent moves the final destination after its current-authority read is ready.
+  // Reloads/locales never replay it; a newer open or unmount cancels it.
+  useEffect(() => {
+    if (
+      !requestedTask ||
+      requestedTask.focus !== 'task' ||
+      detail?.kind !== 'ready' ||
+      detail.requestedOpenId !== requestedTask.requestId ||
+      detail.task.id !== requestedTask.taskId ||
+      focusedTaskRequest.current === requestedTask.requestId
+    )
+      return;
+    const frame = window.requestAnimationFrame(() => {
+      const heading = taskHeading.current;
+      if (!heading?.isConnected) return;
+      focusedTaskRequest.current = requestedTask.requestId;
+      heading.scrollIntoView?.({ block: 'start' });
+      heading.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [detail, requestedTask]);
+
+  async function run(command: Command) {
+    if (writes.isPending()) return;
+    const operation = writes.beginLatest();
+    if (!operation) return;
+    const { signal } = operation;
+    const recoveryCurrent = captureActiveRecovery();
+    reads.retire();
+    setMutation({ kind: 'pending', command });
+    setFeedback(null);
+    try {
+      const api = await createAuthenticatedApiClient(identity);
+      if (signal.aborted) return;
+      const path =
+        command.action === 'create'
+          ? `/projects/${encodeURIComponent(projectId)}/tasks`
+          : `/tasks/${encodeURIComponent(command.taskId)}${command.action === 'edit' ? '' : `/${command.action}`}`;
+      const result = await api.request(path, {
+        companyContextId: companyId,
+        signal,
+        method: command.action === 'edit' ? 'PATCH' : 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': command.key,
+        },
+        body: JSON.stringify(command.body),
+      });
+      if (signal.aborted) return;
+      if (result.status === 'unauthorized') {
+        if (!recoveryCurrent()) {
+          setFeedback('rejected');
+          setMutation({ kind: 'blocked' });
+          return;
+        }
+        await identity.rejectSession();
+        if (!signal.aborted) deny();
+        return;
+      }
+      if (result.status === 'forbidden' || result.status === 'notFound') {
+        if (recoveryCurrent()) deny();
+        else {
+          setFeedback('rejected');
+          setMutation({ kind: 'blocked' });
+        }
+        return;
+      }
+      if (result.status === 'conflict' || result.status === 'validation') {
+        if (
+          result.status === 'conflict' &&
+          conflictCode(result) === 'project_closed'
+        ) {
+          setFeedback('closedRefusal');
+          setMutation({ kind: 'blocked' });
+          return;
+        }
+        setFeedback(result.status === 'conflict' ? 'conflict' : 'rejected');
+        setMutation({ kind: 'blocked' });
+        return;
+      }
+      if (result.status !== 'ok') throw new Error('Unconfirmed Task command');
+      const receipt = readTask(result.value, scope);
+      if (command.taskId !== null && receipt.id !== command.taskId)
+        throw new Error('Invalid Task receipt');
+      // A confirmed move between open states changes no field, so a draft kept at the move's
+      // expected version stays useful at the version the move produced. A later change still
+      // discards it on the next read; every other confirmed command consumes the draft.
+      const saved = drafts.current.get(command.taskId ?? 'create');
+      if (
+        command.action === 'status' &&
+        saved?.version === command.body.expectedVersion &&
+        receipt.version === command.body.expectedVersion + 1
+      )
+        drafts.current.set(command.taskId, {
+          version: receipt.version,
+          draft: saved.draft,
+        });
+      else drafts.current.delete(command.taskId ?? 'create');
+      setFeedback('confirmed');
+      setMutation({ kind: 'blocked' });
+      setSelected(receipt.id);
+      setDetail({ kind: 'loading' });
+      setLoad({ kind: 'loading' });
+      operation.release();
+      void Promise.resolve()
+        .then(() => {
+          if (!signal.aborted) return onActivityRecorded?.();
+        })
+        .catch(() => undefined);
+      // A replay receipt is historical. Only fresh detail and history authorize subsequent changes.
+      if (!activeProject.current) {
+        reloadOnReturn.current = true;
+        return;
+      }
+      const settlement = reads.beginLatest();
+      if (!settlement) return;
+      const readSignal = settlement.signal;
+      const reconciliation = { signal: readSignal, refreshRequested: false };
+      settlingRead.current = reconciliation;
+      try {
+        while (!signal.aborted && !readSignal.aborted) {
+          reconciliation.refreshRequested = false;
+          try {
+            const current = await refresh(
+              receipt.id,
+              readSignal,
+              captureActiveRecovery(),
+              {
+                onTargetReady: () => setMutation({ kind: 'idle' }),
+                isSuperseded: () => reconciliation.refreshRequested,
+              },
+            );
+            if (current && !reconciliation.refreshRequested) break;
+          } catch (error: unknown) {
+            if (signal.aborted || readSignal.aborted) break;
+            if (
+              error instanceof ProjectTaskReadFailure &&
+              error.kind === 'denied'
+            ) {
+              deny();
+              break;
+            }
+            if (reconciliation.refreshRequested) continue;
+            setLoad({ kind: 'error' });
+            setDetail({ kind: 'error' });
+            break;
+          }
+        }
+      } finally {
+        if (settlingRead.current === reconciliation)
+          settlingRead.current = null;
+        settlement.release();
+      }
+    } catch {
+      if (!signal.aborted) {
+        setFeedback('uncertain');
+        setMutation({ kind: 'uncertain', command });
+      }
+    } finally {
+      operation.release();
+    }
+  }
+  function save(event: FormEvent) {
+    event.preventDefault();
+    if (planningProtected) return;
+    const title = draft.title.trim();
+    if (!validTaskDescription(draft.description.text)) {
+      setFeedback('descriptionValidation');
+      return;
+    }
+    if (
+      !title ||
+      title.length > 200 ||
+      (draft.dueDate && !validTaskDate(draft.dueDate))
+    ) {
+      setFeedback('validation');
+      return;
+    }
+    const body = {
+      title,
+      assigneeMembershipId: draft.assigneeMembershipId || null,
+      dueDate: draft.dueDate || null,
+      priority: draft.priority,
+      ...(draft.description.kind === 'changed'
+        ? { description: draft.description.text.trim() || null }
+        : {}),
+    };
+    if (selected && current && isOpenTaskState(current.task.status))
+      void run({
+        key: crypto.randomUUID(),
+        action: 'edit',
+        taskId: selected,
+        body: {
+          expectedVersion: current.task.version,
+          ...(body.title !== current.task.title ? { title: body.title } : {}),
+          ...(body.assigneeMembershipId !==
+          (current.task.assignee?.workspaceMembershipId ?? null)
+            ? { assigneeMembershipId: body.assigneeMembershipId }
+            : {}),
+          ...(body.dueDate !== current.task.dueDate
+            ? { dueDate: body.dueDate }
+            : {}),
+          ...(body.priority !== current.task.priority
+            ? { priority: body.priority }
+            : {}),
+          ...('description' in body ? { description: body.description } : {}),
+        },
+      });
+    else if (!selected)
+      void run({
+        key: crypto.randomUUID(),
+        action: 'create',
+        taskId: null,
+        body,
+      });
+  }
+  function choose(task: TaskView, move: TaskMove) {
+    if (planningProtected) return;
+    const taskId = task.id;
+    const expectedVersion = task.version;
+    const key = crypto.randomUUID();
+    switch (move) {
+      case 'blocked':
+      case 'cancelled':
+        setReasonDraft({
+          kind: move,
+          text: '',
+          invalid: false,
+          taskId,
+          version: expectedVersion,
+        });
+        return;
+      case 'todo':
+      case 'in_progress':
+        void run({
+          key,
+          action: 'status',
+          taskId,
+          body: { expectedVersion, status: move },
+        });
+        return;
+      case 'done':
+        void run({
+          key,
+          action: 'complete',
+          taskId,
+          body: { expectedVersion },
+        });
+        return;
+      case 'reopen':
+        void run({ key, action: 'reopen', taskId, body: { expectedVersion } });
+        return;
+      default: {
+        const exhaustive: never = move;
+        return exhaustive;
+      }
+    }
+  }
+  function declare(event: FormEvent) {
+    event.preventDefault();
+    if (planningProtected) return;
+    if (!current || !reasonDraft || mutation.kind !== 'idle') return;
+    if (!validTaskReason(reasonDraft.text)) {
+      setReasonDraft({ ...reasonDraft, invalid: true });
+      return;
+    }
+    const reason = reasonDraft.text.trim();
+    const taskId = current.task.id;
+    const expectedVersion = current.task.version;
+    setReasonDraft(null);
+    void run(
+      reasonDraft.kind === 'blocked'
+        ? {
+            key: crypto.randomUUID(),
+            action: 'status',
+            taskId,
+            body: { expectedVersion, status: 'blocked', reason },
+          }
+        : {
+            key: crypto.randomUUID(),
+            action: 'cancel',
+            taskId,
+            body: { expectedVersion, reason },
+          },
+    );
+  }
+  function updateDraft(next: Draft) {
+    drafts.current.set(selected ?? 'create', {
+      version: current?.task.version ?? null,
+      draft: next,
+    });
+    setDraft(next);
+  }
+  return {
+    load,
+    readOnlyRevision,
+    selected,
+    detail,
+    current,
+    draft,
+    members,
+    mutation,
+    reasonDraft,
+    setReasonDraft,
+    feedback,
+    taskSearch,
+    setTaskSearch,
+    taskFilter,
+    setTaskFilter,
+    assigneeFilter,
+    assigneeOptions,
+    selectAssigneeFilter,
+    dateFilter,
+    setDateFilter,
+    selectDateFilter,
+    unusableRange,
+    visibleTasks,
+    taskHeading,
+    taskReads,
+    canManage,
+    projectClosed,
+    busy,
+    planningProtected,
+    mutable,
+    editable,
+    captureActiveRecovery,
+    setPlanningProtected,
+    deny,
+    open,
+    refreshNativeAfterPlanning,
+    run,
+    save,
+    choose,
+    declare,
+    updateDraft,
+  };
+}
+
+export type ProjectTaskOwner = ReturnType<typeof useProjectTaskOwner>;

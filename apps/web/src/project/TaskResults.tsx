@@ -32,6 +32,8 @@ interface Props {
   active?: boolean;
   observedTaskVersion?: number;
   observedProjectStatus?: ProjectStatus | null;
+  /** Told whether a result command is pending or awaits its exact retry, so a container can hold it open. */
+  onProtectionChange?: (held: boolean) => void;
 }
 type ReadState =
   | { kind: 'loading' | 'unavailable' | 'malformed' | 'denied' }
@@ -89,6 +91,7 @@ function TaskResultOwner({
   projectId,
   observedTaskVersion,
   observedProjectStatus,
+  onProtectionChange,
 }: Props) {
   const copy = useTaskResultCopy();
   const locale = useInterfaceLocale();
@@ -121,6 +124,13 @@ function TaskResultOwner({
     kind: canRead ? 'loading' : 'denied',
   });
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
+  const held = mutation.kind === 'pending' || mutation.kind === 'uncertain';
+  const reportProtection = useRef(onProtectionChange);
+  reportProtection.current = onProtectionChange;
+  useEffect(() => {
+    reportProtection.current?.(held);
+  }, [held]);
+  useEffect(() => () => reportProtection.current?.(false), []);
   const [draft, setDraft] = useState({
     declaration: '',
     versionId: '',

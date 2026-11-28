@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "9365ae03-c6be-4bc4-9c83-0fcb9ee33156:ad60161fbf3114ae5",
+  "date": "2026-11-28",
+  "runType": "pull-request-proof",
+  "issue": 1582,
+  "pullRequest": 1586,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-28T12:27:55.402Z",
+    "end": "2026-11-28T12:48:08.476Z",
+    "durationSeconds": 1213
+  },
+  "tokens": {
+    "input": 90,
+    "output": 17345,
+    "cacheCreation": 107824,
+    "cacheRead": 5227951
+  },
+  "models": [
+    {
+      "model": "claude-sonnet-5-5",
+      "tokens": {
+        "input": 90,
+        "output": 17345,
+        "cacheCreation": 107824,
+        "cacheRead": 5227951
+      },
+      "estimatedPriceUsd": 0.965985
+    }
+  ],
+  "price": {
+    "estimatedUsd": 0.965985,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Takeover of a local Codex CLI change: review, labels, checks, publication."
+  }
+}

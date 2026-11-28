@@ -63,12 +63,27 @@ export function canReadInternalTasks(actor: ActorContext) {
     )
   );
 }
-export function InternalTaskWorkspace(props: InternalTaskProps) {
-  const copy = useInternalTaskCopy(),
-    scope: Scope = {
-      workspaceId: props.actor.workspaceId,
-      companyId: props.actor.activeCompany?.id ?? '',
-    };
+/** The Company internal-Task statuses a reader can filter on, in display order. */
+export const internalTaskFilters = [
+  'open',
+  'all',
+  'todo',
+  'in_progress',
+  'blocked',
+  'done',
+  'cancelled',
+] as const;
+/**
+ * The Company's internal Tasks: the filtered pages, the eligible assignees,
+ * the authenticated request with access recovery, and which Tasks the reader
+ * opened. Each opened Task keeps its own detail owner. Both interfaces
+ * present it.
+ */
+export function useInternalTaskWorkspace(props: InternalTaskProps) {
+  const scope: Scope = {
+    workspaceId: props.actor.workspaceId,
+    companyId: props.actor.activeCompany?.id ?? '',
+  };
   const captureScope = useAuthorityLifetime(
       internalTaskAuthority(props.actor) + ':' + props.companyGeneration,
       props.identity,
@@ -218,6 +233,57 @@ export function InternalTaskWorkspace(props: InternalTaskProps) {
       focusFrom,
     }));
   }
+  function chooseFilter(value: string) {
+    setFilter(value);
+    setPage({ tasks: [], nextBeforeTaskId: null });
+    void loadPage(value);
+  }
+  return {
+    scope,
+    denied,
+    filter,
+    chooseFilter,
+    page,
+    pageState,
+    loadPage,
+    members,
+    memberState,
+    nextMember,
+    loadMembers,
+    request,
+    capture,
+    captureRecovery,
+    selected,
+    visited,
+    openTask,
+    created,
+  };
+}
+export type InternalTaskWorkspaceOwner = ReturnType<
+  typeof useInternalTaskWorkspace
+>;
+export function InternalTaskWorkspace(props: InternalTaskProps) {
+  const copy = useInternalTaskCopy();
+  const {
+    scope,
+    denied,
+    filter,
+    chooseFilter,
+    page,
+    pageState,
+    loadPage,
+    members,
+    memberState,
+    nextMember,
+    loadMembers,
+    request,
+    capture,
+    captureRecovery,
+    selected,
+    visited,
+    openTask,
+    created,
+  } = useInternalTaskWorkspace(props);
   if (denied)
     return (
       <section
@@ -261,15 +327,7 @@ export function InternalTaskWorkspace(props: InternalTaskProps) {
         <Select
           id="internal-task-filter"
           value={filter}
-          options={[
-            'open',
-            'all',
-            'todo',
-            'in_progress',
-            'blocked',
-            'done',
-            'cancelled',
-          ].map((value) => ({
+          options={internalTaskFilters.map((value) => ({
             value,
             label: copy(
               value === 'open'
@@ -279,11 +337,7 @@ export function InternalTaskWorkspace(props: InternalTaskProps) {
                   : status(value),
             ),
           }))}
-          onValueChange={(value) => {
-            setFilter(value);
-            setPage({ tasks: [], nextBeforeTaskId: null });
-            void loadPage(value);
-          }}
+          onValueChange={chooseFilter}
         />
         {pageState !== 'ready' && (
           <p role={pageState === 'loading' ? 'status' : 'alert'}>
