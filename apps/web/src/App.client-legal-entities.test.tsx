@@ -6,7 +6,9 @@ import {
   screen,
   waitFor,
   within,
+  type RenderOptions,
 } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
@@ -19,6 +21,9 @@ import {
 } from './localization/interface-locale';
 import { InterfaceLocaleSelect } from './localization/InterfaceLocaleSelect';
 import { selectOption } from './test/select-option';
+import { appInterfaces, renderInInterface } from './test/app-interface';
+import { showClientDirectory, showDossierView } from './test/client-interface';
+import type { InterfacePreference } from './clarte/interface-preference';
 
 const locales = [
   {
@@ -255,6 +260,7 @@ function renderDossier({
   clientAccountId = dossier.id,
   locale = 'en',
   application = false,
+  appInterface = 'current',
 }: {
   entities?: Entity[];
   route?: Route;
@@ -263,6 +269,8 @@ function renderDossier({
   clientAccountId?: string;
   locale?: InterfaceLocale | null;
   application?: boolean;
+  /** The interface App renders in, for an `application` render. */
+  appInterface?: InterfacePreference;
 } = {}) {
   const server = {
     version: dossier.version,
@@ -437,7 +445,12 @@ function renderDossier({
   if (locale === null) localStorage.removeItem(interfaceLocaleStorageKey);
   else localStorage.setItem(interfaceLocaleStorageKey, locale);
   if (application) window.history.replaceState(null, '', '/#clients');
-  const view = render(
+  const view = (
+    application
+      ? (ui: ReactNode, options: RenderOptions) =>
+          renderInInterface(appInterface, ui, options)
+      : render
+  )(
     application ? (
       <App identity={deterministicBrowserIdentity()} />
     ) : (
@@ -1562,142 +1575,6 @@ describe('Client legal entities and branches', () => {
     },
   );
 
-  it.each([
-    'Company',
-    'session',
-    'assignment',
-    'version',
-    'permission',
-    'Client',
-  ] as const)(
-    'retires an uncertain legal-entity command and suppresses late mutation success at the real App %s boundary',
-    async (boundary) => {
-      const pending = deferred<Response>();
-      let posts = 0;
-      const { server, wireCommands, view } = renderDossier({
-        application: true,
-        route: (request) => {
-          if (request.method !== 'POST') return undefined;
-          posts += 1;
-          return posts === 2 ? pending.promise : respond({}, 503);
-        },
-      });
-      const fetchBoundary = vi.mocked(fetch);
-      async function openClient(displayName = dossier.displayName) {
-        const heading = (
-          await screen.findAllByRole('heading', {
-            name: displayName,
-          })
-        ).find((candidate) => candidate.closest('li'));
-        const row = heading?.closest('li');
-        if (!row) throw new Error('Expected the public Client directory row');
-        fireEvent.click(
-          within(row).getByRole('button', {
-            name: 'Open dossier',
-          }),
-        );
-        return section();
-      }
-      await openClient();
-      const form = await openAdd();
-      fill(form, {
-        'Exact legal name': 'Private {черновик}',
-        'Legal address': 'Private line 1\nСтрока 2',
-      });
-      save(form);
-      await within(form).findByRole('alert');
-      selectOption(screen.getByLabelText('Interface language'), 'ru');
-      expect(within(form).getByRole('alert')).toHaveTextContent(
-        'Не удалось подтвердить, сохранено ли это изменение.',
-      );
-      selectOption(screen.getByLabelText('Язык интерфейса'), 'en');
-      save(form);
-      await waitFor(() => expect(wireCommands).toHaveLength(2));
-      expect(wireCommands[1]).toEqual(wireCommands[0]);
-      const pendingSignal = fetchBoundary.mock.calls
-        .filter(
-          ([input, init]) =>
-            input.toString().includes('/legal-entities') &&
-            init?.method === 'POST',
-        )
-        .at(-1)?.[1]?.signal;
-      expect(pendingSignal?.aborted).toBe(false);
-      if (boundary === 'Company')
-        selectOption(
-          screen.getByLabelText('Active Company', { exact: true }),
-          'company-b',
-        );
-      else if (boundary === 'session')
-        view.rerender(<App identity={deterministicBrowserIdentity()} />);
-      else if (boundary === 'Client') await openClient('Other Demo SRL');
-      else {
-        server.actor = {
-          ...server.actor,
-          activeCompany: {
-            ...server.actor.activeCompany,
-            ...companyA,
-            grants:
-              boundary === 'permission'
-                ? companyGrants()
-                : companyGrants({
-                    bundle: 'company_director_client_access',
-                    version: boundary === 'assignment' ? 'v2' : 'v1',
-                    assignmentId:
-                      boundary === 'assignment'
-                        ? 'assignment-2'
-                        : 'assignment-1',
-                  }),
-          },
-        };
-        fireEvent.change(screen.getByLabelText('Find a shared Client'), {
-          target: { value: 'Refresh authority' },
-        });
-        fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
-      }
-      await waitFor(() => expect(pendingSignal?.aborted).toBe(true));
-      expect(
-        screen.queryByDisplayValue('Private {черновик}'),
-      ).not.toBeInTheDocument();
-      const readsAfterRetirement = server.activityReads;
-      await act(async () =>
-        pending.resolve(
-          respond(
-            {
-              clientVersion: 99,
-              legalEntity: { ...branch, legalName: 'Confidential late entity' },
-            },
-            201,
-          ),
-        ),
-      );
-      expect(
-        screen.queryByText('Confidential late entity'),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByText('Legal entity or branch recorded.'),
-      ).not.toBeInTheDocument();
-      expect(server.activityReads).toBe(readsAfterRetirement);
-      if (boundary === 'permission') {
-        expect(
-          screen.queryByRole('button', { name: 'Add legal entity or branch' }),
-        ).not.toBeInTheDocument();
-        return;
-      }
-      await openClient();
-      const fresh = await openAdd();
-      expect(within(fresh).getByLabelText('Exact legal name')).toHaveValue('');
-      expect(within(fresh).getByLabelText('Legal address')).toHaveValue('');
-      fill(fresh, {
-        'Exact legal name': 'Private {черновик}',
-        'Legal address': 'Private line 1\nСтрока 2',
-      });
-      save(fresh);
-      await within(fresh).findByRole('alert');
-      expect(wireCommands).toHaveLength(3);
-      expect(wireCommands[2]?.body).toBe(wireCommands[0]?.body);
-      expect(wireCommands[2]?.key).not.toBe(wireCommands[0]?.key);
-    },
-  );
   it('retranslates real-shaped server validation in every locale while preserving the literal draft and command contract', async () => {
     const { requests, wireCommands, activity } = renderDossier({
       locale: null,
@@ -1769,3 +1646,184 @@ describe('Client legal entities and branches', () => {
     );
   });
 });
+
+describe.each(appInterfaces)(
+  'Client legal entities through App in the %s interface',
+  (appInterface) => {
+    beforeEach(() => {
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn(
+          (query: string) =>
+            ({
+              matches: true,
+              media: query,
+              onchange: null,
+              addListener: vi.fn(),
+              removeListener: vi.fn(),
+              addEventListener: vi.fn(),
+              removeEventListener: vi.fn(),
+              dispatchEvent: vi.fn(() => false),
+            }) satisfies MediaQueryList,
+        ),
+      );
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+      window.history.replaceState(null, '', '/');
+    });
+
+    it.each([
+      'Company',
+      'session',
+      'assignment',
+      'version',
+      'permission',
+      'Client',
+    ] as const)(
+      'retires an uncertain legal-entity command and suppresses late mutation success at the real App %s boundary',
+      async (boundary) => {
+        const pending = deferred<Response>();
+        let posts = 0;
+        const { server, wireCommands, view } = renderDossier({
+          application: true,
+          appInterface,
+          route: (request) => {
+            if (request.method !== 'POST') return undefined;
+            posts += 1;
+            return posts === 2 ? pending.promise : respond({}, 503);
+          },
+        });
+        const fetchBoundary = vi.mocked(fetch);
+        async function openClient(displayName = dossier.displayName) {
+          showClientDirectory(appInterface);
+          const heading = (
+            await screen.findAllByRole('heading', {
+              name: displayName,
+            })
+          ).find((candidate) => candidate.closest('li'));
+          const row = heading?.closest('li');
+          if (!row) throw new Error('Expected the public Client directory row');
+          fireEvent.click(
+            within(row).getByRole('button', {
+              name: 'Open dossier',
+            }),
+          );
+          await showDossierView(appInterface, 'Legal entities and branches');
+          return section();
+        }
+        await openClient();
+        const form = await openAdd();
+        fill(form, {
+          'Exact legal name': 'Private {черновик}',
+          'Legal address': 'Private line 1\nСтрока 2',
+        });
+        save(form);
+        await within(form).findByRole('alert');
+        selectOption(screen.getByLabelText('Interface language'), 'ru');
+        expect(within(form).getByRole('alert')).toHaveTextContent(
+          'Не удалось подтвердить, сохранено ли это изменение.',
+        );
+        selectOption(screen.getByLabelText('Язык интерфейса'), 'en');
+        save(form);
+        await waitFor(() => expect(wireCommands).toHaveLength(2));
+        expect(wireCommands[1]).toEqual(wireCommands[0]);
+        const pendingSignal = fetchBoundary.mock.calls
+          .filter(
+            ([input, init]) =>
+              input.toString().includes('/legal-entities') &&
+              init?.method === 'POST',
+          )
+          .at(-1)?.[1]?.signal;
+        expect(pendingSignal?.aborted).toBe(false);
+        if (boundary === 'Company')
+          selectOption(
+            screen.getByLabelText('Active Company', { exact: true }),
+            'company-b',
+          );
+        else if (boundary === 'session')
+          view.rerender(<App identity={deterministicBrowserIdentity()} />);
+        else if (boundary === 'Client') await openClient('Other Demo SRL');
+        else {
+          server.actor = {
+            ...server.actor,
+            activeCompany: {
+              ...server.actor.activeCompany,
+              ...companyA,
+              grants:
+                boundary === 'permission'
+                  ? companyGrants()
+                  : companyGrants({
+                      bundle: 'company_director_client_access',
+                      version: boundary === 'assignment' ? 'v2' : 'v1',
+                      assignmentId:
+                        boundary === 'assignment'
+                          ? 'assignment-2'
+                          : 'assignment-1',
+                    }),
+            },
+          };
+          showClientDirectory(appInterface);
+          fireEvent.change(screen.getByLabelText('Find a shared Client'), {
+            target: { value: 'Refresh authority' },
+          });
+          fireEvent.click(
+            screen.getByRole('button', { name: 'Search Clients' }),
+          );
+        }
+        await waitFor(() => expect(pendingSignal?.aborted).toBe(true));
+        expect(
+          screen.queryByDisplayValue('Private {черновик}'),
+        ).not.toBeInTheDocument();
+        const readsAfterRetirement = server.activityReads;
+        await act(async () =>
+          pending.resolve(
+            respond(
+              {
+                clientVersion: 99,
+                legalEntity: {
+                  ...branch,
+                  legalName: 'Confidential late entity',
+                },
+              },
+              201,
+            ),
+          ),
+        );
+        expect(
+          screen.queryByText('Confidential late entity'),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText('Legal entity or branch recorded.'),
+        ).not.toBeInTheDocument();
+        expect(server.activityReads).toBe(readsAfterRetirement);
+        if (boundary === 'permission') {
+          expect(
+            screen.queryByRole('button', {
+              name: 'Add legal entity or branch',
+            }),
+          ).not.toBeInTheDocument();
+          return;
+        }
+        await openClient();
+        const fresh = await openAdd();
+        expect(within(fresh).getByLabelText('Exact legal name')).toHaveValue(
+          '',
+        );
+        expect(within(fresh).getByLabelText('Legal address')).toHaveValue('');
+        fill(fresh, {
+          'Exact legal name': 'Private {черновик}',
+          'Legal address': 'Private line 1\nСтрока 2',
+        });
+        save(fresh);
+        await within(fresh).findByRole('alert');
+        expect(wireCommands).toHaveLength(3);
+        expect(wireCommands[2]?.body).toBe(wireCommands[0]?.body);
+        expect(wireCommands[2]?.key).not.toBe(wireCommands[0]?.key);
+      },
+    );
+  },
+);

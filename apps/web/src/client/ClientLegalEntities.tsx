@@ -102,6 +102,7 @@ export function ClientLegalEntities({
   onWorkspaceAccessRejected,
   onClientVersionChanged,
   onActivityRecorded,
+  onLegalEntitiesRead,
 }: {
   clientAccountId: string;
   /** The dossier version its owner last observed or confirmed. */
@@ -115,6 +116,8 @@ export function ClientLegalEntities({
   onWorkspaceAccessRejected: () => Promise<void> | void;
   onClientVersionChanged: (clientVersion: number) => void;
   onActivityRecorded: () => Promise<void>;
+  /** Receives each list this section shows, for a summary elsewhere on the dossier. */
+  onLegalEntitiesRead?: (legalEntities: readonly ClientLegalEntity[]) => void;
 }) {
   const copy = useClientLegalEntitiesCopy();
   const titleId = useId();
@@ -226,6 +229,15 @@ export function ClientLegalEntities({
   useEffect(() => {
     void load({ quiet: false });
   }, [load]);
+
+  const publishLegalEntities = useRef(onLegalEntitiesRead);
+  useLayoutEffect(() => {
+    publishLegalEntities.current = onLegalEntitiesRead;
+  });
+  useEffect(() => {
+    if (list.status === 'ready')
+      publishLegalEntities.current?.(list.legalEntities);
+  }, [list]);
 
   const editorKey =
     editor.mode === 'correct' ? editor.legalEntity.id : editor.mode;

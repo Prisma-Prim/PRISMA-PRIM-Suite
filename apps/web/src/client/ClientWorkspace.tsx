@@ -1,113 +1,34 @@
-import { useAuthorityLifetime } from '../access/use-authority-lifetime';
-import { grantOf } from '../access/company-grants';
-import {
-  type FormEvent,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
-import type { BrowserIdentity } from '../access-composition';
-import type { ActorContext } from '../access-types';
-import type { ApiResult } from '../api/authenticated-api-client';
-import {
-  handleAuthenticatedAccessRejection,
-  runLatestAuthenticatedRequest,
-} from '../api/latest-authenticated-request';
-import {
-  useActorObservation,
-  useRequestLifetime,
-} from '../api/use-actor-requests';
-import {
-  useScopedOperation,
-  useScopedOperationGroup,
-} from '../api/use-scoped-operation';
+import { useEffect, useRef, useState } from 'react';
 import { ClientDossierPanel } from './ClientDossierPanel';
 import { ClientUnionPanel } from './ClientUnionPanel';
 import { useClientUnionConfirmationCopy } from './client-union-confirmation.copy';
 import { ClientDuplicateReviewPanel } from './ClientDuplicateReviewPanel';
-import {
-  optionalProperty,
-  resolveRetryCommand,
-  type RetryCommand,
-} from './client-command';
-import {
-  ClientContactEditor,
-  normalizedContacts,
-  type ClientContactDraft,
-  type ClientContactDraftResult,
-} from './ClientContactEditor';
-import {
-  clientRegistrationValidationIssue,
-  useClientRegistrationCopy,
-  type ClientRegistrationValidationIssue,
-} from './client-registration.copy';
+import { ClientContactEditor } from './ClientContactEditor';
+import { useClientRegistrationCopy } from './client-registration.copy';
 import { useClientDirectoryCopy } from './client-directory.copy';
 import { ClientDirectory } from './ClientDirectory';
-import {
-  readClientAccountList,
-  readClientAccountView,
-  type ClientAccountView,
-} from './client-account-response';
 import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
+import {
+  useClientWorkspace,
+  type ClientWorkspaceProps,
+} from './use-client-workspace';
 import './client-directory.css';
 
-type ListState =
-  | { status: 'loading' }
-  | { status: 'ready'; clients: ClientAccountView[] }
-  | { status: 'forbidden' | 'error' };
-
-type CreateState =
-  | { status: 'idle' | 'submitting' | 'success' }
-  | {
-      status: 'validation';
-      issue: ClientRegistrationValidationIssue;
-      field?: 'displayName' | 'contacts';
-    }
-  | { status: 'forbidden' | 'error' | 'possibleDuplicate' };
-
-type SearchState =
-  | { status: 'idle' | 'submitting' }
-  | { status: 'ready'; clients: ClientAccountView[] }
-  | { status: 'validation' | 'forbidden' | 'error' };
-
-export function ClientWorkspace({
-  actor,
-  identity,
-  onCompanyContextRejected,
-  onActorRevalidated = () => undefined,
-  onWorkspaceAccessRejected = () => undefined,
-  onActivityRecorded,
-  onOpenProjects,
-  onOpenDocuments,
-  onOpenRequests,
-  renderCommercialWork,
-  renderMissionWork,
-  renderDocumentWork,
-  onClientIdentityChanged,
-  requestedClientDossierRequest,
-}: {
-  actor: ActorContext;
-  identity: BrowserIdentity;
-  onCompanyContextRejected: (companyContextId: string) => void;
-  onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
-  onWorkspaceAccessRejected?: () => Promise<void> | void;
-  onActivityRecorded: () => Promise<void>;
-  onOpenProjects?: (client: { id: string; displayName: string }) => void;
-  onOpenDocuments?: (client: { id: string; displayName: string }) => void;
-  onOpenRequests?: (client: { id: string; displayName: string }) => void;
-  renderCommercialWork?: (clientDossierId: string) => ReactNode;
-  renderMissionWork?: (clientDossierId: string) => ReactNode;
-  renderDocumentWork?: (clientDossierId: string) => ReactNode;
-  /** Reported when a union or reversal changes the current Client identities. */
-  onClientIdentityChanged?: () => void;
-  requestedClientDossierRequest?: {
-    clientDossierId: string;
-    requestId: number;
-  };
-}) {
+export function ClientWorkspace(props: ClientWorkspaceProps) {
+  const {
+    actor,
+    identity,
+    onCompanyContextRejected,
+    onActorRevalidated = () => undefined,
+    onWorkspaceAccessRejected = () => undefined,
+    onActivityRecorded,
+    onOpenProjects,
+    onOpenDocuments,
+    onOpenRequests,
+    renderCommercialWork,
+    renderMissionWork,
+    renderDocumentWork,
+  } = props;
   const directoryCopy = useClientDirectoryCopy();
   const copy = useClientRegistrationCopy();
   const unionConfirmationCopy = useClientUnionConfirmationCopy();
@@ -117,433 +38,32 @@ export function ClientWorkspace({
   useEffect(() => {
     if (registrationOpen) nameInput.current?.focus();
   }, [registrationOpen]);
-  const [displayName, setDisplayName] = useState('');
-  const [taxId, setTaxId] = useState('');
-  const [address, setAddress] = useState('');
-  const [telephone, setTelephone] = useState('');
-  const [generalEmail, setGeneralEmail] = useState('');
-  const [contacts, setContacts] = useState<ClientContactDraft[]>([]);
-  const [businessActivity, setBusinessActivity] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [listState, setListState] = useState<ListState>({ status: 'loading' });
-  const [createState, setCreateState] = useState<CreateState>({
-    status: 'idle',
-  });
-  const [searchState, setSearchState] = useState<SearchState>({
-    status: 'idle',
-  });
-  const [attachingClientId, setAttachingClientId] = useState<
-    string | undefined
-  >(undefined);
-  const [selectedClientId, setSelectedClientId] = useState<string | undefined>(
-    undefined,
-  );
-  const [duplicateReviewRefreshKey, setDuplicateReviewRefreshKey] = useState(0);
-  const [unionRevision, setUnionRevision] = useState(0);
-  const [confirmedUnionClientId, setConfirmedUnionClientId] =
-    useState<string>();
-  const dossierHeading = useRef<HTMLHeadingElement | null>(null);
-  const dossierOpeningTrigger = useRef<Element | null>(null);
-  const receiveDossierHeading = useCallback(
-    (heading: HTMLHeadingElement | null) => {
-      dossierHeading.current = heading;
-      if (!heading) return;
-      const trigger = dossierOpeningTrigger.current;
-      dossierOpeningTrigger.current = null;
-      if (
-        trigger &&
-        document.activeElement === trigger &&
-        !heading.closest('[hidden]')
-      )
-        heading.focus();
-    },
-    [],
-  );
-  function openDossier(clientId: string) {
-    setConfirmedUnionClientId(undefined);
-    if (clientId === selectedClientId) {
-      dossierHeading.current?.focus();
-      return;
-    }
-    dossierOpeningTrigger.current = document.activeElement;
-    setSelectedClientId(clientId);
-  }
-  const retryCommand = useRef<RetryCommand | undefined>(undefined);
-  const rejectCompanyContext = useRef(onCompanyContextRejected);
-  const acceptRevalidatedActor = useRef(onActorRevalidated);
-  const rejectWorkspaceAccess = useRef(onWorkspaceAccessRejected);
-  useLayoutEffect(() => {
-    rejectCompanyContext.current = onCompanyContextRejected;
-    acceptRevalidatedActor.current = onActorRevalidated;
-    rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
-  });
-  const activeCompany = actor.activeCompany;
-  const clientGrant = grantOf(activeCompany, 'company_director_client_access');
-  const clientPermissions: readonly string[] = clientGrant?.permissions ?? [];
-  const canReadClients =
-    actor.workspacePermissions.includes('client.manage') ||
-    clientPermissions.includes('client.read');
-  const canCreateClients =
-    actor.workspacePermissions.includes('client.manage') ||
-    clientPermissions.includes('client.create');
-  const canReadClientDossiers = clientPermissions.includes('client.read');
-  const canCreateEnrichedClients = clientPermissions.includes('client.create');
-  const canUpdateClients = clientPermissions.includes('client.update');
-  const canResolveDuplicateClients = clientPermissions.includes(
-    'client.duplicate.resolve',
-  );
-  const canAttachClients = actor.workspacePermissions.includes('client.manage');
-  // Access replaces the actor with an equivalent object when the active Company
-  // is re-selected or revalidated. Client work, including child panels, outlives
-  // such a refresh; it resets when the session, membership, Company or this
-  // Client authority changes.
-  const clientAuthority = JSON.stringify({
-    workspaceClientManagement: canAttachClients,
-    clientPermissions,
-    assignmentId: clientGrant?.assignmentId,
-    permissionSetVersion: clientGrant?.permissionSetVersion,
-  });
-  const requestScope = String(
-    useRequestLifetime(
-      identity,
-      JSON.stringify([
-        actor.internalUserId,
-        actor.workspaceId,
-        actor.workspaceMembershipId,
-        activeCompany?.id,
-        clientAuthority,
-      ]),
-    ),
-  );
-  const directoryRead = useScopedOperation(requestScope);
-  const searchRead = useScopedOperation(requestScope);
-  const actorObservation = useActorObservation(actor);
-  const captureRecovery = useAuthorityLifetime(
-    String(actorObservation),
-    identity,
-  );
-  const registrationWork = useScopedOperationGroup(requestScope);
-  const attachmentWork = useScopedOperationGroup(requestScope);
-
-  useEffect(() => {
-    if (requestedClientDossierRequest && canReadClientDossiers)
-      openDossier(requestedClientDossierRequest.clientDossierId);
-  }, [requestedClientDossierRequest, canReadClientDossiers]);
-
-  const handleAccessRejection = useCallback(
-    async (
-      result: ApiResult<unknown>,
-      companyContextId: string,
-      signal: AbortSignal,
-      recoveryCurrent: () => boolean,
-      ownsDirectory = false,
-    ): Promise<boolean> => {
-      if (signal.aborted) return true;
-      const rejection = await handleAuthenticatedAccessRejection({
-        result,
-        identity,
-        companyContextId,
-        onCompanyContextRejected: (rejectedCompanyId) =>
-          rejectCompanyContext.current(rejectedCompanyId),
-        onActorRevalidated: (revalidatedActor) =>
-          acceptRevalidatedActor.current(revalidatedActor),
-        onWorkspaceAccessRejected: () => rejectWorkspaceAccess.current(),
-        signal,
-        isCurrent: () => !signal.aborted && recoveryCurrent(),
-      });
-      if (signal.aborted) return true;
-      if (!rejection) return false;
-      if (ownsDirectory || recoveryCurrent())
-        setListState({
-          status: rejection === 'forbidden' ? 'forbidden' : 'error',
-        });
-      return true;
-    },
-    [identity],
-  );
-
-  const loadClients = useCallback(
-    async (companyContextId: string): Promise<void> => {
-      const requestSignal = directoryRead.begin();
-      if (!requestSignal) return;
-      const recoveryCurrent = captureRecovery();
-      await runLatestAuthenticatedRequest({
-        signal: requestSignal,
-        identity,
-        execute: (api, signal) =>
-          api.request('/clients', {
-            companyContextId,
-            signal,
-          }),
-        async onResult(result, signal) {
-          if (
-            (await handleAccessRejection(
-              result,
-              companyContextId,
-              signal,
-              recoveryCurrent,
-              true,
-            )) ||
-            signal.aborted
-          )
-            return;
-          setListState(
-            result.status === 'ok'
-              ? {
-                  status: 'ready',
-                  clients: readClientAccountList(result.value),
-                }
-              : { status: 'error' },
-          );
-        },
-        onError: () => setListState({ status: 'error' }),
-      });
-    },
-    [captureRecovery, directoryRead, handleAccessRejection, identity],
-  );
-
-  useEffect(() => {
-    retryCommand.current = undefined;
-    setCreateState({ status: 'idle' });
-    setSearchState({ status: 'idle' });
-    setAttachingClientId(undefined);
-    setSelectedClientId(undefined);
-    setConfirmedUnionClientId(undefined);
-    setDuplicateReviewRefreshKey(0);
-
-    if (!canReadClients || !activeCompany) return;
-    const companyContextId = activeCompany.id;
-    setListState({ status: 'loading' });
-
-    void loadClients(companyContextId);
-  }, [
-    activeCompany?.id,
-    actor.internalUserId,
-    actor.workspaceId,
-    actor.workspaceMembershipId,
+  const owner = useClientWorkspace(props);
+  const {
+    activeCompany,
     clientAuthority,
-    loadClients,
-  ]);
-
-  async function createClient(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!activeCompany || !canCreateClients) return;
-    const normalizedDisplayName = displayName.trim();
-    if (!normalizedDisplayName) {
-      setCreateState({
-        status: 'validation',
-        issue: 'displayNameRequired',
-        field: 'displayName',
-      });
-      return;
-    }
-
-    const contactResult: ClientContactDraftResult = canCreateEnrichedClients
-      ? normalizedContacts(contacts)
-      : { status: 'valid', contacts: [] };
-    if (contactResult.status === 'invalid') {
-      setCreateState({
-        status: 'validation',
-        issue: contactResult.issue,
-        field: 'contacts',
-      });
-      return;
-    }
-    const normalizedClientContacts = contactResult.contacts;
-    const serializedBody = JSON.stringify({
-      displayName: normalizedDisplayName,
-      ...(canCreateEnrichedClients
-        ? {
-            ...optionalProperty('taxId', taxId),
-            ...optionalProperty('address', address),
-            ...optionalProperty('telephone', telephone),
-            ...optionalProperty('generalEmail', generalEmail),
-            ...(normalizedClientContacts.length > 0
-              ? { contacts: normalizedClientContacts }
-              : {}),
-            ...optionalProperty('businessActivity', businessActivity),
-          }
-        : {}),
-    });
-    const command = resolveRetryCommand(serializedBody, retryCommand.current);
-
-    if (registrationWork.isPending()) return;
-    const operation = registrationWork.beginLatest();
-    if (!operation) return;
-    const recoveryCurrent = captureRecovery();
-    retryCommand.current = command;
-    setCreateState({ status: 'submitting' });
-    await runLatestAuthenticatedRequest({
-      signal: operation.signal,
-      identity,
-      execute: (api, signal) =>
-        api.request('/clients', {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            'idempotency-key': command.idempotencyKey,
-          },
-          companyContextId: activeCompany.id,
-          body: command.serializedBody,
-          signal,
-        }),
-      async onResult(result, signal) {
-        if (
-          await handleAccessRejection(
-            result,
-            activeCompany.id,
-            signal,
-            recoveryCurrent,
-          )
-        ) {
-          if (!signal.aborted) setCreateState({ status: 'forbidden' });
-          return;
-        }
-        if (signal.aborted) return;
-        if (result.status === 'validation') {
-          setCreateState({
-            status: 'validation',
-            issue: clientRegistrationValidationIssue(result.message),
-          });
-          return;
-        }
-        if (
-          result.status === 'conflict' &&
-          result.reason === 'possibleDuplicateReviewRequired'
-        ) {
-          setCreateState({ status: 'possibleDuplicate' });
-          setDuplicateReviewRefreshKey((current) => current + 1);
-          return;
-        }
-        if (result.status !== 'ok') {
-          setCreateState({ status: 'error' });
-          return;
-        }
-        readClientAccountView(result.value);
-        retryCommand.current = undefined;
-        setDisplayName('');
-        setTaxId('');
-        setAddress('');
-        setTelephone('');
-        setGeneralEmail('');
-        setContacts([]);
-        setBusinessActivity('');
-        setCreateState({ status: 'success' });
-        operation.release();
-        void Promise.resolve()
-          .then(() => {
-            if (!signal.aborted) return onActivityRecorded();
-          })
-          .catch(() => undefined);
-        void loadClients(activeCompany.id);
-      },
-      onError: () => setCreateState({ status: 'error' }),
-      onSettled: operation.release,
-    });
-  }
-
-  async function searchClients(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!activeCompany || attachingClientId) return;
-    const query = searchQuery.trim();
-    if (!query) {
-      setSearchState({ status: 'validation' });
-      return;
-    }
-    const requestSignal = searchRead.begin();
-    if (!requestSignal) return;
-    const recoveryCurrent = captureRecovery();
-    setSearchState({ status: 'submitting' });
-    await runLatestAuthenticatedRequest({
-      signal: requestSignal,
-      identity,
-      execute: (api, signal) =>
-        api.request(`/clients/search?query=${encodeURIComponent(query)}`, {
-          companyContextId: activeCompany.id,
-          signal,
-        }),
-      async onResult(result, signal) {
-        if (
-          await handleAccessRejection(
-            result,
-            activeCompany.id,
-            signal,
-            recoveryCurrent,
-          )
-        ) {
-          if (!signal.aborted) setSearchState({ status: 'forbidden' });
-          return;
-        }
-        if (signal.aborted) return;
-        setSearchState(
-          result.status === 'ok'
-            ? { status: 'ready', clients: readClientAccountList(result.value) }
-            : result.status === 'validation'
-              ? { status: 'validation' }
-              : { status: 'error' },
-        );
-      },
-      onError: () => setSearchState({ status: 'error' }),
-    });
-  }
-
-  async function attachClient(clientAccountId: string) {
-    if (!activeCompany || !canAttachClients) return;
-    if (attachmentWork.isPending()) return;
-    const operation = attachmentWork.begin();
-    if (!operation) return;
-    const recoveryCurrent = captureRecovery();
-    setAttachingClientId(clientAccountId);
-    await runLatestAuthenticatedRequest({
-      signal: operation.signal,
-      identity,
-      execute: (api, signal) =>
-        api.request(
-          `/clients/${encodeURIComponent(clientAccountId)}/active-company-relationship`,
-          {
-            method: 'PUT',
-            companyContextId: activeCompany.id,
-            signal,
-          },
-        ),
-      async onResult(result, signal) {
-        if (
-          await handleAccessRejection(
-            result,
-            activeCompany.id,
-            signal,
-            recoveryCurrent,
-          )
-        ) {
-          if (!signal.aborted) setSearchState({ status: 'forbidden' });
-          return;
-        }
-        if (signal.aborted) return;
-        if (result.status !== 'ok') {
-          setSearchState({ status: 'error' });
-          return;
-        }
-        const attachedClient = readClientAccountView(result.value);
-        setSearchState((current) =>
-          current.status === 'ready'
-            ? {
-                status: 'ready',
-                clients: current.clients.map((client) =>
-                  client.id === attachedClient.id ? attachedClient : client,
-                ),
-              }
-            : current,
-        );
-        void onActivityRecorded();
-        await loadClients(activeCompany.id);
-      },
-      onError: () => setSearchState({ status: 'error' }),
-      onSettled: () => {
-        operation.release();
-        setAttachingClientId(undefined);
-      },
-    });
-  }
+    captureRecovery,
+    access: {
+      canReadClients,
+      canCreateClients,
+      canReadClientDossiers,
+      canCreateEnrichedClients,
+      canUpdateClients,
+      canResolveDuplicateClients,
+      canAttachClients,
+    },
+    list: listState,
+    registration,
+    search,
+    attachment: { attachingClientId, attach: attachClient },
+    dossier,
+    duplicateReview,
+    union,
+  } = owner;
+  const createState = registration.state;
+  const searchState = search.state;
+  const selectedClientId = dossier.selectedClientId;
+  const confirmedUnionClientId = union.confirmedClientId;
 
   if (!canReadClients) {
     return (
@@ -565,14 +85,6 @@ export function ClientWorkspace({
   }
 
   const activeCompanyId = activeCompany.id;
-  // Shows the canonical dossier after a union outcome or on request from union
-  // history; only the former is a Client identity change.
-  async function showUnionOutcome(canonicalClientId?: string): Promise<void> {
-    if (canonicalClientId) setSelectedClientId(canonicalClientId);
-    else setConfirmedUnionClientId(undefined);
-    setUnionRevision((revision) => revision + 1);
-    await Promise.all([loadClients(activeCompanyId), onActivityRecorded()]);
-  }
 
   return (
     <section
@@ -623,14 +135,19 @@ export function ClientWorkspace({
               {copy.closeRegistration}
             </button>
           </div>
-          <form onSubmit={(event) => void createClient(event)} noValidate>
+          <form
+            onSubmit={(event) => void registration.submit(event)}
+            noValidate
+          >
             <label htmlFor="client-display-name">{copy.displayNameLabel}</label>
             <div>
               <input
                 id="client-display-name"
                 ref={nameInput}
-                value={displayName}
-                onChange={(event) => setDisplayName(event.target.value)}
+                value={registration.draft.displayName}
+                onChange={(event) =>
+                  registration.change({ displayName: event.target.value })
+                }
                 aria-invalid={
                   createState.status === 'validation' &&
                   createState.field === 'displayName'
@@ -648,20 +165,26 @@ export function ClientWorkspace({
                 <label htmlFor="client-tax-id">{copy.taxIdLabel}</label>
                 <input
                   id="client-tax-id"
-                  value={taxId}
-                  onChange={(event) => setTaxId(event.target.value)}
+                  value={registration.draft.taxId}
+                  onChange={(event) =>
+                    registration.change({ taxId: event.target.value })
+                  }
                 />
                 <label htmlFor="client-address">{copy.addressLabel}</label>
                 <input
                   id="client-address"
-                  value={address}
-                  onChange={(event) => setAddress(event.target.value)}
+                  value={registration.draft.address}
+                  onChange={(event) =>
+                    registration.change({ address: event.target.value })
+                  }
                 />
                 <label htmlFor="client-telephone">{copy.telephoneLabel}</label>
                 <input
                   id="client-telephone"
-                  value={telephone}
-                  onChange={(event) => setTelephone(event.target.value)}
+                  value={registration.draft.telephone}
+                  onChange={(event) =>
+                    registration.change({ telephone: event.target.value })
+                  }
                 />
                 <label htmlFor="client-general-email">
                   {copy.generalEmailLabel}
@@ -669,26 +192,32 @@ export function ClientWorkspace({
                 <input
                   id="client-general-email"
                   type="email"
-                  value={generalEmail}
-                  onChange={(event) => setGeneralEmail(event.target.value)}
+                  value={registration.draft.generalEmail}
+                  onChange={(event) =>
+                    registration.change({ generalEmail: event.target.value })
+                  }
                 />
                 <label htmlFor="client-business-activity">
                   {copy.businessActivityLabel}
                 </label>
                 <input
                   id="client-business-activity"
-                  value={businessActivity}
-                  onChange={(event) => setBusinessActivity(event.target.value)}
+                  value={registration.draft.businessActivity}
+                  onChange={(event) =>
+                    registration.change({
+                      businessActivity: event.target.value,
+                    })
+                  }
                 />
                 <ClientContactEditor
-                  contacts={contacts}
+                  contacts={registration.draft.contacts}
                   idPrefix="client-create-contact"
                   invalid={
                     createState.status === 'validation' &&
                     createState.field === 'contacts'
                   }
                   errorId="client-create-validation"
-                  onChange={setContacts}
+                  onChange={(contacts) => registration.change({ contacts })}
                 />
               </div>
             )}
@@ -739,15 +268,15 @@ export function ClientWorkspace({
       )}
       <form
         className="client-directory-search"
-        onSubmit={(event) => void searchClients(event)}
+        onSubmit={(event) => void search.submit(event)}
         noValidate
       >
         <label htmlFor="client-search">{directoryCopy.searchLabel}</label>
         <div>
           <input
             id="client-search"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
+            value={search.query}
+            onChange={(event) => search.setQuery(event.target.value)}
             aria-invalid={searchState.status === 'validation'}
             aria-describedby={
               searchState.status === 'validation'
@@ -779,11 +308,7 @@ export function ClientWorkspace({
           className="client-secondary-action client-directory-return"
           type="button"
           disabled={attachingClientId !== undefined}
-          onClick={() => {
-            searchRead.retire();
-            setSearchState({ status: 'idle' });
-            setSearchQuery('');
-          }}
+          onClick={search.clear}
         >
           {directoryCopy.showCompanyClients}
         </button>
@@ -825,7 +350,7 @@ export function ClientWorkspace({
           <ClientDirectory
             clients={searchState.clients}
             companyName={activeCompany.displayName}
-            onOpenDossier={canReadClientDossiers ? openDossier : undefined}
+            onOpenDossier={canReadClientDossiers ? dossier.open : undefined}
             onAttach={
               canAttachClients ? (id) => void attachClient(id) : undefined
             }
@@ -859,7 +384,7 @@ export function ClientWorkspace({
             <ClientDirectory
               clients={listState.clients}
               companyName={activeCompany.displayName}
-              onOpenDossier={canReadClientDossiers ? openDossier : undefined}
+              onOpenDossier={canReadClientDossiers ? dossier.open : undefined}
               attachingClientId={attachingClientId}
             />
           )}
@@ -872,13 +397,13 @@ export function ClientWorkspace({
           identity={identity}
           captureRecovery={captureRecovery}
           canAttach={canAttachClients}
-          refreshKey={duplicateReviewRefreshKey}
+          refreshKey={duplicateReview.refreshKey}
           authorityGeneration={clientAuthority}
           onCompanyContextRejected={onCompanyContextRejected}
           onWorkspaceAccessRejected={onWorkspaceAccessRejected}
           onActorRevalidated={onActorRevalidated}
           onActivityRecorded={onActivityRecorded}
-          onClientsChanged={() => loadClients(activeCompany.id)}
+          onClientsChanged={() => owner.reloadClients(activeCompany.id)}
         />
       )}
       {canReadClientDossiers &&
@@ -890,9 +415,9 @@ export function ClientWorkspace({
         )}
       {canReadClientDossiers && (
         <ClientDossierPanel
-          key={`${selectedClientId ?? ''}:${unionRevision}`}
+          key={`${selectedClientId ?? ''}:${union.revision}`}
           clientAccountId={selectedClientId}
-          onHeadingReady={receiveDossierHeading}
+          onHeadingReady={dossier.receiveHeading}
           onOpenProjects={onOpenProjects}
           onOpenDocuments={onOpenDocuments}
           onOpenRequests={onOpenRequests}
@@ -907,10 +432,8 @@ export function ClientWorkspace({
           onWorkspaceAccessRejected={onWorkspaceAccessRejected}
           onActorRevalidated={onActorRevalidated}
           onActivityRecorded={onActivityRecorded}
-          onClientsChanged={() => loadClients(activeCompany.id)}
-          onDuplicateReviewRequired={() =>
-            setDuplicateReviewRefreshKey((current) => current + 1)
-          }
+          onClientsChanged={() => owner.reloadClients(activeCompany.id)}
+          onDuplicateReviewRequired={duplicateReview.request}
         />
       )}
       {canReadClientDossiers && (
@@ -921,17 +444,16 @@ export function ClientWorkspace({
           identity={identity}
           captureRecovery={captureRecovery}
           canResolve={canResolveDuplicateClients}
-          onConfirmed={setConfirmedUnionClientId}
+          onConfirmed={union.confirm}
           onCompanyContextRejected={onCompanyContextRejected}
           onWorkspaceAccessRejected={onWorkspaceAccessRejected}
           onActorRevalidated={onActorRevalidated}
           onOpenCanonical={(canonicalClientId) =>
-            void showUnionOutcome(canonicalClientId)
+            void union.showOutcome(activeCompanyId, canonicalClientId)
           }
-          onChanged={async (canonicalClientId) => {
-            onClientIdentityChanged?.();
-            await showUnionOutcome(canonicalClientId);
-          }}
+          onChanged={(canonicalClientId) =>
+            union.changed(activeCompanyId, canonicalClientId)
+          }
         />
       )}
     </section>

@@ -13,6 +13,11 @@ import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { ClientDossierPanel } from './client/ClientDossierPanel';
+import { appInterfaces, renderInInterface } from './test/app-interface';
+import {
+  openClientDossierInInterface,
+  showDossierView,
+} from './test/client-interface';
 import { formatApplicationDateTime } from './presentation/date-time';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
@@ -453,81 +458,106 @@ describe('Client correction history', () => {
       screen.getByRole('button', { name: 'Hide correction history' }),
     ).toHaveAttribute('aria-expanded', 'true');
   });
-
-  it('never renders a previous Client response and clears the section on a Company switch', async () => {
-    let actor = directorActor();
-    let release: ((response: Response) => void) | undefined;
-    let pendingSignal: AbortSignal | null | undefined;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-        const path = input.toString();
-        if (path.endsWith('/access/current-actor')) {
-          if (
-            new Headers(init?.headers).get('x-company-context-id') ===
-            companyB.id
-          )
-            actor = {
-              ...actor,
-              activeCompany: {
-                grants: [],
-                ...actor.activeCompany,
-                ...companyB,
-              },
-            };
-          return respond(actor);
-        }
-        if (path.endsWith('/companies')) return respond([companyA, companyB]);
-        if (path.endsWith('/activity-log')) return respond({ events: [] });
-        if (path.endsWith('/union-history')) return respond([]);
-        if (path.endsWith('/clients')) return respond([dossier, otherDossier]);
-        if (path.endsWith(historyPath)) {
-          if (release) return page([newest]);
-          pendingSignal = init?.signal;
-          return new Promise<Response>((resolve) => {
-            release = resolve;
-          });
-        }
-        if (path.endsWith('/clients/client-one')) return respond(dossier);
-        if (path.endsWith('/clients/client-two')) return respond(otherDossier);
-        if (path.endsWith('/legal-entities'))
-          return respond({ clientVersion: 1, legalEntities: [] });
-        throw new Error('Unexpected API request: ' + path);
-      }),
-    );
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await openDossier(dossier.displayName);
-    await expandHistory();
-    await waitFor(() => expect(release).toBeDefined());
-    await openDossier(otherDossier.displayName);
-    await waitFor(() => expect(pendingSignal?.aborted).toBe(true));
-    await act(async () => {
-      release?.(page([{ ...newest, actor: { displayName: 'Late Director' } }]));
-    });
-    expect(screen.queryByText(/Late Director/u)).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Show correction history' }),
-    ).toHaveAttribute('aria-expanded', 'false');
-
-    await openDossier(dossier.displayName);
-    const history = await expandHistory();
-    expect(await listedCorrections(history)).toHaveLength(1);
-    changeValue(
-      screen.getByLabelText('Active Company', { exact: true }),
-      companyB.id,
-    );
-    await screen.findByText('Clients in Company B');
-    expect(screen.queryByText(/Corrected by/u)).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('region', { name: 'Correction history' }),
-    ).not.toBeInTheDocument();
-  });
 });
 
+/** The interface the running parameterized test renders. */
+let shown: (typeof appInterfaces)[number] = 'current';
+
+describe.each(appInterfaces)(
+  'Client correction history through App in the %s interface',
+  (appInterface) => {
+    beforeEach(() => {
+      shown = appInterface;
+      localStorage.clear();
+      sessionStorage.clear();
+      window.history.replaceState(null, '', '/#clients');
+    });
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+      window.history.replaceState(null, '', '/');
+    });
+
+    it('never renders a previous Client response and clears the section on a Company switch', async () => {
+      let actor = directorActor();
+      let release: ((response: Response) => void) | undefined;
+      let pendingSignal: AbortSignal | null | undefined;
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+          const path = input.toString();
+          if (path.endsWith('/access/current-actor')) {
+            if (
+              new Headers(init?.headers).get('x-company-context-id') ===
+              companyB.id
+            )
+              actor = {
+                ...actor,
+                activeCompany: {
+                  grants: [],
+                  ...actor.activeCompany,
+                  ...companyB,
+                },
+              };
+            return respond(actor);
+          }
+          if (path.endsWith('/companies')) return respond([companyA, companyB]);
+          if (path.endsWith('/activity-log')) return respond({ events: [] });
+          if (path.endsWith('/union-history')) return respond([]);
+          if (path.endsWith('/clients'))
+            return respond([dossier, otherDossier]);
+          if (path.endsWith(historyPath)) {
+            if (release) return page([newest]);
+            pendingSignal = init?.signal;
+            return new Promise<Response>((resolve) => {
+              release = resolve;
+            });
+          }
+          if (path.endsWith('/clients/client-one')) return respond(dossier);
+          if (path.endsWith('/clients/client-two'))
+            return respond(otherDossier);
+          if (path.endsWith('/legal-entities'))
+            return respond({ clientVersion: 1, legalEntities: [] });
+          throw new Error('Unexpected API request: ' + path);
+        }),
+      );
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await openDossier(dossier.displayName);
+      await expandHistory();
+      await waitFor(() => expect(release).toBeDefined());
+      await openDossier(otherDossier.displayName);
+      await waitFor(() => expect(pendingSignal?.aborted).toBe(true));
+      await act(async () => {
+        release?.(
+          page([{ ...newest, actor: { displayName: 'Late Director' } }]),
+        );
+      });
+      expect(screen.queryByText(/Late Director/u)).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Show correction history' }),
+      ).toHaveAttribute('aria-expanded', 'false');
+
+      await openDossier(dossier.displayName);
+      const history = await expandHistory();
+      expect(await listedCorrections(history)).toHaveLength(1);
+      changeValue(
+        screen.getByLabelText('Active Company', { exact: true }),
+        companyB.id,
+      );
+      await screen.findByText('Clients in Company B');
+      expect(screen.queryByText(/Corrected by/u)).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('region', { name: 'Correction history' }),
+      ).not.toBeInTheDocument();
+    });
+  },
+);
+
+/** Opens a dossier and shows its correction history's place. */
 async function openDossier(client: string) {
-  const heading = await screen.findByRole('heading', { name: client });
-  const row = heading.closest('li');
-  if (!row) throw new Error('Expected the Client directory row');
-  fireEvent.click(within(row).getByRole('button', { name: 'Open dossier' }));
-  await screen.findByRole('heading', { name: client, level: 3 });
+  await openClientDossierInInterface(shown, client);
+  await showDossierView(shown, 'History');
 }

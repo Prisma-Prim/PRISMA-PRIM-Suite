@@ -8,6 +8,7 @@ it('has every Clarté frame and component text in the four interface languages',
   expect(assertEveryLocalizedCatalogCovered(clarteCopyModules)).toEqual([
     'certification/clarte-certification.copy.ts#clarteCertificationMessages',
     'clarte-frame.copy.ts#clarteFrameMessages',
+    'clients/clarte-clients.copy.ts#clarteClientMessages',
     'components/clarte-components.copy.ts#clarteComponentMessages',
     'deals/deals.copy.ts#dealMessages',
     'documents/clarte-documents.copy.ts#clarteDocumentsMessages',

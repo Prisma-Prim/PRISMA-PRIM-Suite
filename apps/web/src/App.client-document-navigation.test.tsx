@@ -2,6 +2,10 @@ import { withCompanyGrants } from './access/company-grants.test-fixture';
 import { changeValue } from './test/select-option';
 import { appInterfaces, renderInInterface } from './test/app-interface';
 import {
+  openClientDossierInInterface,
+  showDossierView,
+} from './test/client-interface';
+import {
   act,
   fireEvent,
   screen,
@@ -328,11 +332,7 @@ async function openLoadedDocuments() {
 }
 async function openDossier(displayName: string) {
   navigateTo('Clients');
-  const heading = await screen.findByRole('heading', { name: displayName });
-  const row = heading.closest('li');
-  if (!row) throw new Error(`Expected a directory row for ${displayName}`);
-  fireEvent.click(within(row).getByRole('button', { name: 'Open dossier' }));
-  return screen.findByRole('region', { name: displayName });
+  return openClientDossierInInterface(shown, displayName);
 }
 /** Requests the dossier through App's shared intent, not the directory. */
 async function requestDossierFromDocument() {
@@ -376,6 +376,7 @@ async function openClientDocuments(dossier: HTMLElement) {
   await waitFor(() => expect(documentsRegion()).toBeVisible());
 }
 async function uniteFirstIntoSecond(dossier: HTMLElement) {
+  await showDossierView(shown, 'History');
   fireEvent.click(
     within(dossier.parentElement ?? dossier).getByRole('button', {
       name: 'Review existing duplicates',
@@ -489,6 +490,7 @@ describe.each(appInterfaces)(
 
       const dossier = await openDossier(secondClient.displayName);
       const panel = dossier.parentElement ?? dossier;
+      await showDossierView(appInterface, 'History');
       fireEvent.click(
         within(panel).getByRole('button', { name: 'Union history' }),
       );
@@ -556,6 +558,7 @@ describe.each(appInterfaces)(
       const documentReadsBefore = transport.documentReads;
 
       navigateTo('Clients');
+      await showDossierView(appInterface, 'History');
       fireEvent.click(
         within(dossier.parentElement ?? dossier).getByRole('button', {
           name: 'Union history',
