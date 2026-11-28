@@ -29,6 +29,8 @@ import { useTeamTasksCopy } from './project/team-tasks.copy';
 import { MissionPlanWorkspace } from './mission-plan/MissionPlanWorkspace';
 import { missionPlanAuthority } from './mission-plan/mission-plan-authority';
 import { IdeasWorkspace } from './ideas/IdeasWorkspace';
+import { ClarteIdeas } from './clarte/improvement/ClarteIdeas';
+import { ClarteOperationalRisks } from './clarte/improvement/ClarteOperationalRisks';
 import { ideasAuthority, ideasContextKey } from './ideas/ideas-contract';
 import { useIdeasCopy } from './ideas/ideas.copy';
 import {
@@ -960,37 +962,39 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         />
       ),
     });
-  if (ideasAuthority(access.actor).read)
+  if (ideasAuthority(access.actor).read) {
+    const ideas = {
+      actor: access.actor,
+      identity,
+      onActorRevalidated: acceptRevalidatedActor,
+      onCompanyContextRejected: rejectCompanyContext,
+      onWorkspaceAccessRejected: rejectWorkspaceAccess,
+    };
+    const ideasKey = `ideas:${access.sessionGeneration}:${ideasContextKey(access.actor)}`;
     sections.push({
       id: 'ideas',
       label: ideasCopy('label'),
       description: ideasCopy('introduction'),
-      content: (
-        <IdeasWorkspace
-          key={`ideas:${access.sessionGeneration}:${ideasContextKey(access.actor)}`}
-          actor={access.actor}
-          identity={identity}
-          onActorRevalidated={acceptRevalidatedActor}
-          onCompanyContextRejected={rejectCompanyContext}
-          onWorkspaceAccessRejected={rejectWorkspaceAccess}
-        />
-      ),
+      content: <IdeasWorkspace key={ideasKey} {...ideas} />,
+      clarteContent: <ClarteIdeas key={ideasKey} {...ideas} />,
     });
-  if (canReadOperationalRisks(access.actor) && access.actor.activeCompany)
+  }
+  if (canReadOperationalRisks(access.actor) && access.actor.activeCompany) {
+    const risks = {
+      actor: access.actor,
+      identity,
+      onActorRevalidated: acceptRevalidatedActor,
+      onCompanyContextRejected: rejectCompanyContext,
+      onWorkspaceAccessRejected: rejectWorkspaceAccess,
+    };
+    const risksKey = `operational-risks:${access.sessionGeneration}:${access.actor.workspaceMembershipId}:${access.actor.activeCompany.id}:${JSON.stringify([grantOf(access.actor.activeCompany, 'company_operational_risk_reader') ?? null, grantOf(access.actor.activeCompany, 'company_operational_risk_recorder') ?? null])}`;
     sections.push({
       id: 'operational-risks',
       ...prismeCopy.sections.risks,
-      content: (
-        <OperationalRiskWorkspace
-          key={`operational-risks:${access.sessionGeneration}:${access.actor.workspaceMembershipId}:${access.actor.activeCompany.id}:${JSON.stringify([grantOf(access.actor.activeCompany, 'company_operational_risk_reader') ?? null, grantOf(access.actor.activeCompany, 'company_operational_risk_recorder') ?? null])}`}
-          actor={access.actor}
-          identity={identity}
-          onActorRevalidated={acceptRevalidatedActor}
-          onCompanyContextRejected={rejectCompanyContext}
-          onWorkspaceAccessRejected={rejectWorkspaceAccess}
-        />
-      ),
+      content: <OperationalRiskWorkspace key={risksKey} {...risks} />,
+      clarteContent: <ClarteOperationalRisks key={risksKey} {...risks} />,
     });
+  }
   if (canAccessCommercial && access.actor.activeCompany)
     sections.push({
       id: 'requests',
