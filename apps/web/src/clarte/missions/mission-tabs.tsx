@@ -191,6 +191,7 @@ export const missionTabs = [
         actor={context.actor}
         identity={context.identity}
         projectId={context.project.id}
+        projectTitle={context.project.title}
         {...recovery(context)}
       />
     ),

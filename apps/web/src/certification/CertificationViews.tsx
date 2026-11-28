@@ -174,6 +174,88 @@ export function ReviewView({
 /** The state of each step of this slice, derived only from the read Case. */
 export function StepRail({ detail }: { detail: CaseDetail }) {
   const copy = useCertificationCopy();
+  const state = caseStepStates(detail, copy);
+  return (
+    <ol className="certification-steps" aria-label={copy('steps')}>
+      <li data-current={detail.nextStep === 'application'}>
+        <strong>{copy('stepApplication')}</strong> {state.application}
+      </li>
+      <li data-current={detail.nextStep === 'application_review'}>
+        <strong>{copy('stepReview')}</strong> {state.review}
+      </li>
+      <li data-current={detail.nextStep === 'duration'}>
+        <strong>{copy('stepDuration')}</strong> {state.duration}
+      </li>
+      <li data-current={detail.nextStep === 'agreement'}>
+        <strong>{copy('stepAgreement')}</strong> {state.agreement}
+      </li>
+      <li data-current={detail.nextStep === 'team'}>
+        <strong>{copy('stepTeam')}</strong> {state.team}
+      </li>
+      <li data-current={detail.nextStep === 'team_decision'}>
+        <strong>{copy('stepTeamDecision')}</strong> {state.teamDecision}
+      </li>
+      <li
+        data-current={
+          detail.nextStep === 'stage_1_plan' ||
+          detail.nextStep === 'stage_1_report'
+        }
+      >
+        <strong>{copy('stepStage1')}</strong> {state.stage1}
+      </li>
+      <li
+        data-current={
+          detail.nextStep === 'stage_2_plan' ||
+          detail.nextStep === 'stage_2_report'
+        }
+      >
+        <strong>{copy('stepStage2')}</strong> {state.stage2}
+      </li>
+      <li data-current={detail.nextStep === 'findings_follow_up'}>
+        <strong>{copy('stepFindings')}</strong> {state.findings}
+      </li>
+      <li data-current={detail.nextStep === 'recommendation'}>
+        <strong>{copy('stepRecommendation')}</strong> {state.recommendation}
+      </li>
+      <li data-current={detail.nextStep === 'certificate_data'}>
+        <strong>{copy('stepCertificateData')}</strong> {state.certificateData}
+      </li>
+      <li data-current={detail.nextStep === 'dossier_review'}>
+        <strong>{copy('stepDossierReview')}</strong> {state.dossierReview}
+      </li>
+      <li data-current={detail.nextStep === 'decision'}>
+        <strong>{copy('stepCertificationDecision')}</strong> {state.decision}
+      </li>
+      <li data-current={detail.nextStep === 'certificate'}>
+        <strong>{copy('stepCertificate')}</strong> {state.certificate}
+      </li>
+    </ol>
+  );
+}
+
+/** The plain-language state of every step of the Case, as the step rail says it. */
+export type CaseStepStates = Readonly<{
+  application: string;
+  review: string;
+  duration: string;
+  agreement: string;
+  team: string;
+  teamDecision: string;
+  stage1: string;
+  stage2: string;
+  findings: string;
+  recommendation: string;
+  certificateData: string;
+  dossierReview: string;
+  decision: string;
+  certificate: string;
+}>;
+
+/** The state of each step, derived only from the read Case. */
+export function caseStepStates(
+  detail: CaseDetail,
+  copy: ReturnType<typeof useCertificationCopy>,
+): CaseStepStates {
   const closed = detail.status === 'rejected';
   const application = detail.application
     ? formatMessage(copy('stepRecorded'), {
@@ -216,66 +298,22 @@ export function StepRail({ detail }: { detail: CaseDetail }) {
       : detail.agreement
         ? copy('stepToRecord')
         : copy('stepWaitingAgreement');
-  return (
-    <ol className="certification-steps" aria-label={copy('steps')}>
-      <li data-current={detail.nextStep === 'application'}>
-        <strong>{copy('stepApplication')}</strong> {application}
-      </li>
-      <li data-current={detail.nextStep === 'application_review'}>
-        <strong>{copy('stepReview')}</strong> {review}
-      </li>
-      <li data-current={detail.nextStep === 'duration'}>
-        <strong>{copy('stepDuration')}</strong> {duration}
-      </li>
-      <li data-current={detail.nextStep === 'agreement'}>
-        <strong>{copy('stepAgreement')}</strong> {agreement}
-      </li>
-      <li data-current={detail.nextStep === 'team'}>
-        <strong>{copy('stepTeam')}</strong> {team}
-      </li>
-      <li data-current={detail.nextStep === 'team_decision'}>
-        <strong>{copy('stepTeamDecision')}</strong> {teamDecisionState(detail)}
-      </li>
-      <li
-        data-current={
-          detail.nextStep === 'stage_1_plan' ||
-          detail.nextStep === 'stage_1_report'
-        }
-      >
-        <strong>{copy('stepStage1')}</strong> {stage1State(detail)}
-      </li>
-      <li
-        data-current={
-          detail.nextStep === 'stage_2_plan' ||
-          detail.nextStep === 'stage_2_report'
-        }
-      >
-        <strong>{copy('stepStage2')}</strong> {stage2State(detail)}
-      </li>
-      <li data-current={detail.nextStep === 'findings_follow_up'}>
-        <strong>{copy('stepFindings')}</strong> {findingsState(detail)}
-      </li>
-      <li data-current={detail.nextStep === 'recommendation'}>
-        <strong>{copy('stepRecommendation')}</strong>{' '}
-        {recommendationState(detail)}
-      </li>
-      <li data-current={detail.nextStep === 'certificate_data'}>
-        <strong>{copy('stepCertificateData')}</strong>{' '}
-        {certificateDataState(detail)}
-      </li>
-      <li data-current={detail.nextStep === 'dossier_review'}>
-        <strong>{copy('stepDossierReview')}</strong>{' '}
-        {dossierReviewState(detail)}
-      </li>
-      <li data-current={detail.nextStep === 'decision'}>
-        <strong>{copy('stepCertificationDecision')}</strong>{' '}
-        {decisionState(detail)}
-      </li>
-      <li data-current={detail.nextStep === 'certificate'}>
-        <strong>{copy('stepCertificate')}</strong> {certificateState(detail)}
-      </li>
-    </ol>
-  );
+  return {
+    application,
+    review,
+    duration,
+    agreement,
+    team,
+    teamDecision: teamDecisionState(detail),
+    stage1: stage1State(detail),
+    stage2: stage2State(detail),
+    findings: findingsState(detail),
+    recommendation: recommendationState(detail),
+    certificateData: certificateDataState(detail),
+    dossierReview: dossierReviewState(detail),
+    decision: decisionState(detail),
+    certificate: certificateState(detail),
+  };
 
   /** The latest recommendation, or what it waits for. */
   function recommendationState(current: CaseDetail): string {
