@@ -26,6 +26,9 @@ const sectionLabels = {
   pricing: 'Pricing configuration',
   'offer-models': 'Offer model',
   'contract-models': 'Contract model',
+  'sales-stages': 'Sales stages',
+  'project-templates': 'Project templates and Mission Plans',
+  'procedure-deadlines': 'Procedure deadlines',
   projects: 'Projects',
   'my-tasks': 'My Tasks',
   'unassigned-tasks': 'Unassigned Tasks',
@@ -199,13 +202,16 @@ describe('Clarté entries and tabs', () => {
       'Companies',
       'Team and access',
       'Invitations',
+      'Sales stages',
       'Service catalogue',
       'Pricing configuration',
       'Offer model',
       'Contract model',
+      'Project templates and Mission Plans',
+      'Procedure deadlines',
       'Activity Log',
     ]);
-    // A section no slice migrated yet keeps the current component.
+    // A section shows the screen its slice composed.
     fireEvent.click(
       within(sectionList).getByRole('link', { name: 'Service catalogue' }),
     );

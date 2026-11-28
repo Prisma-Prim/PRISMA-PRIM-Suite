@@ -41,7 +41,7 @@ import {
 import { useProjectTemplateVersionCopy } from './project-template-version.copy';
 import './project-template-configuration.css';
 
-type Props = {
+export type ProjectTemplateConfigurationProps = {
   actor: ActorContext;
   identity: BrowserIdentity;
   onCatalogueChanged?: () => void;
@@ -79,7 +79,9 @@ export function projectTemplateConfigurationAuthority(actor: ActorContext) {
 }
 
 /** Dedicated configuration state cannot retire independently mounted Project or Task owners. */
-export function ProjectTemplateConfiguration(props: Props) {
+export function ProjectTemplateConfiguration(
+  props: ProjectTemplateConfigurationProps,
+) {
   return (
     <>
       {canUsePilotTemplate(props.actor) && (
@@ -96,10 +98,10 @@ export function ProjectTemplateConfiguration(props: Props) {
     </>
   );
 }
-function PilotTemplateInspector({
+export function PilotTemplateInspector({
   actor,
   identity,
-}: Pick<Props, 'actor' | 'identity'>) {
+}: Pick<ProjectTemplateConfigurationProps, 'actor' | 'identity'>) {
   const [selection, setSelection] = useState<TemplateSelection | null>(null);
   useEffect(() => setSelection(null), [identity]);
   return (
@@ -113,7 +115,12 @@ function PilotTemplateInspector({
     />
   );
 }
-function ConfigurationSection({
+/**
+ * The illustrative template's next-version publication, shared by both
+ * interfaces: the head version's four literal Task titles as drafts, and an
+ * exact publication whose unanswered request is retried unchanged.
+ */
+export function useTemplateConfiguration({
   actor,
   identity,
   onCatalogueChanged,
@@ -121,9 +128,7 @@ function ConfigurationSection({
   onActorRevalidated = () => undefined,
   onCompanyContextRejected = () => undefined,
   onWorkspaceAccessRejected = () => undefined,
-}: Props) {
-  const copy = useProjectTemplateVersionCopy();
-  const heading = useId();
+}: ProjectTemplateConfigurationProps) {
   const [read, setRead] = useState<Read>({ kind: 'loading' });
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
   const ownerScope = String(
@@ -340,6 +345,51 @@ function ConfigurationSection({
     read.drafts.every(
       (title) => title.trim().length >= 1 && title.trim().length <= 200,
     );
+  return {
+    read,
+    mutation,
+    canPublish,
+    busy,
+    protectedCommand,
+    blocked,
+    unchanged,
+    valid,
+    load,
+    publish,
+    submit,
+    /** Edits the draft Task title at this position and clears the last outcome. */
+    editTitle: (index: number, value: string) => {
+      setRead((current) =>
+        current.kind === 'ready'
+          ? {
+              ...current,
+              drafts: current.drafts.map((draft, position) =>
+                position === index ? value : draft,
+              ),
+            }
+          : current,
+      );
+      setMutation({ kind: 'idle' });
+    },
+  };
+}
+
+function ConfigurationSection(props: ProjectTemplateConfigurationProps) {
+  const copy = useProjectTemplateVersionCopy();
+  const heading = useId();
+  const {
+    read,
+    mutation,
+    canPublish,
+    protectedCommand,
+    blocked,
+    unchanged,
+    valid,
+    load,
+    publish,
+    submit,
+    editTitle,
+  } = useTemplateConfiguration(props);
   return (
     <section
       className="project-template-configuration"
@@ -381,20 +431,7 @@ function ConfigurationSection({
                       value={title}
                       maxLength={200}
                       disabled={blocked}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setRead((current) =>
-                          current.kind === 'ready'
-                            ? {
-                                ...current,
-                                drafts: current.drafts.map((draft, position) =>
-                                  position === index ? value : draft,
-                                ),
-                              }
-                            : current,
-                        );
-                        setMutation({ kind: 'idle' });
-                      }}
+                      onChange={(event) => editTitle(index, event.target.value)}
                     />
                   </label>
                 ))}

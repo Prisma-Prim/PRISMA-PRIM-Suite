@@ -1,0 +1,353 @@
+/* Settings configuration sections (#1547): sales stages, catalogue, pricing,
+   Offer and Contract models, Project templates and procedure deadlines. */
+
+.clarte-frame .clarte-config {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-config h3 {
+  margin: 14px 0 6px;
+  color: var(--clarte-ink);
+  font-family: var(--clarte-font-heading);
+  font-size: 14px;
+}
+
+.clarte-frame .clarte-config .clarte-card > p + p,
+.clarte-frame .clarte-config .clarte-card > .clarte-settings-hint {
+  margin-top: 8px;
+}
+
+/* The soft accent action of a card: present, never louder than the page. */
+.clarte-frame .clarte-button.clarte-config-soft {
+  color: var(--clarte-accent-text);
+  background: var(--clarte-accent-soft);
+}
+
+.clarte-frame .clarte-button.clarte-config-soft:hover:not(:disabled) {
+  background: var(--clarte-accent-line);
+}
+
+.clarte-frame .clarte-config-notice {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: var(--clarte-radius-md);
+  color: var(--clarte-ink-soft);
+  background: var(--clarte-info-soft);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-config-notice > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--clarte-info);
+}
+
+.clarte-frame .clarte-config-notice p {
+  margin: 4px 0 0;
+}
+
+.clarte-frame .clarte-config-code {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+}
+
+.clarte-frame .clarte-config-literal {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.clarte-frame .clarte-config-table td {
+  vertical-align: middle;
+}
+
+.clarte-frame .clarte-config-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Ordered steps: a numbered dot, the label, its state. */
+.clarte-frame .clarte-config-steps {
+  display: grid;
+  margin: 4px 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-config-steps > li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 6px 8px;
+}
+
+.clarte-frame .clarte-config-steps > li > strong,
+.clarte-frame .clarte-config-steps > li > .clarte-config-step-label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-config-step-dot {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  color: var(--clarte-muted);
+  background: var(--clarte-surface-sunken);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.clarte-frame .clarte-config-current {
+  margin-bottom: 4px;
+}
+
+.clarte-frame .clarte-config .clarte-card > .clarte-settings-actions {
+  margin-top: 12px;
+}
+
+.clarte-frame .clarte-config-current > h3 {
+  margin-top: 4px;
+}
+
+.clarte-frame .clarte-config-offering {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+  max-width: 640px;
+}
+
+.clarte-frame .clarte-config-offering > .clarte-field {
+  flex: 1 1 320px;
+}
+
+/* History of versions as a quiet timeline. */
+.clarte-frame .clarte-config-timeline {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0 0 0 22px;
+  list-style: none;
+}
+
+.clarte-frame .clarte-config-timeline > li {
+  position: relative;
+  display: grid;
+  gap: 2px;
+}
+
+.clarte-frame .clarte-config-timeline > li::before {
+  position: absolute;
+  top: 3px;
+  left: -22px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--clarte-line);
+  border-radius: 999px;
+  background: var(--clarte-surface);
+  content: '';
+}
+
+.clarte-frame .clarte-config-timeline small {
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+/* Existing lifecycle parts shown inside a Clarté card or panel. */
+.clarte-frame .clarte-config-history,
+.clarte-frame .clarte-config-embedded {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.clarte-frame .clarte-card.clarte-config-embedded {
+  margin-top: 0;
+}
+
+.clarte-frame .clarte-config-history ol,
+.clarte-frame .clarte-config-embedded ol,
+.clarte-frame .clarte-config-embedded ul {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.clarte-frame .clarte-config-embedded fieldset {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* The plan list as rows: the plan, then its actions. */
+.clarte-frame .clarte-config-plans ul {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-config-plans ul > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--clarte-line-soft);
+}
+
+.clarte-frame .clarte-config-plans ul > li > span {
+  flex: 1 1 240px;
+  font-weight: 600;
+}
+
+/* The card title already names the plan list. */
+.clarte-frame .clarte-config-plans legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.clarte-frame .clarte-config-embedded legend {
+  margin-bottom: 6px;
+  color: var(--clarte-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-config-embedded h4,
+.clarte-frame .clarte-config-embedded h5,
+.clarte-frame .clarte-config-version h3,
+.clarte-frame .clarte-config-version h4 {
+  margin: 8px 0 4px;
+  font-family: var(--clarte-font-heading);
+  font-size: 14px;
+}
+
+.clarte-frame .clarte-config-version article,
+.clarte-frame .clarte-config-model-form,
+.clarte-frame .clarte-config-plan-form {
+  display: grid;
+  gap: 10px;
+}
+
+.clarte-frame .clarte-config-version p,
+.clarte-frame .clarte-config-embedded p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-config-model-form form,
+.clarte-frame .clarte-config-plan-form form,
+.clarte-frame .clarte-config-model-form fieldset,
+.clarte-frame .clarte-config-plan-form fieldset {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.clarte-frame .clarte-config-model-form label,
+.clarte-frame .clarte-config-plan-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-config-model-form textarea,
+.clarte-frame .clarte-config-model-form input,
+.clarte-frame .clarte-config-plan-form textarea,
+.clarte-frame .clarte-config-plan-form input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-sm);
+  color: var(--clarte-ink);
+  background: var(--clarte-surface);
+  font: inherit;
+}
+
+/* The Mission Plan region frames its own sections; its Clarté card keeps the card's. */
+.clarte-frame .clarte-config .mission-plan-region > section.clarte-card {
+  margin-block: 0;
+}
+
+/* Templates beside Mission Plans on a wide screen, as two lists of one kind. */
+@media (min-width: 1280px) {
+  .clarte-frame .clarte-config--split {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .clarte-frame .clarte-config--split > .clarte-config-embedded {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .clarte-frame .clarte-config-table thead {
+    display: none;
+  }
+
+  .clarte-frame .clarte-config-table,
+  .clarte-frame .clarte-config-table tbody,
+  .clarte-frame .clarte-config-table tr,
+  .clarte-frame .clarte-config-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .clarte-frame .clarte-config-table tr {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--clarte-line-soft);
+  }
+
+  .clarte-frame .clarte-config-table td {
+    padding: 3px 0;
+    border: 0;
+  }
+
+  .clarte-frame .clarte-config-table td[data-label]::before {
+    display: block;
+    color: var(--clarte-muted);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    content: attr(data-label);
+  }
+
+  .clarte-frame .clarte-config-table td:empty {
+    display: none;
+  }
+
+  .clarte-frame .clarte-config-steps > li {
+    padding: 6px 0;
+  }
+}

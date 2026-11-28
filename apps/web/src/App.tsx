@@ -51,11 +51,13 @@ import {
 } from './project/ProjectTemplateConfiguration';
 import { useAppCopy } from './app.copy';
 import {
+  OFFER_MODEL,
   OfferModelWorkspace,
   offerModelAuthority,
 } from './offer-model/offer-model.kind';
 import { useOfferModelCopy } from './offer-model/offer-model.copy';
 import {
+  CONTRACT_MODEL,
   ContractModelWorkspace,
   contractModelAuthority,
 } from './contract-model/contract-model.kind';
@@ -136,6 +138,13 @@ import { ClarteCompanies } from './clarte/settings/ClarteCompanies';
 import { ClarteInvitations } from './clarte/settings/ClarteInvitations';
 import { ClarteTeamAccess } from './clarte/settings/ClarteTeamAccess';
 import { useSettingsConsoleScreens } from './clarte/settings/settings-screens';
+import { ClarteCompanyModel } from './clarte/settings-config/ClarteCompanyModel';
+import { ClartePricing } from './clarte/settings-config/ClartePricing';
+import { ClarteProcedureDeadlines } from './clarte/settings-config/ClarteProcedureDeadlines';
+import { ClarteProjectTemplates } from './clarte/settings-config/ClarteProjectTemplates';
+import { ClarteSalesStages } from './clarte/settings-config/ClarteSalesStages';
+import { ClarteServiceCatalogue } from './clarte/settings-config/ClarteServiceCatalogue';
+import { useSettingsConfigCopy } from './clarte/settings-config/settings-config.copy';
 
 /** The Clarté access state shown for each access status before the frame. */
 const clarteAccessStates = {
@@ -158,6 +167,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   // Presentation only: both interfaces receive the same composition.
   const { preference: interfacePreference } = useInterfacePreference();
   const settingsScreens = useSettingsConsoleScreens();
+  const settingsConfigCopy = useSettingsConfigCopy();
   const invoiceCopy = useInvoiceRecordCopy();
   const modelCopy = useOfferModelCopy();
   const contractModelCopy = useContractModelCopy();
@@ -1115,49 +1125,55 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         />
       ),
     });
-  if (canAccessCatalogue && access.actor.activeCompany)
+  if (canAccessCatalogue && access.actor.activeCompany) {
+    const catalogueKey = `service-catalogue:${access.sessionGeneration}:${access.actor.activeCompany.id}:${JSON.stringify(grantOf(access.actor.activeCompany, 'company_service_catalogue') ?? null)}`;
+    const catalogue = {
+      actor: access.actor,
+      identity,
+      onCompanyContextRejected: rejectCompanyContext,
+      onActorRevalidated: acceptRevalidatedActor,
+      onWorkspaceAccessRejected: rejectWorkspaceAccess,
+    };
     sections.push({
       id: 'catalogue',
       ...prismeCopy.sections.catalogue,
-      content: (
-        <ServiceCatalogueWorkspace
-          key={`service-catalogue:${access.sessionGeneration}:${access.actor.activeCompany.id}:${JSON.stringify(grantOf(access.actor.activeCompany, 'company_service_catalogue') ?? null)}`}
-          actor={access.actor}
-          identity={identity}
-          onCompanyContextRejected={rejectCompanyContext}
-          onActorRevalidated={acceptRevalidatedActor}
-          onWorkspaceAccessRejected={rejectWorkspaceAccess}
-        />
+      content: <ServiceCatalogueWorkspace key={catalogueKey} {...catalogue} />,
+      clarteContent: (
+        <ClarteServiceCatalogue key={catalogueKey} {...catalogue} />
       ),
     });
+  }
   // Any change of session, membership, Company, captured assignment or
   // permission of either bundle remounts both pricing panels, clearing drafts
   // and dropping late replies.
-  if (canReadPricingConfiguration && access.actor.activeCompany)
+  if (canReadPricingConfiguration && access.actor.activeCompany) {
+    const pricingKey = `pricing-configuration:${access.sessionGeneration}:${access.actor.workspaceMembershipId}:${access.actor.activeCompany.id}:${JSON.stringify([grantOf(access.actor.activeCompany, 'company_pricing_configuration') ?? null, grantOf(access.actor.activeCompany, 'company_pricing_user') ?? null])}`;
+    const pricing = {
+      actor: access.actor,
+      identity,
+      onCompanyContextRejected: rejectCompanyContext,
+      onActorRevalidated: acceptRevalidatedActor,
+      onWorkspaceAccessRejected: rejectWorkspaceAccess,
+    };
     sections.push({
       id: 'pricing',
       ...prismeCopy.sections.pricing,
       content: (
-        <Fragment
-          key={`pricing-configuration:${access.sessionGeneration}:${access.actor.workspaceMembershipId}:${access.actor.activeCompany.id}:${JSON.stringify([grantOf(access.actor.activeCompany, 'company_pricing_configuration') ?? null, grantOf(access.actor.activeCompany, 'company_pricing_user') ?? null])}`}
-        >
-          <PricingConfigurationWorkspace
-            actor={access.actor}
-            identity={identity}
-            onCompanyContextRejected={rejectCompanyContext}
-            onActorRevalidated={acceptRevalidatedActor}
-            onWorkspaceAccessRejected={rejectWorkspaceAccess}
-          />
-          <TariffVersionPanel
-            actor={access.actor}
-            identity={identity}
-            onCompanyContextRejected={rejectCompanyContext}
-            onActorRevalidated={acceptRevalidatedActor}
-            onWorkspaceAccessRejected={rejectWorkspaceAccess}
-          />
+        <Fragment key={pricingKey}>
+          <PricingConfigurationWorkspace {...pricing} />
+          <TariffVersionPanel {...pricing} />
         </Fragment>
       ),
+      clarteContent: <ClartePricing key={pricingKey} {...pricing} />,
     });
+  }
+  const companyModel = {
+    actor: access.actor,
+    identity,
+    onActorRevalidated: acceptRevalidatedActor,
+    onCompanyContextRejected: rejectCompanyContext,
+    onWorkspaceAccessRejected: rejectWorkspaceAccess,
+  };
   if (offerModelAuthority(access.actor))
     sections.push({
       id: 'offer-models',
@@ -1166,11 +1182,14 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       content: (
         <OfferModelWorkspace
           key={`offer-model:${access.sessionGeneration}`}
-          actor={access.actor}
-          identity={identity}
-          onActorRevalidated={acceptRevalidatedActor}
-          onCompanyContextRejected={rejectCompanyContext}
-          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          {...companyModel}
+        />
+      ),
+      clarteContent: (
+        <ClarteCompanyModel
+          key={`offer-model:${access.sessionGeneration}`}
+          kind={OFFER_MODEL}
+          {...companyModel}
         />
       ),
     });
@@ -1182,6 +1201,57 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       content: (
         <ContractModelWorkspace
           key={`contract-model:${access.sessionGeneration}`}
+          {...companyModel}
+        />
+      ),
+      clarteContent: (
+        <ClarteCompanyModel
+          key={`contract-model:${access.sessionGeneration}`}
+          kind={CONTRACT_MODEL}
+          {...companyModel}
+        />
+      ),
+    });
+  // Clarté gathers configuration the current interface keeps inside
+  // Requests and Certification Cases into Settings sections, with the same
+  // gates (#1547).
+  if (
+    interfacePreference === 'clarte' &&
+    canAccessCommercial &&
+    access.actor.activeCompany
+  )
+    sections.push({
+      id: 'sales-stages',
+      label: settingsConfigCopy.salesStagesLabel,
+      description: settingsConfigCopy.salesStagesDescription,
+      content: null,
+      clarteContent: (
+        <ClarteSalesStages
+          key={`sales-stages:${requestsMount}`}
+          actor={access.actor}
+          identity={identity}
+          onActivityRecorded={refreshActivityLog}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContext}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
+      ),
+      mountWhenSelected: true,
+      retainAfterSelection: true,
+    });
+  if (
+    interfacePreference === 'clarte' &&
+    access.actor.activeCompany &&
+    access.actor.workspacePermissions.includes('company.assignment.manage')
+  )
+    sections.push({
+      id: 'procedure-deadlines',
+      label: settingsConfigCopy.deadlinesLabel,
+      description: settingsConfigCopy.deadlinesDescription,
+      content: null,
+      clarteContent: (
+        <ClarteProcedureDeadlines
+          key={`procedure-deadlines:${access.sessionGeneration}:${access.actor.activeCompany.id}`}
           actor={access.actor}
           identity={identity}
           onActorRevalidated={acceptRevalidatedActor}
@@ -1189,6 +1259,8 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onWorkspaceAccessRejected={rejectWorkspaceAccess}
         />
       ),
+      mountWhenSelected: true,
+      retainAfterSelection: true,
     });
   if (access.actor.activeCompany && canAccessClients) {
     const documentsKey = `documents:${access.sessionGeneration}:${access.actor.activeCompany.id}`;
@@ -1344,10 +1416,14 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         />
       ),
     });
+  // Clarté shows Mission Plans and Project templates in Settings (#1547);
+  // the current interface keeps them below the Projects.
+  const configurationInSettings = interfacePreference === 'clarte';
+  const configuresProjects =
+    canReadProjectTemplateCatalogue(access.actor) ||
+    missionPlanAuthority(access.actor, 'configure') !== null;
   if (
-    (canAccessProjects ||
-      canReadProjectTemplateCatalogue(access.actor) ||
-      missionPlanAuthority(access.actor, 'configure')) &&
+    (canAccessProjects || (configuresProjects && !configurationInSettings)) &&
     access.actor.activeCompany
   ) {
     const projectsKey = `project:${access.sessionGeneration}:${clientAuthorityGeneration}:${companySelectionGeneration}:${access.actor.activeCompany.id}`;
@@ -1416,19 +1492,38 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           {projectConfiguration}
         </>
       ),
-      // Template and Mission Plan configuration stays reachable under the
-      // Project list until its Settings sections (#1547) take it over.
-      clarteContent: canAccessProjects ? (
-        <ClarteMissions
-          key={projectsKey}
-          {...projects}
-          configuration={projectConfiguration}
-        />
-      ) : (
-        projectConfiguration
-      ),
+      // Clarté shows Template and Mission Plan configuration in Settings
+      // (#1547), so its Projects section exists only with Project access.
+      clarteContent: <ClarteMissions key={projectsKey} {...projects} />,
     });
   }
+  if (
+    configurationInSettings &&
+    configuresProjects &&
+    access.actor.activeCompany
+  )
+    sections.push({
+      id: 'project-templates',
+      label: settingsConfigCopy.projectTemplatesLabel,
+      description: settingsConfigCopy.projectTemplatesDescription,
+      content: null,
+      clarteContent: (
+        <ClarteProjectTemplates
+          key={`project-templates:${access.sessionGeneration}`}
+          actor={access.actor}
+          identity={identity}
+          onCatalogueChanged={() =>
+            setTemplateCatalogueRevision((value) => value + 1)
+          }
+          onActivityRecorded={refreshActivityLog}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContext}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
+      ),
+      mountWhenSelected: true,
+      retainAfterSelection: true,
+    });
   if (canReadTasks(access.actor))
     sections.push({
       id: 'my-tasks',

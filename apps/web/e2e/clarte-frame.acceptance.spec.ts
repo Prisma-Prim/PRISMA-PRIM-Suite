@@ -233,15 +233,16 @@ test('reaches every authorized entry and tab from the menu and the jump list', a
   await expect(
     page.getByRole('navigation', { name: 'Settings views' }),
   ).toHaveCount(0);
+  // With Sales stages and Procedure deadlines, which only Clarté shows (#1547).
   await expect(
     page.getByRole('region', { name: 'All settings' }).getByRole('link'),
-  ).toHaveCount(5);
+  ).toHaveCount(7);
 
   await clarteJumpField(page).click();
   const jump = page.getByRole('dialog', { name: 'Go to a screen' });
-  // Today, the 18 sections this tester can open, the Settings console's home
-  // and Language and region.
-  await expect(jump.getByRole('option')).toHaveCount(21);
+  // Today, the 18 sections this tester can open, Sales stages and Procedure
+  // deadlines, the Settings console's home and Language and region.
+  await expect(jump.getByRole('option')).toHaveCount(23);
   await jump.getByRole('combobox', { name: 'Screen name' }).fill('blocked');
   await expect(jump.getByRole('option')).toHaveText(['Blocked TasksTasks']);
   await screenshot(page, 'clarte-jump-list');

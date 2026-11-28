@@ -113,7 +113,21 @@ function ScopedCompanyModelWorkspace<
   );
 }
 
-function CompanyModelBody<
+export type CompanyModelBodyProps<
+  Content extends CompanyModelContentBase,
+  Draft extends CompanyModelDraftBase,
+> = Kind<Content, Draft> & {
+  identity: BrowserIdentity;
+  authority: CompanyModelAuthority;
+  captureRecovery: () => () => boolean;
+};
+
+/**
+ * One Company model kind's current model, decision drafts and new-version
+ * draft, shared by both interfaces. A confirmed command reloads the model
+ * and starts a new history generation.
+ */
+export function useCompanyModel<
   Content extends CompanyModelContentBase,
   Draft extends CompanyModelDraftBase,
 >({
@@ -121,16 +135,8 @@ function CompanyModelBody<
   identity,
   authority,
   captureRecovery,
-  heading,
-}: Kind<Content, Draft> & {
-  identity: BrowserIdentity;
-  authority: CompanyModelAuthority;
-  captureRecovery: () => () => boolean;
-  heading: string;
-}) {
-  const copy = kind.useCopy();
+}: CompanyModelBodyProps<Content, Draft>) {
   const rejectAccess = useModelAccessRejection();
-  const { formatNumber } = useInterfaceLocale();
   const epoch = useRef(0);
   const [historyGeneration, setHistoryGeneration] = useState(0);
   const [read, setRead] = useState<Read<Content>>({ kind: 'loading' });
@@ -215,6 +221,98 @@ function CompanyModelBody<
     onDenied: rejectAccess,
   });
 
+  return {
+    read,
+    reload: () => {
+      setRead({ kind: 'loading' });
+      void load();
+    },
+    command,
+    rejectAccess,
+    epoch,
+    historyGeneration,
+    reason,
+    setReason,
+    basis,
+    setBasis,
+    invalidDecision,
+    draft,
+    setDraft,
+    /** Withdraws the active version with the entered reason, once valid. */
+    withdraw: () => {
+      if (
+        read.kind !== 'ready' ||
+        !read.model?.activeVersion ||
+        command.blocked ||
+        draft
+      )
+        return;
+      try {
+        modelText(reason, 2000);
+        setInvalidDecision(false);
+        command.start({
+          kind: 'WITHDRAW',
+          previous: read.model,
+          target: read.model.activeVersion,
+          reason,
+        });
+      } catch {
+        setInvalidDecision(true);
+      }
+    },
+    /** Approves or rejects the head version with the entered basis, once valid. */
+    decide: (outcome: 'APPROVE' | 'REJECT') => {
+      if (read.kind !== 'ready' || !read.model || command.blocked || draft)
+        return;
+      try {
+        modelText(basis, 2000);
+        setInvalidDecision(false);
+        command.start({
+          kind: 'DECIDE',
+          previous: read.model,
+          outcome,
+          basis,
+        });
+      } catch {
+        setInvalidDecision(true);
+      }
+    },
+    /** Proposes a complete new version from the submitted content. */
+    create: (content: Content) => {
+      if (read.kind === 'ready')
+        command.start({ kind: 'CREATE', previous: read.model, content });
+    },
+  };
+}
+
+function CompanyModelBody<
+  Content extends CompanyModelContentBase,
+  Draft extends CompanyModelDraftBase,
+>({
+  heading,
+  ...props
+}: CompanyModelBodyProps<Content, Draft> & { heading: string }) {
+  const { kind, identity, authority, captureRecovery } = props;
+  const copy = kind.useCopy();
+  const { formatNumber } = useInterfaceLocale();
+  const {
+    read,
+    reload,
+    command,
+    rejectAccess,
+    epoch,
+    historyGeneration,
+    reason,
+    setReason,
+    basis,
+    setBasis,
+    invalidDecision,
+    draft,
+    setDraft,
+    withdraw,
+    decide,
+    create,
+  } = useCompanyModel(props);
   return (
     <>
       {read.kind === 'loading' && <p role="status">{copy('loading')}</p>}
@@ -280,30 +378,7 @@ function CompanyModelBody<
                   {copy('invalid')}
                 </p>
               )}
-              <button
-                type="button"
-                onClick={() => {
-                  if (
-                    read.kind !== 'ready' ||
-                    !read.model?.activeVersion ||
-                    command.blocked ||
-                    draft
-                  )
-                    return;
-                  try {
-                    modelText(reason, 2000);
-                    setInvalidDecision(false);
-                    command.start({
-                      kind: 'WITHDRAW',
-                      previous: read.model,
-                      target: read.model.activeVersion,
-                      reason,
-                    });
-                  } catch {
-                    setInvalidDecision(true);
-                  }
-                }}
-              >
+              <button type="button" onClick={withdraw}>
                 {copy('withdraw')}
               </button>
             </fieldset>
@@ -337,27 +412,7 @@ function CompanyModelBody<
                   <button
                     key={outcome}
                     type="button"
-                    onClick={() => {
-                      if (
-                        read.kind !== 'ready' ||
-                        !read.model ||
-                        command.blocked ||
-                        draft
-                      )
-                        return;
-                      try {
-                        modelText(basis, 2000);
-                        setInvalidDecision(false);
-                        command.start({
-                          kind: 'DECIDE',
-                          previous: read.model,
-                          outcome,
-                          basis,
-                        });
-                      } catch {
-                        setInvalidDecision(true);
-                      }
-                    }}
+                    onClick={() => decide(outcome)}
                   >
                     {copy(outcome === 'APPROVE' ? 'approve' : 'reject')}
                   </button>
@@ -415,19 +470,13 @@ function CompanyModelBody<
           initial={draft.initial}
           disabled={command.blocked || read.kind !== 'ready'}
           onCancel={() => setDraft(null)}
-          onSubmit={(content) => {
-            if (read.kind === 'ready')
-              command.start({ kind: 'CREATE', previous: read.model, content });
-          }}
+          onSubmit={create}
         />
       )}
       <button
         type="button"
         disabled={read.kind === 'loading' || command.blocked}
-        onClick={() => {
-          setRead({ kind: 'loading' });
-          void load();
-        }}
+        onClick={reload}
       >
         {copy('refresh')}
       </button>

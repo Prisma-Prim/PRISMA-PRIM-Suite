@@ -435,6 +435,7 @@ describe('Clarté entries for actors with different grants', () => {
       'Companies',
       'Team & access',
       'Invitations',
+      'Procedure deadlines',
       'Activity Log',
     ]);
     for (const single of ['Clients', 'Missions and audits', 'Documents']) {
@@ -461,6 +462,7 @@ describe('Clarté entries for actors with different grants', () => {
       'CompaniesSettings',
       'Team & accessSettings',
       'InvitationsSettings',
+      'Procedure deadlinesSettings',
       'Activity LogSettings',
     ]);
   });

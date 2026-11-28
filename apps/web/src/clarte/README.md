@@ -55,6 +55,8 @@ To add or migrate a Settings section, change one row of `settingsSections`:
 
 Language and region and the console's home are Clarté-only screens from `useSettingsConsoleScreens`.
 
+The configuration sections of [#1547](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1547) live in `settings-config/`. Sales stages, Project templates (with the Mission Plans) and Procedure deadlines sit inside Requests, Projects and a Certification Case in the current interface; in Clarté they are sections App pushes only while the preference is `clarte`, with `content: null`, the same gates as their current place, `mountWhenSelected` and `retainAfterSelection`, and Projects drops its configuration there. Each screen reuses its owner's hook (`useSalesStageSettings`, `useServiceCatalogue`, `usePricingRules`, `useTariffVersions`, `useCompanyModel`, `useTemplateConfiguration`, `useDeadlineAdministration`), so both interfaces send the same commands.
+
 ## Missions and the mission space
 
 Missions and audits ([#1540](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1540)) is `missions/ClarteMissions.tsx`: the Project list, its creation panels and the mission space of the opened Project. It renders the Projects session the current interface renders too (`project/use-project-workspace.ts`), so the directory, registration drafts and commands, requested opens and their lifetimes keep one owner. The mission space header keeps the existing lifecycle, owner and next-action owners in side panels that stay mounted while closed.

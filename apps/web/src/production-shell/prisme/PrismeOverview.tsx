@@ -58,6 +58,9 @@ export function SectionIcon({
     pricing: SlidersHorizontal,
     'offer-models': BookOpen,
     'contract-models': BookOpen,
+    'sales-stages': ClipboardList,
+    'project-templates': FolderKanban,
+    'procedure-deadlines': ClipboardList,
     activity: Activity,
     invitations: Mail,
   };

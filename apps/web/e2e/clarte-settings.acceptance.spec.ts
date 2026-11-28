@@ -268,7 +268,8 @@ test('administers access from the Settings console and switches the interface la
   await expect(page).toHaveURL(/#settings$/u);
   await expect(screenTitle(page)).toHaveText('Settings');
   const home = page.getByRole('region', { name: 'All settings' });
-  await expect(home.getByRole('link')).toHaveCount(5);
+  // Access sections, plus Sales stages and Procedure deadlines (#1547).
+  await expect(home.getByRole('link')).toHaveCount(7);
   await expect(
     page.getByRole('navigation', { name: 'Settings sections' }),
   ).toBeVisible({ visible: !isPhoneLayout(page) });

@@ -25,7 +25,7 @@ import './pricing-configuration.css';
 
 type RuleVersionState = keyof typeof compatibilityCopy.stateLabels;
 
-type RuleVersion = {
+export type RuleVersion = {
   id: string;
   versionNumber: number;
   label: string;
@@ -138,19 +138,22 @@ const loadPasses = 3;
 const labelMaximum = 120;
 const emptyDraft: Draft = { label: '', effectiveFrom: '', effectiveTo: '' };
 
-export function PricingConfigurationWorkspace({
-  actor,
-  identity,
-  onCompanyContextRejected,
-  onActorRevalidated = () => undefined,
-  onWorkspaceAccessRejected = () => undefined,
-}: {
+export type PricingWorkspaceProps = {
   actor: ActorContext;
   identity: BrowserIdentity;
   onCompanyContextRejected: (companyContextId: string) => void;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
-}) {
+};
+
+/** The screen's reads, draft and publication, shared by both interfaces. */
+export function usePricingRules({
+  actor,
+  identity,
+  onCompanyContextRejected,
+  onActorRevalidated = () => undefined,
+  onWorkspaceAccessRejected = () => undefined,
+}: PricingWorkspaceProps) {
   const lifetime = useRequestLifetime(
     identity,
     JSON.stringify([
@@ -165,7 +168,6 @@ export function PricingConfigurationWorkspace({
       grantOf(actor.activeCompany, 'company_pricing_user') ?? null,
     ]),
   );
-  const copy = usePricingConfigurationCopy();
   const [denied, setDenied] = useState(false);
   const [view, setView] = useState<ViewState>({ kind: 'loading' });
   const [draft, setDraft] = useState<Draft>(emptyDraft);
@@ -174,7 +176,6 @@ export function PricingConfigurationWorkspace({
   // A publication whose commit is unknown. Until a definite answer, only its
   // explicit retry is sent, unchanged, and no other publication replaces it.
   const [unresolved, setUnresolved] = useState<Publication>();
-  const fieldId = useId();
   const loadRequest = useScopedOperationGroup(`${lifetime}:loadRequest`);
   const olderRequest = useScopedOperationGroup(`${lifetime}:olderRequest`);
   const commandRequest = useScopedOperationGroup(`${lifetime}:commandRequest`);
@@ -540,6 +541,43 @@ export function PricingConfigurationWorkspace({
     }
   }
 
+  return {
+    denied,
+    view,
+    draft,
+    setDraft,
+    feedback,
+    pending,
+    unresolved,
+    companyName,
+    canPublish,
+    zone,
+    reload,
+    submit,
+    send,
+    loadOlder,
+  };
+}
+
+export function PricingConfigurationWorkspace(props: PricingWorkspaceProps) {
+  const fieldId = useId();
+  const {
+    denied,
+    view,
+    draft,
+    setDraft,
+    feedback,
+    pending,
+    unresolved,
+    companyName,
+    canPublish,
+    zone,
+    reload,
+    submit,
+    send,
+    loadOlder,
+  } = usePricingRules(props);
+  const copy = usePricingConfigurationCopy();
   if (denied)
     return (
       <section className="pricing-configuration">
@@ -807,12 +845,12 @@ function VersionSummary({
   );
 }
 
-function Instant({ value }: { value: string }) {
+export function Instant({ value }: { value: string }) {
   const { formatDateTime } = useInterfaceLocale();
   return <time dateTime={value}>{formatDateTime(value)}</time>;
 }
 
-function FeedbackMessage({ feedback }: { feedback: Feedback }) {
+export function FeedbackMessage({ feedback }: { feedback: Feedback }) {
   const copy = usePricingConfigurationCopy();
   const localCopy = useLocalInstantCopy();
   switch (feedback.kind) {

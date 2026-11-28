@@ -8,6 +8,7 @@ const keys = [
   'groupYou',
   'groupOrganisation',
   'groupCommercial',
+  'groupDelivery',
   'groupTraceability',
   'languageLabel',
   'languageDescription',
@@ -28,6 +29,7 @@ export const settingsConsoleMessages = defineMessages(keys, {
     groupYou: 'Dvs.',
     groupOrganisation: 'Organizație',
     groupCommercial: 'Ofertă comercială',
+    groupDelivery: 'Realizare',
     groupTraceability: 'Trasabilitate',
     languageLabel: 'Limbă și regiune',
     languageDescription:
@@ -47,6 +49,7 @@ export const settingsConsoleMessages = defineMessages(keys, {
     groupYou: 'Вы',
     groupOrganisation: 'Организация',
     groupCommercial: 'Коммерческое предложение',
+    groupDelivery: 'Выполнение работ',
     groupTraceability: 'Прослеживаемость',
     languageLabel: 'Язык и регион',
     languageDescription:
@@ -66,6 +69,7 @@ export const settingsConsoleMessages = defineMessages(keys, {
     groupYou: 'Vous',
     groupOrganisation: 'Organisation',
     groupCommercial: 'Offre commerciale',
+    groupDelivery: 'Réalisation',
     groupTraceability: 'Traçabilité',
     languageLabel: 'Langue et région',
     languageDescription:
@@ -85,6 +89,7 @@ export const settingsConsoleMessages = defineMessages(keys, {
     groupYou: 'You',
     groupOrganisation: 'Organisation',
     groupCommercial: 'Commercial offer',
+    groupDelivery: 'Delivery',
     groupTraceability: 'Traceability',
     languageLabel: 'Language and region',
     languageDescription:
@@ -98,7 +103,7 @@ export const settingsConsoleMessages = defineMessages(keys, {
 });
 
 export type SettingsGroup =
-  'you' | 'organisation' | 'commercial' | 'traceability';
+  'you' | 'organisation' | 'commercial' | 'delivery' | 'traceability';
 
 export function useSettingsConsoleCopy() {
   const message = useMessages(settingsConsoleMessages);
@@ -106,6 +111,7 @@ export function useSettingsConsoleCopy() {
     you: message('groupYou'),
     organisation: message('groupOrganisation'),
     commercial: message('groupCommercial'),
+    delivery: message('groupDelivery'),
     traceability: message('groupTraceability'),
   } satisfies Record<SettingsGroup, string>;
   return {
