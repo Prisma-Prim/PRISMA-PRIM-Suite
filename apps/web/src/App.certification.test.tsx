@@ -2,11 +2,11 @@ import { grantOf } from './access/company-grants';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
 } from './test/render-with-interface-locale';
+import { appInterfaces, renderInInterface } from './test/app-interface';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import {
@@ -86,99 +86,161 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-describe('Certification tab through the real App composition', () => {
-  it('is absent from the Project detail without the Certification Reader grant', async () => {
-    const server = serve('none');
-    render(<App identity={deterministicBrowserIdentity()} />);
-    const tabs = await openProject();
-    expect(
-      within(tabs).queryByRole('tab', { name: 'Certification' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('region', { name: 'Certification' }),
-    ).not.toBeInTheDocument();
-    expect(server.requests).toEqual([]);
-  });
-
-  it('shows a reader the Cases by keyboard tab navigation without any mutation form', async () => {
-    const server = serve('reader');
-    const caseId = server.seed({
-      orderReference: 'CERT-0001/01',
-      application: true,
-    });
-    render(<App identity={deterministicBrowserIdentity()} />);
-    const tabs = await openProject();
-    const certificationTab = within(tabs).getByRole('tab', {
-      name: 'Certification',
-    });
-    expect(certificationTab).toHaveAttribute('aria-selected', 'false');
-    const lastTab = within(tabs).getAllByRole('tab').at(-1);
-    expect(lastTab).toBe(certificationTab);
-    const firstTab = within(tabs).getAllByRole('tab')[0];
-    if (!firstTab) throw new Error('Missing first Project tab.');
-    firstTab.focus();
-    fireEvent.keyDown(firstTab, { key: 'End' });
-    await waitFor(() =>
-      expect(certificationTab).toHaveAttribute('aria-selected', 'true'),
-    );
-    expect(certificationTab).toHaveFocus();
-    const panel = screen.getByRole('tabpanel', { name: 'Certification' });
-    expect(panel).toBeVisible();
-    fireEvent.click(
-      await within(panel).findByRole('button', { name: 'CERT-0001/01' }),
-    );
-    expect(
-      await within(panel).findByRole('heading', {
-        name: 'Certification Case CERT-0001/01',
-      }),
-    ).toBeVisible();
-    expect(
-      within(panel).getByText(
-        'You can consult this Case. Recording a step requires Company Certification Programme Manager.',
-      ),
-    ).toBeVisible();
-    for (const name of [
-      'Open a Certification Case',
-      'Correct the application',
-      'Record the review',
-      'Record the application',
-    ])
+describe.each(appInterfaces)(
+  'Certification tab through the real App composition in the %s interface',
+  (appInterface) => {
+    it('is absent from the Project detail without the Certification Reader grant', async () => {
+      const server = serve('none');
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      const tabs = await openProject();
       expect(
-        within(panel).queryByRole('button', { name }),
+        within(tabs).queryByRole('tab', { name: 'Certification' }),
       ).not.toBeInTheDocument();
-    expect(within(panel).queryByRole('form')).not.toBeInTheDocument();
-    expect(
-      server.requests.filter((request) => request.method !== 'GET'),
-    ).toEqual([]);
-    expect(
-      server.requests.find(
-        (request) => request.path === `/api/certification-cases/${caseId}`,
-      )?.company,
-    ).toBe(companyId);
+      expect(
+        screen.queryByRole('region', { name: 'Certification' }),
+      ).not.toBeInTheDocument();
+      expect(server.requests).toEqual([]);
+    });
 
-    fireEvent.keyDown(certificationTab, { key: 'ArrowRight' });
-    await waitFor(() => expect(firstTab).toHaveFocus());
-    expect(panel).not.toBeVisible();
-  });
+    it('shows a reader the Cases by keyboard tab navigation without any mutation form', async () => {
+      const server = serve('reader');
+      const caseId = server.seed({
+        orderReference: 'CERT-0001/01',
+        application: true,
+      });
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      const tabs = await openProject();
+      const certificationTab = within(tabs).getByRole('tab', {
+        name: 'Certification',
+      });
+      expect(certificationTab).toHaveAttribute('aria-selected', 'false');
+      const lastTab = within(tabs).getAllByRole('tab').at(-1);
+      expect(lastTab).toBe(certificationTab);
+      const firstTab = within(tabs).getAllByRole('tab')[0];
+      if (!firstTab) throw new Error('Missing first Project tab.');
+      firstTab.focus();
+      fireEvent.keyDown(firstTab, { key: 'End' });
+      await waitFor(() =>
+        expect(certificationTab).toHaveAttribute('aria-selected', 'true'),
+      );
+      expect(certificationTab).toHaveFocus();
+      const panel = screen.getByRole('tabpanel', { name: 'Certification' });
+      expect(panel).toBeVisible();
+      fireEvent.click(
+        await within(panel).findByRole('button', { name: 'CERT-0001/01' }),
+      );
+      expect(
+        await within(panel).findByRole('heading', {
+          name: 'Certification Case CERT-0001/01',
+        }),
+      ).toBeVisible();
+      expect(
+        within(panel).getByText(
+          'You can consult this Case. Recording a step requires Company Certification Programme Manager.',
+        ),
+      ).toBeVisible();
+      for (const name of [
+        'Open a Certification Case',
+        'Correct the application',
+        'Record the review',
+        'Record the application',
+      ])
+        expect(
+          within(panel).queryByRole('button', { name }),
+        ).not.toBeInTheDocument();
+      expect(within(panel).queryByRole('form')).not.toBeInTheDocument();
+      expect(
+        server.requests.filter((request) => request.method !== 'GET'),
+      ).toEqual([]);
+      expect(
+        server.requests.find(
+          (request) => request.path === `/api/certification-cases/${caseId}`,
+        )?.company,
+      ).toBe(companyId);
 
-  it('offers a programme manager the Case opening form in the tab', async () => {
-    serve('manager');
-    render(<App identity={deterministicBrowserIdentity()} />);
+      fireEvent.keyDown(certificationTab, { key: 'ArrowRight' });
+      await waitFor(() => expect(firstTab).toHaveFocus());
+      expect(panel).not.toBeVisible();
+    });
+
+    it('offers a programme manager the Case opening form in the tab', async () => {
+      serve('manager');
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      const tabs = await openProject();
+      fireEvent.click(within(tabs).getByRole('tab', { name: 'Certification' }));
+      const panel = screen.getByRole('tabpanel', { name: 'Certification' });
+      expect(
+        await within(panel).findByText(
+          'No Certification Case is open in this Project.',
+        ),
+      ).toBeVisible();
+      fireEvent.click(
+        within(panel).getByRole('button', {
+          name: 'Open a Certification Case',
+        }),
+      );
+      expect(
+        await within(panel).findByRole('form', {
+          name: 'Open a Certification Case',
+        }),
+      ).toBeVisible();
+    });
+  },
+);
+
+describe('Certification Case page in the Clarté interface', () => {
+  it('opens a Case of the Project on its page with the ordered steps and their status', async () => {
+    const server = serve('manager');
+    server.seed({ orderReference: 'CERT-0002/01', accepted: true });
+    renderInInterface(
+      'clarte',
+      <App identity={deterministicBrowserIdentity()} />,
+    );
     const tabs = await openProject();
     fireEvent.click(within(tabs).getByRole('tab', { name: 'Certification' }));
     const panel = screen.getByRole('tabpanel', { name: 'Certification' });
-    expect(
-      await within(panel).findByText(
-        'No Certification Case is open in this Project.',
-      ),
-    ).toBeVisible();
     fireEvent.click(
-      within(panel).getByRole('button', { name: 'Open a Certification Case' }),
+      await within(panel).findByRole('button', { name: 'CERT-0002/01' }),
     );
     expect(
-      await within(panel).findByRole('form', {
-        name: 'Open a Certification Case',
+      await within(panel).findByRole('heading', {
+        name: 'Certification Case CERT-0002/01',
       }),
     ).toBeVisible();
+    // The header names the Client legal entity, the standard and the Project.
+    expect(
+      within(panel).getByText(
+        `Lactis Demo SRL · ISO 22000:2018 · Initial certification · Project: ${project.title}`,
+      ),
+    ).toBeVisible();
+    const steps = within(
+      within(panel).getByRole('navigation', {
+        name: 'Steps of the Certification Case',
+      }),
+    ).getByRole('list', { name: 'Steps' });
+    const items = within(steps).getAllByRole('button');
+    expect(items).toHaveLength(13);
+    expect(items.map((item) => item.textContent)).toEqual([
+      expect.stringMatching(/^Application[^ ].*Done$/u),
+      expect.stringMatching(/^Application review.*Done$/u),
+      expect.stringMatching(/^3Audit duration.*Current step$/u),
+      ...items.slice(3).map(() => expect.stringMatching(/Upcoming$/u)),
+    ]);
+    // Only the current step is open: the duration inputs, not the application.
+    expect(
+      within(panel).getByRole('form', { name: 'Duration inputs' }),
+    ).toBeVisible();
+    expect(
+      within(panel).queryByRole('region', { name: 'Application' }),
+    ).not.toBeInTheDocument();
   });
 });

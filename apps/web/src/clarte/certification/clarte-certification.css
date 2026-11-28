@@ -1,0 +1,851 @@
+/*
+ * The Clarté Certification Case page (#1538). Every rule is scoped to the
+ * Clarté frame; light background only. The step bodies reuse the
+ * Certification module's sections, which take their Clarté look here.
+ */
+.clarte-frame .clarte-certification {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  color: var(--clarte-ink);
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-certification-count {
+  margin: 0 0 6px;
+  color: var(--clarte-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* The Project's Cases */
+.clarte-frame .clarte-certification-cases > li {
+  flex-wrap: wrap;
+}
+
+.clarte-frame .clarte-certification-case-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-certification-case-name {
+  display: grid;
+  flex: 1 1 220px;
+  gap: 2px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-certification-case-name small,
+.clarte-frame .clarte-certification-case-next {
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-certification-case-next {
+  flex: 1 1 200px;
+}
+
+.clarte-frame button.clarte-certification-case-link {
+  justify-self: start;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  color: var(--clarte-ink);
+  background: none;
+  font-weight: 700;
+  text-align: start;
+  cursor: pointer;
+}
+
+.clarte-frame button.clarte-certification-case-link:hover:not(:disabled) {
+  color: var(--clarte-accent-text);
+  text-decoration: underline;
+}
+
+.clarte-frame .clarte-certification-open {
+  display: grid;
+  gap: 16px;
+}
+
+/* The Case page */
+.clarte-frame .clarte-certification-page {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  /* The Project page frames its articles; the Case page is not boxed again. */
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.clarte-frame
+  :is(.clarte-certification-page, .clarte-certification > .clarte-card) {
+  scroll-margin-top: 84px;
+}
+
+.clarte-frame .clarte-certification-back {
+  justify-self: start;
+  margin-left: -8px;
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-certification-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 20px;
+}
+
+.clarte-frame .clarte-certification-head-text {
+  display: grid;
+  flex: 1 1 420px;
+  gap: 6px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-certification-head h4 {
+  margin: 0;
+  font-family: var(--clarte-font-heading);
+  font-size: 26px;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.clarte-frame .clarte-certification-head h4:focus {
+  outline: none;
+}
+
+.clarte-frame .clarte-certification-head h4:focus-visible {
+  border-radius: var(--clarte-radius-xs);
+  box-shadow: var(--clarte-focus);
+}
+
+.clarte-frame .clarte-certification-head-text p {
+  margin: 0;
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-certification-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-certification-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-certification-console {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+/* The steps and registers beside the step */
+.clarte-frame .clarte-certification-rail {
+  position: sticky;
+  top: 88px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-certification-rail-title {
+  margin: 0 10px 2px;
+  color: var(--clarte-faint);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-certification-rail-title:not(:first-child) {
+  margin-top: 12px;
+}
+
+.clarte-frame .clarte-certification-steps,
+.clarte-frame .clarte-certification-registers {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-certification-rail button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: var(--clarte-radius-sm);
+  color: var(--clarte-ink-soft);
+  background: transparent;
+  font-weight: 500;
+  text-align: start;
+  cursor: pointer;
+}
+
+/* Holds each step's hidden status inside the row of chips that scrolls on phone. */
+.clarte-frame .clarte-certification-rail li {
+  position: relative;
+}
+
+.clarte-frame .clarte-certification-rail button:hover {
+  background: var(--clarte-surface-sunken);
+  color: var(--clarte-ink);
+}
+
+.clarte-frame .clarte-certification-rail button[aria-current='true'] {
+  background: var(--clarte-accent-soft);
+  color: var(--clarte-ink);
+}
+
+.clarte-frame .clarte-certification-registers button {
+  font-size: 13.5px;
+}
+
+.clarte-frame .clarte-certification-registers button svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-certification-registers button[aria-current='true'] {
+  color: var(--clarte-accent-text);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-certification-registers button[aria-current='true'] svg {
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-certification-step-dot {
+  display: grid;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--clarte-muted);
+  background: var(--clarte-surface-sunken);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.clarte-frame .clarte-certification-step-dot svg {
+  width: 13px;
+  height: 13px;
+}
+
+.clarte-frame [data-status='done'] .clarte-certification-step-dot {
+  color: var(--clarte-success);
+  background: var(--clarte-success-soft);
+}
+
+.clarte-frame [data-status='current'] .clarte-certification-step-dot {
+  color: var(--clarte-accent-ink);
+  background: var(--clarte-accent);
+}
+
+.clarte-frame [data-status='notReached'] .clarte-certification-step-dot {
+  color: var(--clarte-faint);
+}
+
+.clarte-frame .clarte-certification-step-text {
+  display: grid;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-certification-step-text b {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-certification-step-text small {
+  color: var(--clarte-muted);
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+/* One step or register */
+.clarte-frame .clarte-certification-step {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-certification-step-head h5 {
+  margin: 0;
+  font-family: var(--clarte-font-heading);
+  font-size: 20px;
+  letter-spacing: -0.01em;
+}
+
+.clarte-frame .clarte-certification-step-head p {
+  margin: 2px 0 0;
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-certification-step-body {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-certification-step-body[data-step='stage1'],
+.clarte-frame .clarte-certification-step-body[data-step='stage2'] {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  align-items: start;
+}
+
+/* The plan and the report sit side by side: each value under its label. */
+.clarte-frame
+  .clarte-certification-step-body:is([data-step='stage1'], [data-step='stage2'])
+  .certification-facts {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+
+.clarte-frame
+  .clarte-certification-step-body:is([data-step='stage1'], [data-step='stage2'])
+  .certification-facts
+  > :is(dt, dd):nth-of-type(n) {
+  grid-column: 1;
+}
+
+.clarte-frame
+  .clarte-certification-step-body:is([data-step='stage1'], [data-step='stage2'])
+  .certification-facts
+  dd {
+  margin-bottom: 8px;
+}
+
+.clarte-frame
+  .clarte-certification-step-body[data-step]
+  > section:not(:has(> h5)) {
+  grid-column: 1 / -1;
+}
+
+.clarte-frame .clarte-certification-step-body > section,
+.clarte-frame .clarte-certification-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-lg);
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+/*
+ * A card's title shares its first row with the entry to a new version
+ * (correct, propose a new version), which the section renders last.
+ */
+.clarte-frame .clarte-certification-step-body > section {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.clarte-frame .clarte-certification-step-body > section > * {
+  grid-column: 1 / -1;
+}
+
+.clarte-frame
+  .clarte-certification-step-body
+  > section
+  > :is(h5, h6):first-child {
+  grid-row: 1;
+  grid-column: 1;
+  align-self: center;
+}
+
+.clarte-frame
+  .clarte-certification-step-body
+  > section
+  > button:last-child:not(:first-child) {
+  grid-row: 1;
+  grid-column: 2;
+  justify-self: end;
+}
+
+.clarte-frame
+  .clarte-certification-step-body
+  > section
+  > :is(h5, h6):first-child,
+.clarte-frame .clarte-certification h6 {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.clarte-frame
+  .clarte-certification-step-body
+  > section
+  > :is(h5, h6):first-child {
+  margin-bottom: 4px;
+}
+
+.clarte-frame .clarte-certification h6:not(:first-child) {
+  margin-top: 10px;
+}
+
+.clarte-frame .clarte-certification-step-body p {
+  margin: 0;
+}
+
+/* The Certification module's sections inside a step */
+.clarte-frame .clarte-certification-step section section {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-certification .certification-form {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface-muted);
+}
+
+.clarte-frame .clarte-certification .certification-form h4,
+.clarte-frame .clarte-certification .certification-form h5 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.clarte-frame .clarte-certification label {
+  color: var(--clarte-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-certification .certification-field,
+.clarte-frame .clarte-certification .certification-criterion,
+.clarte-frame .clarte-certification .certification-list-entry {
+  display: grid;
+  gap: 6px;
+}
+
+.clarte-frame
+  .clarte-certification
+  input:not([type='checkbox'], [type='radio'], [type='file']),
+.clarte-frame .clarte-certification textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-sm);
+  color: var(--clarte-ink);
+  background: var(--clarte-surface);
+  font: inherit;
+  outline: none;
+}
+
+.clarte-frame .clarte-certification textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.clarte-frame .clarte-certification input:focus-visible,
+.clarte-frame .clarte-certification textarea:focus-visible {
+  border-color: var(--clarte-accent);
+  box-shadow: var(--clarte-focus);
+}
+
+.clarte-frame .clarte-certification [aria-invalid='true'] {
+  border-color: var(--clarte-danger);
+}
+
+.clarte-frame .clarte-certification fieldset {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+}
+
+.clarte-frame .clarte-certification legend {
+  padding-inline: 6px;
+  font-weight: 700;
+}
+
+.clarte-frame .clarte-certification fieldset small {
+  display: block;
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-certification .certification-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  margin-inline-end: 16px;
+  font-weight: 500;
+}
+
+.clarte-frame .clarte-certification .certification-choice input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--clarte-accent);
+}
+
+.clarte-frame .clarte-certification .certification-subcategories {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 4px;
+}
+
+.clarte-frame .clarte-certification .certification-numbers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 12px;
+}
+
+.clarte-frame .clarte-certification .certification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-certification button.certification-primary {
+  border-color: var(--clarte-accent);
+  color: var(--clarte-accent-ink);
+  background: var(--clarte-accent);
+}
+
+.clarte-frame
+  .clarte-certification
+  button.certification-primary:hover:not(:disabled) {
+  background: var(--clarte-accent-strong);
+}
+
+.clarte-frame .clarte-certification button.certification-reject {
+  border-color: var(--clarte-danger-soft);
+  color: var(--clarte-danger);
+}
+
+.clarte-frame .clarte-certification dl {
+  margin: 0;
+}
+
+/* A record reads as pairs, each value under its label, two pairs per row. */
+.clarte-frame .clarte-certification .certification-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: row dense;
+  gap: 4px 24px;
+}
+
+.clarte-frame .clarte-certification .certification-facts > div {
+  display: grid;
+  gap: 2px;
+  align-content: start;
+  margin-bottom: 8px;
+}
+
+.clarte-frame
+  .clarte-certification
+  .certification-facts
+  > :is(dt, dd):nth-of-type(odd) {
+  grid-column: 1;
+}
+
+.clarte-frame
+  .clarte-certification
+  .certification-facts
+  > :is(dt, dd):nth-of-type(even) {
+  grid-column: 2;
+}
+
+.clarte-frame .clarte-certification .certification-facts > dd {
+  margin-bottom: 8px;
+}
+
+.clarte-frame .clarte-certification dt {
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-certification dd {
+  margin: 0;
+  font-weight: 600;
+  white-space: pre-wrap;
+}
+
+.clarte-frame .clarte-certification dd ol,
+.clarte-frame .clarte-certification dd ul {
+  margin: 0;
+  padding-inline-start: 1.1rem;
+}
+
+.clarte-frame .clarte-certification .certification-status,
+.clarte-frame .clarte-certification .certification-verdict {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  color: var(--clarte-success);
+  background: var(--clarte-success-soft);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.clarte-frame
+  .clarte-certification
+  :is(
+    .certification-status-rejected,
+    .certification-status-refused,
+    .certification-verdict-critical
+  ) {
+  color: var(--clarte-danger);
+  background: var(--clarte-danger-soft);
+}
+
+.clarte-frame
+  .clarte-certification
+  :is(.certification-status-pending, .certification-verdict-error) {
+  color: var(--clarte-warning);
+  background: var(--clarte-warning-soft);
+}
+
+.clarte-frame .clarte-certification .certification-verdict-to-clarify {
+  color: var(--clarte-info);
+  background: var(--clarte-info-soft);
+}
+
+.clarte-frame .clarte-certification .certification-verdict-neutral {
+  color: var(--clarte-ink-soft);
+  background: var(--clarte-surface-sunken);
+}
+
+.clarte-frame .clarte-certification .certification-attribution,
+.clarte-frame .clarte-certification .certification-hint {
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-certification .certification-note,
+.clarte-frame .clarte-certification .certification-blocked,
+.clarte-frame .clarte-certification [role='alert']:not(.clarte-state),
+.clarte-frame .clarte-certification [role='status']:not(.clarte-state) {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--clarte-radius-sm);
+  color: var(--clarte-ink-soft);
+  background: var(--clarte-info-soft);
+}
+
+.clarte-frame .clarte-certification .certification-blocked {
+  background: var(--clarte-warning-soft);
+}
+
+.clarte-frame .clarte-certification [role='alert']:not(.clarte-state) {
+  color: var(--clarte-danger);
+  background: var(--clarte-danger-soft);
+}
+
+.clarte-frame .clarte-certification [role='status']:not(.clarte-state) {
+  color: var(--clarte-success);
+  background: var(--clarte-success-soft);
+}
+
+.clarte-frame
+  .clarte-certification
+  :is(
+    .certification-timeline,
+    .certification-team,
+    .certification-documents,
+    .certification-findings,
+    .certification-discrepancies,
+    .certification-consistency-counts
+  ) {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame
+  .clarte-certification
+  :is(
+    .certification-timeline,
+    .certification-team,
+    .certification-documents,
+    .certification-findings
+  )
+  > li {
+  display: grid;
+  gap: 6px;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--clarte-line-soft);
+}
+
+.clarte-frame
+  .clarte-certification
+  :is(
+    .certification-timeline,
+    .certification-team,
+    .certification-documents,
+    .certification-findings
+  )
+  > li:last-child {
+  border-bottom: 0;
+}
+
+.clarte-frame .clarte-certification .certification-discrepancies {
+  gap: 10px;
+}
+
+.clarte-frame .clarte-certification .certification-discrepancies > li {
+  padding: 12px 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-sm);
+}
+
+.clarte-frame .clarte-certification .certification-consistency-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.clarte-frame
+  .clarte-certification
+  :is(.certification-history, details)
+  summary {
+  color: var(--clarte-accent-text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-certification .certification-history > ol {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-certification .certification-history > ol > li {
+  display: grid;
+  gap: 4px;
+  padding-block: 10px;
+  border-bottom: 1px dashed var(--clarte-line);
+}
+
+.clarte-frame .clarte-certification .certification-texts {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-certification .certification-texts > li {
+  padding: 8px 12px;
+  border-inline-start: 3px solid var(--clarte-line);
+}
+
+.clarte-frame .clarte-certification .certification-acting {
+  border-color: var(--clarte-accent-line);
+  background: var(--clarte-surface-muted);
+}
+
+.clarte-frame .clarte-certification code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+  .clarte-frame .clarte-certification-head h4 {
+    font-size: 22px;
+  }
+
+  .clarte-frame .clarte-certification-console {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  /* On phone the steps and registers are two rows of chips that scroll. */
+  .clarte-frame .clarte-certification-rail {
+    position: static;
+    gap: 8px;
+  }
+
+  .clarte-frame .clarte-certification-rail-title {
+    display: none;
+  }
+
+  .clarte-frame .clarte-certification-steps,
+  .clarte-frame .clarte-certification-registers {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .clarte-frame .clarte-certification-rail li {
+    flex: none;
+  }
+
+  .clarte-frame .clarte-certification-rail button {
+    width: auto;
+    min-height: var(--clarte-touch-target);
+    padding: 6px 12px 6px 8px;
+    border: 1px solid var(--clarte-line);
+    background: var(--clarte-surface);
+    white-space: nowrap;
+  }
+
+  .clarte-frame .clarte-certification-rail button[aria-current='true'] {
+    border-color: var(--clarte-accent-line);
+  }
+
+  .clarte-frame .clarte-certification-step-text small {
+    display: none;
+  }
+
+  .clarte-frame .clarte-certification .certification-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .clarte-frame .clarte-certification .certification-facts dd {
+    margin-bottom: 8px;
+  }
+
+  .clarte-frame
+    .clarte-certification
+    .certification-facts
+    > :is(dt, dd):nth-of-type(n) {
+    grid-column: 1;
+  }
+
+  .clarte-frame .clarte-certification-step-body > section,
+  .clarte-frame .clarte-certification-card {
+    padding: 14px;
+  }
+}

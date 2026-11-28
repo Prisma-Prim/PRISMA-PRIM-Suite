@@ -72,6 +72,9 @@ const INTAKE_KINDS = [
   'agreement',
 ] as const;
 export type IntakeKind = (typeof INTAKE_KINDS)[number];
+/** The intake sections one render shows. */
+export type IntakeSection =
+  'preparation' | 'application' | 'review' | 'duration' | 'agreement';
 /**
  * The duration-proposal read, keyed by the serialized inputs it computed so a
  * later edit of the inputs makes it outdated instead of confirmable.
@@ -188,7 +191,11 @@ export function useCertificationIntake({
   function describedFeedback(kind: IntakeKind, feedback: Feedback) {
     return describedFeedbackId(feedback, feedbackIds[kind]);
   }
-  function render(busy: boolean, section: 'preparation' | 'agreement') {
+  /**
+   * The intake sections: `preparation` is the application, its review and,
+   * once accepted, the duration; the Clarté Case page asks for one at a time.
+   */
+  function render(busy: boolean, section: IntakeSection) {
     if (!view) return null;
     const caseView = view;
     function submitAgreement(event: FormEvent) {
@@ -666,33 +673,33 @@ export function useCertificationIntake({
         />
       );
     }
-    return section === 'agreement' ? (
-      <>
-        {caseView.caseDetail.duration && (
-          <section aria-labelledby={`${prefix}-agreement-title`}>
-            <h5 id={`${prefix}-agreement-title`}>{copy('agreementTitle')}</h5>
-            {caseView.caseDetail.agreement ? (
-              <>
-                <VersionAttribution version={caseView.caseDetail.agreement} />
-                <AgreementView
-                  agreement={caseView.caseDetail.agreement.value}
-                  register={caseView.register}
-                />
-              </>
-            ) : (
-              <p>{copy('agreementMissing')}</p>
-            )}
-            {authority.manage && (
-              <>
-                {feedbackMessage('agreement', agreementFeedback)}
-                {agreementStep(caseView.caseDetail, caseView.register)}
-              </>
-            )}
-          </section>
-        )}
-      </>
-    ) : (
-      <>
+    function agreementSection() {
+      if (!caseView.caseDetail.duration) return null;
+      return (
+        <section aria-labelledby={`${prefix}-agreement-title`}>
+          <h5 id={`${prefix}-agreement-title`}>{copy('agreementTitle')}</h5>
+          {caseView.caseDetail.agreement ? (
+            <>
+              <VersionAttribution version={caseView.caseDetail.agreement} />
+              <AgreementView
+                agreement={caseView.caseDetail.agreement.value}
+                register={caseView.register}
+              />
+            </>
+          ) : (
+            <p>{copy('agreementMissing')}</p>
+          )}
+          {authority.manage && (
+            <>
+              {feedbackMessage('agreement', agreementFeedback)}
+              {agreementStep(caseView.caseDetail, caseView.register)}
+            </>
+          )}
+        </section>
+      );
+    }
+    function applicationSection() {
+      return (
         <section aria-labelledby={`${prefix}-application-title`}>
           <h5 id={`${prefix}-application-title`}>{copy('applicationTitle')}</h5>
           {caseView.caseDetail.application ? (
@@ -710,6 +717,10 @@ export function useCertificationIntake({
             </>
           )}
         </section>
+      );
+    }
+    function reviewSection() {
+      return (
         <section aria-labelledby={`${prefix}-review-title`}>
           <h5 id={`${prefix}-review-title`}>{copy('reviewTitle')}</h5>
           {caseView.caseDetail.applicationReview ? (
@@ -732,31 +743,53 @@ export function useCertificationIntake({
             </>
           )}
         </section>
-        {caseView.caseDetail.applicationReview?.value.outcome ===
-          'accepted' && (
-          <section aria-labelledby={`${prefix}-duration-title`}>
-            <h5 id={`${prefix}-duration-title`}>{copy('durationTitle')}</h5>
-            {caseView.caseDetail.duration ? (
-              <>
-                <VersionAttribution version={caseView.caseDetail.duration} />
-                <DurationView
-                  determination={caseView.caseDetail.duration.value}
-                  register={caseView.register}
-                />
-              </>
-            ) : (
-              <p>{copy('durationMissing')}</p>
-            )}
-            {authority.manage && (
-              <>
-                {feedbackMessage('duration', durationFeedback)}
-                {durationStep(caseView.caseDetail, caseView.register)}
-              </>
-            )}
-          </section>
-        )}
-      </>
-    );
+      );
+    }
+    function durationSection() {
+      if (caseView.caseDetail.applicationReview?.value.outcome !== 'accepted')
+        return null;
+      return (
+        <section aria-labelledby={`${prefix}-duration-title`}>
+          <h5 id={`${prefix}-duration-title`}>{copy('durationTitle')}</h5>
+          {caseView.caseDetail.duration ? (
+            <>
+              <VersionAttribution version={caseView.caseDetail.duration} />
+              <DurationView
+                determination={caseView.caseDetail.duration.value}
+                register={caseView.register}
+              />
+            </>
+          ) : (
+            <p>{copy('durationMissing')}</p>
+          )}
+          {authority.manage && (
+            <>
+              {feedbackMessage('duration', durationFeedback)}
+              {durationStep(caseView.caseDetail, caseView.register)}
+            </>
+          )}
+        </section>
+      );
+    }
+    switch (section) {
+      case 'preparation':
+        return (
+          <>
+            {applicationSection()}
+            {reviewSection()}
+            {durationSection()}
+          </>
+        );
+      case 'application':
+        return applicationSection();
+      case 'review':
+        return reviewSection();
+      case 'duration':
+        return durationSection();
+      case 'agreement':
+        return agreementSection();
+    }
+    return unexpected(section);
   }
   const feedback = [
     applicationFeedback,
