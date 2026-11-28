@@ -2,13 +2,13 @@ import { withoutCompanyGrants } from './access/company-grants.test-fixture';
 import { companyGrants } from './access/company-grants.test-fixture';
 import {
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
 } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { appInterfaces, renderInInterface } from './test/app-interface';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import {
@@ -265,135 +265,150 @@ const scrollable: {
 } = Element.prototype;
 const nativeScrollIntoView = scrollable.scrollIntoView;
 
-describe('Contract history in the Activity Log', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    scrollable.scrollIntoView = vi.fn();
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn(
-        (query: string) =>
-          ({
-            matches: true,
-            media: query,
-            onchange: null,
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            dispatchEvent: vi.fn(() => false),
-          }) satisfies MediaQueryList,
-      ),
-    );
-    window.history.replaceState(null, '', '/#activity');
-  });
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-    scrollable.scrollIntoView = nativeScrollIntoView;
-    window.history.replaceState(null, '', '/');
-  });
+describe.each(appInterfaces)(
+  'Contract history in the Activity Log in the %s interface',
+  (appInterface) => {
+    beforeEach(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      scrollable.scrollIntoView = vi.fn();
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn(
+          (query: string) =>
+            ({
+              matches: true,
+              media: query,
+              onchange: null,
+              addListener: vi.fn(),
+              removeListener: vi.fn(),
+              addEventListener: vi.fn(),
+              removeEventListener: vi.fn(),
+              dispatchEvent: vi.fn(() => false),
+            }) satisfies MediaQueryList,
+        ),
+      );
+      window.history.replaceState(null, '', '/#activity');
+    });
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+      scrollable.scrollIntoView = nativeScrollIntoView;
+      window.history.replaceState(null, '', '/');
+    });
 
-  it('names each Contract event by kind, reference, exact version, simulated marker and linked Project only', async () => {
-    installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
+    it('names each Contract event by kind, reference, exact version, simulated marker and linked Project only', async () => {
+      installTransport();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
 
-    const link = await activityRow('linked a Project to an agreement');
-    expect(link).toHaveTextContent(
-      'Target: Illustrative Contract 4 · version 2 — Created Project: Synthetic Project',
-    );
-    expect(
-      within(link).getByRole('button', { name: 'Open agreement version' }),
-    ).toBeInTheDocument();
-    expect(
-      await activityRow('recorded the signature of an agreement version'),
-    ).toHaveTextContent(
-      'Target: Illustrative Contract 4 · version 2 · Simulated',
-    );
-    const rejection = await activityRow('rejected an agreement version');
-    expect(rejection).toHaveTextContent(
-      'Target: Illustrative Contract 4 · version 1',
-    );
-    expect(rejection).not.toHaveTextContent('Simulated');
-    const [addendum, contract] = await screen.findAllByText(
-      'Ada Ionescu created an illustrative agreement',
-    );
-    expect(addendum?.closest('li')).toHaveTextContent(
-      'Target: Illustrative Addendum 5 · version 1',
-    );
-    expect(contract?.closest('li')).toHaveTextContent(
-      'Target: Illustrative Contract 4 · version 1',
-    );
-  });
-
-  it('opens the Request detail with the exact superseded Contract Version selected', async () => {
-    const transport = installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
-
-    fireEvent.click(
-      within(await activityRow('rejected an agreement version')).getByRole(
-        'button',
-        { name: 'Open agreement version' },
-      ),
-    );
-
-    expect(
-      await screen.findByText(`Original source of ${subject}`),
-    ).toBeVisible();
-    await waitFor(() =>
+      const link = await activityRow('linked a Project to an agreement');
+      expect(link).toHaveTextContent(
+        'Target: Illustrative Contract 4 · version 2 — Created Project: Synthetic Project',
+      );
       expect(
-        within(contractRegion()).getByText('Conditions of version 1'),
-      ).toBeVisible(),
-    );
-    expect(
-      within(contractRegion()).getByText(
-        'Historical version — preserved; no further decision or signature.',
-      ),
-    ).toBeVisible();
-    expect(transport.contractReads).toEqual(['/versions/version-one']);
-  });
+        within(link).getByRole('button', { name: 'Open agreement version' }),
+      ).toBeInTheDocument();
+      expect(
+        await activityRow('recorded the signature of an agreement version'),
+      ).toHaveTextContent(
+        'Target: Illustrative Contract 4 · version 2 · Simulated',
+      );
+      const rejection = await activityRow('rejected an agreement version');
+      expect(rejection).toHaveTextContent(
+        'Target: Illustrative Contract 4 · version 1',
+      );
+      expect(rejection).not.toHaveTextContent('Simulated');
+      const [addendum, contract] = await screen.findAllByText(
+        'Ada Ionescu created an illustrative agreement',
+      );
+      expect(addendum?.closest('li')).toHaveTextContent(
+        'Target: Illustrative Addendum 5 · version 1',
+      );
+      expect(contract?.closest('li')).toHaveTextContent(
+        'Target: Illustrative Contract 4 · version 1',
+      );
+    });
 
-  it('opens an Addendum as its own agreement and shows the existing unavailable state when it cannot be read', async () => {
-    const transport = installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
+    it('opens the Request detail with the exact superseded Contract Version selected', async () => {
+      const transport = installTransport();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
 
-    const [addendum] = await screen.findAllByText(
-      'Ada Ionescu created an illustrative agreement',
-    );
-    const row = addendum?.closest('li');
-    if (!(row instanceof HTMLElement)) throw new Error('Expected a row.');
-    fireEvent.click(
-      within(row).getByRole('button', { name: 'Open agreement version' }),
-    );
+      fireEvent.click(
+        within(await activityRow('rejected an agreement version')).getByRole(
+          'button',
+          { name: 'Open agreement version' },
+        ),
+      );
 
-    expect(
-      await screen.findByText('The Contract could not be loaded. Try again.'),
-    ).toBeVisible();
-    expect(transport.contractReads).toEqual([
-      '/agreements/addendum-one/versions/addendum-version-one',
-    ]);
-  });
+      expect(
+        await screen.findByText(`Original source of ${subject}`),
+      ).toBeVisible();
+      await waitFor(() =>
+        expect(
+          within(contractRegion()).getByText('Conditions of version 1'),
+        ).toBeVisible(),
+      );
+      expect(
+        within(contractRegion()).getByText(
+          'Historical version — preserved; no further decision or signature.',
+        ),
+      ).toBeVisible();
+      expect(transport.contractReads).toEqual(['/versions/version-one']);
+    });
 
-  it('never shows another version when the exact version is no longer readable', async () => {
-    const transport = installTransport();
-    transport.versionReadStatus = 404;
-    render(<App identity={deterministicBrowserIdentity()} />);
+    it('opens an Addendum as its own agreement and shows the existing unavailable state when it cannot be read', async () => {
+      const transport = installTransport();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
 
-    fireEvent.click(
-      within(await activityRow('rejected an agreement version')).getByRole(
-        'button',
-        { name: 'Open agreement version' },
-      ),
-    );
+      const [addendum] = await screen.findAllByText(
+        'Ada Ionescu created an illustrative agreement',
+      );
+      const row = addendum?.closest('li');
+      if (!(row instanceof HTMLElement)) throw new Error('Expected a row.');
+      fireEvent.click(
+        within(row).getByRole('button', { name: 'Open agreement version' }),
+      );
 
-    expect(
-      await screen.findByText('The Contract could not be loaded. Try again.'),
-    ).toBeVisible();
-    await waitFor(() =>
-      expect(transport.contractReads).toEqual(['/versions/version-one']),
-    );
-    expect(screen.queryByText('Conditions of version 1')).toBeNull();
-    expect(screen.queryByText('Conditions of version 2')).toBeNull();
-  });
-});
+      expect(
+        await screen.findByText('The Contract could not be loaded. Try again.'),
+      ).toBeVisible();
+      expect(transport.contractReads).toEqual([
+        '/agreements/addendum-one/versions/addendum-version-one',
+      ]);
+    });
+
+    it('never shows another version when the exact version is no longer readable', async () => {
+      const transport = installTransport();
+      transport.versionReadStatus = 404;
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+
+      fireEvent.click(
+        within(await activityRow('rejected an agreement version')).getByRole(
+          'button',
+          { name: 'Open agreement version' },
+        ),
+      );
+
+      expect(
+        await screen.findByText('The Contract could not be loaded. Try again.'),
+      ).toBeVisible();
+      await waitFor(() =>
+        expect(transport.contractReads).toEqual(['/versions/version-one']),
+      );
+      expect(screen.queryByText('Conditions of version 1')).toBeNull();
+      expect(screen.queryByText('Conditions of version 2')).toBeNull();
+    });
+  },
+);
