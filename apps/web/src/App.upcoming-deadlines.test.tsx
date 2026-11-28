@@ -1,12 +1,12 @@
 import {
   act,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
 } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { appInterfaces, renderInInterface } from './test/app-interface';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
@@ -144,7 +144,10 @@ function server() {
         });
       if (url.pathname === '/api/due-soon-tasks') {
         const offset = Number(url.searchParams.get('offset') ?? 0);
-        calls.push({ path: url.pathname, offset, companyId });
+        // The Clarté Today week reads the first page while no full list is
+        // open; only the full list's reads are counted and held here.
+        const fromList =
+          document.querySelector('.operational-home-upcoming-panel') !== null;
         const value = {
           companyId,
           today: state.today,
@@ -164,6 +167,8 @@ function server() {
           state.status === 200
             ? Response.json(state.transform(value))
             : new Response(null, { status: state.status });
+        if (!fromList) return response;
+        calls.push({ path: url.pathname, offset, companyId });
         if (hold)
           return new Promise<Response>((answer) =>
             held.push({ answer, response, signal: init?.signal }),
@@ -233,448 +238,523 @@ function actorReads() {
       input.toString().endsWith('/access/current-actor'),
     ).length;
 }
-describe('Personal upcoming deadlines through App', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    window.history.replaceState(null, '', '/');
-    Element.prototype.scrollIntoView = vi.fn();
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn(
-        (query: string) =>
-          ({
-            matches: true,
-            media: query,
-            onchange: null,
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            dispatchEvent: vi.fn(() => false),
-          }) satisfies MediaQueryList,
-      ),
-    );
-  });
-  afterEach(() => {
-    Element.prototype.scrollIntoView = originalScrollIntoView;
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-    window.history.replaceState(null, '', '/');
-  });
-  it('opens the complete lazy page, traverses the last row and restores focus on close', async () => {
-    const api = server();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await screen.findByRole('button', { name: 'Show my upcoming deadlines' });
-    expect(api.calls).toHaveLength(0);
-    await open();
-    expect(within(panel()).getAllByRole('listitem')).toHaveLength(25);
-    expect(trigger()).toHaveAttribute('aria-controls', panel().id);
-    expect(within(panel()).getByRole('heading', { level: 4 })).toHaveFocus();
-    expect(
-      within(panel()).getByRole('button', { name: 'Previous page' }),
-    ).toBeDisabled();
-    fireEvent.click(within(panel()).getByRole('button', { name: 'Next page' }));
-    await within(panel()).findByText('Task 25 — Literal');
-    expect(within(panel()).getAllByRole('listitem')).toHaveLength(1);
-    expect(
-      within(panel()).getByRole('button', { name: 'Next page' }),
-    ).toBeDisabled();
-    fireEvent.click(
-      within(panel()).getByRole('button', {
-        name: 'Close my upcoming deadlines',
-      }),
-    );
-    expect(trigger()).toHaveFocus();
-    expect(api.calls.map((call) => call.offset)).toEqual([0, 25]);
-  });
-  it('opens the exact Task from the last page through the owning Project panel', async () => {
-    const api = server();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await open();
-    fireEvent.click(within(panel()).getByRole('button', { name: 'Next page' }));
-    await within(panel()).findByText('Task 25 — Literal');
-    fireEvent.click(
-      within(panel()).getByRole('button', { name: /^Open Task 25/u }),
-    );
-    const detail = await screen.findByRole('article', {
-      name: project.title,
+describe.each(appInterfaces)(
+  'Personal upcoming deadlines through App in the %s interface',
+  (appInterface) => {
+    beforeEach(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.history.replaceState(null, '', '/');
+      Element.prototype.scrollIntoView = vi.fn();
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn(
+          (query: string) =>
+            ({
+              matches: true,
+              media: query,
+              onchange: null,
+              addListener: vi.fn(),
+              removeListener: vi.fn(),
+              addEventListener: vi.fn(),
+              removeEventListener: vi.fn(),
+              dispatchEvent: vi.fn(() => false),
+            }) satisfies MediaQueryList,
+        ),
+      );
     });
-    expect(detail).toBeVisible();
-    const tasksRegion = await screen.findByRole('region', {
-      name: 'Tasks',
+    afterEach(() => {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+      window.history.replaceState(null, '', '/');
     });
-    await within(tasksRegion).findByRole('heading', {
-      name: 'Task 25 — Literal',
-    });
-    expect(window.location.hash).toBe('#projects');
-    expect(window.location.href).not.toMatch(/task-25|project-upcoming/u);
-    expect(api.calls.map((call) => call.offset)).toEqual([0, 25]);
-  });
-  it('preserves legitimate server order when sub-millisecond creation times have equal public ISO values and reversed ids', async () => {
-    const api = server();
-    api.state.total = 2;
-    api.state.transform = (value) => {
-      if (!value || typeof value !== 'object' || Array.isArray(value))
-        throw new Error('Expected fixture object');
-      return { ...value, tasks: [task(1), task(0)] };
-    };
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await open();
-    expect(
-      within(panel())
-        .getAllByRole('heading', { level: 5 })
-        .map((heading) => heading.textContent),
-    ).toEqual(['Task 01 — Literal', 'Task 00 — Literal']);
-    expect(within(panel()).getAllByRole('listitem')).toHaveLength(2);
-  });
-  it('clears failed later pages, retries their offset, refreshes zero and restarts zero at server-date rollover', async () => {
-    const api = server();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await open();
-    api.state.status = 503;
-    fireEvent.click(within(panel()).getByRole('button', { name: 'Next page' }));
-    await within(panel()).findByRole('alert');
-    expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
-    expect(panel()).not.toHaveTextContent('Showing 1–25');
-    api.state.status = 200;
-    fireEvent.click(
-      within(panel()).getByRole('button', { name: 'Retry loading deadlines' }),
-    );
-    await within(panel()).findByText('Task 25 — Literal');
-    expect(api.calls.map((call) => call.offset)).toEqual([0, 25, 25]);
-    fireEvent.click(
-      within(panel()).getByRole('button', { name: 'Refresh deadlines' }),
-    );
-    await within(panel()).findByText('Task 00 — Literal');
-    api.state.today = '2026-09-28';
-    api.state.throughDate = '2026-10-05';
-    fireEvent.click(within(panel()).getByRole('button', { name: 'Next page' }));
-    await waitFor(() =>
-      expect(api.calls.map((call) => call.offset)).toEqual([
-        0, 25, 25, 0, 25, 0,
-      ]),
-    );
-    await within(panel()).findByText('Task 00 — Literal');
-    expect(
-      within(panel()).queryByText('Task 25 — Literal'),
-    ).not.toBeInTheDocument();
-    expect(panel().querySelector('time')).toHaveAttribute(
-      'dateTime',
-      '2026-09-28',
-    );
-  });
-
-  it('retires a held reply on close and a newer request without restoring stale rows', async () => {
-    const api = server();
-    api.state.total = 1;
-    api.hold();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Show my upcoming deadlines' }),
-    );
-    await waitFor(() => expect(api.held).toHaveLength(1));
-    fireEvent.click(
-      within(panel()).getByRole('button', {
-        name: 'Close my upcoming deadlines',
-      }),
-    );
-    fireEvent.click(trigger());
-    await waitFor(() => expect(api.held).toHaveLength(2));
-    await api.release();
-    expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
-    expect(within(panel()).getByRole('status')).toHaveTextContent(
-      'Loading your deadlines',
-    );
-    await api.release();
-    await within(panel()).findByText('Task 00 — Literal');
-  });
-
-  it('retires a held page on Company change and does not reuse its rows in the new Company', async () => {
-    const api = server();
-    api.hold();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Show my upcoming deadlines' }),
-    );
-    await waitFor(() => expect(api.held).toHaveLength(1));
-    changeValue(
-      screen.getByLabelText('Active Company', { exact: true }),
-      otherCompany.id,
-    );
-    await waitFor(() =>
+    it('opens the complete lazy page, traverses the last row and restores focus on close', async () => {
+      const api = server();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await screen.findByRole('button', { name: 'Show my upcoming deadlines' });
+      expect(api.calls).toHaveLength(0);
+      await open();
+      expect(within(panel()).getAllByRole('listitem')).toHaveLength(25);
+      expect(trigger()).toHaveAttribute('aria-controls', panel().id);
+      expect(within(panel()).getByRole('heading', { level: 4 })).toHaveFocus();
       expect(
-        screen.getByLabelText('Active Company', { exact: true }),
-      ).toHaveValue(otherCompany.id),
-    );
-    await api.release();
-    expect(screen.queryByText('Task 00 — Literal')).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('region', {
-        name: 'My upcoming deadlines — PRISMA-PRIM',
-      }),
-    ).not.toBeInTheDocument();
-    api.unhold();
-    api.state.total = 0;
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Show my upcoming deadlines' }),
-    );
-    const other = screen.getByRole('region', {
-      name: 'My upcoming deadlines — BIC',
-    });
-    await within(other).findByText(
-      'You have no open Tasks in this date range.',
-    );
-    expect(api.calls.map((call) => call.companyId)).toEqual([
-      company.id,
-      otherCompany.id,
-    ]);
-  });
-
-  it('retires replies after captured authority or membership changes and after a new session owner', async () => {
-    window.history.replaceState(null, '', '/');
-    const api = server();
-    api.state.actor = (companyId: string) =>
-      withOfferDecisionQueue(actor(companyId));
-    api.hold();
-    const view = render(<App identity={deterministicBrowserIdentity()} />);
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Show my upcoming deadlines' }),
-    );
-    await waitFor(() => expect(api.held).toHaveLength(1));
-    api.state.actor = (companyId: string) => {
-      const current = actor(companyId);
-      if (!current.activeCompany) throw new Error('Expected Company');
-      return withOfferDecisionQueue({
-        ...current,
-        activeCompany: {
-          ...current.activeCompany,
-          grants: withoutCompanyGrants(
-            current.activeCompany.grants,
-            'company_task_manager',
-          ),
-        },
-      });
-    };
-    await refuseOverviewQueueRefresh({
-      refuse: () => {
-        api.state.queueRefusals = 1;
-      },
-      actorReads,
-    });
-    await waitFor(() =>
+        within(panel()).getByRole('button', { name: 'Previous page' }),
+      ).toBeDisabled();
+      fireEvent.click(
+        within(panel()).getByRole('button', { name: 'Next page' }),
+      );
+      await within(panel()).findByText('Task 25 — Literal');
+      expect(within(panel()).getAllByRole('listitem')).toHaveLength(1);
       expect(
-        screen.queryByRole('button', { name: 'Show my upcoming deadlines' }),
-      ).not.toBeInTheDocument(),
-    );
-    expect(api.held[0]?.signal?.aborted).toBe(true);
-    await api.release();
-    expect(screen.queryByText('Task 00 — Literal')).not.toBeInTheDocument();
-    api.state.actor = (companyId: string) =>
-      withOfferDecisionQueue(actor(companyId));
-    view.rerender(<App identity={deterministicBrowserIdentity()} />);
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Show my upcoming deadlines' }),
-    );
-    await waitFor(() => expect(api.held).toHaveLength(1));
-    api.state.actor = (companyId: string) =>
-      withOfferDecisionQueue({
-        ...actor(companyId),
-        workspaceMembershipId: 'replacement-membership',
+        within(panel()).getByRole('button', { name: 'Next page' }),
+      ).toBeDisabled();
+      fireEvent.click(
+        within(panel()).getByRole('button', {
+          name: 'Close my upcoming deadlines',
+        }),
+      );
+      expect(trigger()).toHaveFocus();
+      expect(api.calls.map((call) => call.offset)).toEqual([0, 25]);
+    });
+    it('opens the exact Task from the last page through the owning Project panel', async () => {
+      const api = server();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await open();
+      fireEvent.click(
+        within(panel()).getByRole('button', { name: 'Next page' }),
+      );
+      await within(panel()).findByText('Task 25 — Literal');
+      fireEvent.click(
+        within(panel()).getByRole('button', { name: /^Open Task 25/u }),
+      );
+      const detail = await screen.findByRole('article', {
+        name: project.title,
       });
-    view.rerender(<App identity={deterministicBrowserIdentity()} />);
-    expect(api.held[0]?.signal?.aborted).toBe(true);
-    await api.release();
-    expect(screen.queryByText('Task 00 — Literal')).not.toBeInTheDocument();
-  });
-
-  it('retires a pending page when the current Home read withdraws Task access', async () => {
-    const api = server();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await open();
-    api.hold();
-    fireEvent.click(
-      within(panel()).getByRole('button', { name: 'Refresh deadlines' }),
-    );
-    await waitFor(() => expect(api.held).toHaveLength(1));
-    api.state.actor = (companyId: string) => {
-      const current = actor(companyId);
-      if (!current.activeCompany) throw new Error('Expected Company');
-      return {
-        ...current,
-        activeCompany: {
-          ...current.activeCompany,
-          grants: withoutCompanyGrants(
-            current.activeCompany.grants,
-            'company_task_manager',
-          ),
-        },
+      expect(detail).toBeVisible();
+      const tasksRegion = await screen.findByRole('region', {
+        name: 'Tasks',
+      });
+      await within(tasksRegion).findByRole('heading', {
+        name: 'Task 25 — Literal',
+      });
+      expect(window.location.hash).toBe('#projects');
+      expect(window.location.href).not.toMatch(/task-25|project-upcoming/u);
+      expect(api.calls.map((call) => call.offset)).toEqual([0, 25]);
+    });
+    it('preserves legitimate server order when sub-millisecond creation times have equal public ISO values and reversed ids', async () => {
+      const api = server();
+      api.state.total = 2;
+      api.state.transform = (value) => {
+        if (!value || typeof value !== 'object' || Array.isArray(value))
+          throw new Error('Expected fixture object');
+        return { ...value, tasks: [task(1), task(0)] };
       };
-    };
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Refresh Company summary' }),
-    );
-    await waitFor(() =>
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await open();
       expect(
-        screen.queryByRole('button', { name: 'Show my upcoming deadlines' }),
-      ).not.toBeInTheDocument(),
-    );
-    await api.release();
-    expect(screen.queryByText('Task 00 — Literal')).not.toBeInTheDocument();
-  });
-
-  it('suppresses a held later page after a newer refresh on the same panel', async () => {
-    const api = server();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await open();
-    api.hold();
-    fireEvent.click(within(panel()).getByRole('button', { name: 'Next page' }));
-    await waitFor(() => expect(api.held).toHaveLength(1));
-    fireEvent.click(
-      within(panel()).getByRole('button', { name: 'Refresh deadlines' }),
-    );
-    await waitFor(() => expect(api.held).toHaveLength(2));
-    await api.release();
-    expect(
-      within(panel()).queryByText('Task 25 — Literal'),
-    ).not.toBeInTheDocument();
-    expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
-    await api.release();
-    await within(panel()).findByText('Task 00 — Literal');
-    expect(within(panel()).getAllByRole('listitem')).toHaveLength(25);
-    expect(api.calls.map((call) => call.offset)).toEqual([0, 25, 0]);
-  });
-
-  it('removes rows and actions when the real session is rejected', async () => {
-    const api = server();
-    const view = render(<App identity={deterministicBrowserIdentity()} />);
-    await open();
-    api.state.status = 401;
-    fireEvent.click(
-      within(panel()).getByRole('button', { name: 'Refresh deadlines' }),
-    );
-    await waitFor(() =>
-      expect(sessionStorage.getItem('deterministic-auth-state')).toBe(
-        'signed-out',
-      ),
-    );
-    expect(screen.queryByText('Task 00 — Literal')).not.toBeInTheDocument();
-    expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
-    view.rerender(<App identity={deterministicBrowserIdentity()} />);
-    await waitFor(() =>
+        within(panel())
+          .getAllByRole('heading', { level: 5 })
+          .map((heading) => heading.textContent),
+      ).toEqual(['Task 01 — Literal', 'Task 00 — Literal']);
+      expect(within(panel()).getAllByRole('listitem')).toHaveLength(2);
+    });
+    it('clears failed later pages, retries their offset, refreshes zero and restarts zero at server-date rollover', async () => {
+      const api = server();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await open();
+      api.state.status = 503;
+      fireEvent.click(
+        within(panel()).getByRole('button', { name: 'Next page' }),
+      );
+      await within(panel()).findByRole('alert');
+      expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
+      expect(panel()).not.toHaveTextContent('Showing 1–25');
+      api.state.status = 200;
+      fireEvent.click(
+        within(panel()).getByRole('button', {
+          name: 'Retry loading deadlines',
+        }),
+      );
+      await within(panel()).findByText('Task 25 — Literal');
+      expect(api.calls.map((call) => call.offset)).toEqual([0, 25, 25]);
+      fireEvent.click(
+        within(panel()).getByRole('button', { name: 'Refresh deadlines' }),
+      );
+      await within(panel()).findByText('Task 00 — Literal');
+      api.state.today = '2026-09-28';
+      api.state.throughDate = '2026-10-05';
+      fireEvent.click(
+        within(panel()).getByRole('button', { name: 'Next page' }),
+      );
+      await waitFor(() =>
+        expect(api.calls.map((call) => call.offset)).toEqual([
+          0, 25, 25, 0, 25, 0,
+        ]),
+      );
+      await within(panel()).findByText('Task 00 — Literal');
       expect(
-        screen.queryByRole('button', { name: 'Show my upcoming deadlines' }),
-      ).not.toBeInTheDocument(),
-    );
-  });
+        within(panel()).queryByText('Task 25 — Literal'),
+      ).not.toBeInTheDocument();
+      expect(panel().querySelector('time')).toHaveAttribute(
+        'dateTime',
+        '2026-09-28',
+      );
+    });
 
-  it('keeps genuine empty, out-of-range and forbidden states distinct', async () => {
-    const api = server();
-    api.state.total = 0;
-    render(<App identity={deterministicBrowserIdentity()} />);
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Show my upcoming deadlines' }),
-    );
-    await within(panel()).findByText(
-      'You have no open Tasks in this date range.',
-    );
-    api.state.total = 26;
-    fireEvent.click(
-      within(panel()).getByRole('button', { name: 'Refresh deadlines' }),
-    );
-    await within(panel()).findByText('Task 00 — Literal');
-    api.state.total = 2;
-    fireEvent.click(within(panel()).getByRole('button', { name: 'Next page' }));
-    await within(panel()).findByText(
-      'This page no longer contains Tasks. Go back or refresh the list.',
-    );
-    expect(
-      within(panel()).getByRole('button', { name: 'Previous page' }),
-    ).toBeEnabled();
-    api.state.status = 403;
-    fireEvent.click(
-      within(panel()).getByRole('button', { name: 'Refresh deadlines' }),
-    );
-    await within(panel()).findByText(
-      'Deadlines are unavailable with your current access.',
-    );
-    expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
-    expect(within(panel()).queryByText(/Total:/u)).not.toBeInTheDocument();
-  });
+    it('retires a held reply on close and a newer request without restoring stale rows', async () => {
+      const api = server();
+      api.state.total = 1;
+      api.hold();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Show my upcoming deadlines',
+        }),
+      );
+      await waitFor(() => expect(api.held).toHaveLength(1));
+      fireEvent.click(
+        within(panel()).getByRole('button', {
+          name: 'Close my upcoming deadlines',
+        }),
+      );
+      fireEvent.click(trigger());
+      await waitFor(() => expect(api.held).toHaveLength(2));
+      await api.release();
+      expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
+      expect(within(panel()).getByRole('status')).toHaveTextContent(
+        'Loading your deadlines',
+      );
+      await api.release();
+      await within(panel()).findByText('Task 00 — Literal');
+    });
 
-  it.each([
-    { name: 'foreign Company', value: { companyId: 'foreign' } },
-    { name: 'incorrect date range', value: { throughDate: '2026-10-05' } },
-    { name: 'wrong offset', value: { offset: 25 } },
-    { name: 'unsupported page size', value: { pageSize: 100 } },
-    { name: 'inconsistent total', value: { total: 0 } },
-    {
-      name: 'foreign assignee',
-      value: {
-        tasks: [
-          {
-            ...task(0),
-            assignee: {
-              workspaceMembershipId: 'colleague',
-              displayLabel: 'Other',
+    it('retires a held page on Company change and does not reuse its rows in the new Company', async () => {
+      const api = server();
+      api.hold();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Show my upcoming deadlines',
+        }),
+      );
+      await waitFor(() => expect(api.held).toHaveLength(1));
+      changeValue(
+        screen.getByLabelText('Active Company', { exact: true }),
+        otherCompany.id,
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByLabelText('Active Company', { exact: true }),
+        ).toHaveValue(otherCompany.id),
+      );
+      await api.release();
+      expect(screen.queryByText('Task 00 — Literal')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('region', {
+          name: 'My upcoming deadlines — PRISMA-PRIM',
+        }),
+      ).not.toBeInTheDocument();
+      api.unhold();
+      api.state.total = 0;
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Show my upcoming deadlines',
+        }),
+      );
+      const other = screen.getByRole('region', {
+        name: 'My upcoming deadlines — BIC',
+      });
+      await within(other).findByText(
+        'You have no open Tasks in this date range.',
+      );
+      expect(api.calls.map((call) => call.companyId)).toEqual([
+        company.id,
+        otherCompany.id,
+      ]);
+    });
+
+    it('retires replies after captured authority or membership changes and after a new session owner', async () => {
+      window.history.replaceState(null, '', '/');
+      const api = server();
+      api.state.actor = (companyId: string) =>
+        withOfferDecisionQueue(actor(companyId));
+      api.hold();
+      const view = renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Show my upcoming deadlines',
+        }),
+      );
+      await waitFor(() => expect(api.held).toHaveLength(1));
+      api.state.actor = (companyId: string) => {
+        const current = actor(companyId);
+        if (!current.activeCompany) throw new Error('Expected Company');
+        return withOfferDecisionQueue({
+          ...current,
+          activeCompany: {
+            ...current.activeCompany,
+            grants: withoutCompanyGrants(
+              current.activeCompany.grants,
+              'company_task_manager',
+            ),
+          },
+        });
+      };
+      await refuseOverviewQueueRefresh({
+        refuse: () => {
+          api.state.queueRefusals = 1;
+        },
+        actorReads,
+      });
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('button', { name: 'Show my upcoming deadlines' }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(api.held[0]?.signal?.aborted).toBe(true);
+      await api.release();
+      expect(screen.queryByText('Task 00 — Literal')).not.toBeInTheDocument();
+      api.state.actor = (companyId: string) =>
+        withOfferDecisionQueue(actor(companyId));
+      view.rerender(<App identity={deterministicBrowserIdentity()} />);
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Show my upcoming deadlines',
+        }),
+      );
+      await waitFor(() => expect(api.held).toHaveLength(1));
+      api.state.actor = (companyId: string) =>
+        withOfferDecisionQueue({
+          ...actor(companyId),
+          workspaceMembershipId: 'replacement-membership',
+        });
+      view.rerender(<App identity={deterministicBrowserIdentity()} />);
+      expect(api.held[0]?.signal?.aborted).toBe(true);
+      await api.release();
+      expect(screen.queryByText('Task 00 — Literal')).not.toBeInTheDocument();
+    });
+
+    it('retires a pending page when the current Home read withdraws Task access', async () => {
+      const api = server();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await open();
+      api.hold();
+      fireEvent.click(
+        within(panel()).getByRole('button', { name: 'Refresh deadlines' }),
+      );
+      await waitFor(() => expect(api.held).toHaveLength(1));
+      api.state.actor = (companyId: string) => {
+        const current = actor(companyId);
+        if (!current.activeCompany) throw new Error('Expected Company');
+        return {
+          ...current,
+          activeCompany: {
+            ...current.activeCompany,
+            grants: withoutCompanyGrants(
+              current.activeCompany.grants,
+              'company_task_manager',
+            ),
+          },
+        };
+      };
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Refresh Company summary' }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('button', { name: 'Show my upcoming deadlines' }),
+        ).not.toBeInTheDocument(),
+      );
+      await api.release();
+      expect(screen.queryByText('Task 00 — Literal')).not.toBeInTheDocument();
+    });
+
+    it('suppresses a held later page after a newer refresh on the same panel', async () => {
+      const api = server();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await open();
+      api.hold();
+      fireEvent.click(
+        within(panel()).getByRole('button', { name: 'Next page' }),
+      );
+      await waitFor(() => expect(api.held).toHaveLength(1));
+      fireEvent.click(
+        within(panel()).getByRole('button', { name: 'Refresh deadlines' }),
+      );
+      await waitFor(() => expect(api.held).toHaveLength(2));
+      await api.release();
+      expect(
+        within(panel()).queryByText('Task 25 — Literal'),
+      ).not.toBeInTheDocument();
+      expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
+      await api.release();
+      await within(panel()).findByText('Task 00 — Literal');
+      expect(within(panel()).getAllByRole('listitem')).toHaveLength(25);
+      expect(api.calls.map((call) => call.offset)).toEqual([0, 25, 0]);
+    });
+
+    it('removes rows and actions when the real session is rejected', async () => {
+      const api = server();
+      const view = renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await open();
+      api.state.status = 401;
+      fireEvent.click(
+        within(panel()).getByRole('button', { name: 'Refresh deadlines' }),
+      );
+      await waitFor(() =>
+        expect(sessionStorage.getItem('deterministic-auth-state')).toBe(
+          'signed-out',
+        ),
+      );
+      // Clarté's week keeps its own earlier read until App leaves the session.
+      expect(
+        (appInterface === 'clarte' ? within(panel()) : screen).queryByText(
+          'Task 00 — Literal',
+        ),
+      ).not.toBeInTheDocument();
+      expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
+      view.rerender(<App identity={deterministicBrowserIdentity()} />);
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('button', { name: 'Show my upcoming deadlines' }),
+        ).not.toBeInTheDocument(),
+      );
+    });
+
+    it('keeps genuine empty, out-of-range and forbidden states distinct', async () => {
+      const api = server();
+      api.state.total = 0;
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Show my upcoming deadlines',
+        }),
+      );
+      await within(panel()).findByText(
+        'You have no open Tasks in this date range.',
+      );
+      api.state.total = 26;
+      fireEvent.click(
+        within(panel()).getByRole('button', { name: 'Refresh deadlines' }),
+      );
+      await within(panel()).findByText('Task 00 — Literal');
+      api.state.total = 2;
+      fireEvent.click(
+        within(panel()).getByRole('button', { name: 'Next page' }),
+      );
+      await within(panel()).findByText(
+        'This page no longer contains Tasks. Go back or refresh the list.',
+      );
+      expect(
+        within(panel()).getByRole('button', { name: 'Previous page' }),
+      ).toBeEnabled();
+      api.state.status = 403;
+      fireEvent.click(
+        within(panel()).getByRole('button', { name: 'Refresh deadlines' }),
+      );
+      await within(panel()).findByText(
+        'Deadlines are unavailable with your current access.',
+      );
+      expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
+      expect(within(panel()).queryByText(/Total:/u)).not.toBeInTheDocument();
+    });
+
+    it.each([
+      { name: 'foreign Company', value: { companyId: 'foreign' } },
+      { name: 'incorrect date range', value: { throughDate: '2026-10-05' } },
+      { name: 'wrong offset', value: { offset: 25 } },
+      { name: 'unsupported page size', value: { pageSize: 100 } },
+      { name: 'inconsistent total', value: { total: 0 } },
+      {
+        name: 'foreign assignee',
+        value: {
+          tasks: [
+            {
+              ...task(0),
+              assignee: {
+                workspaceMembershipId: 'colleague',
+                displayLabel: 'Other',
+              },
             },
-          },
-        ],
+          ],
+        },
       },
-    },
-    {
-      name: 'closed Task',
-      value: {
-        tasks: [
-          {
-            ...task(0),
-            status: 'done',
-            completion: {
-              actor: author,
-              occurredAt: '2026-09-27T10:00:00.000Z',
+      {
+        name: 'closed Task',
+        value: {
+          tasks: [
+            {
+              ...task(0),
+              status: 'done',
+              completion: {
+                actor: author,
+                occurredAt: '2026-09-27T10:00:00.000Z',
+              },
             },
-          },
-        ],
+          ],
+        },
       },
-    },
-    {
-      name: 'outside date window',
-      value: { tasks: [{ ...task(0), dueDate: '2026-10-05' }] },
-    },
-    { name: 'duplicate Task', value: { total: 2, tasks: [task(0), task(0)] } },
-    {
-      name: 'unordered dates',
-      value: { total: 2, tasks: [task(25), task(0)] },
-    },
-    {
-      name: 'unordered creation times',
-      value: {
-        total: 2,
-        tasks: [
-          {
-            ...task(0),
-            createdAt: '2026-09-19T09:00:01.000Z',
-            updatedAt: '2026-09-19T09:00:01.000Z',
-          },
-          task(1),
-        ],
+      {
+        name: 'outside date window',
+        value: { tasks: [{ ...task(0), dueDate: '2026-10-05' }] },
       },
-    },
-  ])('refuses $name before exposing any rows or count', async ({ value }) => {
-    const api = server();
-    api.state.total = 1;
-    api.state.transform = (unknown) => {
-      if (!unknown || typeof unknown !== 'object' || Array.isArray(unknown))
-        throw new Error('Expected fixture object');
-      return { ...unknown, ...value };
-    };
-    render(<App identity={deterministicBrowserIdentity()} />);
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Show my upcoming deadlines' }),
-    );
-    await within(panel()).findByRole('alert');
-    expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
-    expect(panel()).not.toHaveTextContent('Total:');
-    expect(panel()).not.toHaveTextContent('Task 00 — Literal');
-  });
-});
+      {
+        name: 'duplicate Task',
+        value: { total: 2, tasks: [task(0), task(0)] },
+      },
+      {
+        name: 'unordered dates',
+        value: { total: 2, tasks: [task(25), task(0)] },
+      },
+      {
+        name: 'unordered creation times',
+        value: {
+          total: 2,
+          tasks: [
+            {
+              ...task(0),
+              createdAt: '2026-09-19T09:00:01.000Z',
+              updatedAt: '2026-09-19T09:00:01.000Z',
+            },
+            task(1),
+          ],
+        },
+      },
+    ])('refuses $name before exposing any rows or count', async ({ value }) => {
+      const api = server();
+      api.state.total = 1;
+      api.state.transform = (unknown) => {
+        if (!unknown || typeof unknown !== 'object' || Array.isArray(unknown))
+          throw new Error('Expected fixture object');
+        return { ...unknown, ...value };
+      };
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Show my upcoming deadlines',
+        }),
+      );
+      await within(panel()).findByRole('alert');
+      expect(within(panel()).queryAllByRole('listitem')).toHaveLength(0);
+      expect(panel()).not.toHaveTextContent('Total:');
+      expect(panel()).not.toHaveTextContent('Task 00 — Literal');
+    });
+  },
+);

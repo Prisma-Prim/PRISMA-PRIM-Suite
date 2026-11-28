@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react';
 import {
   PendingDecisionQueue,
+  type DecisionQueueState,
   type PendingDecisionContext,
 } from '../commercial-decision-queue/PendingDecisionQueue';
 import { ContractPanel } from './ContractPanel';
@@ -10,7 +12,13 @@ import {
 } from './contract-decision-queue-response';
 import { useContractDecisionQueueCopy } from './contract-decision-queue.copy';
 
-export function ContractDecisionQueue(props: PendingDecisionContext) {
+export function ContractDecisionQueue({
+  present,
+  ...props
+}: PendingDecisionContext & {
+  /** The Clarté Today presentation of this same owner (#1532). */
+  present?: (queue: DecisionQueueState<ContractDecisionQueueItem>) => ReactNode;
+}) {
   const copy = useContractDecisionQueueCopy();
   const authority = contractDecisionQueueAuthority(props.actor);
   const company = props.actor.activeCompany;
@@ -48,6 +56,7 @@ export function ContractDecisionQueue(props: PendingDecisionContext) {
       actionLabel={(item) =>
         `${copy.open} ${kinds[item.kind]} ${item.illustrativeReference}, ${copy.version.toLowerCase()} ${item.versionNumber}`
       }
+      present={present}
       renderSelected={(item, report) => (
         <ContractPanel
           {...props}

@@ -9,7 +9,9 @@ import {
   useRef,
   useState,
   type ComponentProps,
+  type ReactNode,
 } from 'react';
+import type { DecisionQueueState } from '../commercial-decision-queue/PendingDecisionQueue';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { ProfitabilityEstimatePanel } from './ProfitabilityEstimatePanel';
@@ -36,8 +38,13 @@ type Props = Pick<
 type View =
   | { kind: 'loading' | 'error' | 'denied' }
   | { kind: 'ready'; page: DecisionQueuePage };
+/** The Clarté Today presentation of this same owner (#1532). */
+type Presentation = (queue: DecisionQueueState<DecisionQueueItem>) => ReactNode;
 
-export function ProfitabilityDecisionQueue(props: Props) {
+export function ProfitabilityDecisionQueue({
+  present,
+  ...props
+}: Props & { present?: Presentation }) {
   const generation = useRequestLifetime(props.identity, 'decision-queue');
 
   if (
@@ -52,12 +59,17 @@ export function ProfitabilityDecisionQueue(props: Props) {
       key={`${profitabilityContextKey(props.actor)}:${generation}`}
       {...props}
       company={props.actor.activeCompany}
+      present={present}
     />
   );
 }
-function QueueOwner(
-  props: Props & { company: NonNullable<Props['actor']['activeCompany']> },
-) {
+function QueueOwner({
+  present,
+  ...props
+}: Props & {
+  company: NonNullable<Props['actor']['activeCompany']>;
+  present?: Presentation;
+}) {
   const copy = useDecisionQueueCopy();
   const { formatDateTime } = useInterfaceLocale();
   const id = useId();
@@ -141,6 +153,32 @@ function QueueOwner(
     setCursors(next);
     void load(next.at(-1), true);
   }
+  if (present)
+    return present({
+      view,
+      page: cursors.length,
+      heading,
+      refresh: () => move([undefined]),
+      previous: () => {
+        if (cursors.length > 1) move(cursors.slice(0, -1));
+      },
+      next: () => {
+        if (view.kind === 'ready' && view.page.nextCursor)
+          move([...cursors, view.page.nextCursor]);
+      },
+      retry: () => void load(cursor, true),
+      renderReview: (item, controls) => (
+        <ProfitabilityEstimatePanel
+          {...props}
+          opportunityId={item.opportunityId}
+          requestedVersionId={item.versionId}
+          onProtectedAccessRejected={() => {
+            retire();
+            controls.close();
+          }}
+        />
+      ),
+    });
   return (
     <section
       className="profitability-decision-queue"

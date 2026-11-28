@@ -21,7 +21,7 @@ import './upcoming-deadlines.css';
 
 export type OperationalHomeCompany = { id: string; displayName: string };
 
-type Props = {
+export type OperationalHomeProps = {
   /** The active Company; App remounts the region for any other Company or authority. */
   company: OperationalHomeCompany;
   workspaceMembershipId: string;
@@ -40,12 +40,14 @@ type Props = {
   /** An exact selected-Company continuation, consumed once by this native panel. */
   overdueOpenIntent?: { requestId: number; onConsumed: () => void };
 };
+type Props = OperationalHomeProps;
 
-type Load =
+export type OperationalHomeLoad =
   | { kind: 'loading' }
   | { kind: 'error' }
   | { kind: 'denied' }
   | { kind: 'ready'; view: OperationalHomeView };
+type Load = OperationalHomeLoad;
 
 const icons = {
   active_clients: Users,
@@ -69,7 +71,13 @@ export function OperationalHome(
   );
 }
 
-function CompanySummary({
+/**
+ * The one owner of the Company summary read, its overdue panel and the
+ * selected-Company overdue continuation. The current overview and the Clarté
+ * Today screen render the same owner, so its read, Refresh/Retry, late-reply
+ * suppression and authority revalidation exist once.
+ */
+export function useCompanySummary({
   company,
   workspaceMembershipId,
   identity,
@@ -77,14 +85,8 @@ function CompanySummary({
   onRevalidateAuthority,
   onOpenClients,
   onOpenProjects,
-  onOpenMyTasks,
-  onOpenTask,
-  onOpenOverdueTask,
   overdueOpenIntent,
 }: Props) {
-  const copy = useOperationalHomeCopy();
-  const { formatDate } = useInterfaceLocale();
-  const titleId = useId();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [panelOpen, setPanelOpen] = useState(false);
   const ownerScope = String(
@@ -201,6 +203,43 @@ function CompanySummary({
     }
   }
 
+  return {
+    load,
+    read,
+    overdueShown,
+    panelOpen,
+    open,
+    /** Closes the overdue panel; the renderer returns focus to its card. */
+    closePanel: () => setPanelOpen(false),
+    overdueCard,
+    panelHeading,
+  };
+}
+
+function CompanySummary(props: Props) {
+  const {
+    company,
+    workspaceMembershipId,
+    identity,
+    availableSummaries,
+    onOpenMyTasks,
+    onOpenTask,
+    onOpenOverdueTask,
+  } = props;
+  const copy = useOperationalHomeCopy();
+  const { formatDate } = useInterfaceLocale();
+  const titleId = useId();
+  const {
+    load,
+    read,
+    overdueShown,
+    panelOpen,
+    open,
+    closePanel,
+    overdueCard,
+    panelHeading,
+  } = useCompanySummary(props);
+
   if (
     load.kind === 'ready' &&
     load.view.summaries.length === 0 &&
@@ -258,7 +297,7 @@ function CompanySummary({
           headingRef={panelHeading}
           onOpenTask={onOpenOverdueTask ?? onOpenTask}
           onClose={() => {
-            setPanelOpen(false);
+            closePanel();
             overdueCard.current?.focus();
           }}
         />

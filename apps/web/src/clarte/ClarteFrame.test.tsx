@@ -84,6 +84,8 @@ function renderFrame(props: Partial<ClarteFrameProps> = {}) {
         companyContext={<p>Company selector</p>}
         user={{ name: 'Ada Ionescu', email: 'ada@example.test', onSignOut }}
         overview={<p>Overview content</p>}
+        // Today's tab renders the Clarté overview once its slice migrated it.
+        clarteOverview={<p>Overview content</p>}
         recentChanges={undefined}
         {...props}
       />

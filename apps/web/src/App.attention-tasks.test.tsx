@@ -1,6 +1,5 @@
 import {
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
@@ -11,6 +10,7 @@ import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { operationalHomeCopy as copy } from './operational-home/operational-home.copy';
 import { companyGrants } from './access/company-grants.test-fixture';
+import { appInterfaces, renderInInterface } from './test/app-interface';
 
 const company = { id: 'company-attention', displayName: 'PRISMA-PRIM' };
 const today = '2026-09-27';
@@ -123,6 +123,17 @@ function installServer() {
       }
       // The old ordinary My Tasks destination is a valid supported read too.
       // The first RED must be the missing complete panel, never an HTTP404.
+      // The Clarté Today week reads the first page of the actor's deadlines.
+      if (url.pathname === '/api/due-soon-tasks')
+        return Response.json({
+          companyId: company.id,
+          today,
+          throughDate: '2026-10-04',
+          total: 0,
+          offset: 0,
+          pageSize: 25,
+          tasks: [],
+        });
       if (url.pathname === '/api/assigned-tasks')
         return Response.json({ tasks });
       if (url.pathname === '/api/projects') return Response.json([project]);
@@ -152,90 +163,98 @@ function installServer() {
   return { pages, unexpected };
 }
 const originalScrollIntoView = Element.prototype.scrollIntoView;
-describe('Complete My attention through App', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    window.history.replaceState(null, '', '/');
-    Element.prototype.scrollIntoView = vi.fn();
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn(
-        (query: string) =>
-          ({
-            matches: true,
-            media: query,
-            onchange: null,
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            dispatchEvent: vi.fn(() => false),
-          }) satisfies MediaQueryList,
-      ),
-    );
-  });
-  afterEach(() => {
-    Element.prototype.scrollIntoView = originalScrollIntoView;
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-    window.history.replaceState(null, '', '/');
-  });
-  it('opens all attention matches from the ready ten-row Home preview and pages beyond twenty-five', async () => {
-    const api = installServer();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    const preview = await screen.findByRole('region', {
-      name: copy.attention.title,
+describe.each(appInterfaces)(
+  'Complete My attention through App in the %s interface',
+  (appInterface) => {
+    beforeEach(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.history.replaceState(null, '', '/');
+      Element.prototype.scrollIntoView = vi.fn();
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn(
+          (query: string) =>
+            ({
+              matches: true,
+              media: query,
+              onchange: null,
+              addListener: vi.fn(),
+              removeListener: vi.fn(),
+              addEventListener: vi.fn(),
+              removeEventListener: vi.fn(),
+              dispatchEvent: vi.fn(() => false),
+            }) satisfies MediaQueryList,
+        ),
+      );
     });
-    expect(within(preview).getAllByRole('listitem')).toHaveLength(10);
-    expect(preview).toHaveTextContent(
-      'Showing 10 of 27 Tasks that need your attention.',
-    );
-    expect(
-      within(preview)
-        .getAllByRole('heading', { level: 4 })
-        .map((heading) => heading.textContent),
-    ).toEqual([
-      'Attention 00 — Literal',
-      'Attention 01 — Literal',
-      'Attention 02 — Literal',
-      'Attention 03 — Literal',
-      'Attention 04 — Literal',
-      'Attention 05 — Literal',
-      'Attention 06 — Literal',
-      'Attention 07 — Literal',
-      'Attention 08 — Literal',
-      'Attention 09 — Literal',
-    ]);
-    expect(api.pages).toEqual([]);
-    expect(api.unexpected).toEqual([]);
-    const trigger = within(preview).getByRole('button', {
-      name: copy.attention.seeAll,
+    afterEach(() => {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+      window.history.replaceState(null, '', '/');
     });
-    fireEvent.click(trigger);
-    const panel = await screen.findByRole('region', {
-      name: 'All Tasks needing my attention — PRISMA-PRIM',
+    it('opens all attention matches from the ready ten-row Home preview and pages beyond twenty-five', async () => {
+      const api = installServer();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      const preview = await screen.findByRole('region', {
+        name: copy.attention.title,
+      });
+      expect(within(preview).getAllByRole('listitem')).toHaveLength(10);
+      expect(preview).toHaveTextContent(
+        'Showing 10 of 27 Tasks that need your attention.',
+      );
+      expect(
+        within(preview)
+          .getAllByRole('heading', { level: 4 })
+          .map((heading) => heading.textContent),
+      ).toEqual([
+        'Attention 00 — Literal',
+        'Attention 01 — Literal',
+        'Attention 02 — Literal',
+        'Attention 03 — Literal',
+        'Attention 04 — Literal',
+        'Attention 05 — Literal',
+        'Attention 06 — Literal',
+        'Attention 07 — Literal',
+        'Attention 08 — Literal',
+        'Attention 09 — Literal',
+      ]);
+      expect(api.pages).toEqual([]);
+      expect(api.unexpected).toEqual([]);
+      const trigger = within(preview).getByRole('button', {
+        name: copy.attention.seeAll,
+      });
+      fireEvent.click(trigger);
+      const panel = await screen.findByRole('region', {
+        name: 'All Tasks needing my attention — PRISMA-PRIM',
+      });
+      await within(panel).findByText('Attention 24 — Literal');
+      expect(within(panel).getAllByRole('listitem')).toHaveLength(25);
+      expect(panel).toHaveTextContent('Total: 27');
+      expect(within(panel).getByRole('heading', { level: 4 })).toHaveFocus();
+      expect(
+        within(panel).getByRole('button', { name: 'Previous page' }),
+      ).toBeDisabled();
+      fireEvent.click(within(panel).getByRole('button', { name: 'Next page' }));
+      await within(panel).findByText('Attention 26 — Literal');
+      expect(within(panel).getAllByRole('listitem')).toHaveLength(2);
+      expect(
+        within(panel).getByRole('button', { name: 'Next page' }),
+      ).toBeDisabled();
+      fireEvent.click(
+        within(panel).getByRole('button', {
+          name: 'Close all attention Tasks',
+        }),
+      );
+      await waitFor(() => expect(trigger).toHaveFocus());
+      expect(api.pages).toEqual([0, 25]);
+      expect(api.unexpected).toEqual([]);
+      expect(window.location.hash).not.toBe('#my-tasks');
+      expect(window.location.href).not.toContain(project.id);
     });
-    await within(panel).findByText('Attention 24 — Literal');
-    expect(within(panel).getAllByRole('listitem')).toHaveLength(25);
-    expect(panel).toHaveTextContent('Total: 27');
-    expect(within(panel).getByRole('heading', { level: 4 })).toHaveFocus();
-    expect(
-      within(panel).getByRole('button', { name: 'Previous page' }),
-    ).toBeDisabled();
-    fireEvent.click(within(panel).getByRole('button', { name: 'Next page' }));
-    await within(panel).findByText('Attention 26 — Literal');
-    expect(within(panel).getAllByRole('listitem')).toHaveLength(2);
-    expect(
-      within(panel).getByRole('button', { name: 'Next page' }),
-    ).toBeDisabled();
-    fireEvent.click(
-      within(panel).getByRole('button', { name: 'Close all attention Tasks' }),
-    );
-    await waitFor(() => expect(trigger).toHaveFocus());
-    expect(api.pages).toEqual([0, 25]);
-    expect(api.unexpected).toEqual([]);
-    expect(window.location.hash).not.toBe('#my-tasks');
-    expect(window.location.href).not.toContain(project.id);
-  });
-});
+  },
+);
