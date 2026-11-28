@@ -1,7 +1,4 @@
-import {
-  OfferMessagePreparation,
-  type OfferMessageTarget,
-} from '../offer-message/offer-message-preparation';
+import { OfferWorkspace, offerPanelGrantKey } from '../offer/OfferWorkspace';
 import { OpportunityFollowUpPanel } from '../opportunity-follow-up/OpportunityFollowUpPanel';
 import { OpportunityFollowUpDiscovery } from '../opportunity-follow-up/OpportunityFollowUpDiscovery';
 import { opportunityFollowUpAuthority } from '../access/opportunity-follow-up-authority';
@@ -40,7 +37,6 @@ import {
 import { Select } from '../presentation/Select';
 import { ProfitabilityEstimatePanel } from '../profitability-estimate/ProfitabilityEstimatePanel';
 import { PricingSnapshotPanel } from '../pricing-configuration/PricingSnapshotPanel';
-import { OfferPanel } from '../offer/OfferPanel';
 import {
   OpportunityResponsible,
   type ResponsibleCandidate,
@@ -3334,14 +3330,6 @@ function RequestDetail({
   }, [requestedFocusId]);
   const stageCopy = useSalesStageCopy();
   const { formatDateTime } = useInterfaceLocale();
-  // The Offer panel remounts when the captured Offer Preparer assignment or
-  // version, or the Offer permissions of either Offer bundle, change.
-  const offerPreparer = grantOf(actor.activeCompany, 'company_offer_preparer');
-  const offerPermissions = [
-    ...(offerPreparer?.permissions ?? []),
-    ...(grantOf(actor.activeCompany, 'company_offer_approver')?.permissions ??
-      []),
-  ];
   // Each panel receives only the version it owns, numbered by its request.
   const requestedOffer =
     requestedVersion?.version.type === 'offer_version'
@@ -3357,57 +3345,13 @@ function RequestDetail({
           version: requestedVersion.version,
         }
       : undefined;
-  // RequestDetail survives request changes. A monotonic navigation identity
-  // prevents an old A draft from reviving after A → B → A.
-  const messageNavigation = JSON.stringify([
-    request.id,
-    request.initialOpportunity.id,
-    requestedOffer?.requestId,
-    requestedOffer?.offerVersionId,
-  ]);
-  const messageOwner = useRef({
-    navigation: messageNavigation,
-    generation: 0,
-    open: 0,
-  });
-  if (messageOwner.current.navigation !== messageNavigation) {
-    messageOwner.current = {
-      ...messageOwner.current,
-      navigation: messageNavigation,
-      generation: messageOwner.current.generation + 1,
-    };
-  }
-  const [messageTarget, setMessageTarget] = useState<{
-    source: OfferMessageTarget;
-    generation: number;
-    navigationGeneration: number;
-  } | null>(null);
-  const prepareMessage = (source: OfferMessageTarget) => {
-    messageOwner.current.open += 1;
-    setMessageTarget({
-      source,
-      generation: messageOwner.current.open,
-      navigationGeneration: messageOwner.current.generation,
-    });
-  };
-  const retireMessage = () => {
-    setMessageTarget(null);
-  };
-  const pdfProps = {
+  const contractPdf = useCommercialPdfDownload({
     actor,
     identity,
     opportunityId: request.initialOpportunity.id,
     onCompanyContextRejected,
     onActorRevalidated,
     onWorkspaceAccessRejected,
-  };
-  const offerPdf = useCommercialPdfDownload({
-    ...pdfProps,
-    kind: 'offer',
-    navigation: requestedOffer?.requestId,
-  });
-  const contractPdf = useCommercialPdfDownload({
-    ...pdfProps,
     kind: 'contract',
     navigation: requestedContract?.requestId,
   });
@@ -3555,29 +3499,13 @@ function RequestDetail({
             onActorRevalidated={onActorRevalidated}
             onWorkspaceAccessRejected={onWorkspaceAccessRejected}
           />
-          <OfferMessagePreparation
+          <OfferWorkspace
+            panelKey={`offer:${requestedOffer?.requestId ?? 'head'}:${clientAuthority}:${actor.internalUserId}:${actor.workspaceId}:${actor.workspaceMembershipId}:${request.id}:${request.initialOpportunity.id}:${offerPanelGrantKey(actor)}:${request.clientReference?.currentClientId ?? 'no-client'}`}
             actor={actor}
             identity={identity}
-            target={
-              messageTarget?.navigationGeneration ===
-              messageOwner.current.generation
-                ? messageTarget
-                : null
-            }
-            onCompanyContextRejected={onCompanyContextRejected}
-            onActorRevalidated={onActorRevalidated}
-            onWorkspaceAccessRejected={onWorkspaceAccessRejected}
-          />
-          {offerPdf.controls}
-          <OfferPanel
-            key={`offer:${requestedOffer?.requestId ?? 'head'}:${clientAuthority}:${actor.internalUserId}:${actor.workspaceId}:${actor.workspaceMembershipId}:${request.id}:${request.initialOpportunity.id}:${offerPreparer?.assignmentId ?? 'no-assignment'}:${offerPreparer?.permissionSetVersion ?? 'no-version'}:${offerPermissions.join(',')}:${request.clientReference?.currentClientId ?? 'no-client'}`}
-            pdf={offerPdf.callbacks}
-            onPrepareMessage={prepareMessage}
-            onMessageNavigate={retireMessage}
-            actor={actor}
-            identity={identity}
+            clientRequestId={request.id}
             opportunityId={request.initialOpportunity.id}
-            requestedVersionId={requestedOffer?.offerVersionId}
+            requestedOffer={requestedOffer}
             currentClientId={request.clientReference?.currentClientId}
             clientDisplayName={request.clientReference?.displayName}
             onCompanyContextRejected={onCompanyContextRejected}

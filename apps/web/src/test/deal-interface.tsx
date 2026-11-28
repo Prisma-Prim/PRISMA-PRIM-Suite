@@ -121,6 +121,19 @@ export async function openRequestInInterface(
   return screen.findByRole('article', { name: request.subject });
 }
 
+/**
+ * Where an exact Offer Version opens: inside its Request detail in the
+ * current interface, on its deal page's Offer stage in Clarté (#1534).
+ */
+export function offerVersionPlace(
+  appInterface: InterfacePreference,
+  request: { originalText: string },
+) {
+  return appInterface === 'current'
+    ? screen.findByText(request.originalText)
+    : screen.findByRole('region', { name: 'Offer' });
+}
+
 /** Leaves the Request detail for the list. */
 export function leaveRequestInInterface(appInterface: InterfacePreference) {
   fireEvent.click(

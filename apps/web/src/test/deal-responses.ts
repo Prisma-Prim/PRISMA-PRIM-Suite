@@ -2,6 +2,7 @@ import type {
   DealDetail,
   DealStageView,
   DealSummary,
+  OfferFact,
 } from '../clarte/deals/deal-response';
 import type { ClientRequest } from '../commercial-intake/CommercialIntakeWorkspace';
 
@@ -61,6 +62,87 @@ export function requestOnlyStages(request: ClientRequest): DealStageView[] {
     { stage: 'closure', marker: 'not_available' },
     { stage: 'collection', marker: 'not_applicable', link: 'not_linked' },
   ];
+}
+
+type CostingFacts = Extract<
+  DealStageView,
+  { stage: 'costing'; pricingSnapshot: unknown }
+>;
+
+/**
+ * The stages of a deal with Costing and Offer records, by the stage rule:
+ * the furthest stage holding a record is current, earlier ones are done.
+ */
+export function commercialStages(
+  request: ClientRequest,
+  records: Readonly<{
+    pricingSnapshot?: CostingFacts['pricingSnapshot'];
+    profitabilityEstimate?: CostingFacts['profitabilityEstimate'];
+    offer?: OfferFact | null;
+  }>,
+): DealStageView[] {
+  const pricingSnapshot = records.pricingSnapshot ?? {
+    readable: true,
+    value: null,
+  };
+  const profitabilityEstimate = records.profitabilityEstimate ?? {
+    readable: true,
+    value: null,
+  };
+  const offer = records.offer ?? null;
+  const costed =
+    (pricingSnapshot.readable && pricingSnapshot.value !== null) ||
+    (profitabilityEstimate.readable && profitabilityEstimate.value !== null);
+  const current = offer ? 'offer' : costed ? 'costing' : 'request';
+  return [
+    {
+      stage: 'request',
+      marker: current === 'request' ? 'current' : 'done',
+      capturedAt: request.capturedAt,
+      clientAssociationStatus: request.clientAssociationStatus,
+    },
+    {
+      stage: 'costing',
+      marker:
+        current === 'costing'
+          ? 'current'
+          : current === 'request'
+            ? 'upcoming'
+            : costed
+              ? 'done'
+              : 'not_applicable',
+      pricingSnapshot,
+      profitabilityEstimate,
+    },
+    {
+      stage: 'offer',
+      marker: current === 'offer' ? 'current' : 'upcoming',
+      offer,
+    },
+    { stage: 'contract', marker: 'upcoming', agreements: [] },
+    { stage: 'delivery', marker: 'not_available' },
+    { stage: 'closure', marker: 'not_available' },
+    { stage: 'collection', marker: 'not_applicable', link: 'not_linked' },
+  ];
+}
+
+/** The deal of a Request at the stage its Costing and Offer records give. */
+export function commercialDealFor(
+  request: ClientRequest,
+  records: Parameters<typeof commercialStages>[1],
+): DealDetail {
+  const stages = commercialStages(request, records);
+  const current = stages.find((view) => view.marker === 'current');
+  return {
+    ...dealSummaryFor(request, {
+      thread: {
+        kind: 'in_progress',
+        currentStage: current?.stage ?? 'request',
+      },
+    }),
+    opportunityVersion: request.initialOpportunity.version,
+    stages,
+  };
 }
 
 export function dealDetailFor(

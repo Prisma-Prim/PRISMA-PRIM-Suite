@@ -130,7 +130,18 @@ The page shows the header, the seven-stage thread, the Next step card and the se
 1. Write the panel under `deals/`, typed `DealStagePanel`. It receives the deal, its stage's `view` and the `context` App composed (Actor, identity, rejection and revalidation callbacks, navigation). Narrow `view` to your stage; the page shows a stage that is not available itself.
 2. Reuse the owner's existing transports and components, and call `context.onDealChanged()` after each confirmed change, so the thread and the Next step card reread.
 3. Replace only your stage's entry in `dealStagePanels`.
-4. Until your stage can show an exact version, an Activity Log event that names an Offer or agreement version opens in the current Request screens (`CommercialIntakeWorkspace`) inside the Deals screen, as `ClarteDeals` does today ([#1570](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1570)); move that target to your panel once it opens the named version.
+4. An Activity Log event that names an exact version opens the deal page at the stage listed for its kind in `requestedVersionStages` (`stage-panels.tsx`); the page selects that stage and hands the version to every panel as `context.requestedVersion`, numbered by its request. A kind with no stage there still opens in the current Request screens (`CommercialIntakeWorkspace`) inside the Deals screen ([#1570](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1570)). To bring yours to the page, add its kind, for example `contract_version: 'contract'`, and open `context.requestedVersion` in your panel when its `version.type` is yours.
+
+### Costing and Offer stages
+
+[#1534](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1534) gives the Costing and Offer stages their commands with the existing owners, each kept whole with its drafts, retries, receipts and permission states:
+
+- `deals/CostingStage.tsx`: the stage's facts at a glance, then `ProfitabilityEstimatePanel` and `PricingSnapshotPanel`.
+- `deals/OfferStage.tsx`: the Offer path from the deal read, then `offer/OfferWorkspace.tsx`, the one owner of the cover message preparation, the exact PDF and `OfferPanel` that the current Request detail renders too. It opens the exact Offer version an Activity Log event names.
+
+Two optional props make an owner fit a stage without changing the current interface: `onChanged`, called after each confirmed command so the page rereads the deal, and `besideVersion`, which lays a decision out beside the exact version it decides (the estimate figures beside the Director's decision, the Offer representation beside its checks, decision and simulated records). `deals/commercial-stages.css` tones them with the tokens under the stage's own class. `deals/commercial-stages.test-fixture.ts` is the fictional API of `App.clarte-deal-offer.test.tsx` and the `clarte-deal-offer` journey.
+
+The Contract and Delivery stages (#1535) plug in the same way: a panel per stage replacing its entry in `dealStagePanels`, `ContractPanel` and its Contract PDF given an `onChanged` that calls `context.onDealChanged()`, and `contract_version: 'contract'` in `requestedVersionStages`.
 
 The Request stage embeds Commercial Intake's own detail through `CommercialIntakeWorkspace`'s `requestStage` presentation, so drafts, retries and receipts stay the existing ones. `src/test/deal-responses.ts` builds the deal reads from a Request fixture, and `src/test/deal-interface.tsx` holds the steps of Request App tests that differ between the two interfaces.
 

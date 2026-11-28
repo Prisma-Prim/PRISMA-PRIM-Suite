@@ -1,0 +1,402 @@
+/*
+ * The Costing and Offer stages (#1534): the existing pricing, profitability
+ * and Offer owners, laid out and toned with the Clarté tokens. Every rule
+ * stays under the stage's own class, so the current interface is untouched.
+ */
+.clarte-frame .clarte-commercial-stage {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-commercial-owner {
+  min-width: 0;
+}
+
+.clarte-frame .clarte-costing-facts {
+  margin: 0;
+}
+
+.clarte-frame .clarte-costing-facts > div {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+}
+
+.clarte-frame .clarte-costing-facts dt {
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-costing-facts dd {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+/* Each owner reads as one Clarté card. */
+.clarte-frame
+  .clarte-commercial-owner
+  :is(.profitability-estimate, .pricing-snapshot-panel, .offer-panel) {
+  margin: 0;
+  padding: 20px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-lg);
+  color: var(--clarte-ink);
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-commercial-owner :is(h3, h4, h5) {
+  margin: 0 0 8px;
+  font-family: var(--clarte-font-heading);
+  color: var(--clarte-ink);
+}
+
+.clarte-frame .clarte-commercial-owner :is(h3, h4) {
+  font-size: 18px;
+}
+
+.clarte-frame .clarte-commercial-owner h5 {
+  font-size: 15px;
+}
+
+.clarte-frame .clarte-commercial-owner :where(p) {
+  margin: 0 0 8px;
+}
+
+.clarte-frame .clarte-commercial-owner :where(dt) {
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-commercial-owner :where(dd) {
+  margin: 0;
+}
+
+.clarte-frame .clarte-commercial-owner button:not(.shared-select__trigger) {
+  min-height: 36px;
+  max-width: 100%;
+  padding: 6px 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-sm);
+  color: var(--clarte-ink-soft);
+  background: var(--clarte-surface);
+  font: inherit;
+  font-weight: 600;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.clarte-frame
+  .clarte-commercial-owner
+  :where(button:not(.shared-select__trigger):hover:not(:disabled)) {
+  border-color: var(--clarte-faint);
+  color: var(--clarte-ink);
+}
+
+/* A form's own submit button is its main action. */
+.clarte-frame .clarte-commercial-owner button[type='submit'] {
+  border-color: var(--clarte-accent);
+  color: var(--clarte-accent-ink);
+  background: var(--clarte-accent);
+  box-shadow: 0 6px 16px -8px var(--clarte-accent);
+}
+
+.clarte-frame
+  .clarte-commercial-owner
+  button[type='submit']:hover:not(:disabled) {
+  border-color: var(--clarte-accent-strong);
+  color: var(--clarte-accent-ink);
+  background: var(--clarte-accent-strong);
+}
+
+.clarte-frame .clarte-commercial-owner button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.clarte-frame .clarte-commercial-owner :focus-visible {
+  outline: 3px solid var(--clarte-accent);
+  outline-offset: 2px;
+}
+
+.clarte-frame
+  .clarte-commercial-owner
+  :is(input:not([type='checkbox'], [type='radio']), textarea, select) {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-sm);
+  color: var(--clarte-ink);
+  background: var(--clarte-surface);
+  font: inherit;
+}
+
+.clarte-frame .clarte-commercial-owner [role='alert'] {
+  padding: 10px 14px;
+  border-radius: var(--clarte-radius-md);
+  color: var(--clarte-ink);
+  background: var(--clarte-warning-soft);
+}
+
+.clarte-frame .clarte-commercial-owner [role='status'] {
+  color: var(--clarte-ink-soft);
+}
+
+/* Profitability: the Director decides beside the exact version. */
+.clarte-frame .clarte-costing-stage .profitability-version {
+  margin-block: 16px 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--clarte-line-soft);
+}
+
+.clarte-frame .clarte-costing-stage .profitability-version-beside {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(220px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.clarte-frame .clarte-costing-stage .profitability-results {
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface-sunken);
+}
+
+.clarte-frame .clarte-costing-stage .profitability-version-decision {
+  position: sticky;
+  top: 12px;
+  padding: 16px;
+  border: 1px solid var(--clarte-accent-soft);
+  border-left: 4px solid var(--clarte-accent);
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+.clarte-frame .clarte-costing-stage .profitability-history li {
+  border-bottom-color: var(--clarte-line-soft);
+}
+
+/* Offer: the version's commands beside its exact representation. */
+.clarte-frame .clarte-offer-stage .offer-version-beside {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.clarte-frame .clarte-offer-stage .offer-version-document {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-offer-stage .offer-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.clarte-frame .clarte-offer-stage .offer-summary > strong:first-child {
+  justify-self: start;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: var(--clarte-warning);
+  background: var(--clarte-warning-soft);
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-offer-stage .offer-summary dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.clarte-frame .clarte-offer-stage .offer-summary dl > div {
+  grid-template-columns: minmax(8rem, 1fr) 1.6fr;
+  gap: 12px;
+}
+
+.clarte-frame .clarte-offer-stage .offer-representation {
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface-sunken);
+}
+
+.clarte-frame .clarte-offer-stage .offer-representation iframe {
+  min-height: 36rem;
+  border-color: var(--clarte-line);
+  border-radius: var(--clarte-radius-sm);
+  background: #fff;
+  box-shadow: var(--clarte-shadow-raised);
+}
+
+.clarte-frame .clarte-offer-stage .offer-version-commands {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.clarte-frame
+  .clarte-offer-stage
+  .offer-version-commands
+  > :is(fieldset, button, p) {
+  margin: 0;
+}
+
+.clarte-frame
+  .clarte-offer-stage
+  .offer-version-commands
+  :is(
+    .offer-quality,
+    .offer-decision,
+    .offer-transmission,
+    .offer-client-response,
+    .offer-version-history
+  ) {
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-offer-stage .offer-version-commands .offer-decision {
+  border-left: 4px solid var(--clarte-accent);
+}
+
+.clarte-frame
+  .clarte-commercial-owner
+  :is(.offer-decision, .profitability-actions)
+  button {
+  justify-self: start;
+}
+
+/* Approving the exact version is the decision's main action. */
+.clarte-frame .clarte-offer-stage .offer-decision > button:first-of-type,
+.clarte-frame
+  .clarte-costing-stage
+  .profitability-actions
+  > button:first-child {
+  border-color: var(--clarte-accent);
+  color: var(--clarte-accent-ink);
+  background: var(--clarte-accent);
+  box-shadow: 0 6px 16px -8px var(--clarte-accent);
+}
+
+.clarte-frame
+  .clarte-offer-stage
+  .offer-decision
+  > button:first-of-type:hover:not(:disabled),
+.clarte-frame
+  .clarte-costing-stage
+  .profitability-actions
+  > button:first-child:hover:not(:disabled) {
+  border-color: var(--clarte-accent-strong);
+  color: var(--clarte-accent-ink);
+  background: var(--clarte-accent-strong);
+}
+
+.clarte-frame .clarte-offer-stage .offer-version-commands > button {
+  justify-self: start;
+}
+
+/* The exact PDF being downloaded, with its receipt. */
+.clarte-frame .clarte-offer-stage .commercial-pdf-held {
+  display: grid;
+  gap: 6px;
+  padding: 12px 16px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  color: var(--clarte-ink-soft);
+  background: var(--clarte-surface-sunken);
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-offer-stage .commercial-pdf-held p {
+  margin: 0;
+}
+
+/* The Offer's path from the deal read. */
+.clarte-frame .clarte-offer-path {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-offer-path li {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 3px solid var(--clarte-line);
+}
+
+.clarte-frame .clarte-offer-path li[data-state='done'] {
+  border-top-color: var(--clarte-success);
+}
+
+.clarte-frame .clarte-offer-path li[data-state='current'] {
+  border-top-color: var(--clarte-warning);
+}
+
+.clarte-frame .clarte-offer-path li[data-state='stopped'] {
+  border-top-color: var(--clarte-danger);
+}
+
+.clarte-frame .clarte-offer-path-label {
+  color: var(--clarte-ink);
+  font-weight: 600;
+}
+
+@media (max-width: 1180px) {
+  .clarte-frame .clarte-offer-stage .offer-version-beside,
+  .clarte-frame .clarte-costing-stage .profitability-version-beside {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clarte-frame .clarte-costing-stage .profitability-version-decision {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .clarte-frame
+    .clarte-commercial-owner
+    :is(.profitability-estimate, .pricing-snapshot-panel, .offer-panel) {
+    padding: 14px;
+  }
+
+  .clarte-frame
+    .clarte-commercial-owner
+    :is(
+      button:not(.shared-select__trigger),
+      input:not([type='checkbox'], [type='radio']),
+      select
+    ) {
+    min-height: var(--clarte-touch-target);
+  }
+
+  .clarte-frame .clarte-offer-path {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .clarte-frame .clarte-offer-stage .offer-summary dl > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .clarte-frame .clarte-offer-stage .offer-representation iframe {
+    min-height: 28rem;
+  }
+}

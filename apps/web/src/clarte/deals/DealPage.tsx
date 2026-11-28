@@ -31,7 +31,12 @@ import {
   type DealSummary,
 } from './deal-response';
 import { useDealCopy } from './deals.copy';
-import { dealStagePanels, type DealStagePanelContext } from './stage-panels';
+import {
+  dealStagePanels,
+  requestedVersionStages,
+  type DealRequestedVersion,
+  type DealStagePanelContext,
+} from './stage-panels';
 
 /** One deal, by its Opportunity or, from another screen, by its Request. */
 export type DealTarget =
@@ -48,7 +53,10 @@ export type DealUpdate = { summary: DealSummary; projection: string };
 
 type PageContext = Omit<
   DealStagePanelContext,
-  'onDealChanged' | 'onRequestProtectedChange' | 'requestCommand'
+  | 'onDealChanged'
+  | 'onRequestProtectedChange'
+  | 'requestCommand'
+  | 'requestedVersion'
 >;
 
 /**
@@ -59,6 +67,7 @@ type PageContext = Omit<
  */
 export function DealPage({
   target,
+  requestedVersion,
   companyId,
   context,
   readAuthority,
@@ -68,6 +77,8 @@ export function DealPage({
   onSummary,
 }: Readonly<{
   target: DealTarget;
+  /** Opens its owning stage at this exact version. */
+  requestedVersion?: DealRequestedVersion;
   companyId: string;
   context: PageContext;
   /**
@@ -93,7 +104,10 @@ export function DealPage({
     scope: 'clarte-deal',
   });
   const [state, setState] = useState<PageState>({ kind: 'loading' });
-  const [selected, setSelected] = useState<DealStage>();
+  const [selected, setSelected] = useState<DealStage | undefined>(
+    () =>
+      requestedVersion && requestedVersionStages[requestedVersion.version.type],
+  );
   const [command, setCommand] =
     useState<DealStagePanelContext['requestCommand']>();
   const opportunity = useRef(
@@ -220,6 +234,7 @@ export function DealPage({
     onDealChanged: () => void load(),
     onRequestProtectedChange: onProtectedChange,
     requestCommand: command,
+    requestedVersion,
   };
   const openCommand = (kind: 'next-action' | 'outcome') => {
     setSelected('request');
