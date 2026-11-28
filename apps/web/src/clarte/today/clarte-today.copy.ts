@@ -11,6 +11,11 @@ const keys = [
   'decideTitle',
   'decideLead',
   'reviewAction',
+  'decideProfitability',
+  'decideOffer',
+  'decideContract',
+  'decidePrecontract',
+  'decideAddendum',
   'reviewPage',
   'todoTitle',
   'todoLead',
@@ -72,14 +77,18 @@ const keys = [
 
 export const clarteTodayMessages = defineMessages(keys, {
   ro: {
-    heroLead:
-      'Deciziile, Sarcinile care vă cer atenția, Sarcinile restante și termenele, pe rând.',
+    heroLead: 'Decizii și Sarcini, pe rând.',
     heroNoCompany:
       'Alegeți o Companie activă pentru a vedea deciziile și Sarcinile ei.',
     workStart: 'Lucrați în ordine',
     decideTitle: 'De decis',
     decideLead: 'Ce nu poate avansa fără dumneavoastră',
     reviewAction: 'Examinați și decideți',
+    decideProfitability: 'Decideți asupra estimării de rentabilitate',
+    decideOffer: 'Decideți asupra Ofertei',
+    decideContract: 'Decideți asupra Contractului',
+    decidePrecontract: 'Decideți asupra Precontractului',
+    decideAddendum: 'Decideți asupra Actului adițional',
     reviewPage: 'Pagina {page}',
     todoTitle: 'De făcut',
     todoLead: 'Sarcinile care vă cer atenția și termenele acestei săptămâni',
@@ -145,14 +154,18 @@ export const clarteTodayMessages = defineMessages(keys, {
     overdueBack: 'Înapoi la Astăzi',
   },
   ru: {
-    heroLead:
-      'Решения, задачи, требующие вашего внимания, просроченные задачи и сроки — по одному.',
+    heroLead: 'Решения и задачи по порядку.',
     heroNoCompany:
       'Выберите активную Компанию, чтобы увидеть её решения и задачи.',
     workStart: 'Работать по порядку',
     decideTitle: 'Решить',
     decideLead: 'То, что не может продвинуться без вас',
     reviewAction: 'Рассмотреть и решить',
+    decideProfitability: 'Примите решение по оценке рентабельности',
+    decideOffer: 'Примите решение по предложению',
+    decideContract: 'Примите решение по договору',
+    decidePrecontract: 'Примите решение по предварительному договору',
+    decideAddendum: 'Примите решение по дополнительному соглашению',
     reviewPage: 'Страница {page}',
     todoTitle: 'Сделать',
     todoLead: 'Задачи, требующие вашего внимания, и сроки этой недели',
@@ -217,14 +230,18 @@ export const clarteTodayMessages = defineMessages(keys, {
     overdueBack: 'Назад к «Сегодня»',
   },
   fr: {
-    heroLead:
-      'Les décisions, les Tâches qui demandent votre attention, les Tâches en retard et les échéances, une à une.',
+    heroLead: 'Décisions et Tâches, dans l’ordre.',
     heroNoCompany:
       'Choisissez une Entreprise active pour voir ses décisions et ses Tâches.',
     workStart: 'Traiter dans l’ordre',
     decideTitle: 'À décider',
     decideLead: 'Ce qui ne peut avancer sans vous',
     reviewAction: 'Examiner et décider',
+    decideProfitability: 'Se prononcer sur l’estimation de rentabilité',
+    decideOffer: 'Se prononcer sur l’Offre',
+    decideContract: 'Se prononcer sur le Contrat',
+    decidePrecontract: 'Se prononcer sur le Précontrat',
+    decideAddendum: 'Se prononcer sur l’Avenant',
     reviewPage: 'Page {page}',
     todoTitle: 'À faire',
     todoLead:
@@ -292,13 +309,17 @@ export const clarteTodayMessages = defineMessages(keys, {
     overdueBack: 'Retour à Aujourd’hui',
   },
   en: {
-    heroLead:
-      'Decisions, Tasks that need your attention, overdue Tasks and deadlines, one at a time.',
+    heroLead: 'Decisions and Tasks, in order.',
     heroNoCompany: 'Choose an active Company to see its decisions and Tasks.',
     workStart: 'Work in order',
     decideTitle: 'To decide',
     decideLead: 'What cannot move forward without you',
     reviewAction: 'Review and decide',
+    decideProfitability: 'Decide on the Profitability Estimate',
+    decideOffer: 'Decide on the Offer',
+    decideContract: 'Decide on the Contract',
+    decidePrecontract: 'Decide on the Precontract',
+    decideAddendum: 'Decide on the Addendum',
     reviewPage: 'Page {page}',
     todoTitle: 'To do',
     todoLead: 'Tasks that need your attention and this week’s deadlines',

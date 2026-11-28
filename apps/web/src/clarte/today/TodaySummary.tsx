@@ -1,5 +1,5 @@
-import { CalendarClock, FolderKanban, RefreshCw, Users } from 'lucide-react';
-import { useId, type RefObject } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { useId, type ReactNode, type RefObject } from 'react';
 import { useInterfaceLocale } from '../../localization/interface-locale';
 import type { OperationalHomeLoad } from '../../operational-home/OperationalHome';
 import type {
@@ -13,12 +13,6 @@ import {
   ClarteLoadingState,
 } from '../components/ClarteState';
 
-const icons = {
-  active_clients: Users,
-  open_projects: FolderKanban,
-  overdue_tasks: CalendarClock,
-} satisfies Record<CompanySummaryKind, unknown>;
-
 /**
  * The Company summary (#1532, EX-003) of the one Company summary owner:
  * active Clients, open Projects and overdue Tasks with their counting date
@@ -31,36 +25,44 @@ export function TodaySummary({
   onRefresh,
   onOpen,
   overdueCard,
+  companies,
 }: Readonly<{
   company: { id: string; displayName: string };
   load: OperationalHomeLoad;
   onRefresh: () => void;
   onOpen: (kind: CompanySummaryKind) => void;
   overdueCard: RefObject<HTMLButtonElement | null>;
+  companies?: ReactNode;
 }>) {
   const copy = useOperationalHomeCopy();
   const { formatDate } = useInterfaceLocale();
   const titleId = useId();
-  if (load.kind === 'ready' && load.view.summaries.length === 0) return null;
+  const isEmpty = load.kind === 'ready' && load.view.summaries.length === 0;
+  if (isEmpty && !companies) return null;
   return (
     <section
-      className="clarte-today-card clarte-today-summary"
-      aria-labelledby={titleId}
+      className="clarte-today-card clarte-today-summary clarte-today-companies"
+      aria-labelledby={isEmpty ? undefined : titleId}
     >
-      <div className="clarte-today-card-head">
-        <h2 id={titleId} className="clarte-today-card-title">
-          {copy.title}
-        </h2>
-        <ClarteButton
-          size="small"
-          variant="quiet"
-          aria-label={copy.refresh}
-          onClick={onRefresh}
-        >
-          <RefreshCw aria-hidden="true" />
-        </ClarteButton>
+      <div className="clarte-today-summary-head">
+        {!isEmpty && (
+          <div className="clarte-today-card-head">
+            <h2 id={titleId} className="clarte-today-card-title">
+              {copy.title}
+            </h2>
+            <ClarteButton
+              size="small"
+              variant="quiet"
+              aria-label={copy.refresh}
+              onClick={onRefresh}
+            >
+              <RefreshCw aria-hidden="true" />
+            </ClarteButton>
+          </div>
+        )}
+        {companies}
       </div>
-      {load.kind === 'ready' && (
+      {load.kind === 'ready' && !isEmpty && (
         <p className="clarte-today-card-note">
           {copy.note({
             company: company.displayName,
@@ -82,16 +84,12 @@ export function TodaySummary({
           }
         />
       )}
-      {load.kind === 'ready' && (
+      {load.kind === 'ready' && !isEmpty && (
         <ul className="clarte-today-counters">
           {load.view.summaries.map((summary) => (
             <li key={summary.kind}>
               <Counter
                 summary={summary}
-                context={{
-                  company: company.displayName,
-                  today: formatDate(load.view.today),
-                }}
                 onOpen={onOpen}
                 counterRef={
                   summary.kind === 'overdue_tasks' ? overdueCard : undefined
@@ -107,42 +105,30 @@ export function TodaySummary({
 
 function Counter({
   summary,
-  context,
   onOpen,
   counterRef,
 }: Readonly<{
   summary: CompanySummary;
-  context: { company: string; today: string };
   onOpen: (kind: CompanySummaryKind) => void;
   counterRef: RefObject<HTMLButtonElement | null> | undefined;
 }>) {
   const copy = useOperationalHomeCopy();
   const { formatNumber } = useInterfaceLocale();
-  const definitionId = useId();
   const entry = copy.summaries[summary.kind];
-  const Icon = icons[summary.kind];
   const count = formatNumber(summary.count);
   return (
     <button
       ref={counterRef}
       type="button"
       className="clarte-today-counter"
-      data-kind={summary.kind}
       aria-label={copy.cardName({
         label: entry.label,
         count,
         destination: entry.destination,
       })}
-      aria-describedby={definitionId}
       onClick={() => onOpen(summary.kind)}
     >
-      <span className="clarte-today-counter-icon" aria-hidden="true">
-        <Icon />
-      </span>
-      <span className="clarte-today-counter-text">
-        <span>{entry.label}</span>
-        <small id={definitionId}>{entry.definition(context)}</small>
-      </span>
+      <span>{entry.label}</span>
       <strong>{count}</strong>
     </button>
   );
