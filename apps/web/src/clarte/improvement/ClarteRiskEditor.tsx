@@ -133,18 +133,18 @@ export function ClarteRiskEditor({
                     value={value.facts[name]}
                     onChange={onFact}
                   />
-                ) : name === 'process' || name === 'sourceDescription' ? (
-                  <input
-                    {...control(field, required)}
-                    type="text"
-                    maxLength={factLimits[name]}
-                    value={value.facts[name]}
-                    onChange={onFact}
-                  />
                 ) : (
+                  // Every text fact keeps its accepted line breaks literally,
+                  // short ones included: a text input would flatten them.
                   <textarea
                     {...control(field, required)}
-                    rows={name === 'cause' || name === 'effect' ? 2 : 3}
+                    rows={
+                      name === 'process' || name === 'sourceDescription'
+                        ? 1
+                        : name === 'cause' || name === 'effect'
+                          ? 2
+                          : 3
+                    }
                     maxLength={factLimits[name]}
                     value={value.facts[name]}
                     onChange={onFact}

@@ -395,6 +395,50 @@ describe('Clarté Improvement › Operational risks', () => {
     ).toHaveAttribute('aria-pressed', 'false');
   });
 
+  it('keeps the line breaks of every fact when recording and correcting a risk', async () => {
+    const { bodies } = serve();
+    openImprovement('#operational-risks');
+    fireEvent.click(
+      within(await riskRegister()).getByRole('button', {
+        name: 'Record a risk',
+      }),
+    );
+    const form = await screen.findByRole('dialog', { name: 'Record a risk' });
+    const values = {
+      'Process / activity': 'Fictional supplier audits\nNorth site',
+      'Possible cause': 'One audit per year\nonly',
+      'Possible effect': 'A change goes unnoticed',
+      'Planned measure': 'Add a mid-year check',
+      'Source description (optional)': 'Fictional review\nitem 4',
+    };
+    for (const [label, value] of Object.entries(values))
+      fireEvent.change(within(form).getByLabelText(label, { exact: false }), {
+        target: { value },
+      });
+    fireEvent.click(within(form).getByRole('button', { name: 'Record' }));
+    const panel = await screen.findByRole('dialog', {
+      name: /^Fictional supplier audits\sNorth site$/u,
+    });
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Correct intake facts' }),
+    );
+    const editor = within(panel).getByRole('form', {
+      name: 'Correct intake facts',
+    });
+    expect(
+      within(editor).getByLabelText('Process / activity', { exact: false }),
+    ).toHaveValue('Fictional supplier audits\nNorth site');
+    expect(
+      within(editor).getByLabelText('Source description (optional)'),
+    ).toHaveValue('Fictional review\nitem 4');
+    expect(bodies).toEqual([
+      expect.objectContaining({
+        process: 'Fictional supplier audits\nNorth site',
+        sourceDescription: 'Fictional review\nitem 4',
+      }),
+    ]);
+  });
+
   it('EX-253: corrects the initial facts with a reason and keeps the original facts', async () => {
     const { bodies } = serve();
     openImprovement('#operational-risks');
