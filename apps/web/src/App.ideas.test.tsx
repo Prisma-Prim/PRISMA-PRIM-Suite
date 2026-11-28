@@ -144,6 +144,11 @@ function leaveAndReturn(appInterface: InterfacePreference) {
 describe.each(appInterfaces)(
   'Ideas through the real App composition in the %s interface',
   (appInterface) => {
+    const originText =
+      appInterface === 'current'
+        ? original.origin
+        : `Origin: ${original.origin}`;
+
     it('shows literal saved text and original attribution to a Reader without offering mutation controls', async () => {
       const requests: string[] = [];
       vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -179,7 +184,7 @@ describe.each(appInterfaces)(
         }),
       );
       const view = await ideaView(appInterface);
-      expect(await view.findByText('Internal suggestion')).toBeVisible();
+      expect(await view.findByText(originText)).toBeVisible();
       expect(view.getByText('Submitted by: Ana')).toBeVisible();
       expect(
         screen.queryByRole('button', { name: 'Record Idea' }),
@@ -398,7 +403,8 @@ describe.each(appInterfaces)(
         const detail = within(
           screen.getByRole('article', { name: 'Original submission' }),
         );
-        expect(detail.getByText(original.origin)).toBeVisible();
+        const view = await ideaView(appInterface);
+        expect(view.getByText(originText)).toBeVisible();
         expect(detail.getByText('Submitted by: Ana')).toBeVisible();
         expect(detail.getByText(/Revision 2/u)).toBeVisible();
         expect(detail.getAllByText('Rejected')).toHaveLength(2);
@@ -480,7 +486,7 @@ describe.each(appInterfaces)(
           expect(
             await screen.findByText('Preserved calendar reason'),
           ).toBeVisible();
-          expect(view.getByText('Internal suggestion')).toBeVisible();
+          expect(view.getByText(originText)).toBeVisible();
           expect(
             screen.queryByText(/This read failed/u),
           ).not.toBeInTheDocument();
@@ -490,8 +496,11 @@ describe.each(appInterfaces)(
             screen.queryByText('Preserved calendar reason'),
           ).not.toBeInTheDocument();
           expect(
-            view.queryByText('Internal suggestion'),
+            view.queryByRole('article', { name: 'Original submission' }),
           ).not.toBeInTheDocument();
+          // The Clarté panel header names the listed origin before any detail.
+          if (appInterface === 'current')
+            expect(view.queryByText(original.origin)).not.toBeInTheDocument();
         }
       },
     );
@@ -872,13 +881,14 @@ describe.each(appInterfaces)(
           }),
         );
         const view = await ideaView(appInterface);
-        expect(await view.findByText('Internal suggestion')).toBeVisible();
+        expect(await view.findByText('Submitted by: Ana')).toBeVisible();
+        expect(view.getByText(originText)).toBeVisible();
         refused = true;
         fireEvent.click(screen.getByRole('button', { name: 'Refresh Ideas' }));
         await waitFor(() =>
           expect(
-            screen.queryByText('Internal suggestion'),
-          ).not.toBeInTheDocument(),
+            screen.queryAllByText(/^(?:Origin: )?Internal suggestion$/u),
+          ).toHaveLength(0),
         );
         expect(
           screen.queryByDisplayValue('Retired session confidential draft'),

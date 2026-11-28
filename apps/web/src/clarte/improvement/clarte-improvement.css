@@ -195,6 +195,11 @@
   color: var(--clarte-accent-text);
 }
 
+.clarte-frame .clarte-improvement-parts button[aria-pressed='true'] {
+  border-bottom-color: var(--clarte-accent-text);
+  color: var(--clarte-accent-text);
+}
+
 .clarte-frame .clarte-improvement-parts button:focus-visible {
   border-radius: 6px;
   outline: none;
@@ -260,12 +265,6 @@
   margin: 0;
   color: var(--clarte-muted);
   font-size: 12.5px;
-}
-
-.clarte-frame .clarte-improvement-byline {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
 }
 
 .clarte-frame .clarte-improvement-meta code,
@@ -520,6 +519,17 @@
 }
 
 @media (max-width: 768px) {
+  .clarte-frame .clarte-improvement-banner {
+    padding: 6px 10px;
+    border-color: var(--clarte-line);
+    color: var(--clarte-ink-soft);
+    background: var(--clarte-surface-muted);
+    font-size: 12.5px;
+    font-weight: 400;
+    line-height: 1.45;
+    text-align: start;
+  }
+
   /* Tables become one card per row */
   .clarte-frame .clarte-improvement-table thead {
     position: absolute;
@@ -542,12 +552,20 @@
     border-bottom: 1px solid var(--clarte-line);
   }
 
+  .clarte-frame .clarte-improvement-ideas-table tbody tr {
+    padding: 4px 0;
+  }
+
   .clarte-frame .clarte-improvement-table.clarte-table td {
     display: grid;
     grid-template-columns: minmax(6.5rem, 36%) minmax(0, 1fr);
     gap: 2px 12px;
     padding: 4px 0;
     border: 0;
+  }
+
+  .clarte-frame .clarte-improvement-ideas-table.clarte-table tbody td {
+    padding: 1px 0;
   }
 
   .clarte-frame .clarte-improvement-table td::before {
@@ -578,6 +596,12 @@
   .clarte-frame
     .clarte-improvement-table.clarte-table
     .clarte-improvement-chevron {
+    display: flex;
+    justify-content: flex-end;
+    color: var(--clarte-muted);
+  }
+
+  .clarte-frame .clarte-improvement-chevron::before {
     display: none;
   }
 

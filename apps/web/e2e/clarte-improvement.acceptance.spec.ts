@@ -59,6 +59,25 @@ test('records and postpones an Idea, rejects another, records a risk, corrects i
     ideas.getByRole('button', { name: 'Shared glossary for audit reports' }),
   ).toBeVisible();
   await expect(ideas.getByText('Ideas: 3')).toBeVisible();
+  const summaryRow = ideas.getByRole('row').filter({
+    has: page.getByRole('button', { name: seededIdeas.summary.description }),
+  });
+  await expect(
+    summaryRow.locator('.clarte-improvement-chevron svg'),
+  ).toBeVisible();
+  if (isPhoneLayout(page)) {
+    await expect(summaryRow.getByText('Rejected')).toBeInViewport({ ratio: 1 });
+    const checklistTitle = ideas.getByRole('button', {
+      name: seededIdeas.checklist.description,
+    });
+    const summaryTitle = summaryRow.getByRole('button');
+    const checklistBox = await checklistTitle.boundingBox();
+    const summaryBox = await summaryTitle.boundingBox();
+    if (!checklistBox || !summaryBox)
+      throw new Error('Idea titles must be visible');
+    expect(summaryBox.y - checklistBox.y).toBeLessThanOrEqual(125);
+    expect(summaryBox.height).toBeGreaterThanOrEqual(44);
+  }
   await noHorizontalScroll(page);
   await screenshot(page, 'clarte-improvement-ideas');
 
@@ -76,21 +95,46 @@ test('records and postpones an Idea, rejects another, records a risk, corrects i
   });
   await expect(idea.getByText(/Saved. The confirmed result/u)).toBeVisible();
   await expect(
-    idea.getByText('Fictional quality meeting', { exact: true }),
+    idea.getByText('Origin: Fictional quality meeting', { exact: true }),
   ).toBeVisible();
+  const submission = idea.getByRole('article', { name: 'Original submission' });
+  await expect(submission.getByRole('heading').first()).toHaveText(
+    'Current decision',
+  );
+  await expect(
+    submission.getByText('Fictional calendar of surveillance audits', {
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  const decisions = idea.getByRole('region', { name: 'Disposition history' });
+  const filing = decisions
+    .getByRole('listitem')
+    .filter({ hasText: 'Idea submitted' });
+  await expect(filing).toContainText('Submitted by: Ada Ionescu');
+  await expect(filing).toContainText('Submitted on: Nov 20, 2026');
   await expect(idea.getByRole('radio', { name: 'Postpone' })).toBeChecked();
   await idea.getByLabel('Reason').fill('Revisit with the 2027 audit plan');
   await idea.getByLabel('Reconsideration date (optional)').fill('2027-03-15');
   await idea.getByRole('button', { name: 'Record disposition' }).click();
-  const decisions = idea.getByRole('region', { name: 'Disposition history' });
   await expect(
     decisions.getByText('Revisit with the 2027 audit plan'),
   ).toBeVisible();
   await expect(
     decisions.getByText('Declared review date: Mar 15, 2027'),
   ).toBeVisible();
+  await expect(decisions.getByRole('listitem').last()).toContainText(
+    'Idea submitted',
+  );
+  const decisionShortcut = idea.getByRole('button', {
+    name: 'Decision',
+    exact: true,
+  });
+  await decisionShortcut.scrollIntoViewIfNeeded();
   await noHorizontalScroll(page);
   await screenshot(page, 'clarte-improvement-idea');
+  await idea.getByRole('button', { name: 'History', exact: true }).click();
+  await expect(filing).toBeInViewport();
+  await screenshot(page, 'clarte-improvement-idea-history');
   await idea.getByRole('button', { name: 'Close' }).click();
   await expect(idea).toHaveCount(0);
 
@@ -110,7 +154,7 @@ test('records and postpones an Idea, rejects another, records a risk, corrects i
     checklist
       .getByRole('region', { name: 'Disposition history' })
       .getByRole('listitem'),
-  ).toHaveCount(2);
+  ).toHaveCount(3);
   await checklist.getByRole('button', { name: 'Close' }).click();
 
   // Operational risks: the register, then a new risk with every fact.
@@ -124,6 +168,19 @@ test('records and postpones an Idea, rejects another, records a risk, corrects i
       name: seededRisks.calibration.facts.process,
     }),
   ).toBeVisible();
+  await expect(
+    register
+      .getByRole('row')
+      .filter({ hasText: seededRisks.calibration.facts.process })
+      .locator('.clarte-improvement-chevron svg'),
+  ).toBeVisible();
+  const warning = page.getByText(/^Notes do not constitute an assessment/u);
+  await expect(warning).toBeVisible();
+  if (isPhoneLayout(page)) {
+    const warningBox = await warning.boundingBox();
+    if (!warningBox) throw new Error('The register notice must be visible');
+    expect(warningBox.height).toBeLessThan(75);
+  }
   await noHorizontalScroll(page);
   await screenshot(page, 'clarte-improvement-risks');
 
@@ -154,6 +211,19 @@ test('records and postpones an Idea, rejects another, records a risk, corrects i
 
   const risk = page.getByRole('dialog', { name: 'Fictional supplier audits' });
   await expect(risk.getByText('Recorded.')).toBeVisible();
+  await expect(
+    risk.getByRole('button', { name: 'Facts', pressed: true }),
+  ).toBeVisible();
+  const facts = risk.getByRole('region', { name: 'Current intake facts' });
+  await expect(facts.locator('dt')).toHaveText([
+    'Process / activity',
+    'Possible cause',
+    'Possible effect',
+    'Existing measures',
+    'Planned measure',
+    'Source description',
+    'Planned date',
+  ]);
 
   // Correct its initial facts with a reason.
   await risk.getByRole('button', { name: 'Correct intake facts' }).click();
@@ -183,11 +253,30 @@ test('records and postpones an Idea, rejects another, records a risk, corrects i
   await note.getByRole('button', { name: 'Record', exact: true }).click();
   const history = risk.getByRole('region', { name: 'Immutable history' });
   await expect(history.getByRole('listitem')).toHaveCount(3);
-  await history
-    .getByRole('listitem')
-    .filter({ hasText: 'First supplier check booked for February' })
-    .getByRole('button', { name: 'View current statement' })
-    .click();
+  await risk.getByRole('button', { name: 'Log', exact: true }).click();
+  await expect(
+    risk.getByRole('button', { name: 'Log', pressed: true }),
+  ).toBeVisible();
+  const log = risk.getByRole('region', { name: 'Risk log' });
+  await expect(log.getByRole('listitem')).toHaveCount(1);
+  await expect(log.getByRole('listitem')).toContainText(
+    'First supplier check booked for February',
+  );
+  const pickNote = log.getByRole('button', {
+    name: 'Select a note to correct',
+  });
+  await pickNote.click();
+  const picker = page.getByRole('dialog', { name: 'Select a note to correct' });
+  const choice = picker.getByRole('combobox', { name: 'Log note' });
+  await expect(choice).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(picker).toHaveCount(0);
+  await expect(pickNote).toBeFocused();
+  await pickNote.click();
+  await choice.selectOption(recordedEntryId(3));
+  await noHorizontalScroll(page);
+  await screenshot(page, 'clarte-improvement-note-picker');
+  await picker.getByRole('button', { name: 'View current statement' }).click();
   const statement = risk.getByRole('region', {
     name: 'Current journal statement',
   });
@@ -213,6 +302,8 @@ test('records and postpones an Idea, rejects another, records a risk, corrects i
   await screenshot(page, 'clarte-improvement-statement');
 
   // The immutable history keeps every revision with its author and date.
+  await expect(log.getByRole('listitem')).toHaveCount(2);
+  await risk.getByRole('button', { name: 'History', exact: true }).click();
   await expect(history.getByRole('listitem')).toHaveCount(4);
   await history
     .getByRole('heading', { name: 'Immutable history' })

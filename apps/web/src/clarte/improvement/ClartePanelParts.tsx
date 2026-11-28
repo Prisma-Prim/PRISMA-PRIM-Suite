@@ -5,6 +5,8 @@ export type ClartePanelPart = Readonly<{
   label: string;
   /** The part's focusable heading; the part is skipped while it is absent. */
   heading: RefObject<HTMLHeadingElement | null>;
+  selected?: boolean;
+  onSelect?: () => void;
 }>;
 
 /**
@@ -22,9 +24,11 @@ export function ClartePanelParts({
         <button
           key={part.label}
           type="button"
+          aria-pressed={part.selected}
           onClick={() => {
             const heading = part.heading.current;
             if (!heading) return;
+            part.onSelect?.();
             heading.scrollIntoView({ block: 'start' });
             heading.focus({ preventScroll: true });
           }}

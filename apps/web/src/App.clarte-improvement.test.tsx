@@ -18,6 +18,7 @@ import {
 } from './test/render-with-interface-locale';
 
 type Api = ReturnType<typeof createClarteImprovementApi>;
+const nativeScroll = Element.prototype.scrollIntoView;
 
 /** Serves the fictional API; a held path never answers, to show loading. */
 function serve(
@@ -77,10 +78,12 @@ async function openRisk(process: string) {
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
+  Element.prototype.scrollIntoView = vi.fn();
 });
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  Element.prototype.scrollIntoView = nativeScroll;
   window.history.replaceState(null, '', '/');
 });
 
@@ -140,11 +143,16 @@ describe('Clarté Improvement › Ideas', () => {
       'Fictional calendar of surveillance audits With dates',
     );
     expect(
-      within(original).getByText('Fictional quality meeting'),
+      within(panel).getByText('Origin: Fictional quality meeting'),
     ).toBeVisible();
-    expect(
-      within(original).getByText('Submitted by: Ada Ionescu'),
-    ).toBeVisible();
+    expect(original).not.toHaveTextContent('Fictional quality meeting');
+    const history = within(original).getByRole('region', {
+      name: 'Disposition history',
+    });
+    const filing = within(history).getByRole('listitem');
+    expect(filing).toHaveTextContent('Idea submitted');
+    expect(filing).toHaveTextContent('Submitted by: Ada Ionescu');
+    expect(filing).toHaveTextContent('Submitted on: Nov 20, 2026');
     expect(
       within(original).getByText('No dispositions recorded.'),
     ).toBeVisible();
@@ -178,6 +186,9 @@ describe('Clarté Improvement › Ideas', () => {
     });
     expect(original).toHaveTextContent(
       'One list of terms per standard, kept beside the report template.',
+    );
+    expect(within(original).getAllByRole('heading')[0]).toHaveTextContent(
+      'Current decision',
     );
     const decide = within(panel).getByRole('group', { name: 'Disposition' });
     expect(
@@ -255,7 +266,7 @@ describe('Clarté Improvement › Ideas', () => {
       ),
     ).toBeVisible();
     await waitFor(() =>
-      expect(within(history).getAllByRole('listitem')).toHaveLength(2),
+      expect(within(history).getAllByRole('listitem')).toHaveLength(3),
     );
     expect(bodies).toEqual([
       {
@@ -538,15 +549,26 @@ describe('Clarté Improvement › Operational risks', () => {
     );
 
     // EX-255: the statement shows the original, the current text and its author.
-    const original = within(history)
-      .getAllByRole('listitem')
-      .find((item) =>
-        within(item).queryByText(seededJournal.original.narrative),
-      );
-    if (!original) throw new Error('Missing the original log note.');
+    fireEvent.click(within(panel).getByRole('button', { name: 'Log' }));
+    const log = within(panel).getByRole('region', { name: 'Risk log' });
+    const logEntries = within(log).getAllByRole('listitem');
+    expect(logEntries).toHaveLength(3);
+    expect(logEntries[0]).toHaveTextContent('Narrative reassessment');
+    expect(logEntries[1]).toHaveTextContent('Motivated journal correction');
+    expect(logEntries[2]).toHaveTextContent(seededJournal.original.narrative);
     fireEvent.click(
-      within(original).getByRole('button', { name: 'View current statement' }),
+      within(log).getByRole('button', { name: 'Select a note to correct' }),
     );
+    const picker = screen.getByRole('dialog', {
+      name: 'Select a note to correct',
+    });
+    const notes = within(picker).getByRole('combobox', { name: 'Log note' });
+    expect(within(notes).getAllByRole('option')).toHaveLength(3);
+    fireEvent.change(notes, { target: { value: seededJournal.original.id } });
+    fireEvent.click(
+      within(picker).getByRole('button', { name: 'View current statement' }),
+    );
+    expect(bodies).toHaveLength(1);
     await within(panel).findByRole('heading', {
       level: 3,
       name: 'Current journal statement',
@@ -594,6 +616,8 @@ describe('Clarté Improvement › Operational risks', () => {
     expect(
       within(corrected).getByText(seededJournal.original.narrative),
     ).toBeVisible();
+    fireEvent.click(within(panel).getByRole('button', { name: 'History' }));
+    expect(within(history).getAllByRole('listitem')).toHaveLength(5);
     expect(bodies).toEqual([
       {
         expectedRevision: 3,
