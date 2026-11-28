@@ -94,12 +94,18 @@ import { TariffVersionPanel } from './pricing-configuration/TariffVersionPanel';
 import { ProfitabilityDecisionQueue } from './profitability-estimate/ProfitabilityDecisionQueue';
 import { OfferDecisionQueue } from './offer/OfferDecisionQueue';
 import { ContractDecisionQueue } from './contract/ContractDecisionQueue';
-import { OperationalHome } from './operational-home/OperationalHome';
+import { ContractPanel } from './contract/ContractPanel';
+import {
+  OperationalHome,
+  type OperationalHomeProps,
+} from './operational-home/OperationalHome';
 import { MultiCompanySummary } from './operational-home/MultiCompanySummary';
 import type { RecentChangesProps } from './operational-home/RecentChanges';
 import type { CompanySummaryKind } from './operational-home/operational-home-response';
 import { useProductionShellContext } from './production-shell/useProductionShellContext';
 import { ClarteFrame } from './clarte/ClarteFrame';
+import { ClarteToday } from './clarte/today/ClarteToday';
+import { offersDirectContract } from './clarte/today/TodayQuickActions';
 import {
   ClarteAccessState,
   type ClarteAccessStateKind,
@@ -226,14 +232,19 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   /** Request ids only increase, so no retired request id is ever reissued. */
   const documentRequests = useRef(0);
   const sourceNavigationProtected = useRef(false);
-  const protectedSection = useRef<'documents' | 'payments' | 'payment-proofs'>(
-    'documents',
-  );
+  const protectedSection = useRef<
+    'documents' | 'payments' | 'payment-proofs' | 'overview'
+  >('documents');
   const [paymentProtection, setPaymentProtection] = useState<{
     scope: string;
     active: boolean;
   }>();
   const [proofProtection, setProofProtection] = useState<{
+    scope: string;
+    active: boolean;
+  }>();
+  // A capture, direct Contract or decision held in a Clarté Today panel.
+  const [overviewProtection, setOverviewProtection] = useState<{
     scope: string;
     active: boolean;
   }>();
@@ -336,14 +347,19 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     paymentProtection.active;
   const proofProtected =
     proofProtection?.scope === protectedSourceScope && proofProtection.active;
+  const overviewProtected =
+    overviewProtection?.scope === protectedSourceScope &&
+    overviewProtection.active;
   const navigationProtected =
-    sourceProtected || paymentProtected || proofProtected;
+    sourceProtected || paymentProtected || proofProtected || overviewProtected;
   sourceNavigationProtected.current = navigationProtected;
   protectedSection.current = paymentProtected
     ? 'payments'
     : proofProtected
       ? 'payment-proofs'
-      : 'documents';
+      : overviewProtected
+        ? 'overview'
+        : 'documents';
   const reportProtectedPayment = useCallback(
     (active: boolean) =>
       setPaymentProtection((current) => {
@@ -358,6 +374,17 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const reportProtectedProof = useCallback(
     (active: boolean) =>
       setProofProtection((current) => {
+        if (sourceScope.current !== protectedSourceScope) return current;
+        return current?.scope === protectedSourceScope &&
+          current.active === active
+          ? current
+          : { scope: protectedSourceScope, active };
+      }),
+    [protectedSourceScope],
+  );
+  const reportProtectedOverview = useCallback(
+    (active: boolean) =>
+      setOverviewProtection((current) => {
         if (sourceScope.current !== protectedSourceScope) return current;
         return current?.scope === protectedSourceScope &&
           current.active === active
@@ -688,80 +715,86 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onOpenRequest: openRequest,
         }
       : undefined;
-  const operationalSummary =
-    activeCompany && recentChanges ? (
-      <OperationalHome
-        workspaceMembershipId={access.actor.workspaceMembershipId}
-        key={`operational-home:${access.sessionGeneration}:${clientAuthorityGeneration}:${operationalHomeAuthority(access.actor)}`}
-        company={{
-          id: activeCompany.id,
-          displayName: activeCompany.displayName,
-        }}
-        identity={identity}
-        availableSummaries={{
-          active_clients: canAccessClients,
-          open_projects: canAccessProjects,
-          overdue_tasks: canReadTasks(access.actor),
-        }}
-        overdueOpenIntent={
-          requestedOverdue?.lifetime === overdueLifetime.current &&
-          requestedOverdue.requestId === multiCompanyNavigation.current
-            ? {
-                requestId: requestedOverdue.requestId,
-                onConsumed: () =>
-                  setRequestedOverdue((current) =>
-                    current?.requestId === requestedOverdue.requestId
-                      ? undefined
-                      : current,
-                  ),
-              }
-            : undefined
-        }
-        onRevalidateAuthority={() => selectCompany(activeCompany.id)}
-        onOpenClients={() => navigateToSection('clients')}
-        onOpenProjects={() => {
-          projectNavigation.navigate({ kind: 'directory' });
-          navigateToSection('projects');
-        }}
-        onOpenMyTasks={() => navigateToSection('my-tasks')}
-        onOpenTask={openProject}
-        onOpenOverdueTask={
-          openProject
+  const operationalHomeScope = `operational-home:${access.sessionGeneration}:${clientAuthorityGeneration}:${operationalHomeAuthority(access.actor)}`;
+  // One composition of the Company summary for both interfaces.
+  const operationalHomeProps: OperationalHomeProps | undefined =
+    activeCompany && recentChanges
+      ? {
+          workspaceMembershipId: access.actor.workspaceMembershipId,
+          company: {
+            id: activeCompany.id,
+            displayName: activeCompany.displayName,
+          },
+          identity,
+          availableSummaries: {
+            active_clients: canAccessClients,
+            open_projects: canAccessProjects,
+            overdue_tasks: canReadTasks(access.actor),
+          },
+          overdueOpenIntent:
+            requestedOverdue?.lifetime === overdueLifetime.current &&
+            requestedOverdue.requestId === multiCompanyNavigation.current
+              ? {
+                  requestId: requestedOverdue.requestId,
+                  onConsumed: () =>
+                    setRequestedOverdue((current) =>
+                      current?.requestId === requestedOverdue.requestId
+                        ? undefined
+                        : current,
+                    ),
+                }
+              : undefined,
+          onRevalidateAuthority: () => selectCompany(activeCompany.id),
+          onOpenClients: () => navigateToSection('clients'),
+          onOpenProjects: () => {
+            projectNavigation.navigate({ kind: 'directory' });
+            navigateToSection('projects');
+          },
+          onOpenMyTasks: () => navigateToSection('my-tasks'),
+          onOpenTask: openProject,
+          onOpenOverdueTask: openProject
             ? (target) => openProject({ ...target, focus: 'task' })
-            : undefined
+            : undefined,
         }
+      : undefined;
+  const operationalSummary =
+    operationalHomeProps && recentChanges ? (
+      <OperationalHome
+        key={operationalHomeScope}
+        {...operationalHomeProps}
         activity={recentChanges}
       />
     ) : null;
+  const multiCompanySummary = operationalSummary && (
+    <MultiCompanySummary
+      key={`multi-company:${homeScope}`}
+      actor={access.actor}
+      identity={identity}
+      onWorkspaceAccessRejected={rejectWorkspaceAccess}
+      onCancelNavigation={retireMultiCompanyNavigation}
+      onContinue={async ({ companyId, kind }) => {
+        const requestId = ++multiCompanyNavigation.current;
+        const continued = await selectCompanyAndContinue({
+          companyId,
+          isCurrent: () => multiCompanyNavigation.current === requestId,
+          onSelected: (actor) => {
+            setRequestedCompanySummary({
+              actor,
+              sessionGeneration: access.sessionGeneration,
+              clientAuthorityGeneration,
+              requestId,
+              kind,
+            });
+          },
+        });
+        return continued ? 'opened' : 'not-opened';
+      }}
+    />
+  );
   const operationalHome = (
     <>
       {operationalSummary}
-      {operationalSummary && (
-        <MultiCompanySummary
-          key={`multi-company:${homeScope}`}
-          actor={access.actor}
-          identity={identity}
-          onWorkspaceAccessRejected={rejectWorkspaceAccess}
-          onCancelNavigation={retireMultiCompanyNavigation}
-          onContinue={async ({ companyId, kind }) => {
-            const requestId = ++multiCompanyNavigation.current;
-            const continued = await selectCompanyAndContinue({
-              companyId,
-              isCurrent: () => multiCompanyNavigation.current === requestId,
-              onSelected: (actor) => {
-                setRequestedCompanySummary({
-                  actor,
-                  sessionGeneration: access.sessionGeneration,
-                  clientAuthorityGeneration,
-                  requestId,
-                  kind,
-                });
-              },
-            });
-            return continued ? 'opened' : 'not-opened';
-          }}
-        />
-      )}
+      {multiCompanySummary}
       <ProfitabilityDecisionQueue
         key={`profitability-queue:${access.sessionGeneration}`}
         actor={access.actor}
@@ -1519,6 +1552,79 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           <>
             {workingEvidenceResolver}
             {operationalHome}
+          </>
+        }
+        clarteOverview={
+          <>
+            {workingEvidenceResolver}
+            <ClarteToday
+              actor={access.actor}
+              identity={identity}
+              sessionGeneration={access.sessionGeneration}
+              onActorRevalidated={acceptRevalidatedActor}
+              onCompanyContextRejected={rejectCompanyContext}
+              onWorkspaceAccessRejected={rejectWorkspaceAccess}
+              onProtectedWorkChange={reportProtectedOverview}
+              summary={
+                operationalHomeProps && {
+                  ...operationalHomeProps,
+                  scope: operationalHomeScope,
+                }
+              }
+              companies={multiCompanySummary}
+              capture={
+                canAccessCommercial
+                  ? {
+                      render: (presentation) => (
+                        <CommercialIntakeWorkspace
+                          key={`commercial-intake-capture:${requestsMount}`}
+                          actor={access.actor}
+                          identity={identity}
+                          onCompanyContextRejected={rejectCompanyContext}
+                          onActorRevalidated={acceptRevalidatedActor}
+                          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+                          onActivityRecorded={refreshActivityLog}
+                          clientIdentityRevision={clientIdentityGeneration}
+                          clientAuthorityRevision={clientAuthorityGeneration}
+                          requestCapture={presentation}
+                        />
+                      ),
+                      onOpenRequest: openRequest && ((id) => openRequest(id)),
+                    }
+                  : undefined
+              }
+              directContract={
+                activeCompany && offersDirectContract(access.actor)
+                  ? {
+                      identity,
+                      companyId: activeCompany.id,
+                      workspaceMembershipId: access.actor.workspaceMembershipId,
+                      render: (target, reportProtectedWork) => (
+                        <ContractPanel
+                          key={JSON.stringify([
+                            access.sessionGeneration,
+                            target.opportunityId,
+                            target.currentClientId,
+                          ])}
+                          actor={access.actor}
+                          identity={identity}
+                          opportunityId={target.opportunityId}
+                          opportunityTitle={target.opportunityTitle}
+                          currentClientId={target.currentClientId}
+                          onOpenProject={
+                            openProject &&
+                            ((projectId) => openProject({ projectId }))
+                          }
+                          onCompanyContextRejected={rejectCompanyContext}
+                          onActorRevalidated={acceptRevalidatedActor}
+                          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+                          onProtectedWorkChange={reportProtectedWork}
+                        />
+                      ),
+                    }
+                  : undefined
+              }
+            />
           </>
         }
         recentChanges={recentChanges}
