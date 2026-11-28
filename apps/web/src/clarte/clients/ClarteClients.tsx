@@ -19,6 +19,7 @@ import { ClarteClientDossier } from './ClarteClientDossier';
 import { ClarteClientList } from './ClarteClientList';
 import { ClarteClientRegistration } from './ClarteClientRegistration';
 import { ClarteNotice } from './ClarteNotice';
+import { formatMessage } from '../../localization/messages';
 import { useClarteClientCopy } from './clarte-clients.copy';
 import './clarte-clients.css';
 
@@ -139,12 +140,20 @@ function ClientDirectoryScreen({
       aria-labelledby="clarte-clients-directory-title"
     >
       <div className="clarte-clients-toolbar">
+        {/* The frame names the Company; the heading names the region. */}
         <h2
           id="clarte-clients-directory-title"
-          className="clarte-clients-company"
+          className="clarte-visually-hidden"
         >
           {directoryCopy.directoryCompany(company.displayName)}
         </h2>
+        <p className="clarte-clients-heading-count">
+          {!searching && owner.list.status === 'ready'
+            ? directoryCopy.resultsShown(
+                filteredClients(owner.list.clients, search.query).length,
+              )
+            : null}
+        </p>
         {access.canCreateClients && (
           <ClarteButton
             ref={registrationTrigger}
@@ -284,14 +293,46 @@ function CompanyClients({
     return (
       <ClarteEmptyState title={directoryCopy.empty(company.displayName)} />
     );
+  // Typing filters the Company's loaded Clients at once; Search Clients
+  // still sends the search to the server.
+  const shown = filteredClients(list.clients, owner.search.query);
+  if (shown.length === 0)
+    return (
+      <ClarteEmptyState
+        title={formatMessage(message('noFilterMatch'), {
+          company: company.displayName,
+          query: owner.search.query.trim(),
+        })}
+      />
+    );
   return (
     <ClarteClientList
-      clients={list.clients}
+      clients={shown}
       companyName={company.displayName}
       onOpenDossier={access.canReadClientDossiers ? dossier.open : undefined}
       attachingClientId={attachment.attachingClientId}
+      showCount={false}
     />
   );
+}
+
+/** The loaded Clients whose name contains the typed text, accents ignored. */
+function filteredClients<Client extends { displayName: string }>(
+  clients: readonly Client[],
+  query: string,
+): readonly Client[] {
+  const typed = comparable(query.trim());
+  if (!typed) return clients;
+  return clients.filter((client) =>
+    comparable(client.displayName).includes(typed),
+  );
+}
+
+function comparable(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLocaleLowerCase();
 }
 
 function SearchResults({

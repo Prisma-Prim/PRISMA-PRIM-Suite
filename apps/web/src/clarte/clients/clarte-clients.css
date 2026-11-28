@@ -148,6 +148,21 @@
   box-shadow: var(--clarte-shadow);
 }
 
+/* A Company Client's whole card opens its dossier; its button stays for the keyboard. */
+.clarte-frame .clarte-client-card[data-opens] {
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.clarte-frame .clarte-client-card[data-opens]:hover {
+  border-color: var(--clarte-accent-line);
+}
+
+.clarte-frame .clarte-clients-heading-count {
+  margin: 0;
+  color: var(--clarte-muted);
+}
+
 .clarte-frame .clarte-client-card-top {
   display: flex;
   align-items: center;
@@ -209,11 +224,9 @@
   place-items: center;
   border-radius: var(--clarte-radius-md);
   color: var(--clarte-accent-ink);
-  background: linear-gradient(
-    135deg,
-    var(--clarte-accent),
-    var(--clarte-accent-strong)
-  );
+  /* A Client's mark runs from the accent to a magenta outside the prism
+     sequence, which stays reserved for the deal stages. */
+  background: linear-gradient(135deg, var(--clarte-accent), #c44fc8);
   font-family: var(--clarte-font-heading);
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -381,6 +394,20 @@
   box-shadow: var(--clarte-focus);
 }
 
+.clarte-frame .clarte-client-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 18px;
+  margin: 0;
+  padding: 0;
+  color: var(--clarte-ink-soft);
+  list-style: none;
+}
+
+.clarte-frame .clarte-client-facts li {
+  overflow-wrap: anywhere;
+}
+
 .clarte-frame .clarte-client-badges {
   display: flex;
   flex-wrap: wrap;
@@ -463,6 +490,18 @@
   display: grid;
   gap: 10px;
   align-content: start;
+}
+
+/* The reused overviews keep their scope notes and controls, quieter here. */
+.clarte-frame .clarte-client-work section > p {
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-client-work section button:not(.clarte-button) {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
 }
 
 .clarte-frame .clarte-client-work-actions {
@@ -680,6 +719,24 @@
   gap: 4px;
 }
 
+/* The shared editor places help, errors and buttons in a second column. */
+.clarte-frame .clarte-clients-contacts-editor fieldset > * {
+  grid-column: 1 / -1;
+  justify-self: stretch;
+}
+
+.clarte-frame .clarte-clients-contacts-editor fieldset > button {
+  justify-self: start;
+}
+
+.clarte-frame
+  .clarte-clients-contacts-editor
+  fieldset.client-contact-decision-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+}
+
 .clarte-frame .clarte-clients-contacts-editor fieldset > label {
   margin-top: 6px;
 }
@@ -754,6 +811,14 @@
   .clarte-frame .clarte-client-head-actions .clarte-button {
     flex: 1;
     justify-content: center;
+  }
+
+  /* The row of views continues to the right: its edge fades and the
+     current view scrolls into sight. */
+  .clarte-frame .clarte-client-views {
+    margin-right: -16px;
+    padding-right: 32px;
+    mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
   }
 
   .clarte-frame .clarte-client-panel {

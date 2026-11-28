@@ -200,6 +200,37 @@ describe('Clarté Clients directory', () => {
     expect(await card(sharedClient.displayName)).toBeVisible();
   });
 
+  it('filters the Company’s Clients as the member types and opens a dossier from its card', async () => {
+    const { api } = serve();
+    openClients();
+    await card(orchardClient.displayName);
+    expect(screen.getByText('2 Clients shown')).toBeVisible();
+    const field = screen.getByRole('searchbox', {
+      name: 'Find a shared Client',
+    });
+    changeValue(field, 'bákery');
+    expect(
+      within(directory()).queryByRole('heading', {
+        name: orchardClient.displayName,
+      }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('1 Client shown')).toBeVisible();
+    changeValue(field, 'Nowhere');
+    expect(
+      screen.getByText('No Client of PRISMA-PRIM matches “Nowhere”.'),
+    ).toBeVisible();
+    expect(api.requests.filter((line) => line.includes('/search'))).toEqual([]);
+    changeValue(field, '');
+    fireEvent.click(
+      within(await card(bakeryClient.displayName)).getByRole('heading', {
+        name: bakeryClient.displayName,
+      }),
+    );
+    expect(
+      await screen.findByRole('region', { name: bakeryClient.displayName }),
+    ).toBeVisible();
+  });
+
   it('says so when the Company has no Client yet', async () => {
     serve({ empty: true });
     openClients();
@@ -233,6 +264,9 @@ describe('Clarté Client dossier', () => {
     openClients();
     const dossier = await openDossier(orchardClient.displayName);
     expect(within(dossier).getByText('Available in PRISMA-PRIM')).toBeVisible();
+    expect(
+      within(dossier).getByText('IDNO / tax code 1018600012345'),
+    ).toBeVisible();
     expect(
       await within(dossier).findByText('1 legal entity or branch'),
     ).toBeVisible();

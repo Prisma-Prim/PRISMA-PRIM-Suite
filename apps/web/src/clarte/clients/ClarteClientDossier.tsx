@@ -434,6 +434,7 @@ function DossierHeader({
         <h2 id={titleId} tabIndex={-1} ref={headingRef}>
           {record.displayName}
         </h2>
+        <DossierFacts record={record} />
         <div className="clarte-client-badges">
           {companyName !== undefined && (
             <ClarteBadge tone="success">
@@ -461,6 +462,25 @@ function DossierHeader({
         </div>
       )}
     </header>
+  );
+}
+
+/** The identity facts the dossier holds, each labelled, beside its name. */
+function DossierFacts({ record }: Readonly<{ record: ClientDossierView }>) {
+  const copy = useClientDossierCopy();
+  const facts = [
+    record.taxId && `${copy.taxIdLabel} ${record.taxId}`,
+    record.businessActivity,
+    record.involvedCompanyDisplayNames.length > 0 &&
+      `${copy.involvedCompaniesLabel}: ${record.involvedCompanyDisplayNames.join(', ')}`,
+  ].filter((fact): fact is string => typeof fact === 'string' && fact !== '');
+  if (facts.length === 0) return null;
+  return (
+    <ul className="clarte-client-facts">
+      {facts.map((fact) => (
+        <li key={fact}>{fact}</li>
+      ))}
+    </ul>
   );
 }
 

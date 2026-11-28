@@ -6,6 +6,7 @@ import {
 
 const keys = [
   'searchPlaceholder',
+  'noFilterMatch',
   'retry',
   'backToClients',
   'dossierSections',
@@ -29,6 +30,7 @@ const keys = [
 export const clarteClientMessages = defineMessages(keys, {
   ro: {
     searchPlaceholder: 'Căutați un Client după nume',
+    noFilterMatch: 'Niciun Client din {company} nu corespunde cu „{query}”.',
     retry: 'Încercați din nou',
     backToClients: 'Înapoi la Clienți',
     dossierSections: 'Secțiunile dosarului Clientului',
@@ -54,6 +56,7 @@ export const clarteClientMessages = defineMessages(keys, {
   },
   ru: {
     searchPlaceholder: 'Найти Клиента по названию',
+    noFilterMatch: 'Ни один Клиент в {company} не соответствует «{query}».',
     retry: 'Повторить',
     backToClients: 'Назад к Клиентам',
     dossierSections: 'Разделы досье Клиента',
@@ -79,6 +82,7 @@ export const clarteClientMessages = defineMessages(keys, {
   },
   fr: {
     searchPlaceholder: 'Chercher un Client par son nom',
+    noFilterMatch: 'Aucun Client de {company} ne correspond à « {query} ».',
     retry: 'Réessayer',
     backToClients: 'Retour aux Clients',
     dossierSections: 'Rubriques du dossier du Client',
@@ -104,6 +108,7 @@ export const clarteClientMessages = defineMessages(keys, {
   },
   en: {
     searchPlaceholder: 'Search for a Client by name',
+    noFilterMatch: 'No Client of {company} matches “{query}”.',
     retry: 'Try again',
     backToClients: 'Back to Clients',
     dossierSections: 'Client dossier sections',

@@ -8,7 +8,9 @@ import { clientInitials } from './client-initials';
 /**
  * Clients as cards: initials, name and the relationship with the active
  * Company, then the one action the member may take on each: open the
- * dossier of a Company Client, or add a shared Client to the Company.
+ * dossier of a Company Client, or add a shared Client to the Company. A
+ * Company Client's whole card opens its dossier to a pointer; its button
+ * stays the one control for the keyboard and assistive technology.
  */
 export function ClarteClientList({
   clients,
@@ -16,73 +18,93 @@ export function ClarteClientList({
   onOpenDossier,
   onAttach,
   attachingClientId,
+  showCount = true,
 }: Readonly<{
   clients: readonly ClientAccountView[];
   companyName: string;
   onOpenDossier?: (clientId: string) => void;
   onAttach?: (clientId: string) => void;
   attachingClientId: string | undefined;
+  /** Whether the list says how many Clients it shows below itself. */
+  showCount?: boolean;
 }>) {
   const copy = useClientDirectoryCopy();
   return (
     <div className="clarte-clients-list">
       <ul className="clarte-clients-grid">
-        {clients.map((client) => (
-          <li
-            key={client.id}
-            className="clarte-client-card"
-            data-client-card={client.id}
-          >
-            <div className="clarte-client-card-top">
-              <span className="clarte-client-initials" aria-hidden="true">
-                {clientInitials(client.displayName)}
-              </span>
-              <div className="clarte-client-card-name">
-                <h3>{client.displayName}</h3>
-                <p>{copy.clientId(client.id)}</p>
+        {clients.map((client) => {
+          const opens =
+            client.relatedToActiveCompany && onOpenDossier !== undefined;
+          return (
+            <li
+              key={client.id}
+              className="clarte-client-card"
+              data-client-card={client.id}
+              data-opens={opens || undefined}
+              onClick={(event) => {
+                if (!opens) return;
+                // The card's own controls keep their own action.
+                if (
+                  event.target instanceof Element &&
+                  event.target.closest('button, a')
+                )
+                  return;
+                onOpenDossier(client.id);
+              }}
+            >
+              <div className="clarte-client-card-top">
+                <span className="clarte-client-initials" aria-hidden="true">
+                  {clientInitials(client.displayName)}
+                </span>
+                <div className="clarte-client-card-name">
+                  <h3>{client.displayName}</h3>
+                  <p>{copy.clientId(client.id)}</p>
+                </div>
               </div>
-            </div>
-            <div className="clarte-client-card-foot">
-              {client.relatedToActiveCompany ? (
-                <ClarteBadge tone="success">
-                  {copy.availableInCompany(companyName)}
-                </ClarteBadge>
-              ) : (
-                <ClarteBadge tone={onAttach ? 'warning' : 'neutral'}>
-                  {onAttach
-                    ? copy.notYetLinkedToCompany(companyName)
-                    : copy.notAvailableInCompany}
-                </ClarteBadge>
-              )}
-              {client.relatedToActiveCompany
-                ? onOpenDossier && (
-                    <ClarteButton
-                      size="small"
-                      onClick={() => onOpenDossier(client.id)}
-                    >
-                      {copy.openDossier}
-                      <ArrowRight aria-hidden="true" />
-                    </ClarteButton>
-                  )
-                : onAttach && (
-                    <ClarteButton
-                      size="small"
-                      disabled={attachingClientId !== undefined}
-                      onClick={() => onAttach(client.id)}
-                    >
-                      <Plus aria-hidden="true" />
-                      {attachingClientId === client.id
-                        ? copy.addingToCompany(companyName)
-                        : copy.addToCompany(companyName)}
-                    </ClarteButton>
-                  )}
-            </div>
-          </li>
-        ))}
+              <div className="clarte-client-card-foot">
+                {client.relatedToActiveCompany ? (
+                  <ClarteBadge tone="success">
+                    {copy.availableInCompany(companyName)}
+                  </ClarteBadge>
+                ) : (
+                  <ClarteBadge tone={onAttach ? 'warning' : 'neutral'}>
+                    {onAttach
+                      ? copy.notYetLinkedToCompany(companyName)
+                      : copy.notAvailableInCompany}
+                  </ClarteBadge>
+                )}
+                {client.relatedToActiveCompany
+                  ? onOpenDossier && (
+                      <ClarteButton
+                        size="small"
+                        onClick={() => onOpenDossier(client.id)}
+                      >
+                        {copy.openDossier}
+                        <ArrowRight aria-hidden="true" />
+                      </ClarteButton>
+                    )
+                  : onAttach && (
+                      <ClarteButton
+                        size="small"
+                        disabled={attachingClientId !== undefined}
+                        onClick={() => onAttach(client.id)}
+                      >
+                        <Plus aria-hidden="true" />
+                        {attachingClientId === client.id
+                          ? copy.addingToCompany(companyName)
+                          : copy.addToCompany(companyName)}
+                      </ClarteButton>
+                    )}
+              </div>
+            </li>
+          );
+        })}
       </ul>
-      <p className="clarte-clients-count">
-        {copy.resultsShown(clients.length)}
-      </p>
+      {showCount && (
+        <p className="clarte-clients-count">
+          {copy.resultsShown(clients.length)}
+        </p>
+      )}
     </div>
   );
 }
