@@ -882,6 +882,7 @@ test('records an invoice and a collection beside their exact source, confirms, r
 
   // Collections: record, confirm after review, reverse and replace.
   await financeView(page, 'Collections').click();
+  await expect(page).toHaveURL(/#payments$/u);
   const collections = page.getByRole('region', {
     name: 'Payment observations',
   });
@@ -992,6 +993,7 @@ test('records an invoice and a collection beside their exact source, confirms, r
 
   // Payment proofs: the inventory, one proof's Versions, then a registration.
   await financeView(page, 'Proofs').click();
+  await expect(page).toHaveURL(/#payment-proofs$/u);
   const proofs = page.getByRole('region', {
     name: 'Preserved payment proofs',
   });
