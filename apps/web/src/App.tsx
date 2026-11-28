@@ -230,14 +230,19 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   /** Request ids only increase, so no retired request id is ever reissued. */
   const documentRequests = useRef(0);
   const sourceNavigationProtected = useRef(false);
-  const protectedSection = useRef<'documents' | 'payments' | 'payment-proofs'>(
-    'documents',
-  );
+  const protectedSection = useRef<
+    'documents' | 'payments' | 'payment-proofs' | 'overview'
+  >('documents');
   const [paymentProtection, setPaymentProtection] = useState<{
     scope: string;
     active: boolean;
   }>();
   const [proofProtection, setProofProtection] = useState<{
+    scope: string;
+    active: boolean;
+  }>();
+  // A capture, direct Contract or decision held in a Clarté Today panel.
+  const [overviewProtection, setOverviewProtection] = useState<{
     scope: string;
     active: boolean;
   }>();
@@ -340,14 +345,19 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     paymentProtection.active;
   const proofProtected =
     proofProtection?.scope === protectedSourceScope && proofProtection.active;
+  const overviewProtected =
+    overviewProtection?.scope === protectedSourceScope &&
+    overviewProtection.active;
   const navigationProtected =
-    sourceProtected || paymentProtected || proofProtected;
+    sourceProtected || paymentProtected || proofProtected || overviewProtected;
   sourceNavigationProtected.current = navigationProtected;
   protectedSection.current = paymentProtected
     ? 'payments'
     : proofProtected
       ? 'payment-proofs'
-      : 'documents';
+      : overviewProtected
+        ? 'overview'
+        : 'documents';
   const reportProtectedPayment = useCallback(
     (active: boolean) =>
       setPaymentProtection((current) => {
@@ -362,6 +372,17 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const reportProtectedProof = useCallback(
     (active: boolean) =>
       setProofProtection((current) => {
+        if (sourceScope.current !== protectedSourceScope) return current;
+        return current?.scope === protectedSourceScope &&
+          current.active === active
+          ? current
+          : { scope: protectedSourceScope, active };
+      }),
+    [protectedSourceScope],
+  );
+  const reportProtectedOverview = useCallback(
+    (active: boolean) =>
+      setOverviewProtection((current) => {
         if (sourceScope.current !== protectedSourceScope) return current;
         return current?.scope === protectedSourceScope &&
           current.active === active
@@ -1539,6 +1560,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
               onActorRevalidated={acceptRevalidatedActor}
               onCompanyContextRejected={rejectCompanyContext}
               onWorkspaceAccessRejected={rejectWorkspaceAccess}
+              onProtectedWorkChange={reportProtectedOverview}
               summary={
                 operationalHomeProps && {
                   ...operationalHomeProps,

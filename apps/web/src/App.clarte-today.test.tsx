@@ -535,6 +535,70 @@ describe('Clarté Today', () => {
     expect(api.writes).toEqual(['POST /api/commercial-intake/requests']);
   });
 
+  it('holds browser navigation while a capture result is uncertain and keeps its retry', async () => {
+    const { api } = serve();
+    const fetch = vi.mocked(globalThis.fetch);
+    const answer = fetch.getMockImplementation();
+    const keys: (string | null)[] = [];
+    fetch.mockImplementation(async (input, init) => {
+      if (init?.method === 'POST') {
+        keys.push(new Headers(init.headers).get('idempotency-key'));
+        if (keys.length === 1) return new Response(null, { status: 503 });
+      }
+      if (!answer) throw new Error('Missing fixture');
+      return answer(input, init);
+    });
+    openToday();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'New Client Request' }),
+    );
+    const panel = await screen.findByRole('dialog', {
+      name: 'New Client Request',
+    });
+    fireEvent.change(within(panel).getByLabelText('Original request text'), {
+      target: { value: 'Fictional request text' },
+    });
+    fireEvent.change(within(panel).getByLabelText('Opportunity title'), {
+      target: { value: 'Fictional Opportunity' },
+    });
+    fireEvent.change(within(panel).getByLabelText('Next action'), {
+      target: { value: 'Fictional next action' },
+    });
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Capture Request' }),
+    );
+    await waitFor(() =>
+      expect(
+        within(panel).getByRole('button', { name: 'Close' }),
+      ).toBeDisabled(),
+    );
+    // Browser Back to another section while the result is uncertain.
+    window.history.pushState(null, '', '/#clients');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await waitFor(() => expect(window.location.hash).not.toBe('#clients'));
+    expect(
+      screen.getByRole('dialog', { name: 'New Client Request' }),
+    ).toBeVisible();
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Capture Request' }),
+    );
+    expect(
+      await within(panel).findByText(
+        'Client Request recorded: Fictional Opportunity.',
+      ),
+    ).toBeVisible();
+    expect(keys).toEqual([keys[0], keys[0]]);
+    expect(api.writes).toEqual(['POST /api/commercial-intake/requests']);
+    // The recorded Request releases the hold.
+    window.history.pushState(null, '', '/#clients');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { level: 1, name: 'Clients' }),
+      ).toBeVisible(),
+    );
+  });
+
   it('opens the existing direct Contract form for a chosen affaire in a side panel', async () => {
     const { api } = serve();
     openToday();

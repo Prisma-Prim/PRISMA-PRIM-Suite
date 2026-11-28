@@ -1,5 +1,11 @@
 import { ChevronRight, FileSignature, Inbox } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import type { BrowserIdentity } from '../../access-composition';
 import type { ActorContext } from '../../access-types';
 import { holds } from '../../access/company-grants';
@@ -78,14 +84,21 @@ export type TodayDirectContract = Readonly<{
  */
 export function CapturePanel({
   capture,
+  onHeld,
   onClose,
-}: Readonly<{ capture: TodayCapture; onClose: () => void }>) {
+}: Readonly<{
+  capture: TodayCapture;
+  /** Reports the hold to Today, which holds App's navigation with it. */
+  onHeld: (held: boolean) => void;
+  onClose: () => void;
+}>) {
   const copy = useClarteTodayCopy();
   const [captured, setCaptured] = useState<{
     id: string;
     opportunityTitle: string;
   }>();
   const [held, setHeld] = useState(false);
+  useReportedHold(held, onHeld);
   const [form, setForm] = useState(0);
   return (
     <ClarteSidePanel
@@ -162,13 +175,20 @@ type Step =
  */
 export function DirectContractPanel({
   directContract,
+  onHeld,
   onClose,
-}: Readonly<{ directContract: TodayDirectContract; onClose: () => void }>) {
+}: Readonly<{
+  directContract: TodayDirectContract;
+  /** Reports the hold to Today, which holds App's navigation with it. */
+  onHeld: (held: boolean) => void;
+  onClose: () => void;
+}>) {
   const copy = useClarteTodayCopy();
   const { identity, companyId, workspaceMembershipId } = directContract;
   const [choices, setChoices] = useState<Choices>({ kind: 'loading' });
   const [step, setStep] = useState<Step>({ kind: 'choose' });
   const [held, setHeld] = useState(false);
+  useReportedHold(held, onHeld);
   const scope = String(
     useRequestLifetime(
       identity,
@@ -332,6 +352,22 @@ export function DirectContractPanel({
       {body}
     </ClarteSidePanel>
   );
+}
+
+/**
+ * Reports a panel's hold while it changes, and its release when the panel
+ * goes, in the commit that changes it: a released hold never outlives the
+ * screen that shows its receipt.
+ */
+function useReportedHold(held: boolean, onHeld: (held: boolean) => void) {
+  const report = useRef(onHeld);
+  useLayoutEffect(() => {
+    report.current = onHeld;
+  });
+  useLayoutEffect(() => {
+    report.current(held);
+  }, [held]);
+  useLayoutEffect(() => () => report.current(false), []);
 }
 
 function AffaireChoices({

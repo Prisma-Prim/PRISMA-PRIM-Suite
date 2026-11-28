@@ -2,6 +2,7 @@ import { FileSignature, Inbox, Play, ShieldCheck } from 'lucide-react';
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -50,6 +51,12 @@ export type ClarteTodayProps = Readonly<{
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
   onCompanyContextRejected: (companyId: string) => void;
   onWorkspaceAccessRejected: () => Promise<void> | void;
+  /**
+   * True while a panel of Today holds a pending or uncertain command (a
+   * capture, a direct Contract or a decision): App then holds navigation,
+   * as for a protected write, so leaving never discards its retry.
+   */
+  onProtectedWorkChange?: (active: boolean) => void;
   /**
    * The Company summary App offers in the active Company, with the scope
    * that keys it; absent, Today shows no summary, attention or deadlines.
@@ -103,6 +110,7 @@ function TodayScreen({
   onActorRevalidated,
   onCompanyContextRejected,
   onWorkspaceAccessRejected,
+  onProtectedWorkChange,
   summary,
   companies,
   capture,
@@ -117,6 +125,7 @@ function TodayScreen({
   const [review, setReview] = useState<Review>();
   const [reviewHeld, setReviewHeld] = useState(false);
   const [quick, setQuick] = useState<'capture' | 'contract'>();
+  const [quickHeld, setQuickHeld] = useState(false);
   const workButton = useRef<HTMLButtonElement>(null);
   const returnToWorkButton = useRef(false);
   const returnToOverdueCard = useRef(false);
@@ -153,6 +162,17 @@ function TodayScreen({
     enabled: working && deadlines && onOpenOverdueTask !== undefined,
     parse: (value) => readCompanyOverdueTasks(value, { companyId, offset: 0 }),
   });
+
+  // Today's held work holds App's navigation until it settles or unmounts.
+  const reportHeld = useRef(onProtectedWorkChange);
+  useLayoutEffect(() => {
+    reportHeld.current = onProtectedWorkChange;
+  });
+  const held = reviewHeld || quickHeld;
+  useLayoutEffect(() => {
+    reportHeld.current?.(held);
+  }, [held]);
+  useLayoutEffect(() => () => reportHeld.current?.(false), []);
 
   const onReport = useCallback((report: QueueReport) => {
     setQueues((current) => {
@@ -386,11 +406,16 @@ function TodayScreen({
         />
       )}
       {quick === 'capture' && capture && (
-        <CapturePanel capture={capture} onClose={() => setQuick(undefined)} />
+        <CapturePanel
+          capture={capture}
+          onHeld={setQuickHeld}
+          onClose={() => setQuick(undefined)}
+        />
       )}
       {quick === 'contract' && directContract && (
         <DirectContractPanel
           directContract={directContract}
+          onHeld={setQuickHeld}
           onClose={() => setQuick(undefined)}
         />
       )}
