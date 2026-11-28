@@ -160,49 +160,57 @@ test('registers, reads and server-activates the first Company after an exact unc
   });
 });
 
-test('server-denied registration reveals no protected Company metadata', async ({
-  page,
-}, testInfo) => {
-  const protectedCompany = {
-    id: 'protected-company-id',
-    displayName: 'Protected Company Name',
-  };
-  await page.route('**/api/access/current-actor', (route) =>
-    route.fulfill({ json: actorContextFixture }),
-  );
-  await page.route('**/api/activity-log', (route) =>
-    route.fulfill({ json: { events: [] } }),
-  );
-  await page.route('**/api/companies', (route) =>
-    route.request().method() === 'POST'
-      ? route.fulfill({
-          status: 403,
-          json: { message: 'Forbidden', ...protectedCompany },
-        })
-      : route.fulfill({ json: [] }),
-  );
+// The same denial in both interfaces until the switch-over (#1548).
+for (const appInterface of ['current', 'clarte'] as const)
+  test(`server-denied registration reveals no protected Company metadata in the ${appInterface} interface`, async ({
+    page,
+  }, testInfo) => {
+    const protectedCompany = {
+      id: 'protected-company-id',
+      displayName: 'Protected Company Name',
+    };
+    await page.route('**/api/access/current-actor', (route) =>
+      route.fulfill({ json: actorContextFixture }),
+    );
+    await page.route('**/api/activity-log', (route) =>
+      route.fulfill({ json: { events: [] } }),
+    );
+    await page.route('**/api/companies', (route) =>
+      route.request().method() === 'POST'
+        ? route.fulfill({
+            status: 403,
+            json: { message: 'Forbidden', ...protectedCompany },
+          })
+        : route.fulfill({ json: [] }),
+    );
 
-  await page.goto('/#companies');
-  const registration = page.getByRole('region', {
-    name: 'Provider Company',
+    await page.goto(
+      appInterface === 'clarte'
+        ? '/?interface=clarte#companies'
+        : '/#companies',
+    );
+    const registration = page.getByRole('region', {
+      name: 'Provider Company',
+    });
+    await registration
+      .getByLabel('Company display name')
+      .fill('Denied registration');
+    await registration
+      .getByRole('button', { name: 'Register Company' })
+      .click();
+    await expect(registration.getByRole('alert')).toHaveText(
+      'You do not have permission to register or view Companies in this Workspace.',
+    );
+    await expect(page.getByText(protectedCompany.displayName)).toHaveCount(0);
+    await expect(page.getByText(protectedCompany.id)).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `company-registration-denied-${appInterface}-${testInfo.project.name}.png`,
+      ),
+      fullPage: true,
+    });
   });
-  await registration
-    .getByLabel('Company display name')
-    .fill('Denied registration');
-  await registration.getByRole('button', { name: 'Register Company' }).click();
-  await expect(registration.getByRole('alert')).toHaveText(
-    'You do not have permission to register or view Companies in this Workspace.',
-  );
-  await expect(page.getByText(protectedCompany.displayName)).toHaveCount(0);
-  await expect(page.getByText(protectedCompany.id)).toHaveCount(0);
-  await expectNoHorizontalOverflow(page);
-  await page.screenshot({
-    path: testInfo.outputPath(
-      `company-registration-denied-${testInfo.project.name}.png`,
-    ),
-    fullPage: true,
-  });
-});
 
 async function openNavigationAtNarrowViewport(page: Page, project: string) {
   if (project === 'narrow')

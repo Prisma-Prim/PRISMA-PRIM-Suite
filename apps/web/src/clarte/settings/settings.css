@@ -1,0 +1,688 @@
+/*
+ * The Settings console (#1546). Every rule is scoped to the Clarté frame;
+ * light background only.
+ */
+.clarte-frame .clarte-settings {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.clarte-frame .clarte-settings-nav {
+  position: sticky;
+  top: 88px;
+  display: grid;
+  gap: 16px;
+}
+
+.clarte-frame .clarte-settings-group-title {
+  margin: 0 10px 4px;
+  color: var(--clarte-faint);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-settings-nav ul,
+.clarte-frame .clarte-settings-home ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-settings-nav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: var(--clarte-radius-sm);
+  color: var(--clarte-ink-soft);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.clarte-frame .clarte-settings-nav a svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-settings-nav a:hover {
+  background: var(--clarte-surface-sunken);
+  color: var(--clarte-ink);
+}
+
+.clarte-frame .clarte-settings-nav a[aria-current='page'] {
+  background: var(--clarte-accent-soft);
+  color: var(--clarte-accent-text);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-settings-nav a[aria-current='page'] svg {
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-settings-content {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-settings-section,
+.clarte-frame .clarte-settings-content > section {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-settings-section:focus {
+  outline: none;
+}
+
+.clarte-frame .clarte-settings-head h2 {
+  margin: 0;
+  font-size: 21px;
+}
+
+.clarte-frame .clarte-settings-head p {
+  max-width: 72ch;
+  margin: 4px 0 0;
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-settings-back {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  min-height: var(--clarte-touch-target);
+  color: var(--clarte-accent-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.clarte-frame .clarte-settings-back svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Home: each group's sections with what they are for */
+.clarte-frame .clarte-settings-home {
+  display: grid;
+  gap: 16px;
+}
+
+.clarte-frame .clarte-settings-home-group h3 {
+  margin: 0 0 10px;
+  color: var(--clarte-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-settings-home ul {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.clarte-frame .clarte-settings-home a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+  min-height: 64px;
+  padding: 12px 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  color: var(--clarte-ink);
+  background: var(--clarte-surface);
+  text-decoration: none;
+}
+
+.clarte-frame .clarte-settings-home a:hover {
+  border-color: var(--clarte-accent-line);
+  background: var(--clarte-surface-muted);
+}
+
+.clarte-frame .clarte-settings-home a > svg:first-child {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-settings-home a > svg:last-child {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  color: var(--clarte-faint);
+}
+
+.clarte-frame .clarte-settings-home a span {
+  display: grid;
+  gap: 2px;
+}
+
+.clarte-frame .clarte-settings-home small {
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+/* Shared pieces of the console's sections */
+.clarte-frame .clarte-settings-hint {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-settings-status {
+  margin: 0;
+  color: var(--clarte-success);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-settings-alert {
+  margin: 0;
+  color: var(--clarte-danger);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.clarte-frame .clarte-settings-form {
+  display: grid;
+  gap: 14px;
+  max-width: 560px;
+}
+
+.clarte-frame .clarte-settings-form--inline {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  max-width: 760px;
+}
+
+.clarte-frame .clarte-settings-form--inline > .clarte-button {
+  margin-top: 24px;
+}
+
+.clarte-frame .clarte-settings-muted {
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-settings-cell-stack {
+  display: grid;
+  gap: 2px;
+}
+
+.clarte-frame .clarte-settings-cell-stack small {
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-settings-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Section cards: titles read as quiet subtitles, as on every console screen. */
+.clarte-frame .clarte-settings-content .clarte-card-head h2,
+.clarte-frame .clarte-settings-content .clarte-settings-languages legend {
+  color: var(--clarte-muted);
+  font-family: var(--clarte-font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Language and region */
+.clarte-frame .clarte-settings-languages {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.clarte-frame .clarte-settings-languages legend {
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.clarte-frame .clarte-settings-language-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.clarte-frame .clarte-settings-language-options label {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 12px 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-settings-language-options input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--clarte-accent);
+}
+
+.clarte-frame .clarte-settings-language-options label:has(input:checked) {
+  border-color: var(--clarte-accent);
+  background: var(--clarte-accent-soft);
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-settings-language-options label:has(input:focus-visible) {
+  outline: 2px solid var(--clarte-accent);
+  outline-offset: 2px;
+}
+
+.clarte-frame .clarte-settings-formats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  margin: 16px 0 0;
+  color: var(--clarte-ink-soft);
+}
+
+.clarte-frame .clarte-settings-formats dt {
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-settings-formats dd {
+  margin: 0;
+}
+
+/* Activity Log: when, who did what, target, and the record a row opens */
+.clarte-frame .clarte-activity-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-activity-list > li {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) auto;
+  gap: 4px 16px;
+  align-items: center;
+  padding: 11px 4px;
+  border-top: 1px solid var(--clarte-line-soft);
+}
+
+.clarte-frame .clarte-activity-list > li:first-child {
+  border-top: 0;
+}
+
+.clarte-frame .clarte-activity-list time {
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-activity-text {
+  display: grid;
+  gap: 2px;
+}
+
+.clarte-frame .clarte-activity-text strong {
+  font-weight: 500;
+}
+
+.clarte-frame .clarte-activity-text span {
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+/* Companies */
+.clarte-frame .clarte-company-record {
+  display: grid;
+  gap: 10px;
+}
+
+.clarte-frame .clarte-company-record-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.clarte-frame .clarte-company-record-head svg {
+  width: 18px;
+  height: 18px;
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-company-record-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.clarte-frame .clarte-company-record dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin: 0;
+}
+
+.clarte-frame .clarte-company-record dt {
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-company-record dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Team and rights */
+.clarte-frame .clarte-table.clarte-members td {
+  vertical-align: middle;
+}
+
+.clarte-frame .clarte-member {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.clarte-frame .clarte-member-initials {
+  display: inline-grid;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--clarte-accent-soft);
+  color: var(--clarte-accent-text);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.clarte-frame .clarte-member-open {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--clarte-ink);
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-member-open:hover {
+  color: var(--clarte-accent-text);
+  text-decoration: underline;
+}
+
+.clarte-frame .clarte-member-chevron {
+  width: 32px;
+  color: var(--clarte-faint);
+}
+
+.clarte-frame .clarte-member-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+.clarte-frame .clarte-member-rights {
+  display: grid;
+  gap: 16px;
+}
+
+.clarte-frame .clarte-rights-group h3,
+.clarte-frame .clarte-member-suspension h3 {
+  margin: 0 0 8px;
+  color: var(--clarte-muted);
+  font-family: var(--clarte-font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-rights {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-rights > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-member-suspension {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding-top: 12px;
+  border-top: 1px solid var(--clarte-line);
+}
+
+/* A member's panel: its views, and the Company whose rights it shows */
+.clarte-frame .clarte-panel-tabs {
+  display: flex;
+  gap: 4px;
+  margin: -6px 0 0;
+  border-bottom: 1px solid var(--clarte-line);
+}
+
+.clarte-frame .clarte-panel-tabs [role='tab'] {
+  min-height: 40px;
+  margin-bottom: -1px;
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--clarte-muted);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-panel-tabs [role='tab'][aria-selected='true'] {
+  border-bottom-color: var(--clarte-accent);
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-member-view {
+  display: grid;
+  gap: 16px;
+}
+
+.clarte-frame .clarte-company-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-info-soft);
+  color: var(--clarte-info);
+}
+
+.clarte-frame .clarte-company-choice > span {
+  margin-right: 4px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-company-choice button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--clarte-info);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-company-choice button[aria-pressed='true'] {
+  border-color: var(--clarte-info);
+  background: var(--clarte-surface);
+  color: var(--clarte-ink);
+}
+
+/* Invitations and session revocations */
+.clarte-frame .clarte-list.clarte-invitation-list > li,
+.clarte-frame .clarte-list.clarte-revocation-list > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto auto;
+  gap: 8px 16px;
+}
+
+.clarte-frame .clarte-list.clarte-revocation-list > li {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.clarte-frame .clarte-rights > li > .clarte-badge,
+.clarte-frame .clarte-list.clarte-invitation-list > li > span,
+.clarte-frame .clarte-list.clarte-revocation-list > li > .clarte-badge {
+  justify-self: start;
+}
+
+.clarte-frame .clarte-invitation-list .clarte-settings-row-actions {
+  flex-wrap: nowrap;
+}
+
+.clarte-frame .clarte-settings-paging {
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+@media (max-width: 900px) {
+  .clarte-frame .clarte-settings {
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: 16px;
+  }
+}
+
+/* Phone: the home is the list; a section fills the screen with a way back. */
+@media (max-width: 768px) {
+  .clarte-frame .clarte-settings {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clarte-frame .clarte-settings-nav {
+    display: none;
+  }
+
+  .clarte-frame .clarte-settings-back {
+    display: inline-flex;
+  }
+
+  .clarte-frame .clarte-settings-home ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clarte-frame .clarte-settings-home a {
+    min-height: var(--clarte-touch-target);
+  }
+
+  .clarte-frame .clarte-settings-form--inline {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clarte-frame .clarte-settings-form--inline > .clarte-button {
+    margin-top: 0;
+  }
+
+  .clarte-frame .clarte-settings-language-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .clarte-frame .clarte-activity-list > li,
+  .clarte-frame .clarte-list.clarte-invitation-list > li,
+  .clarte-frame .clarte-list.clarte-revocation-list > li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .clarte-frame .clarte-settings-row-actions,
+  .clarte-frame .clarte-invitation-list .clarte-settings-row-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  /* The members table reads as one card per member. */
+  .clarte-frame .clarte-table.clarte-members thead {
+    display: none;
+  }
+
+  .clarte-frame .clarte-table.clarte-members tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--clarte-line-soft);
+  }
+
+  .clarte-frame .clarte-table.clarte-members td {
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+
+  .clarte-frame .clarte-table.clarte-members td:nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+    padding-left: 40px;
+    color: var(--clarte-ink-soft);
+  }
+
+  .clarte-frame .clarte-table.clarte-members td[data-label]::before {
+    display: block;
+    color: var(--clarte-muted);
+    font-size: 12px;
+    content: attr(data-label);
+  }
+
+  .clarte-frame .clarte-table.clarte-members td.clarte-member-chevron {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+
+  .clarte-frame .clarte-rights > li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .clarte-frame .clarte-rights > li > .clarte-settings-cell-stack {
+    grid-column: 1 / -1;
+  }
+}

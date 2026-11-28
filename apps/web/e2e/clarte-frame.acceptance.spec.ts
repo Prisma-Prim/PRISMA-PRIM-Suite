@@ -209,7 +209,6 @@ test('reaches every authorized entry and tab from the menu and the jump list', a
     ['Documents', ['Working Documents', 'Knowledge evidence']],
     ['Finance', ['Invoice Records', 'Manual incoming Payment observations']],
     ['Improvement', ['Ideas', 'Operational risks']],
-    ['Settings', ['Companies', 'Team & access', 'Invitations', 'Activity Log']],
   ];
   for (const [entry, tabs] of walk) {
     await openClarteEntry(page, entry);
@@ -228,11 +227,21 @@ test('reaches every authorized entry and tab from the menu and the jump list', a
     }
     if (entry === 'Tasks') await screenshot(page, 'clarte-tasks');
   }
+  // Settings is a console that lists its own sections (#1546).
+  await openClarteEntry(page, 'Settings');
+  await expect(screenTitle(page)).toHaveText('Settings');
+  await expect(
+    page.getByRole('navigation', { name: 'Settings views' }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('region', { name: 'All settings' }).getByRole('link'),
+  ).toHaveCount(5);
 
   await clarteJumpField(page).click();
   const jump = page.getByRole('dialog', { name: 'Go to a screen' });
-  // Today and the 18 sections this tester can open.
-  await expect(jump.getByRole('option')).toHaveCount(19);
+  // Today, the 18 sections this tester can open, the Settings console's home
+  // and Language and region.
+  await expect(jump.getByRole('option')).toHaveCount(21);
   await jump.getByRole('combobox', { name: 'Screen name' }).fill('blocked');
   await expect(jump.getByRole('option')).toHaveText(['Blocked TasksTasks']);
   await screenshot(page, 'clarte-jump-list');

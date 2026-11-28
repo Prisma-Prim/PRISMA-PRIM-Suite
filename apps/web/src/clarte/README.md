@@ -33,6 +33,24 @@
 
 Today is not an App section: pass your screen as `clarteOverview` to `ClarteFrame` in App, then set the `overview` tab to `renderClarteScreen`.
 
+A destination only Clarté has, with no current-interface component, is a `ClarteOnlyScreen` that App passes in `clarteScreens`, composed with the same gates as its sections; add its id to `ClarteOnlyDestinationId`. The frame selects, mounts and places it like a section. An entry with `viewNavigation: 'screen'` draws its own list of views: the frame shows only its title, and each tab renderer receives the entry's offered views and the frame's link handler as its second argument.
+
+## Settings
+
+Settings is a console ([#1546](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1546)): the sections the actor may open, grouped, on the left; the chosen section beside them; on phone the console's home (`#settings`) is the list and a section fills the screen with a way back. The console offers exactly the Settings destinations App composed, so a section appears only for actors App gives it to. Its tabs come from `settings/settings-registry.ts`, not from `clarte-entries.ts`.
+
+To add or migrate a Settings section, change one row of `settingsSections`:
+
+```ts
+{ destination: 'catalogue', group: 'commercial', icon: ListChecks, screen: 'clarte' },
+```
+
+- `destination`: the App section id, or a Clarté-only screen App passes in `clarteScreens`.
+- `group`: where the console lists it; add a group to `settingsGroups` and its name to `settings-console.copy.ts`.
+- `screen`: `current` shows the current component with its own title until a slice migrates it; `clarte` shows the `clarteContent` App composed, under the console's section title (the section's label and description), so the screen starts with its content.
+
+Language and region and the console's home are Clarté-only screens from `useSettingsConsoleScreens`.
+
 The frame keeps the screen title, the row of views, mounting (hidden sections stay mounted, `mountWhenSelected` and `retainAfterSelection` as today), focus on the destination, Escape, the jump list and the protected-write hold. The section's `id` is the URL fragment and the focus destination, as in the current shell.
 
 ## Render App in Clarté in a test
