@@ -107,7 +107,7 @@ function installServer({
   administration = 'ok',
 }: Readonly<{
   actorFor?: () => ActorContext;
-  administration?: 'ok' | 'error';
+  administration?: 'ok' | 'error' | 'no-company';
 }> = {}) {
   const sent: Sent[] = [];
   const members = [ion, maria];
@@ -198,7 +198,8 @@ function installServer({
           ? new Response(null, { status: 500 })
           : Response.json({
               members,
-              companies: [prismaPrim, bic],
+              companies:
+                administration === 'no-company' ? [] : [prismaPrim, bic],
               assignments,
             });
       if (path === '/api/company-ideas-recorder-assignments') {
@@ -712,6 +713,47 @@ describe('Settings console commands', () => {
 });
 
 describe('Settings console states', () => {
+  it('keeps members reachable for suspension before any Company is registered', async () => {
+    const { sent } = installServer({ administration: 'no-company' });
+    await openSettings('#access');
+
+    const team = screen.getByRole('region', { name: 'Team & access' });
+    fireEvent.click(
+      await within(team).findByRole('button', { name: 'Maria Rusu' }),
+    );
+    const panel = screen.getByRole('dialog', { name: 'Maria Rusu' });
+    expect(
+      within(panel).getByText(
+        'No active member or Company is available for access administration.',
+      ),
+    ).toBeVisible();
+    expect(
+      within(panel).queryByRole('button', { name: /^Grant access/u }),
+    ).toBeNull();
+    fireEvent.click(
+      within(panel).getByRole('tab', { name: 'Workspace access' }),
+    );
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Review suspension' }),
+    );
+    fireEvent.click(
+      within(
+        screen.getByRole('alertdialog', {
+          name: 'Confirm Workspace access suspension',
+        }),
+      ).getByRole('button', { name: 'Suspend access' }),
+    );
+
+    expect(
+      await within(team).findByText(
+        'Member suspended. Server state refreshed.',
+      ),
+    ).toBeVisible();
+    expect(sent.map((request) => request.path)).toEqual([
+      '/api/workspace-membership-suspensions',
+    ]);
+  });
+
   it('offers a retry when the access administration cannot be read', async () => {
     installServer({ administration: 'error' });
     await openSettings('#access');

@@ -166,7 +166,7 @@ export function ClarteTeamAccess({
         }
       >
         <p className="clarte-settings-hint">{teamCopy.rightsHint}</p>
-        {members.length === 0 || administration.companies.length === 0 ? (
+        {members.length === 0 ? (
           <ClarteEmptyState title={copy('empty')} />
         ) : (
           <div className="clarte-table-wrap">
@@ -372,7 +372,10 @@ function MemberRights({
           aria-labelledby={tabId(view)}
           className="clarte-member-view"
         >
-          {view === 'rights' ? (
+          {view === 'rights' && administration.companies.length === 0 ? (
+            // Rights are granted per Company; suspension needs none.
+            <ClarteEmptyState title={copy('empty')} />
+          ) : view === 'rights' ? (
             <>
               <div
                 className="clarte-company-choice"
