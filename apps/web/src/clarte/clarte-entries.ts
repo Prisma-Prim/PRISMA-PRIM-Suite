@@ -131,8 +131,8 @@ export const clarteEntries = [
     group: 'secondary',
     icon: Lightbulb,
     tabs: [
-      { destination: 'ideas', render: renderCurrentScreen },
-      { destination: 'operational-risks', render: renderCurrentScreen },
+      { destination: 'ideas', render: renderClarteScreen },
+      { destination: 'operational-risks', render: renderClarteScreen },
     ],
   },
   {
