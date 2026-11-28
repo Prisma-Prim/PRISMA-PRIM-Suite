@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "9365ae03-c6be-4bc4-9c83-0fcb9ee33156:a7b4580315e2c408c",
+  "date": "2026-11-28",
+  "runType": "pull-request-proof",
+  "issue": 1533,
+  "pullRequest": 1555,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-28T07:32:44.199Z",
+    "end": "2026-11-28T08:42:28.160Z",
+    "durationSeconds": 4184
+  },
+  "tokens": {
+    "input": 468,
+    "output": 183564,
+    "cacheCreation": 456151,
+    "cacheRead": 73666974
+  },
+  "models": [
+    {
+      "model": "claude-opus-5-5",
+      "tokens": {
+        "input": 468,
+        "output": 183564,
+        "cacheCreation": 456151,
+        "cacheRead": 73666974
+      },
+      "estimatedPriceUsd": 20.687302
+    }
+  ],
+  "price": {
+    "estimatedUsd": 20.687302,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 2,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Second correction round: two review P1 findings fixed with PostgreSQL REST tests red then green; main merged; French term renamed Deal in code"
+  }
+}
