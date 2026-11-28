@@ -170,6 +170,10 @@
   gap: 14px;
 }
 
+.clarte-frame .clarte-mission[hidden] {
+  display: none;
+}
+
 .clarte-frame .clarte-mission-trail {
   display: flex;
   flex-wrap: wrap;
@@ -361,7 +365,11 @@
   text-align: left;
 }
 
-.clarte-frame .clarte-mission-plan-copy:not(:has(section)) {
+/* Only a confirmed absent copy disappears; its reads, refusals and errors stay. */
+.clarte-frame
+  .clarte-mission-plan-copy:not(
+    :has(section, [role='alert'], [role='status'])
+  ) {
   display: none;
 }
 
@@ -375,7 +383,9 @@
 
 /* The empty plan shows only when no Mission Plan copy is present either. */
 .clarte-frame
-  .clarte-mission-plan:has(.clarte-mission-plan-copy section)
+  .clarte-mission-plan:has(
+    .clarte-mission-plan-copy :is(section, [role='alert'], [role='status'])
+  )
   .clarte-mission-plan-empty {
   display: none;
 }
@@ -394,8 +404,10 @@
   box-shadow: var(--clarte-shadow);
 }
 
-/* The empty current work shows only when no current component shows work. */
-.clarte-frame .clarte-mission-work:has(section) .clarte-mission-work-empty {
+/* The empty state shows only when no current component shows work, a read or a refusal. */
+.clarte-frame
+  .clarte-mission-work:has(section, [role='alert'], [role='status'])
+  .clarte-mission-work-empty {
   display: none;
 }
 

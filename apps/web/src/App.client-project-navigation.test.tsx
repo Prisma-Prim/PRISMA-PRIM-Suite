@@ -314,25 +314,30 @@ function projectsRegion() {
   return screen.getByRole('region', { name: 'Projects' });
 }
 /** The listed Projects' row names; Clarté first returns from an opened Project. */
+/** The listed Projects' row names, as the member sees them. */
 function projectRows() {
-  // Clarté keeps the list mounted, hidden, while a Project is open.
-  const hidden = shown === 'clarte';
   return within(
     within(projectsRegion()).getByRole(shown === 'current' ? 'list' : 'table', {
       name: 'Projects',
-      hidden,
     }),
   )
-    .queryAllByRole('button', { hidden })
+    .queryAllByRole('button')
     .map((button) => button.textContent);
 }
 function projectSearch() {
   return within(projectsRegion()).getByRole('searchbox', {
     name: 'Find Projects',
-    hidden: shown === 'clarte',
   });
 }
+/**
+ * The opened Project's Task title. Clarté shows a Client's Project list over
+ * the opened Project; the member returns to the Project to see its Tasks.
+ */
 function taskTitle() {
+  const back = within(projectsRegion()).queryByRole('button', {
+    name: /^Return to /u,
+  });
+  if (shown === 'clarte' && back) fireEvent.click(back);
   return within(
     within(projectsRegion()).getByRole('region', { name: 'Tasks' }),
   ).getByLabelText('Task title');

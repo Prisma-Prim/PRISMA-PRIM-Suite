@@ -1,4 +1,10 @@
-import { ClipboardList, LayoutTemplate, Plus, RefreshCw } from 'lucide-react';
+import {
+  ArrowLeft,
+  ClipboardList,
+  LayoutTemplate,
+  Plus,
+  RefreshCw,
+} from 'lucide-react';
 import {
   useEffect,
   useId,
@@ -114,6 +120,30 @@ export function ClarteMissions({
   const shown = tabs.some((tab) => tab.id === session.detailPanel)
     ? session.detailPanel
     : 'tasks';
+  // A directory intent (a Client dossier's or Today's Project list) shows the
+  // list over the opened Project, as the current interface shows both. The
+  // Project stays mounted with its drafts until the member returns to it or
+  // another opens; each intent applies once.
+  const navigation = props.navigation;
+  const [directory, setDirectory] = useState<{
+    requestId: number | undefined;
+    over: string | null;
+  }>(() => ({
+    requestId:
+      navigation?.kind === 'directory' ? navigation.requestId : undefined,
+    over: null,
+  }));
+  if (
+    navigation?.kind === 'directory' &&
+    navigation.requestId !== directory.requestId
+  )
+    setDirectory({
+      requestId: navigation.requestId,
+      over: selected?.project.id ?? null,
+    });
+  else if (selected === null && directory.over !== null)
+    setDirectory({ ...directory, over: null });
+  const listOver = selected !== null && directory.over === selected.project.id;
   return (
     <section
       id="projects"
@@ -125,8 +155,21 @@ export function ClarteMissions({
       <ProjectList
         props={props}
         session={session}
-        hidden={selected !== null}
+        hidden={selected !== null && !listOver}
         configuration={configuration}
+        returnTo={
+          listOver && selected
+            ? {
+                title: selected.project.title,
+                onReturn: () => {
+                  setDirectory({ ...directory, over: null });
+                  window.requestAnimationFrame(() =>
+                    session.projectHeading.current?.focus(),
+                  );
+                },
+              }
+            : undefined
+        }
       />
       {selected && templateEnabled && planKey && (
         <TemplatePlanReader
@@ -139,10 +182,11 @@ export function ClarteMissions({
         />
       )}
       {/* A failed refresh of the opened Project is announced above it. */}
-      {selected && <FeedbackAlert session={session} />}
+      {selected && !listOver && <FeedbackAlert session={session} />}
       {selected && context && (
         <ClarteMissionSpace
           key={selected.project.id}
+          hidden={listOver}
           props={props}
           session={session}
           selected={selected}
@@ -161,7 +205,7 @@ export function ClarteMissions({
         id="project-tasks-panel"
         role="tabpanel"
         aria-labelledby="project-tasks-tab"
-        hidden={!selected || shown !== 'tasks'}
+        hidden={!selected || listOver || shown !== 'tasks'}
         tabIndex={-1}
       >
         <ProjectTasks
@@ -213,11 +257,14 @@ function ProjectList({
   session,
   hidden,
   configuration,
+  returnTo,
 }: Readonly<{
   props: ProjectWorkspaceProps;
   session: ProjectWorkspaceSession;
   hidden: boolean;
   configuration: ReactNode;
+  /** The opened Project the list was shown over, and the way back to it. */
+  returnTo?: Readonly<{ title: string; onReturn: () => void }>;
 }>) {
   const { actor } = props;
   const copy = useProjectCopy();
@@ -251,6 +298,18 @@ function ProjectList({
   return (
     <div className="clarte-missions-list" hidden={hidden}>
       {/* The screen itself is the Projects region; the card only groups it. */}
+      {returnTo && (
+        <div className="clarte-mission-trail">
+          <ClarteButton
+            variant="quiet"
+            size="small"
+            onClick={returnTo.onReturn}
+          >
+            <ArrowLeft aria-hidden="true" />
+            {clarte.returnToProject(returnTo.title)}
+          </ClarteButton>
+        </div>
+      )}
       <div className="clarte-card clarte-missions-card">
         <h2 className="clarte-visually-hidden">{copy.title}</h2>
         <div className="clarte-card-head">

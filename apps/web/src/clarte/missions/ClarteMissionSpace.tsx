@@ -86,6 +86,7 @@ export function ClarteMissionSpace({
   tabs,
   shown,
   context,
+  hidden,
   onBack,
 }: Readonly<{
   props: ProjectWorkspaceProps;
@@ -94,6 +95,8 @@ export function ClarteMissionSpace({
   tabs: readonly MissionTab[];
   shown: ProjectDetailPanel;
   context: MissionTabContext;
+  /** Hidden, still mounted, while a directory intent shows the list over it. */
+  hidden: boolean;
   onBack: () => void;
 }>) {
   const { actor, identity, onOpenClientDossier } = props;
@@ -134,6 +137,7 @@ export function ClarteMissionSpace({
     <article
       className="clarte-mission"
       aria-labelledby="selected-project-title"
+      hidden={hidden}
     >
       <div className="clarte-mission-trail">
         <ClarteButton variant="quiet" size="small" onClick={onBack}>

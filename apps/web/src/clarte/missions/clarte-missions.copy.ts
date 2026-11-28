@@ -21,6 +21,7 @@ const keys = [
   'columnStatus',
   'columnRegistered',
   'backToProjects',
+  'returnToProject',
   'owner',
   'ownerNone',
   'ownerAction',
@@ -73,6 +74,7 @@ export const clarteMissionsMessages = defineMessages(keys, {
     columnStatus: 'Stare',
     columnRegistered: 'Înregistrat',
     backToProjects: 'Înapoi la Proiecte',
+    returnToProject: 'Înapoi la {title}',
     owner: 'Responsabil',
     ownerNone: 'Niciun responsabil desemnat',
     ownerAction: 'Responsabil',
@@ -128,6 +130,7 @@ export const clarteMissionsMessages = defineMessages(keys, {
     columnStatus: 'Статус',
     columnRegistered: 'Зарегистрирован',
     backToProjects: 'Назад к проектам',
+    returnToProject: 'Вернуться к «{title}»',
     owner: 'Ответственный',
     ownerNone: 'Ответственный не назначен',
     ownerAction: 'Ответственный',
@@ -182,6 +185,7 @@ export const clarteMissionsMessages = defineMessages(keys, {
     columnStatus: 'Statut',
     columnRegistered: 'Enregistré',
     backToProjects: 'Retour aux projets',
+    returnToProject: 'Revenir à {title}',
     owner: 'Responsable',
     ownerNone: 'Aucun responsable désigné',
     ownerAction: 'Responsable',
@@ -237,6 +241,7 @@ export const clarteMissionsMessages = defineMessages(keys, {
     columnStatus: 'Status',
     columnRegistered: 'Registered',
     backToProjects: 'Back to Projects',
+    returnToProject: 'Return to {title}',
     owner: 'Owner',
     ownerNone: 'No owner designated',
     ownerAction: 'Owner',
@@ -282,6 +287,8 @@ export function useClarteMissionsCopy() {
       formatMessage(message('planCopied'), { title, version }),
     openTaskOf: (activity: string) =>
       formatMessage(message('openTaskOf'), { activity }),
+    returnToProject: (title: string) =>
+      formatMessage(message('returnToProject'), { title }),
     registeredOn: (date: string) =>
       formatMessage(message('registeredOn'), { date }),
   };
