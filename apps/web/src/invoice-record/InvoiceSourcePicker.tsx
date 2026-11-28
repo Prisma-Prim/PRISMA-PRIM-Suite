@@ -13,6 +13,7 @@ import {
   type AccessRecovery,
 } from '../api/use-actor-requests';
 import { InvoiceContextView } from './InvoiceRecordValues';
+import type { InvoiceRelatedCallbacks } from './InvoiceRecordRelations';
 
 export function InvoiceSourcePicker(
   props: ActorRequestProps & {
@@ -24,6 +25,7 @@ export function InvoiceSourcePicker(
     disabled: boolean;
     onDenied: () => void;
     recoverAccess?: AccessRecovery;
+    renderSourceView?: InvoiceRelatedCallbacks['renderSourceView'];
   },
 ) {
   const copy = useInvoiceRecordCopy();
@@ -127,6 +129,23 @@ export function InvoiceSourcePicker(
       {props.selected && (
         <InvoiceContextView context={props.selected.copiedContext} />
       )}
+      {props.selected &&
+        props.renderSourceView?.({
+          companyId: props.companyId,
+          authority: JSON.stringify([
+            props.sourceAuthority,
+            sourceKey(props.selected.source),
+          ]),
+          path: `/documents/${encodeURIComponent(props.selected.source.documentId)}/versions/${encodeURIComponent(props.selected.source.documentVersionId)}/content/${encodeURIComponent(props.selected.source.representationId)}`,
+          file: {
+            size: props.selected.byteLength,
+            sha256: props.selected.sha256,
+            fileName: props.selected.fileName,
+          },
+          reading: 'immediate',
+          onDenied: props.onDenied,
+          recoverAccess: props.recoverAccess,
+        })}
     </section>
   );
 }

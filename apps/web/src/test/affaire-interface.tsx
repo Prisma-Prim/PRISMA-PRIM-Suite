@@ -1,5 +1,6 @@
 import type { InterfacePreference } from '../clarte/interface-preference';
 import { act, fireEvent, screen, within } from './render-with-interface-locale';
+import { changeValue } from './select-option';
 
 /**
  * The steps of the Request App tests that differ between the interfaces
@@ -28,8 +29,75 @@ export function navigateInInterface(
   const entry = clarteEntryOf[label];
   if (!entry) throw new Error(`No Clarté entry is known for ${label}.`);
   fireEvent.click(within(primary).getByRole('link', { name: entry }));
-  const views = screen.queryByRole('navigation', { name: `${entry} views` });
+  // An entry lists its sections as views, or as Settings lists its own.
+  const views =
+    screen.queryByRole('navigation', { name: `${entry} views` }) ??
+    screen.queryByRole('navigation', { name: `${entry} sections` });
   if (views) fireEvent.click(within(views).getByRole('link', { name: label }));
+}
+
+/** One Company access bundle granted or revoked from Team & access. */
+export type AccessChange = Readonly<{
+  operation: 'grant' | 'revoke';
+  member: Readonly<{ workspaceMembershipId: string; displayName: string }>;
+  company: Readonly<{ id: string; displayName: string }>;
+  /** The bundle's value in the current interface's form, e.g. `director-client`. */
+  bundle: string;
+  /** Its label in Clarté's rights panel, e.g. `Company Director Client Access`. */
+  bundleLabel: string;
+}>;
+
+/**
+ * Grants or revokes a Company access bundle and waits for App's refreshed
+ * server state: through the current interface's Company access form, or
+ * through the member's rights panel of Clarté's Settings console, which it
+ * closes again.
+ */
+export async function publishAccessInInterface(
+  appInterface: InterfacePreference,
+  change: AccessChange,
+) {
+  const action =
+    change.operation === 'grant' ? 'Grant access' : 'Revoke access';
+  const done =
+    change.operation === 'grant'
+      ? 'Access granted. Server state refreshed.'
+      : 'Access revoked. Server state refreshed.';
+  navigateInInterface(appInterface, 'Team & access');
+  if (appInterface === 'current') {
+    const access = await screen.findByRole('region', {
+      name: 'Company access',
+    });
+    changeValue(
+      within(access).getByLabelText('Workspace member'),
+      change.member.workspaceMembershipId,
+    );
+    changeValue(
+      within(access).getByLabelText('Company', { exact: true }),
+      change.company.id,
+    );
+    changeValue(within(access).getByLabelText('Access bundle'), change.bundle);
+    fireEvent.click(within(access).getByRole('button', { name: action }));
+    await screen.findByText(done);
+    return;
+  }
+  const team = await screen.findByRole('region', { name: 'Team & access' });
+  fireEvent.click(
+    await within(team).findByRole('button', {
+      name: change.member.displayName,
+    }),
+  );
+  const panel = screen.getByRole('dialog', { name: change.member.displayName });
+  fireEvent.click(
+    within(panel).getByRole('button', { name: change.company.displayName }),
+  );
+  fireEvent.click(
+    within(panel).getByRole('button', {
+      name: `${action} — ${change.bundleLabel}`,
+    }),
+  );
+  await within(panel).findByText(done);
+  fireEvent.click(within(panel).getByRole('button', { name: 'Close' }));
 }
 
 /**

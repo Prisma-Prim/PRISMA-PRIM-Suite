@@ -254,6 +254,8 @@
 }
 
 .clarte-frame .clarte-layer--side {
+  /* One row exactly as tall as the screen, so a long panel body scrolls. */
+  grid-template-rows: minmax(0, 1fr);
   justify-items: end;
 }
 
@@ -267,6 +269,7 @@
   flex-direction: column;
   width: min(100vw, 620px);
   height: 100%;
+  min-height: 0;
   /* A long body scrolls inside the panel instead of growing past the screen. */
   max-height: 100dvh;
   background: var(--clarte-bg);

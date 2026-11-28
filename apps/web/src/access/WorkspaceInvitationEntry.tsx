@@ -12,6 +12,11 @@ import {
 import { useInvitationAcceptanceCopy } from './invitation-acceptance.copy';
 import { WorkspaceInvitationAcceptance } from './WorkspaceInvitationAcceptance';
 import { ClerkNativeValidation } from './ClerkNativeValidation';
+import { useInterfacePreference } from '../clarte/InterfacePreferenceProvider';
+import {
+  ClarteInvitationAuthentication,
+  ClarteInvitationRefusal,
+} from '../clarte/entry/ClarteInvitation';
 import '../production-shell/application-shell.css';
 
 export function WorkspaceInvitationEntry({
@@ -20,10 +25,13 @@ export function WorkspaceInvitationEntry({
   identity?: BrowserIdentity;
 }) {
   const copy = useInvitationAcceptanceCopy();
+  const { preference } = useInterfacePreference();
   // Capture before mounting Clerk, including on a fresh invitation redirect.
   const [intent] = useState(captureAcceptanceIntent);
   if (!intent)
-    return (
+    return preference === 'clarte' ? (
+      <ClarteInvitationRefusal />
+    ) : (
       <main className="production-access-state">
         <p role="alert">{copy.denied}</p>
       </main>
@@ -48,33 +56,45 @@ export function WorkspaceInvitationEntry({
 
 function InvitationAuthentication({ intent }: { intent: AcceptanceIntent }) {
   const copy = useInvitationAcceptanceCopy();
+  const { preference } = useInterfacePreference();
   const returnUrl = acceptanceContinuationUrl(intent);
   const signInUrl = acceptanceContinuationUrl(intent, 'signin');
   const signUpUrl = intent.ticket
     ? acceptanceContinuationUrl(intent, 'signup')
     : undefined;
   const mode = new URL(window.location.href).searchParams.get('mode');
+  // The identity provider's own form for a chosen mode; otherwise the choice.
+  const provider =
+    mode === 'signup' && signUpUrl ? (
+      <SignUp
+        routing="hash"
+        forceRedirectUrl={returnUrl}
+        signInUrl={signInUrl}
+        signInForceRedirectUrl={returnUrl}
+      />
+    ) : mode === 'signin' ? (
+      <SignIn
+        routing="hash"
+        forceRedirectUrl={returnUrl}
+        signUpUrl={signUpUrl ?? returnUrl}
+        signUpForceRedirectUrl={returnUrl}
+      />
+    ) : undefined;
+  if (preference === 'clarte')
+    return (
+      <ClarteInvitationAuthentication
+        provider={provider}
+        signInUrl={signInUrl}
+        signUpUrl={signUpUrl}
+      />
+    );
   return (
     <main className="production-access-state">
       <section className="production-content-surface invitation-entry">
         <h1>{copy.title}</h1>
         <p>{copy.authentication}</p>
         <ClerkNativeValidation>
-          {mode === 'signup' && signUpUrl ? (
-            <SignUp
-              routing="hash"
-              forceRedirectUrl={returnUrl}
-              signInUrl={signInUrl}
-              signInForceRedirectUrl={returnUrl}
-            />
-          ) : mode === 'signin' ? (
-            <SignIn
-              routing="hash"
-              forceRedirectUrl={returnUrl}
-              signUpUrl={signUpUrl ?? returnUrl}
-              signUpForceRedirectUrl={returnUrl}
-            />
-          ) : (
+          {provider ?? (
             <div className="invitation-entry-actions">
               <a href={signInUrl}>{copy.signIn}</a>
               {signUpUrl && <a href={signUpUrl}>{copy.signUp}</a>}

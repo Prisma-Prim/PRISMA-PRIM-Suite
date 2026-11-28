@@ -25,6 +25,7 @@ import {
   leaveRequestInInterface,
   navigateInInterface,
   openRequestInInterface,
+  publishAccessInInterface,
 } from './test/affaire-interface';
 import { appInterfaces, renderInInterface } from './test/app-interface';
 import { changeValue } from './test/select-option';
@@ -289,20 +290,15 @@ async function revalidate() {
   navigate('Client Requests');
 }
 
+// An unrelated grant in another Company makes App refresh its authority.
 async function refreshAuthority() {
-  navigate('Team & access');
-  const access = await screen.findByRole('region', { name: 'Company access' });
-  changeValue(within(access).getByLabelText('Workspace member'), 'member-1');
-  changeValue(
-    within(access).getByLabelText('Company', { exact: true }),
-    otherCompany.id,
-  );
-  changeValue(
-    within(access).getByLabelText('Access bundle'),
-    'director-client',
-  );
-  fireEvent.click(within(access).getByRole('button', { name: 'Grant access' }));
-  await screen.findByText('Access granted. Server state refreshed.');
+  await publishAccessInInterface(shownInterface, {
+    operation: 'grant',
+    member: { workspaceMembershipId: 'member-1', displayName: 'Ada' },
+    company: otherCompany,
+    bundle: 'director-client',
+    bundleLabel: 'Company Director Client Access',
+  });
   navigate('Client Requests');
 }
 
@@ -534,27 +530,7 @@ describe.each(appInterfaces)(
       const api = transport();
       await openRequest();
       await selectClient();
-      navigate('Team & access');
-      const access = await screen.findByRole('region', {
-        name: 'Company access',
-      });
-      changeValue(
-        within(access).getByLabelText('Workspace member'),
-        'member-1',
-      );
-      changeValue(
-        within(access).getByLabelText('Company', { exact: true }),
-        otherCompany.id,
-      );
-      changeValue(
-        within(access).getByLabelText('Access bundle'),
-        'director-client',
-      );
-      fireEvent.click(
-        within(access).getByRole('button', { name: 'Grant access' }),
-      );
-      await screen.findByText('Access granted. Server state refreshed.');
-      navigate('Client Requests');
+      await refreshAuthority();
       expect(
         screen.getByRole('article', { name: detail.subject }),
       ).toBeVisible();

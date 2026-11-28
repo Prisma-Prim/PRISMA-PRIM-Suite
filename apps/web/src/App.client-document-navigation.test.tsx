@@ -263,6 +263,49 @@ function navigateTo(label: string) {
   fireEvent.change(field, { target: { value: label } });
   fireEvent.keyDown(field, { key: 'Enter' });
 }
+/**
+ * Grants Company Director Client Access to the member for Company A: through
+ * the access form in the current interface, through the member's rights in
+ * the Clarté Settings console.
+ */
+async function grantDirectorClientAccess() {
+  navigateTo('Team & access');
+  if (shown === 'current') {
+    const access = await screen.findByRole('region', {
+      name: 'Company access',
+    });
+    changeValue(
+      within(access).getByLabelText('Workspace member'),
+      membershipId,
+    );
+    changeValue(
+      within(access).getByLabelText('Company', { exact: true }),
+      companyA.id,
+    );
+    changeValue(
+      within(access).getByLabelText('Access bundle'),
+      'director-client',
+    );
+    fireEvent.click(
+      within(access).getByRole('button', { name: 'Grant access' }),
+    );
+  } else {
+    const team = await screen.findByRole('region', { name: 'Team & access' });
+    fireEvent.click(
+      await within(team).findByRole('button', { name: 'Resolver' }),
+    );
+    const panel = screen.getByRole('dialog', { name: 'Resolver' });
+    fireEvent.click(
+      within(panel).getByRole('button', { name: companyA.displayName }),
+    );
+    fireEvent.click(
+      within(panel).getByRole('button', {
+        name: 'Grant access — Company Director Client Access',
+      }),
+    );
+  }
+  await screen.findByText('Access granted. Server state refreshed.');
+}
 function documentsRegion() {
   return screen.getByRole('region', { name: 'Working Documents' });
 }
@@ -587,26 +630,7 @@ describe.each(appInterfaces)(
         ]),
       );
 
-      navigateTo('Team & access');
-      const access = await screen.findByRole('region', {
-        name: 'Company access',
-      });
-      changeValue(
-        within(access).getByLabelText('Workspace member'),
-        membershipId,
-      );
-      changeValue(
-        within(access).getByLabelText('Company', { exact: true }),
-        companyA.id,
-      );
-      changeValue(
-        within(access).getByLabelText('Access bundle'),
-        'director-client',
-      );
-      fireEvent.click(
-        within(access).getByRole('button', { name: 'Grant access' }),
-      );
-      await screen.findByText('Access granted. Server state refreshed.');
+      await grantDirectorClientAccess();
 
       navigateTo('Working Documents');
       await waitFor(() => expect(documentTitles()).toHaveLength(2));
@@ -652,26 +676,7 @@ describe.each(appInterfaces)(
       await requestDossierFromDocument();
       const dossierReadsBefore = transport.dossierReads;
 
-      navigateTo('Team & access');
-      const access = await screen.findByRole('region', {
-        name: 'Company access',
-      });
-      changeValue(
-        within(access).getByLabelText('Workspace member'),
-        membershipId,
-      );
-      changeValue(
-        within(access).getByLabelText('Company', { exact: true }),
-        companyA.id,
-      );
-      changeValue(
-        within(access).getByLabelText('Access bundle'),
-        'director-client',
-      );
-      fireEvent.click(
-        within(access).getByRole('button', { name: 'Grant access' }),
-      );
-      await screen.findByText('Access granted. Server state refreshed.');
+      await grantDirectorClientAccess();
       expect(transport.grants).toBe(1);
 
       await expectNoDossierReopened(transport, dossierReadsBefore);

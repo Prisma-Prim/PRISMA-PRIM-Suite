@@ -20,6 +20,7 @@ import {
   actorNameShown,
   navigateInInterface,
   openRequestInInterface,
+  publishAccessInInterface,
 } from './test/affaire-interface';
 import { appInterfaces, renderInInterface } from './test/app-interface';
 import {
@@ -27,7 +28,6 @@ import {
   fireEvent,
   screen,
   waitFor,
-  within,
 } from './test/render-with-interface-locale';
 import { changeValue } from './test/select-option';
 
@@ -365,29 +365,24 @@ async function openRequest() {
   });
   return { ...rendered, identity };
 }
+const coordinatorBundle = {
+  bundle: 'opportunity-follow-up-coordinator',
+  bundleLabel: 'Company Opportunity Follow-up Coordinator',
+};
+const ideasReaderBundle = {
+  bundle: 'ideas-reader',
+  bundleLabel: 'Ideas Reader',
+};
 async function publishAssignment(
   operation: 'grant' | 'revoke',
-  targetMember = membershipId,
-  bundle = 'opportunity-follow-up-coordinator',
+  bundle = coordinatorBundle,
 ) {
-  navigate('Team & access');
-  const access = await screen.findByRole('region', { name: 'Company access' });
-  changeValue(within(access).getByLabelText('Workspace member'), targetMember);
-  changeValue(
-    within(access).getByLabelText('Company', { exact: true }),
-    company.id,
-  );
-  changeValue(within(access).getByLabelText('Access bundle'), bundle);
-  fireEvent.click(
-    within(access).getByRole('button', {
-      name: operation === 'grant' ? 'Grant access' : 'Revoke access',
-    }),
-  );
-  await screen.findByText(
-    operation === 'grant'
-      ? 'Access granted. Server state refreshed.'
-      : 'Access revoked. Server state refreshed.',
-  );
+  await publishAccessInInterface(shownInterface, {
+    operation,
+    member: { workspaceMembershipId: membershipId, displayName: 'Ada DEMO' },
+    company,
+    ...bundle,
+  });
   navigate('Client Requests');
 }
 
@@ -464,7 +459,7 @@ describe.each(appInterfaces)(
             }),
           },
         });
-        await publishAssignment('grant', membershipId, 'ideas-reader');
+        await publishAssignment('grant', ideasReaderBundle);
         expect(
           actorNameShown(appInterface, 'New Client capture Actor DEMO'),
         ).toBe(true);
@@ -547,7 +542,7 @@ describe.each(appInterfaces)(
         // An external Client capture change is observed by the current member's
         // unrelated administration refresh. Date authority stays identical.
         server.setActor(clientReplacement);
-        await publishAssignment('grant', membershipId, 'ideas-reader');
+        await publishAssignment('grant', ideasReaderBundle);
         expect(screen.getByText('New Client capture Actor DEMO')).toBeVisible();
         expect(screen.getByLabelText(label)).toBe(draft);
         expect(draft).toHaveValue(draftValue);
@@ -573,7 +568,7 @@ describe.each(appInterfaces)(
             ),
           },
         });
-        await publishAssignment('revoke', membershipId, 'ideas-reader');
+        await publishAssignment('revoke', ideasReaderBundle);
         expect(
           screen.getByText('Client capture revoked Actor DEMO'),
         ).toBeVisible();

@@ -38,17 +38,41 @@ export interface PaymentEvidenceSourcePanelProps extends PaymentEvidenceAccessCa
   onProtectedWorkChange: (protectedWork: boolean) => void;
   onActivityRecorded?: () => void;
 }
-/** A single native Document-family pane; its host owns navigation and selection. */
-export function PaymentEvidenceSourcePanel(
-  props: PaymentEvidenceSourcePanelProps,
-) {
-  const copy = usePaymentEvidenceCopy(),
-    authority = paymentEvidenceAuthority(props.actor);
+export type PaymentEvidenceOwnerAuthority = PaymentEvidenceOperationKeys & {
+  companyId: string;
+};
+/**
+ * The payment evidence owner a view may mount, with the key that retires it
+ * on any actor, Company or identity change. Both interfaces use this gate.
+ */
+export function usePaymentEvidenceGate(
+  props: Pick<PaymentEvidenceSourcePanelProps, 'actor' | 'identity'>,
+): { authority: PaymentEvidenceOwnerAuthority; key: string } | undefined {
+  const authority = paymentEvidenceAuthority(props.actor);
   const identityGeneration = useRequestLifetime(
     props.identity,
     JSON.stringify([props.identity.loaded, props.identity.signedIn]),
   );
   if (!authority || !props.identity.loaded || !props.identity.signedIn)
+    return undefined;
+  return {
+    authority,
+    key: JSON.stringify([
+      props.actor.internalUserId,
+      props.actor.workspaceId,
+      props.actor.workspaceMembershipId,
+      authority.companyId,
+      identityGeneration,
+    ]),
+  };
+}
+/** A single native Document-family pane; its host owns navigation and selection. */
+export function PaymentEvidenceSourcePanel(
+  props: PaymentEvidenceSourcePanelProps,
+) {
+  const copy = usePaymentEvidenceCopy();
+  const gate = usePaymentEvidenceGate(props);
+  if (!gate)
     return (
       <section
         className="working-documents payment-evidence-source working-documents--prisme"
@@ -60,15 +84,9 @@ export function PaymentEvidenceSourcePanel(
     );
   return (
     <AvailablePaymentEvidencePanel
-      key={JSON.stringify([
-        props.actor.internalUserId,
-        props.actor.workspaceId,
-        props.actor.workspaceMembershipId,
-        authority.companyId,
-        identityGeneration,
-      ])}
+      key={gate.key}
       {...props}
-      authority={authority}
+      authority={gate.authority}
     />
   );
 }
@@ -79,19 +97,22 @@ type ListState =
       owner: () => boolean;
       documents: PaymentEvidenceDocument[];
     };
-function AvailablePaymentEvidencePanel({
+/**
+ * The payment evidence inventory, protection and registration receipt of one
+ * owner. Views lay it out; the reads, access recovery and the navigation hold
+ * stay here.
+ */
+export function usePaymentEvidenceOwner({
   actor,
   identity,
-  selection,
   onSelect,
   onProtectedWorkChange,
   onActivityRecorded,
   authority,
   ...accessCallbacks
-}: PaymentEvidenceSourcePanelProps & {
-  authority: PaymentEvidenceOperationKeys & { companyId: string };
+}: Omit<PaymentEvidenceSourcePanelProps, 'selection'> & {
+  authority: PaymentEvidenceOwnerAuthority;
 }) {
-  const copy = usePaymentEvidenceCopy();
   const [list, setList] = useState<ListState>({ status: 'loading' }),
     [revision, setRevision] = useState(0),
     [protectedWork, setProtectedWork] = useState(false),
@@ -172,6 +193,37 @@ function AvailablePaymentEvidencePanel({
   }
   const currentList =
     list.status === 'ready' && list.owner() ? list.documents : undefined;
+  return {
+    list,
+    currentList,
+    protectedWork,
+    setProtectedWork,
+    confirmed,
+    retry: () => setRevision((value) => value + 1),
+    registered,
+    reject,
+    accessCallbacks,
+  };
+}
+function AvailablePaymentEvidencePanel({
+  selection,
+  ...props
+}: PaymentEvidenceSourcePanelProps & {
+  authority: PaymentEvidenceOwnerAuthority;
+}) {
+  const copy = usePaymentEvidenceCopy();
+  const { actor, identity, onSelect, onActivityRecorded, authority } = props;
+  const {
+    list,
+    currentList,
+    protectedWork,
+    setProtectedWork,
+    confirmed,
+    retry,
+    registered,
+    reject,
+    accessCallbacks,
+  } = usePaymentEvidenceOwner(props);
   return (
     <section
       className="working-documents payment-evidence-source working-documents--prisme"
@@ -189,10 +241,7 @@ function AvailablePaymentEvidencePanel({
         {list.status === 'error' && (
           <div role="alert">
             <p>{copy('error')}</p>
-            <button
-              type="button"
-              onClick={() => setRevision((value) => value + 1)}
-            >
+            <button type="button" onClick={retry}>
               {copy('retry')}
             </button>
           </div>

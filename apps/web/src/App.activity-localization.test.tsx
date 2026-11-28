@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { appInterfaces, renderInInterface } from './test/app-interface';
 import { deterministicBrowserIdentity } from './access-composition';
 import {
   InterfaceLocaleProvider,
@@ -98,72 +99,76 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-it('localizes loaded Activity narration without replacing its rows or reading again', async () => {
-  const fetch = vi.fn(async (input: RequestInfo | URL) => {
-    const url = input.toString();
-    const body = url.endsWith('/access/current-actor')
-      ? reader
-      : url.endsWith('/activity-log')
-        ? {
-            events: [
-              {
-                id: 'event-locale-703',
-                action: 'client_request.created',
-                occurredAt: '2026-09-21T10:05:00.000Z',
-                actor: {
-                  internalUserId: 'user-1',
-                  displayName: 'Ada Ionescu',
+it.each(appInterfaces)(
+  'localizes loaded Activity narration without replacing its rows or reading again in the %s interface',
+  async (appInterface) => {
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      const body = url.endsWith('/access/current-actor')
+        ? reader
+        : url.endsWith('/activity-log')
+          ? {
+              events: [
+                {
+                  id: 'event-locale-703',
+                  action: 'client_request.created',
+                  occurredAt: '2026-09-21T10:05:00.000Z',
+                  actor: {
+                    internalUserId: 'user-1',
+                    displayName: 'Ada Ionescu',
+                  },
+                  target: {
+                    type: 'client_request',
+                    clientRequestId: requestId,
+                    companyId,
+                  },
+                  metadata: {},
                 },
-                target: {
-                  type: 'client_request',
-                  clientRequestId: requestId,
-                  companyId,
-                },
-                metadata: {},
-              },
-            ],
-          }
-        : [];
-    return Response.json(body);
-  });
-  vi.stubGlobal('fetch', fetch);
-  render(
-    <InterfaceLocaleProvider>
-      <RomanianChoice />
-      <App identity={deterministicBrowserIdentity()} />
-    </InterfaceLocaleProvider>,
-  );
+              ],
+            }
+          : [];
+      return Response.json(body);
+    });
+    vi.stubGlobal('fetch', fetch);
+    renderInInterface(
+      appInterface,
+      <InterfaceLocaleProvider>
+        <RomanianChoice />
+        <App identity={deterministicBrowserIdentity()} />
+      </InterfaceLocaleProvider>,
+    );
 
-  const description = await screen.findByText(
-    'Ada Ionescu captured a Client Request',
-  );
-  const row = description.closest('li');
-  if (row === null) throw new Error('Expected the admitted Activity row.');
-  const ledger = screen.getByRole('region', { name: 'Activity Log' });
-  expect(within(ledger).getAllByRole('listitem')).toEqual([row]);
-  expect(row).toHaveTextContent(`Target: Client Request: ${requestId}`);
-  expect(
-    within(row).getByRole('button', { name: 'Open Request' }),
-  ).toBeVisible();
-  const time = row.querySelector('time');
-  expect(time).toHaveAttribute('datetime', '2026-09-21T10:05:00.000Z');
-  const reads = fetch.mock.calls.length;
+    const description = await screen.findByText(
+      'Ada Ionescu captured a Client Request',
+    );
+    const row = description.closest('li');
+    if (row === null) throw new Error('Expected the admitted Activity row.');
+    const ledger = screen.getByRole('region', { name: 'Activity Log' });
+    expect(within(ledger).getAllByRole('listitem')).toEqual([row]);
+    expect(row).toHaveTextContent(`Target: Client Request: ${requestId}`);
+    expect(
+      within(row).getByRole('button', { name: 'Open Request' }),
+    ).toBeVisible();
+    const time = row.querySelector('time');
+    expect(time).toHaveAttribute('datetime', '2026-09-21T10:05:00.000Z');
+    const reads = fetch.mock.calls.length;
 
-  fireEvent.click(screen.getByRole('button', { name: 'Use ro' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use ro' }));
 
-  expect(within(ledger).getAllByRole('listitem')).toEqual([row]);
-  expect(row.querySelector('strong')).toBe(description);
-  expect(row.querySelector('time')).toBe(time);
-  expect(time).toHaveAttribute('datetime', '2026-09-21T10:05:00.000Z');
-  expect(fetch).toHaveBeenCalledTimes(reads);
-  expect(
-    within(ledger).getByRole('heading', { name: 'Jurnal de activitate' }),
-  ).toBeVisible();
-  expect(row).toHaveTextContent(
-    'Ada Ionescu a înregistrat o cerere a clientului',
-  );
-  expect(row).toHaveTextContent(`Țintă: Cerere a clientului: ${requestId}`);
-});
+    expect(within(ledger).getAllByRole('listitem')).toEqual([row]);
+    expect(row.querySelector('strong')).toBe(description);
+    expect(row.querySelector('time')).toBe(time);
+    expect(time).toHaveAttribute('datetime', '2026-09-21T10:05:00.000Z');
+    expect(fetch).toHaveBeenCalledTimes(reads);
+    expect(
+      within(ledger).getByRole('heading', { name: 'Jurnal de activitate' }),
+    ).toBeVisible();
+    expect(row).toHaveTextContent(
+      'Ada Ionescu a înregistrat o cerere a clientului',
+    );
+    expect(row).toHaveTextContent(`Țintă: Cerere a clientului: ${requestId}`);
+  },
+);
 
 const journeyLocales = [
   {

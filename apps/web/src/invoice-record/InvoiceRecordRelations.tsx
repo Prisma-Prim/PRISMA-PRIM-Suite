@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+import type { ExactSourcePdf } from '../documents/use-verified-pdf-download';
 import type { LiveSource, Related } from './invoice-record-contract';
 import { useInvoiceRecordCopy } from './invoice-record-copy';
 import type {
@@ -13,6 +15,11 @@ import {
 export type InvoiceRelatedCallbacks = {
   onOpenClient?: (clientId: string) => void;
   onOpenContract?: (input: InvoiceContractTarget) => void;
+  /**
+   * Shows the exact source PDF beside its facts. Only an interface that lays
+   * the source beside the transcription passes it; the read stays native.
+   */
+  renderSourceView?: (source: ExactSourcePdf) => ReactNode;
 };
 /** Only a still-current native projection reaches this view; copied facts live outside it. */
 export function InvoiceRecordRelations(
@@ -51,6 +58,25 @@ export function InvoiceRecordRelations(
                   authority={props.downloadAuthority}
                   source={source}
                 />
+                {props.renderSourceView?.({
+                  companyId: props.companyId,
+                  authority: JSON.stringify([
+                    props.downloadAuthority,
+                    props.recordId,
+                    source.documentId,
+                    source.documentVersionId,
+                    source.content.representationId,
+                  ]),
+                  path: `/invoice-records/${encodeURIComponent(props.recordId)}/source`,
+                  file: {
+                    size: source.content.byteLength,
+                    sha256: source.content.sha256,
+                    fileName: source.content.fileName,
+                  },
+                  reading: props.editing ? 'immediate' : 'on-request',
+                  onDenied: props.onDenied,
+                  recoverAccess: props.recoverAccess,
+                })}
               </>
             ) : (
               <p>{copy.sourceUnavailable}</p>

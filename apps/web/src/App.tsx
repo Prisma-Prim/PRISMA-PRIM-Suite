@@ -29,6 +29,8 @@ import { useTeamTasksCopy } from './project/team-tasks.copy';
 import { MissionPlanWorkspace } from './mission-plan/MissionPlanWorkspace';
 import { missionPlanAuthority } from './mission-plan/mission-plan-authority';
 import { IdeasWorkspace } from './ideas/IdeasWorkspace';
+import { ClarteIdeas } from './clarte/improvement/ClarteIdeas';
+import { ClarteOperationalRisks } from './clarte/improvement/ClarteOperationalRisks';
 import { ideasAuthority, ideasContextKey } from './ideas/ideas-contract';
 import { useIdeasCopy } from './ideas/ideas.copy';
 import {
@@ -99,7 +101,36 @@ import type { CompanySummaryKind } from './operational-home/operational-home-res
 import { useProductionShellContext } from './production-shell/useProductionShellContext';
 import { ClarteFrame } from './clarte/ClarteFrame';
 import { ClarteAffaires } from './clarte/affaires/ClarteAffaires';
+import {
+  ClarteAccessState,
+  type ClarteAccessStateKind,
+} from './clarte/entry/ClarteAccessState';
 import { useInterfacePreference } from './clarte/InterfacePreferenceProvider';
+import { ClarteInvoiceRecords } from './clarte/finance/ClarteInvoiceRecords';
+import { ClartePaymentObservations } from './clarte/finance/ClartePaymentObservations';
+import {
+  ClartePaymentProofs,
+  type RequestedPaymentProof,
+} from './clarte/finance/ClartePaymentProofs';
+import { useClarteFinanceCopy } from './clarte/finance/clarte-finance.copy';
+import type { InvoiceContractTarget } from './invoice-record/InvoiceRecordContractLink';
+import { paymentEvidenceAuthority } from './payment-evidence/payment-evidence-authority';
+import { usePaymentEvidenceCopy } from './payment-evidence/payment-evidence.copy';
+import { ClarteActivityLog } from './clarte/settings/ClarteActivityLog';
+import { ClarteCompanies } from './clarte/settings/ClarteCompanies';
+import { ClarteInvitations } from './clarte/settings/ClarteInvitations';
+import { ClarteTeamAccess } from './clarte/settings/ClarteTeamAccess';
+import { useSettingsConsoleScreens } from './clarte/settings/settings-screens';
+
+/** The Clarté access state shown for each access status before the frame. */
+const clarteAccessStates = {
+  checking: 'checking',
+  forbidden: 'inactive',
+  error: 'error',
+} as const satisfies Record<
+  'checking' | 'forbidden' | 'error',
+  ClarteAccessStateKind
+>;
 
 type HomeScopeLifetime = {
   readonly scope: string;
@@ -111,6 +142,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const { locale } = useInterfaceLocale();
   // Presentation only: both interfaces receive the same composition.
   const { preference: interfacePreference } = useInterfacePreference();
+  const settingsScreens = useSettingsConsoleScreens();
   const invoiceCopy = useInvoiceRecordCopy();
   const modelCopy = useOfferModelCopy();
   const contractModelCopy = useContractModelCopy();
@@ -121,6 +153,8 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const unassignedCopy = useUnassignedTasksCopy();
   const blockedCopy = useBlockedTasksCopy();
   const teamCopy = useTeamTasksCopy();
+  const financeCopy = useClarteFinanceCopy();
+  const paymentEvidenceCopy = usePaymentEvidenceCopy();
   const [clientAuthorityGeneration, setClientAuthorityGeneration] = useState(0);
   const [templateCatalogueRevision, setTemplateCatalogueRevision] = useState(0);
   const [clientIdentityGeneration, setClientIdentityGeneration] = useState(0);
@@ -154,6 +188,10 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       documentsContext: string;
       paymentEvidenceVersionId?: string;
     }
+  >();
+  // Clarté's Finance › Payment proofs opens a proof a Payment cites once.
+  const [requestedProof, setRequestedProof] = useState<
+    RequestedPaymentProof & { documentsContext: string }
   >();
   const multiCompanyNavigation = useRef(0);
   const overdueLifetime = useRef<HomeScopeLifetime>({
@@ -189,8 +227,14 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   /** Request ids only increase, so no retired request id is ever reissued. */
   const documentRequests = useRef(0);
   const sourceNavigationProtected = useRef(false);
-  const protectedSection = useRef<'documents' | 'payments'>('documents');
+  const protectedSection = useRef<'documents' | 'payments' | 'payment-proofs'>(
+    'documents',
+  );
   const [paymentProtection, setPaymentProtection] = useState<{
+    scope: string;
+    active: boolean;
+  }>();
+  const [proofProtection, setProofProtection] = useState<{
     scope: string;
     active: boolean;
   }>();
@@ -220,6 +264,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     (
       section:
         | 'payments'
+        | 'payment-proofs'
         | 'clients'
         | 'projects'
         | 'documents'
@@ -290,12 +335,30 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const paymentProtected =
     paymentProtection?.scope === protectedSourceScope &&
     paymentProtection.active;
-  const navigationProtected = sourceProtected || paymentProtected;
+  const proofProtected =
+    proofProtection?.scope === protectedSourceScope && proofProtection.active;
+  const navigationProtected =
+    sourceProtected || paymentProtected || proofProtected;
   sourceNavigationProtected.current = navigationProtected;
-  protectedSection.current = paymentProtected ? 'payments' : 'documents';
+  protectedSection.current = paymentProtected
+    ? 'payments'
+    : proofProtected
+      ? 'payment-proofs'
+      : 'documents';
   const reportProtectedPayment = useCallback(
     (active: boolean) =>
       setPaymentProtection((current) => {
+        if (sourceScope.current !== protectedSourceScope) return current;
+        return current?.scope === protectedSourceScope &&
+          current.active === active
+          ? current
+          : { scope: protectedSourceScope, active };
+      }),
+    [protectedSourceScope],
+  );
+  const reportProtectedProof = useCallback(
+    (active: boolean) =>
+      setProofProtection((current) => {
         if (sourceScope.current !== protectedSourceScope) return current;
         return current?.scope === protectedSourceScope &&
           current.active === active
@@ -389,6 +452,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       : 'inactive';
   useEffect(() => {
     setRequestedDocument(undefined);
+    setRequestedProof(undefined);
   }, [documentsContext]);
   // A requested Project open belongs to the context that keys the Projects
   // owner. A session, Client authority or Company change, or the loss of the
@@ -457,7 +521,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   ]);
 
   if (!identity.loaded)
-    return (
+    return interfacePreference === 'clarte' ? (
+      <ClarteAccessState state="checking" />
+    ) : (
       <main className="production-access-state">
         <p role="status">{copy.checkingAccess}</p>
       </main>
@@ -466,6 +532,8 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   if (access.status === 'signed-out') return <>{identity.signedOutView}</>;
 
   if (access.status !== 'active') {
+    if (interfacePreference === 'clarte')
+      return <ClarteAccessState state={clarteAccessStates[access.status]} />;
     const messages: Record<'checking' | 'forbidden' | 'error', string> = {
       checking: copy.checkingAccess,
       forbidden: copy.inactiveAccess,
@@ -724,7 +792,41 @@ export function App({ identity }: { identity: BrowserIdentity }) {
 
   const sections: ApplicationSection[] = [];
   const paymentText = paymentCopy[locale];
-  if (paymentAuthority(access.actor))
+  // Clarté's Finance shows payment proofs as their own view; the current
+  // interface keeps them inside Documents until the switch-over (#1548).
+  const offersPaymentProofs =
+    interfacePreference === 'clarte' &&
+    paymentEvidenceAuthority(access.actor) !== undefined;
+  const openPaymentProof = offersPaymentProofs
+    ? (target: DocumentOpenTarget, versionId: string) => {
+        documentRequests.current += 1;
+        setRequestedProof({
+          documentsContext,
+          documentId: typeof target === 'string' ? target : target.documentId,
+          versionId,
+          requestId: documentRequests.current,
+        });
+        navigateToSection('payment-proofs');
+      }
+    : undefined;
+  if (paymentAuthority(access.actor)) {
+    const paymentProps = {
+      actor: access.actor,
+      identity,
+      projectionAuthority: JSON.stringify([
+        clientAuthorityGeneration,
+        clientIdentityGeneration,
+        grantOf(access.actor.activeCompany, 'company_director_client_access')
+          ?.assignmentId,
+        grantOf(access.actor.activeCompany, 'company_director_client_access')
+          ?.permissionSetVersion,
+      ]),
+      onActorRevalidated: acceptRevalidatedActor,
+      onCompanyContextRejected: rejectCompanyContext,
+      onWorkspaceAccessRejected: rejectWorkspaceAccess,
+      onProtectedWorkChange: reportProtectedPayment,
+      onOpenClient: canReadCompanyClients ? openClientDossier : undefined,
+    };
     sections.push({
       id: 'payments',
       label: paymentText.title,
@@ -732,25 +834,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       retainAfterSelection: true,
       content: (
         <PaymentWorkspace
-          actor={access.actor}
-          identity={identity}
-          projectionAuthority={JSON.stringify([
-            clientAuthorityGeneration,
-            clientIdentityGeneration,
-            grantOf(
-              access.actor.activeCompany,
-              'company_director_client_access',
-            )?.assignmentId,
-            grantOf(
-              access.actor.activeCompany,
-              'company_director_client_access',
-            )?.permissionSetVersion,
-          ])}
-          onActorRevalidated={acceptRevalidatedActor}
-          onCompanyContextRejected={rejectCompanyContext}
-          onWorkspaceAccessRejected={rejectWorkspaceAccess}
-          onProtectedWorkChange={reportProtectedPayment}
-          onOpenClient={canReadCompanyClients ? openClientDossier : undefined}
+          {...paymentProps}
           onOpenDocument={
             openDocument
               ? (target, versionId) => openDocument(target, versionId)
@@ -758,36 +842,77 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           }
         />
       ),
+      clarteContent: (
+        <ClartePaymentObservations
+          {...paymentProps}
+          onOpenDocument={
+            openPaymentProof ??
+            (openDocument
+              ? (target, versionId) => openDocument(target, versionId)
+              : undefined)
+          }
+        />
+      ),
     });
-  if (invoiceRecordAuthority(access.actor))
+  }
+  if (invoiceRecordAuthority(access.actor)) {
+    const invoiceProps = {
+      actor: access.actor,
+      identity,
+      projectionAuthority: JSON.stringify([
+        clientAuthorityGeneration,
+        clientIdentityGeneration,
+        invoiceRecordProjectionAuthority(access.actor),
+      ]),
+      onActorRevalidated: acceptRevalidatedActor,
+      onCompanyContextRejected: rejectCompanyContext,
+      onWorkspaceAccessRejected: rejectWorkspaceAccess,
+      onOpenClient: canReadCompanyClients ? openClientDossier : undefined,
+      onOpenContract: openRequest
+        ? (target: InvoiceContractTarget) =>
+            openRequest(target.clientRequestId, {
+              type: 'contract_version',
+              contractId: target.contractId,
+              contractVersionId: target.contractVersionId,
+              kind: 'CONTRACT',
+            })
+        : undefined,
+    };
     sections.push({
       id: 'invoice-records',
       label: invoiceCopy.title,
       description: invoiceCopy.description,
       retainAfterSelection: true,
-      content: (
-        <InvoiceRecordsWorkspace
+      content: <InvoiceRecordsWorkspace {...invoiceProps} />,
+      clarteContent: <ClarteInvoiceRecords {...invoiceProps} />,
+    });
+  }
+  if (offersPaymentProofs)
+    sections.push({
+      id: 'payment-proofs',
+      label: financeCopy.text('proofsLabel'),
+      description: paymentEvidenceCopy('description'),
+      mountWhenSelected: true,
+      content: null,
+      clarteContent: (
+        <ClartePaymentProofs
+          key={`payment-proofs:${documentsContext}`}
           actor={access.actor}
           identity={identity}
-          projectionAuthority={JSON.stringify([
-            clientAuthorityGeneration,
-            clientIdentityGeneration,
-            invoiceRecordProjectionAuthority(access.actor),
-          ])}
+          onProtectedWorkChange={reportProtectedProof}
+          onActivityRecorded={refreshActivityLog}
           onActorRevalidated={acceptRevalidatedActor}
           onCompanyContextRejected={rejectCompanyContext}
           onWorkspaceAccessRejected={rejectWorkspaceAccess}
-          onOpenClient={canReadCompanyClients ? openClientDossier : undefined}
-          onOpenContract={
-            openRequest
-              ? (target) =>
-                  openRequest(target.clientRequestId, {
-                    type: 'contract_version',
-                    contractId: target.contractId,
-                    contractVersionId: target.contractVersionId,
-                    kind: 'CONTRACT',
-                  })
+          requested={
+            requestedProof?.documentsContext === documentsContext
+              ? requestedProof
               : undefined
+          }
+          onRequestConsumed={(requestId) =>
+            setRequestedProof((current) =>
+              current?.requestId === requestId ? undefined : current,
+            )
           }
         />
       ),
@@ -828,37 +953,39 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         />
       ),
     });
-  if (ideasAuthority(access.actor).read)
+  if (ideasAuthority(access.actor).read) {
+    const ideas = {
+      actor: access.actor,
+      identity,
+      onActorRevalidated: acceptRevalidatedActor,
+      onCompanyContextRejected: rejectCompanyContext,
+      onWorkspaceAccessRejected: rejectWorkspaceAccess,
+    };
+    const ideasKey = `ideas:${access.sessionGeneration}:${ideasContextKey(access.actor)}`;
     sections.push({
       id: 'ideas',
       label: ideasCopy('label'),
       description: ideasCopy('introduction'),
-      content: (
-        <IdeasWorkspace
-          key={`ideas:${access.sessionGeneration}:${ideasContextKey(access.actor)}`}
-          actor={access.actor}
-          identity={identity}
-          onActorRevalidated={acceptRevalidatedActor}
-          onCompanyContextRejected={rejectCompanyContext}
-          onWorkspaceAccessRejected={rejectWorkspaceAccess}
-        />
-      ),
+      content: <IdeasWorkspace key={ideasKey} {...ideas} />,
+      clarteContent: <ClarteIdeas key={ideasKey} {...ideas} />,
     });
-  if (canReadOperationalRisks(access.actor) && access.actor.activeCompany)
+  }
+  if (canReadOperationalRisks(access.actor) && access.actor.activeCompany) {
+    const risks = {
+      actor: access.actor,
+      identity,
+      onActorRevalidated: acceptRevalidatedActor,
+      onCompanyContextRejected: rejectCompanyContext,
+      onWorkspaceAccessRejected: rejectWorkspaceAccess,
+    };
+    const risksKey = `operational-risks:${access.sessionGeneration}:${access.actor.workspaceMembershipId}:${access.actor.activeCompany.id}:${JSON.stringify([grantOf(access.actor.activeCompany, 'company_operational_risk_reader') ?? null, grantOf(access.actor.activeCompany, 'company_operational_risk_recorder') ?? null])}`;
     sections.push({
       id: 'operational-risks',
       ...prismeCopy.sections.risks,
-      content: (
-        <OperationalRiskWorkspace
-          key={`operational-risks:${access.sessionGeneration}:${access.actor.workspaceMembershipId}:${access.actor.activeCompany.id}:${JSON.stringify([grantOf(access.actor.activeCompany, 'company_operational_risk_reader') ?? null, grantOf(access.actor.activeCompany, 'company_operational_risk_recorder') ?? null])}`}
-          actor={access.actor}
-          identity={identity}
-          onActorRevalidated={acceptRevalidatedActor}
-          onCompanyContextRejected={rejectCompanyContext}
-          onWorkspaceAccessRejected={rejectWorkspaceAccess}
-        />
-      ),
+      content: <OperationalRiskWorkspace key={risksKey} {...risks} />,
+      clarteContent: <ClarteOperationalRisks key={risksKey} {...risks} />,
     });
+  }
   if (canAccessCommercial && access.actor.activeCompany)
     sections.push({
       id: 'requests',
@@ -1306,6 +1433,20 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           }
         />
       ),
+      clarteContent: (
+        <ClarteTeamAccess
+          key={`access:${access.sessionGeneration}`}
+          actor={access.actor}
+          identity={identity}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContextAndRefreshActivity}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          onActivityRecorded={refreshActivityLog}
+          onClientAuthorityChanged={() =>
+            setClientAuthorityGeneration((generation) => generation + 1)
+          }
+        />
+      ),
     });
   if (access.actor.workspacePermissions.includes('company.manage'))
     sections.push({
@@ -1313,6 +1454,17 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ...prismeCopy.sections.companies,
       content: (
         <CompanyRegistration
+          key={`company-registration:${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
+          actor={access.actor}
+          identity={identity}
+          onCompanyContextRejected={rejectCompanyContext}
+          onActorRevalidated={acceptRevalidatedActor}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          onCompanyRegistered={includeCompany}
+        />
+      ),
+      clarteContent: (
+        <ClarteCompanies
           key={`company-registration:${access.sessionGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`}
           actor={access.actor}
           identity={identity}
@@ -1333,6 +1485,13 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         onOpenRequest={openRequest}
       />
     ),
+    clarteContent: (
+      <ClarteActivityLog
+        state={access.activityLog}
+        activeCompanyId={activeCompanyId}
+        onOpenRequest={openRequest}
+      />
+    ),
   });
   if (access.actor.workspacePermissions.includes('member.invite'))
     sections.push({
@@ -1340,6 +1499,15 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ...prismeCopy.sections.invitations,
       content: (
         <WorkspaceInvitations
+          key={`invitations:${access.sessionGeneration}`}
+          actor={access.actor}
+          identity={identity}
+          onActivityRecorded={refreshActivityLog}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
+      ),
+      clarteContent: (
+        <ClarteInvitations
           key={`invitations:${access.sessionGeneration}`}
           actor={access.actor}
           identity={identity}
@@ -1375,6 +1543,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           companyName: access.actor.activeCompany?.displayName,
         }}
         sections={sections}
+        clarteScreens={settingsScreens}
         onNavigate={retireMultiCompanyNavigation}
         navigationProtected={navigationProtected}
         companyContext={companyContext}

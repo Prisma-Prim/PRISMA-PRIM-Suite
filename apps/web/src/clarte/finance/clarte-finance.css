@@ -1,0 +1,545 @@
+/*
+ * Clarté Finance (#1544): Invoices, Collections and Payment proofs. Every rule
+ * is scoped to `.clarte-finance` inside the Clarté frame; light background only.
+ */
+.clarte-frame .clarte-finance {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-finance:focus {
+  outline: none;
+}
+
+.clarte-frame .clarte-finance-notice {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--clarte-accent-line);
+  border-radius: var(--clarte-radius-md);
+  color: var(--clarte-accent-text);
+  background: var(--clarte-accent-soft);
+  font-weight: 600;
+}
+
+/* Tables */
+.clarte-frame .clarte-finance .clarte-card-head h2 {
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-finance-table tbody tr:hover td {
+  background: var(--clarte-surface-muted);
+}
+
+.clarte-frame .clarte-finance-row {
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-finance-table .clarte-finance-chevron {
+  width: 28px;
+  color: var(--clarte-faint);
+  vertical-align: middle;
+}
+
+.clarte-frame .clarte-finance-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+.clarte-frame .clarte-finance dl + dl {
+  margin-top: 6px;
+}
+
+.clarte-frame .clarte-finance-table td {
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-finance-table td > small {
+  display: block;
+  margin-top: 3px;
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+  white-space: pre-wrap;
+}
+
+.clarte-frame .clarte-finance-table td > .clarte-badge + small {
+  margin-top: 5px;
+}
+
+.clarte-frame .clarte-finance .clarte-finance-row-open {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  color: var(--clarte-ink);
+  background: none;
+  font-weight: 700;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-finance .clarte-finance-row-open:hover:not(:disabled) {
+  color: var(--clarte-accent-text);
+  text-decoration: underline;
+}
+
+.clarte-frame .clarte-finance .clarte-finance-row-open:focus-visible {
+  border-radius: 4px;
+  outline: none;
+  box-shadow: var(--clarte-focus);
+}
+
+.clarte-frame .clarte-finance-amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.clarte-frame .clarte-finance-more {
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+}
+
+/* Side panels wide enough for a source beside its form */
+.clarte-frame .clarte-finance-wide .clarte-side-panel {
+  width: min(100vw, 1120px);
+}
+
+.clarte-frame .clarte-finance .clarte-side-panel-body {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.clarte-frame .clarte-finance-toolbar,
+.clarte-frame .clarte-finance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-finance-beside {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.clarte-frame .clarte-finance-beside-source {
+  position: sticky;
+  top: 0;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-finance-beside-work {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-finance-beside-work > :not(.clarte-button) {
+  justify-self: stretch;
+}
+
+.clarte-frame .clarte-source-pdf-frame > p {
+  padding: 16px;
+}
+
+/* Source panes */
+.clarte-frame .clarte-finance-source,
+.clarte-frame .clarte-finance .invoice-record-source,
+.clarte-frame .clarte-finance-create form > section:first-child {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-lg);
+  background: var(--clarte-surface-sunken);
+}
+
+.clarte-frame .clarte-finance-source h3,
+.clarte-frame .clarte-finance .invoice-record-source h3 {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-finance-source p,
+.clarte-frame .clarte-finance .invoice-record-source p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-source-pdf {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-source-pdf-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.clarte-frame .clarte-source-pdf-head > svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-source-pdf-head > p {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.clarte-frame .clarte-source-pdf-head strong {
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-source-pdf-head small,
+.clarte-frame .clarte-source-pdf-hint {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-source-pdf-frame {
+  width: 100%;
+  height: min(68vh, 760px);
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-sm);
+  background: var(--clarte-surface-muted);
+}
+
+/* The Invoice detail: the exact source on the left, the record on the right */
+.clarte-frame .clarte-finance-invoice .invoice-record-detail,
+.clarte-frame .clarte-finance-invoice .invoice-record-panel {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.clarte-frame .clarte-finance-invoice .invoice-record-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 1fr);
+  column-gap: 20px;
+  row-gap: 0;
+  align-items: start;
+}
+
+.clarte-frame .clarte-finance-invoice .invoice-record-detail > * {
+  grid-column: 2;
+  min-width: 0;
+  margin: 0 0 12px;
+}
+
+.clarte-frame
+  .clarte-finance-invoice
+  .invoice-record-detail
+  > .invoice-record-source {
+  position: sticky;
+  top: 0;
+  grid-row: 1 / span 40;
+  grid-column: 1;
+}
+
+.clarte-frame
+  .clarte-finance-invoice
+  .invoice-record-detail
+  > .invoice-record-actions:first-child {
+  order: -2;
+}
+
+.clarte-frame
+  .clarte-finance-invoice
+  .invoice-record-detail
+  > .invoice-record-editor {
+  order: -1;
+  padding: 16px;
+  border: 1px solid var(--clarte-accent-line);
+  border-radius: var(--clarte-radius-lg);
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-finance-invoice .invoice-record-detail > header h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.clarte-frame .clarte-finance-invoice .invoice-record-detail > header p {
+  margin: 4px 0 0;
+  color: var(--clarte-muted);
+}
+
+/* Invoice creation: the chosen source on the left, the transcription on the right */
+.clarte-frame .clarte-finance-create form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 1fr);
+  column-gap: 20px;
+  row-gap: 0;
+  align-items: start;
+}
+
+.clarte-frame .clarte-finance-create form > * {
+  grid-column: 2;
+  min-width: 0;
+  margin: 0 0 12px;
+}
+
+.clarte-frame .clarte-finance-create form > section:first-child {
+  position: sticky;
+  top: 0;
+  grid-row: 1 / span 20;
+  grid-column: 1;
+}
+
+.clarte-frame .clarte-finance-create .invoice-record-editor > h3 {
+  display: none;
+}
+
+.clarte-frame .clarte-finance-create .invoice-record-editor > p {
+  margin: 0 0 14px;
+  color: var(--clarte-ink-soft);
+}
+
+/* Domain forms and facts inside Finance take the Clarté field look */
+.clarte-frame .clarte-finance fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.clarte-frame .clarte-finance legend {
+  margin-bottom: 10px;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-finance .invoice-record-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.clarte-frame .clarte-finance .invoice-record-wide {
+  grid-column: 1 / -1;
+}
+
+/* The form's own notice already says it; the legend still names the group. */
+.clarte-frame .clarte-finance .invoice-record-fields > legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.clarte-frame .clarte-finance label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--clarte-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-finance .invoice-record-acknowledgement,
+.clarte-frame .clarte-finance label:has(> input[type='checkbox']) {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-weight: 500;
+}
+
+.clarte-frame
+  .clarte-finance
+  :is(input:not([type='checkbox'], [type='radio'], [type='file']), textarea) {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-sm);
+  color: var(--clarte-ink);
+  background: var(--clarte-surface);
+  font: inherit;
+  font-weight: 400;
+}
+
+.clarte-frame .clarte-finance textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.clarte-frame
+  .clarte-finance
+  :is(
+    input:not([type='checkbox'], [type='radio'], [type='file']),
+    textarea
+  ):focus {
+  border-color: var(--clarte-accent);
+  outline: none;
+  box-shadow: var(--clarte-focus);
+}
+
+.clarte-frame .clarte-finance button[type='submit'] {
+  border-color: var(--clarte-accent);
+  color: var(--clarte-accent-ink);
+  background: var(--clarte-accent);
+}
+
+.clarte-frame .clarte-finance dl {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr);
+  gap: 6px 14px;
+  margin: 0;
+}
+
+.clarte-frame .clarte-finance dt {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.clarte-frame .clarte-finance dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-finance [role='alert']:not(.clarte-state) {
+  color: var(--clarte-danger);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-finance-history,
+.clarte-frame .clarte-finance .invoice-record-detail > section[aria-label] {
+  display: grid;
+  gap: 10px;
+}
+
+.clarte-frame .clarte-finance-history h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.clarte-frame .clarte-finance-proof {
+  display: grid;
+  gap: 14px;
+}
+
+.clarte-frame .clarte-finance .payment-observation-revision-values,
+.clarte-frame .clarte-finance .invoice-record-revision-values {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+@media (max-width: 768px) {
+  /* Tables become one card per row */
+  .clarte-frame .clarte-finance-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .clarte-frame .clarte-finance-table,
+  .clarte-frame .clarte-finance-table tbody,
+  .clarte-frame .clarte-finance-table tr,
+  .clarte-frame .clarte-finance-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .clarte-frame .clarte-finance-table tr {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--clarte-line);
+  }
+
+  .clarte-frame .clarte-finance-table td {
+    display: grid;
+    grid-template-columns: minmax(7rem, 38%) minmax(0, 1fr);
+    gap: 2px 12px;
+    padding: 4px 0;
+    border: 0;
+  }
+
+  .clarte-frame .clarte-finance-table td::before {
+    content: attr(data-label);
+    grid-row: span 2;
+    color: var(--clarte-muted);
+    font-size: 12.5px;
+  }
+
+  .clarte-frame .clarte-finance-table td > small,
+  .clarte-frame .clarte-finance-table td > .clarte-badge {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .clarte-frame .clarte-finance-table .clarte-badge {
+    white-space: normal;
+  }
+
+  .clarte-frame .clarte-finance-table .clarte-finance-chevron {
+    display: none;
+  }
+
+  .clarte-frame .clarte-finance .clarte-finance-row-open {
+    min-height: var(--clarte-touch-target);
+  }
+
+  .clarte-frame .clarte-finance-beside,
+  .clarte-frame .clarte-finance-invoice .invoice-record-detail,
+  .clarte-frame .clarte-finance-create form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .clarte-frame .clarte-finance-beside-source,
+  .clarte-frame
+    .clarte-finance-invoice
+    .invoice-record-detail
+    > .invoice-record-source,
+  .clarte-frame .clarte-finance-create form > section:first-child {
+    position: static;
+  }
+
+  .clarte-frame .clarte-finance-invoice .invoice-record-detail > * {
+    margin: 0;
+  }
+
+  .clarte-frame .clarte-finance-create form > * {
+    margin: 0;
+  }
+
+  .clarte-frame .clarte-finance .invoice-record-fields,
+  .clarte-frame .clarte-finance dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clarte-frame .clarte-source-pdf-frame {
+    height: 60vh;
+  }
+}

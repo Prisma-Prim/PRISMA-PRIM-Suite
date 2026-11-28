@@ -1,0 +1,161 @@
+/*
+ * Clarté screens outside the frame (#1531): one card centred on a soft light
+ * background. The root also carries `clarte-frame` for the tokens and the base
+ * components, so it replaces the frame's two-column layout here.
+ */
+.clarte-frame.clarte-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 100vh;
+  padding: 24px 16px;
+  place-items: center;
+  background:
+    radial-gradient(
+      1200px 500px at 20% -10%,
+      var(--clarte-accent-soft),
+      transparent
+    ),
+    radial-gradient(
+      900px 500px at 110% 110%,
+      var(--clarte-success-soft),
+      transparent
+    ),
+    var(--clarte-bg);
+}
+
+.clarte-page-card {
+  width: min(460px, 100%);
+  padding: 28px;
+  border: 1px solid var(--clarte-line);
+  border-radius: 22px;
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+  overflow-wrap: anywhere;
+}
+
+.clarte-page-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--clarte-ink-soft);
+  font-family: var(--clarte-font-heading);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.clarte-page-brand .clarte-mark {
+  width: 40px;
+  height: 40px;
+  flex: none;
+}
+
+.clarte-page-card h1 {
+  margin: 14px 0 6px;
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.clarte-page-lead {
+  margin: 0 0 16px;
+  color: var(--clarte-muted);
+}
+
+.clarte-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.clarte-page-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 0;
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+.clarte-page-note svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+}
+
+/* A status or refusal next to the action it concerns. */
+.clarte-page-callout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  color: var(--clarte-ink-soft);
+  background: var(--clarte-surface-muted);
+  font-weight: 600;
+}
+
+.clarte-page-callout svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.clarte-page-callout .clarte-spinner {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-width: 2px;
+}
+
+.clarte-page-callout--success {
+  border-color: transparent;
+  color: var(--clarte-success);
+  background: var(--clarte-success-soft);
+}
+
+.clarte-page-callout--danger {
+  border-color: transparent;
+  color: var(--clarte-danger);
+  background: var(--clarte-danger-soft);
+}
+
+.clarte-page .clarte-state {
+  padding: 22px 0 6px;
+}
+
+/* The identity provider draws its own form inside the card. */
+.clarte-page-provider {
+  display: grid;
+  justify-items: center;
+  overflow-x: auto;
+}
+
+.clarte-page .invitation-native-error {
+  margin: 10px 0 0;
+  color: var(--clarte-danger);
+  font-weight: 600;
+}
+
+/* Each language is named in itself, so the group's name stays for readers. */
+.clarte-page-language {
+  margin-top: 18px;
+}
+
+.clarte-page-language legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .clarte-page-card {
+    padding: 22px 20px;
+  }
+}

@@ -41,6 +41,7 @@ export function SectionIcon({
     'knowledge-evidence': ClipboardList,
     payments: ClipboardList,
     'invoice-records': ClipboardList,
+    'payment-proofs': ClipboardList,
     ideas: Lightbulb,
     'operational-risks': ShieldAlert,
     projects: FolderKanban,

@@ -1,527 +1,58 @@
-import { useReceivedAddendumCopy } from '../documents/received-addendum.copy';
-import { usePaymentAssignmentCopy } from './payment-assignment.copy';
-import { useExternalInvoiceAssignmentCopy } from './external-invoice-assignment.copy';
-import { useInternalTaskCopy } from '../internal-task/internal-task.copy';
-import { useMissionApplicabilityCopy } from '../project/mission-applicability.copy';
-import { useProjectNextActionCopy } from '../project/project-next-action.copy';
-import { useWorkspaceRequestScope } from './use-workspace-request-scope';
-import {
-  useScopedOperation,
-  useScopedOperationGroup,
-} from '../api/use-scoped-operation';
-import { useMissionPlanCopy } from '../mission-plan/mission-plan.copy';
-import { useReportedSigningCopy } from '../contract/reported-signing.copy';
-import { useReceivedContractCopy } from '../documents/received-contract.copy';
-import { useMissionDeliverableCopy } from '../documents/mission-deliverable.copy';
-import { useMissionReviewCopy } from '../project/mission-result-review.copy';
-import { useTaskResultCopy } from '../project/task-results.copy';
-import { useIdeasCopy } from '../ideas/ideas.copy';
-import { useCertificationCopy } from '../certification/certification.copy';
-import { useContractModelCopy } from '../contract-model/contract-model.copy';
-import { useOfferModelCopy } from '../offer-model/offer-model.copy';
-import { useProjectTemplateVersionCopy } from '../project/project-template-version.copy';
-import { useProjectStageCopy } from '../project/project-stage.copy';
-import { useDocumentPdfCopy } from '../documents/document-pdf.copy';
-import { useProjectTemplateCopy } from '../project/project-template.copy';
-import { useSalesStageCopy } from '../commercial-intake/sales-stage.copy';
-import { useContractDecisionCopy } from '../contract/contract-decision.copy';
-import {
-  type FormEvent,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type FormEvent, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { readCurrentActor } from './current-actor';
-import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
-import { useProfitabilityCopy } from '../profitability-estimate/profitability.copy';
-import { useOperationalRiskCopy } from '../operational-risk/operational-risk.copy';
 import { Select } from '../presentation/Select';
-import {
-  type AssignmentBundleLabel,
-  type CompanyAccessAdministration,
-  type CompanyAccessMember,
-  companyAccessAdministrationResponse,
-} from './company-access-administration-response';
 import { formatMessage } from '../localization/messages';
+import {
+  bundleLabel,
+  disambiguatedLabel,
+  duplicatedLabels,
+  memberLabel,
+  type AssignmentBundle,
+} from './assignment-bundles';
+import { useAssignmentBundleCatalogue } from './assignment-bundle-catalogue';
 import { useCompanyAssignmentCopy } from './company-assignment-localization.copy';
+import {
+  useCompanyAccessAdministration,
+  type AccessSubmission,
+  type CompanyAccessAdministrationCallbacks,
+} from './use-company-access-administration';
 import { WorkspaceSessionRevocations } from './WorkspaceSessionRevocations';
 import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
 import './access-administration.css';
 
-type Submission = 'grant' | 'revoke';
-type AssignmentBundle =
-  | 'opportunity-follow-up-coordinator'
-  | 'payment-reader'
-  | 'payment-recorder'
-  | 'payment-confirmer'
-  | 'payment-reverser'
-  | 'payment-evidence-access'
-  | 'invoice-reader'
-  | 'invoice-recorder'
-  | 'external-invoice-access'
-  | 'mission-plan-configuration'
-  | 'mission-plan-user'
-  | 'contract-model-editor'
-  | 'contract-model-approver'
-  | 'offer-model-editor'
-  | 'offer-model-approver'
-  | 'mission-applicability-coordinator'
-  | 'project-next-action-coordinator'
-  | 'mission-applicability-approver'
-  | 'mission-result-reviewer'
-  | 'task-result-recorder'
-  | 'internal-task-manager'
-  | 'task-manager'
-  | 'company-context'
-  | 'director-client'
-  | 'mission-deliverable-access'
-  | 'contract-signature-declarer'
-  | 'received-contract-access'
-  | 'received-addendum-access'
-  | 'working-evidence-case-reader'
-  | 'working-evidence-case-recorder'
-  | 'received-audit-source-access'
-  | 'document-registrar'
-  | 'document-content-reader'
-  | 'document-content-uploader'
-  | 'document-approver'
-  | 'document-project-organizer'
-  | 'commercial-intake'
-  | 'service-catalogue'
-  | 'pricing-configuration'
-  | 'pricing-user'
-  | 'offer-preparer'
-  | 'contract-preparer'
-  | 'contract-early-preparation'
-  | 'contract-approver'
-  | 'offer-approver'
-  | 'pricing-adjustment'
-  | 'commercial-activity-reader'
-  | 'opportunity-manager'
-  | 'sales-stage-configuration'
-  | 'project-template-user'
-  | 'project-template-configuration'
-  | 'project-stage-advancer'
-  | 'project'
-  | 'project-approver'
-  | 'ideas-reader'
-  | 'ideas-recorder'
-  | 'ideas-reviewer'
-  | 'certification-reader'
-  | 'certification-programme-manager'
-  | 'certification-approver'
-  | 'certification-auditor'
-  | 'profitability-contributor'
-  | 'profitability-director'
-  | 'operational-risk-reader'
-  | 'operational-risk-recorder';
-// Indexing by the selected bundle makes a new bundle a type error until its
-// route and label are decided here.
-const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
-  'opportunity-follow-up-coordinator':
-    '/company-opportunity-follow-up-coordinator-assignments',
-  'payment-reader': '/company-payment-reader-assignments',
-  'payment-recorder': '/company-payment-recorder-assignments',
-  'payment-confirmer': '/company-payment-confirmer-assignments',
-  'payment-reverser': '/company-payment-reverser-assignments',
-  'payment-evidence-access': '/company-payment-evidence-access-assignments',
-  'invoice-reader': '/company-invoice-reader-assignments',
-  'invoice-recorder': '/company-invoice-recorder-assignments',
-  'external-invoice-access': '/company-external-invoice-access-assignments',
-  'mission-plan-configuration':
-    '/company-mission-plan-configuration-assignments',
-  'mission-plan-user': '/company-mission-plan-user-assignments',
-  'contract-model-editor': '/company-contract-model-editor-assignments',
-  'contract-model-approver': '/company-contract-model-approver-assignments',
-  'offer-model-editor': '/company-offer-model-editor-assignments',
-  'offer-model-approver': '/company-offer-model-approver-assignments',
-  'task-result-recorder': '/company-task-result-recorder-assignments',
-  'mission-result-reviewer': '/company-mission-result-reviewer-assignments',
-  'mission-applicability-coordinator':
-    '/company-mission-applicability-coordinator-assignments',
-  'project-next-action-coordinator':
-    '/company-project-next-action-coordinator-assignments',
-  'mission-applicability-approver':
-    '/company-mission-applicability-approver-assignments',
-  'ideas-reader': '/company-ideas-reader-assignments',
-  'ideas-recorder': '/company-ideas-recorder-assignments',
-  'ideas-reviewer': '/company-ideas-reviewer-assignments',
-  'certification-reader': '/company-certification-reader-assignments',
-  'certification-programme-manager':
-    '/company-certification-programme-manager-assignments',
-  'certification-approver': '/company-certification-approver-assignments',
-  'certification-auditor': '/company-certification-auditor-assignments',
-  'operational-risk-reader': '/company-operational-risk-reader-assignments',
-  'operational-risk-recorder': '/company-operational-risk-recorder-assignments',
-  'profitability-contributor': '/company-profitability-contributor-assignments',
-  'profitability-director': '/company-profitability-director-assignments',
-  'internal-task-manager': '/company-internal-task-manager-assignments',
-  'task-manager': '/company-task-manager-assignments',
-  'company-context': '/company-context-assignments',
-  'director-client': '/company-director-client-assignments',
-  'document-registrar': '/company-document-registrar-assignments',
-  'contract-signature-declarer':
-    '/company-contract-signature-declarer-assignments',
-  'received-contract-access': '/company-received-contract-access-assignments',
-  'received-addendum-access': '/company-received-addendum-access-assignments',
-  'working-evidence-case-reader':
-    '/company-working-evidence-case-reader-assignments',
-  'working-evidence-case-recorder':
-    '/company-working-evidence-case-recorder-assignments',
-  'received-audit-source-access':
-    '/company-received-audit-source-access-assignments',
-
-  'mission-deliverable-access':
-    '/company-mission-deliverable-access-assignments',
-  'document-content-reader': '/company-document-content-reader-assignments',
-  'document-content-uploader': '/company-document-content-uploader-assignments',
-  'document-approver': '/company-document-approver-assignments',
-  'document-project-organizer':
-    '/company-document-project-organizer-assignments',
-  'commercial-intake': '/company-commercial-intake-assignments',
-  'service-catalogue': '/company-service-catalogue-assignments',
-  'pricing-configuration': '/company-pricing-configuration-assignments',
-  'pricing-user': '/company-pricing-user-assignments',
-  'offer-preparer': '/company-offer-preparer-assignments',
-  'contract-preparer': '/company-contract-preparer-assignments',
-  'contract-early-preparation':
-    '/company-contract-early-preparation-assignments',
-  'contract-approver': '/company-contract-approver-assignments',
-  'offer-approver': '/company-offer-approver-assignments',
-  'pricing-adjustment': '/company-pricing-adjustment-assignments',
-  'commercial-activity-reader':
-    '/company-commercial-activity-reader-assignments',
-  'opportunity-manager': '/company-opportunity-manager-assignments',
-  'sales-stage-configuration': '/company-sales-stage-configuration-assignments',
-  'project-template-user': '/company-project-template-user-assignments',
-  'project-template-configuration':
-    '/company-project-template-configuration-assignments',
-  'project-stage-advancer': '/company-project-stage-advancer-assignments',
-  project: '/company-project-assignments',
-  'project-approver': '/company-project-approver-assignments',
-};
-type AdministrationLoadState =
-  | { status: 'loading' }
-  | { status: 'ready'; value: CompanyAccessAdministration }
-  | { status: 'error' };
-type MutationState =
-  | { status: 'idle' }
-  | { status: 'submitting'; submission: Submission }
-  | { status: 'ready'; submission: Submission }
-  // The server confirmed the command, but the administration read after it
-  // failed. Only a later successful read concludes it.
-  | { status: 'unrefreshed'; submission: Submission }
-  | { status: 'error' };
 export function CompanyContextAccess({
   actor,
   identity,
-  onActorRevalidated = () => undefined,
-  onCompanyContextRejected = () => undefined,
   onActivityRecorded = () => undefined,
-  onClientAuthorityChanged = () => undefined,
   onWorkspaceAccessRejected = () => undefined,
-}: {
+  ...callbacks
+}: CompanyAccessAdministrationCallbacks & {
   actor: ActorContext;
   identity: BrowserIdentity;
-  onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
-  onCompanyContextRejected?: (companyId: string) => Promise<void> | void;
-  onActivityRecorded?: () => Promise<void> | void;
-  onClientAuthorityChanged?: () => Promise<void> | void;
-  onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
   const copy = useCompanyAssignmentCopy();
-  const internalTaskCopy = useInternalTaskCopy();
-  const externalInvoiceCopy = useExternalInvoiceAssignmentCopy();
-  const paymentCopy = usePaymentAssignmentCopy();
-  const ideasCopy = useIdeasCopy();
-  const certificationCopy = useCertificationCopy();
-  const missionPlanCopy = useMissionPlanCopy();
-  const modelCopy = useOfferModelCopy();
-  const contractModelCopy = useContractModelCopy();
-  const profitabilityCopy = useProfitabilityCopy();
-  const riskCopy = useOperationalRiskCopy();
-  const decisionCopy = useContractDecisionCopy();
-  const stageCopy = useSalesStageCopy();
-  const templateCopy = useProjectTemplateCopy();
-  const templateVersionCopy = useProjectTemplateVersionCopy();
-  const projectStageCopy = useProjectStageCopy();
-  const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
-  const [companyId, setCompanyId] = useState('');
+  const catalogue = useAssignmentBundleCatalogue();
   const [bundle, setBundle] = useState<AssignmentBundle>('company-context');
-  const [administration, setAdministration] = useState<AdministrationLoadState>(
-    { status: 'loading' },
-  );
-  const [mutation, setMutation] = useState<MutationState>({ status: 'idle' });
-  const [suspensionPending, setSuspensionPending] = useState(false);
-  const retryCommand = useRef<
-    | {
-        submission: Submission;
-        bundle: AssignmentBundle;
-        workspaceMembershipId: string;
-        companyId: string;
-        idempotencyKey: string;
-      }
-    | undefined
-  >(undefined);
-  const {
-    allowed: canManageAssignments,
-    scope,
-    captureRecovery,
-  } = useWorkspaceRequestScope({
+  const access = useCompanyAccessAdministration({
     actor,
     identity,
-    permission: 'company.assignment.manage',
+    onActivityRecorded,
+    onWorkspaceAccessRejected,
+    ...callbacks,
   });
-  const listing = useScopedOperation(scope);
-  const commands = useScopedOperationGroup(scope);
-  const acceptRevalidatedActor = useRef(onActorRevalidated);
-  const rejectCompanyContext = useRef(onCompanyContextRejected);
-  const rejectWorkspaceAccess = useRef(onWorkspaceAccessRejected);
-  useLayoutEffect(() => {
-    acceptRevalidatedActor.current = onActorRevalidated;
-    rejectCompanyContext.current = onCompanyContextRejected;
-    rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
-  });
+  const {
+    administration,
+    mutation,
+    workspaceMembershipId,
+    companyId,
+    suspensionPending,
+  } = access;
+  if (!access.allowed) return null;
 
-  const reloadAdministration = useCallback(
-    async (signal: AbortSignal, showLoading = false): Promise<boolean> => {
-      const recoveryLive = captureRecovery();
-      const current = () =>
-        canManageAssignments && commands.isLive() && !signal.aborted;
-      if (!current()) return false;
-      if (showLoading) setAdministration({ status: 'loading' });
-      try {
-        const api = await createAuthenticatedApiClient(identity);
-        if (!current()) return false;
-        const result = await api.request(
-          '/company-context-assignments/administration',
-          { signal },
-        );
-        if (!current()) return false;
-        const rejection = await handleAuthenticatedAccessRejection({
-          result,
-          identity,
-          companyContextId: undefined,
-          onCompanyContextRejected: (companyId) =>
-            rejectCompanyContext.current(companyId),
-          onActorRevalidated: (revalidatedActor) =>
-            acceptRevalidatedActor.current(revalidatedActor),
-          onWorkspaceAccessRejected: () => rejectWorkspaceAccess.current(),
-          signal,
-          isCurrent: () => current() && recoveryLive(),
-        });
-        if (!current()) return false;
-        if (rejection) {
-          if (!current()) return false;
-          if (rejection === 'forbidden') setAdministration({ status: 'error' });
-          return false;
-        }
-        if (result.status !== 'ok') {
-          setAdministration({ status: 'error' });
-          return false;
-        }
-        const value = companyAccessAdministrationResponse(result.value);
-        setAdministration({ status: 'ready', value });
-        setWorkspaceMembershipId((current) =>
-          value.members.some(
-            (member) => member.workspaceMembershipId === current,
-          )
-            ? current
-            : '',
-        );
-        setCompanyId((current) =>
-          value.companies.some((company) => company.id === current)
-            ? current
-            : '',
-        );
-        return true;
-      } catch (error) {
-        if (!current()) return false;
-        if (error instanceof DOMException && error.name === 'AbortError')
-          return false;
-        setAdministration({ status: 'error' });
-        return false;
-      }
-    },
-    [identity, canManageAssignments, commands, captureRecovery],
-  );
-
-  useEffect(() => {
-    retryCommand.current = undefined;
-    setWorkspaceMembershipId('');
-    setCompanyId('');
-    setMutation({ status: 'idle' });
-    setSuspensionPending(false);
-    if (!canManageAssignments) return;
-    const signal = listing.begin();
-    if (!signal) return;
-    setAdministration({ status: 'loading' });
-    void reloadAdministration(signal);
-    return () => listing.retire();
-  }, [scope, canManageAssignments, listing, reloadAdministration]);
-
-  const pdfCopy = useDocumentPdfCopy();
-  const missionCopy = useMissionDeliverableCopy();
-  const receivedCopy = useReceivedContractCopy();
-  const addendumCopy = useReceivedAddendumCopy();
-  const signingCopy = useReportedSigningCopy();
-  const taskResultCopy = useTaskResultCopy();
-  const reviewCopy = useMissionReviewCopy();
-  const applicabilityCopy = useMissionApplicabilityCopy();
-  const nextActionCopy = useProjectNextActionCopy();
-  if (!canManageAssignments) return null;
-
-  async function submit(event: FormEvent, submission: Submission) {
+  async function submit(event: FormEvent, submission: AccessSubmission) {
     event.preventDefault();
-    if (!canManageAssignments || commands.isPending() || suspensionPending)
-      return;
-    if (!workspaceMembershipId || !companyId) return;
-    const request = commands.begin();
-    if (!request) return;
-    const current = () => commands.isLive() && !request.signal.aborted;
-    const recoveryLive = captureRecovery();
-    setMutation({ status: 'submitting', submission });
-    const command =
-      retryCommand.current?.submission === submission &&
-      retryCommand.current.bundle === bundle &&
-      retryCommand.current.workspaceMembershipId === workspaceMembershipId &&
-      retryCommand.current.companyId === companyId
-        ? retryCommand.current
-        : {
-            submission,
-            bundle,
-            workspaceMembershipId,
-            companyId,
-            idempotencyKey: crypto.randomUUID(),
-          };
-    retryCommand.current = command;
-    listing.retire();
-    try {
-      const api = await createAuthenticatedApiClient(identity);
-      if (!current()) return;
-      const assignmentPath = ASSIGNMENT_PATHS[bundle];
-      const result = await api.request(
-        submission === 'grant'
-          ? assignmentPath
-          : `${assignmentPath}/${encodeURIComponent(workspaceMembershipId)}/${encodeURIComponent(companyId)}`,
-        submission === 'grant'
-          ? {
-              method: 'POST',
-              headers: {
-                'content-type': 'application/json',
-                'idempotency-key': command.idempotencyKey,
-              },
-              body: JSON.stringify({ workspaceMembershipId, companyId }),
-              signal: request.signal,
-            }
-          : {
-              method: 'DELETE',
-              headers: { 'idempotency-key': command.idempotencyKey },
-              signal: request.signal,
-            },
-      );
-      if (!current()) return;
-      if (result.status === 'unauthorized') {
-        setMutation({ status: 'error' });
-        if (recoveryLive()) await identity.rejectSession();
-        return;
-      }
-
-      let actorRevalidationFailed = false;
-      let activityRefreshedByRecovery = false;
-      if (
-        result.status === 'ok' &&
-        recoveryLive() &&
-        command.bundle !== 'company-context' &&
-        command.workspaceMembershipId.toLowerCase() ===
-          actor.workspaceMembershipId.toLowerCase() &&
-        command.companyId.toLowerCase() ===
-          actor.activeCompany?.id.toLowerCase()
-      ) {
-        const revalidated = await readCurrentActor({
-          api,
-          companyContextId: command.companyId,
-          signal: request.signal,
-        });
-        if (!current()) return;
-        if (recoveryLive()) {
-          if (revalidated.status === 'unauthorized') {
-            await identity.rejectSession();
-            return;
-          }
-          if (revalidated.status === 'forbidden') {
-            await rejectCompanyContext.current(command.companyId);
-            if (!current()) return;
-            activityRefreshedByRecovery = true;
-          } else if (revalidated.status === 'ok') {
-            await acceptRevalidatedActor.current(revalidated.value);
-            if (!current()) return;
-          } else {
-            actorRevalidationFailed = true;
-          }
-        }
-      }
-
-      if (
-        result.status === 'ok' &&
-        !activityRefreshedByRecovery &&
-        recoveryLive()
-      ) {
-        await onActivityRecorded();
-        if (!current()) return;
-      }
-
-      if (
-        result.status === 'ok' &&
-        // Only this bundle carries Client read. Other consumers retire their own captured authority.
-        command.bundle === 'director-client' &&
-        command.workspaceMembershipId.toLowerCase() ===
-          actor.workspaceMembershipId.toLowerCase()
-      ) {
-        await onClientAuthorityChanged();
-        if (!current()) return;
-      }
-
-      if (!current()) return;
-      const refreshed = await reloadAdministration(request.signal);
-      if (!current()) return;
-      if (result.status === 'ok' && refreshed && !actorRevalidationFailed) {
-        retryCommand.current = undefined;
-        setMutation({ status: 'ready', submission });
-      } else if (result.status === 'ok' && !actorRevalidationFailed) {
-        setMutation({ status: 'unrefreshed', submission });
-      } else {
-        setMutation({ status: 'error' });
-      }
-    } catch (error) {
-      if (!current()) return;
-      if (error instanceof DOMException && error.name === 'AbortError') return;
-      setMutation({ status: 'error' });
-    } finally {
-      request.release();
-    }
-  }
-
-  function resetCommand() {
-    retryCommand.current = undefined;
-    setMutation({ status: 'idle' });
-  }
-
-  async function retryAdministration() {
-    if (!canManageAssignments || commands.isPending() || suspensionPending)
-      return;
-    const signal = listing.begin();
-    if (!signal) return;
-    const refreshed = await reloadAdministration(signal, true);
-    if (signal.aborted || !refreshed || mutation.status !== 'unrefreshed')
-      return;
-    retryCommand.current = undefined;
-    setMutation({ status: 'ready', submission: mutation.submission });
+    await access.submit(submission, bundle);
   }
 
   if (administration.status === 'loading') {
@@ -549,7 +80,7 @@ export function CompanyContextAccess({
         <button
           type="button"
           className="company-access-primary-action"
-          onClick={() => void retryAdministration()}
+          onClick={() => void access.retryAdministration()}
         >
           {copy('retry')}
         </button>
@@ -578,13 +109,10 @@ export function CompanyContextAccess({
   const busy = pending || suspensionPending;
   const unresolved =
     mutation.status === 'error' || mutation.status === 'unrefreshed';
-  const retrySubmission =
-    unresolved &&
-    retryCommand.current?.bundle === bundle &&
-    retryCommand.current.workspaceMembershipId === workspaceMembershipId &&
-    retryCommand.current.companyId === companyId
-      ? retryCommand.current.submission
-      : undefined;
+  const retrySubmission = access.retrySubmission(bundle);
+  const prerequisites = catalogue.find(
+    (option) => option.bundle === bundle,
+  )?.prerequisites;
 
   return (
     <section
@@ -618,10 +146,7 @@ export function CompanyContextAccess({
                 referenceLabel: copy('referenceLabel'),
               }),
             }))}
-            onValueChange={(value) => {
-              resetCommand();
-              setWorkspaceMembershipId(value);
-            }}
+            onValueChange={access.selectMember}
           />
 
           <label htmlFor="context-access-company">{copy('companyLabel')}</label>
@@ -639,10 +164,7 @@ export function CompanyContextAccess({
                 referenceLabel: copy('referenceLabel'),
               }),
             }))}
-            onValueChange={(value) => {
-              resetCommand();
-              setCompanyId(value);
-            }}
+            onValueChange={access.selectCompany}
           />
 
           <label htmlFor="context-access-bundle">{copy('bundleLabel')}</label>
@@ -650,447 +172,20 @@ export function CompanyContextAccess({
             id="context-access-bundle"
             value={bundle}
             disabled={busy}
-            options={[
-              { value: 'ideas-reader', label: ideasCopy('reader') },
-              { value: 'ideas-recorder', label: ideasCopy('recorder') },
-              { value: 'ideas-reviewer', label: ideasCopy('reviewer') },
-              {
-                value: 'certification-reader',
-                label: certificationCopy('readerBundle'),
-              },
-              {
-                value: 'certification-programme-manager',
-                label: certificationCopy('managerBundle'),
-              },
-              {
-                value: 'certification-approver',
-                label: certificationCopy('approverBundle'),
-              },
-              {
-                value: 'certification-auditor',
-                label: certificationCopy('auditorBundle'),
-              },
-              { value: 'company-context', label: copy('companyContextBundle') },
-              {
-                value: 'commercial-intake',
-                label: copy('commercialIntakeBundle'),
-              },
-              {
-                value: 'service-catalogue',
-                label: copy('serviceCatalogueBundle'),
-              },
-              {
-                value: 'pricing-configuration',
-                label: copy('pricingConfigurationBundle'),
-              },
-              {
-                value: 'profitability-contributor',
-                label: profitabilityCopy('contributorBundle'),
-              },
-              {
-                value: 'profitability-director',
-                label: profitabilityCopy('directorBundle'),
-              },
-              {
-                value: 'operational-risk-reader',
-                label: riskCopy('readerBundle'),
-              },
-              {
-                value: 'operational-risk-recorder',
-                label: riskCopy('recorderBundle'),
-              },
-              { value: 'pricing-user', label: copy('pricingUserBundle') },
-              { value: 'offer-preparer', label: copy('offerPreparerBundle') },
-              {
-                value: 'mission-plan-configuration',
-                label: missionPlanCopy('configBundle'),
-              },
-              {
-                value: 'mission-plan-user',
-                label: missionPlanCopy('userBundle'),
-              },
-              { value: 'offer-model-editor', label: modelCopy('editorBundle') },
-              {
-                value: 'offer-model-approver',
-                label: modelCopy('approverBundle'),
-              },
-              {
-                value: 'contract-model-editor',
-                label: contractModelCopy('editorBundle'),
-              },
-              {
-                value: 'contract-model-approver',
-                label: contractModelCopy('approverBundle'),
-              },
-              {
-                value: 'contract-preparer',
-                label: copy('contractPreparerBundle'),
-              },
-              {
-                value: 'contract-early-preparation',
-                label: copy('contractEarlyPreparationBundle'),
-              },
-              { value: 'contract-approver', label: decisionCopy('bundle') },
-              { value: 'offer-approver', label: copy('offerApproverBundle') },
-              {
-                value: 'pricing-adjustment',
-                label: copy('pricingAdjustmentBundle'),
-              },
-              {
-                value: 'commercial-activity-reader',
-                label: copy('commercialActivityReaderBundle'),
-              },
-              {
-                value: 'opportunity-manager',
-                label: copy('opportunityManagerBundle'),
-              },
-              {
-                value: 'sales-stage-configuration',
-                label: stageCopy('configurationBundle'),
-              },
-              { value: 'project-template-user', label: templateCopy('bundle') },
-              {
-                value: 'project-template-configuration',
-                label: templateVersionCopy('bundle'),
-              },
-              {
-                value: 'project-stage-advancer',
-                label: projectStageCopy('bundle'),
-              },
-              { value: 'payment-reader', label: paymentCopy('readerBundle') },
-              {
-                value: 'payment-recorder',
-                label: paymentCopy('recorderBundle'),
-              },
-              {
-                value: 'payment-confirmer',
-                label: paymentCopy('confirmerBundle'),
-              },
-              {
-                value: 'payment-reverser',
-                label: paymentCopy('reverserBundle'),
-              },
-              {
-                value: 'payment-evidence-access',
-                label: paymentCopy('familyBundle'),
-              },
-              {
-                value: 'invoice-reader',
-                label: externalInvoiceCopy('readerBundle'),
-              },
-              {
-                value: 'invoice-recorder',
-                label: externalInvoiceCopy('recorderBundle'),
-              },
-              {
-                value: 'external-invoice-access',
-                label: externalInvoiceCopy('familyBundle'),
-              },
-              { value: 'director-client', label: copy('directorClientBundle') },
-              {
-                value: 'document-project-organizer',
-                label: copy('documentProjectOrganizerBundle'),
-              },
-              {
-                value: 'document-registrar',
-                label: copy('documentRegistrarBundle'),
-              },
-              {
-                value: 'contract-signature-declarer',
-                label: signingCopy('bundle'),
-              },
-              {
-                value: 'working-evidence-case-reader',
-                label: copy('workingEvidenceCaseReaderBundle'),
-              },
-              {
-                value: 'working-evidence-case-recorder',
-                label: copy('workingEvidenceCaseRecorderBundle'),
-              },
-              {
-                value: 'received-audit-source-access',
-                label: copy('receivedAuditSourceAccessBundle'),
-              },
-              {
-                value: 'received-addendum-access',
-                label: addendumCopy.t('bundle'),
-              },
-              {
-                value: 'received-contract-access',
-                label: receivedCopy.t('bundle'),
-              },
-              {
-                value: 'mission-deliverable-access',
-                label: missionCopy.t('bundle'),
-              },
-              {
-                value: 'document-content-reader',
-                label: pdfCopy.t('readerBundle'),
-              },
-              {
-                value: 'document-content-uploader',
-                label: pdfCopy.t('uploaderBundle'),
-              },
-              {
-                value: 'document-approver',
-                label: copy('documentApproverBundle'),
-              },
-              { value: 'project', label: copy('projectBundle') },
-              {
-                value: 'project-approver',
-                label: copy('projectApproverBundle'),
-              },
-              {
-                value: 'internal-task-manager',
-                label: internalTaskCopy('bundle'),
-              },
-              { value: 'task-manager', label: copy('taskManagerBundle') },
-              {
-                value: 'project-next-action-coordinator',
-                label: nextActionCopy('bundle'),
-              },
-              {
-                value: 'mission-applicability-coordinator',
-                label: applicabilityCopy('coordinatorBundle'),
-              },
-              {
-                value: 'mission-applicability-approver',
-                label: applicabilityCopy('approverBundle'),
-              },
-              {
-                value: 'mission-result-reviewer',
-                label: reviewCopy('bundle'),
-              },
-              {
-                value: 'task-result-recorder',
-                label: taskResultCopy.t('bundle'),
-              },
-              {
-                value: 'opportunity-follow-up-coordinator',
-                label: copy('opportunityFollowUpCoordinatorBundle'),
-              },
-            ]}
+            options={catalogue.map((option) => ({
+              value: option.bundle,
+              label: option.label,
+            }))}
             onValueChange={(value) => {
-              resetCommand();
-              if (
-                value === 'opportunity-follow-up-coordinator' ||
-                value === 'payment-reader' ||
-                value === 'payment-recorder' ||
-                value === 'payment-confirmer' ||
-                value === 'payment-reverser' ||
-                value === 'payment-evidence-access' ||
-                value === 'invoice-reader' ||
-                value === 'invoice-recorder' ||
-                value === 'external-invoice-access' ||
-                value === 'ideas-reader' ||
-                value === 'ideas-recorder' ||
-                value === 'ideas-reviewer' ||
-                value === 'certification-reader' ||
-                value === 'certification-programme-manager' ||
-                value === 'certification-approver' ||
-                value === 'certification-auditor' ||
-                value === 'profitability-contributor' ||
-                value === 'profitability-director' ||
-                value === 'operational-risk-reader' ||
-                value === 'operational-risk-recorder' ||
-                value === 'internal-task-manager' ||
-                value === 'task-manager' ||
-                value === 'project-next-action-coordinator' ||
-                value === 'mission-applicability-coordinator' ||
-                value === 'mission-applicability-approver' ||
-                value === 'mission-result-reviewer' ||
-                value === 'task-result-recorder' ||
-                value === 'commercial-intake' ||
-                value === 'service-catalogue' ||
-                value === 'pricing-configuration' ||
-                value === 'pricing-user' ||
-                value === 'offer-preparer' ||
-                value === 'mission-plan-configuration' ||
-                value === 'mission-plan-user' ||
-                value === 'contract-model-editor' ||
-                value === 'contract-model-approver' ||
-                value === 'offer-model-editor' ||
-                value === 'offer-model-approver' ||
-                value === 'contract-preparer' ||
-                value === 'contract-early-preparation' ||
-                value === 'contract-approver' ||
-                value === 'offer-approver' ||
-                value === 'pricing-adjustment' ||
-                value === 'commercial-activity-reader' ||
-                value === 'opportunity-manager' ||
-                value === 'sales-stage-configuration' ||
-                value === 'project-template-user' ||
-                value === 'project-template-configuration' ||
-                value === 'project-stage-advancer' ||
-                value === 'company-context' ||
-                value === 'director-client' ||
-                value === 'document-project-organizer' ||
-                value === 'contract-signature-declarer' ||
-                value === 'received-contract-access' ||
-                value === 'received-addendum-access' ||
-                value === 'working-evidence-case-reader' ||
-                value === 'working-evidence-case-recorder' ||
-                value === 'received-audit-source-access' ||
-                value === 'mission-deliverable-access' ||
-                value === 'document-registrar' ||
-                value === 'project' ||
-                value === 'document-content-reader' ||
-                value === 'document-content-uploader' ||
-                value === 'document-approver' ||
-                value === 'project-approver'
-              )
-                setBundle(value);
+              access.resetCommand();
+              const chosen = catalogue.find(
+                (option) => option.bundle === value,
+              );
+              if (chosen) setBundle(chosen.bundle);
             }}
           />
 
-          {bundle === 'certification-reader' && (
-            <p>{certificationCopy('readerPrerequisites')}</p>
-          )}
-          {bundle === 'certification-programme-manager' && (
-            <p>{certificationCopy('managerPrerequisites')}</p>
-          )}
-          {bundle === 'certification-approver' && (
-            <p>{certificationCopy('approverPrerequisites')}</p>
-          )}
-          {bundle === 'certification-auditor' && (
-            <p>{certificationCopy('auditorPrerequisites')}</p>
-          )}
-          {bundle === 'profitability-contributor' && (
-            <p>{profitabilityCopy('contributorPrerequisites')}</p>
-          )}
-          {bundle === 'profitability-director' && (
-            <p>{profitabilityCopy('directorPrerequisites')}</p>
-          )}
-          {bundle === 'operational-risk-reader' && (
-            <p>{riskCopy('readerPrerequisites')}</p>
-          )}
-          {bundle === 'operational-risk-recorder' && (
-            <p>{riskCopy('recorderPrerequisites')}</p>
-          )}
-          {(bundle === 'payment-reader' ||
-            bundle === 'payment-recorder' ||
-            bundle === 'payment-confirmer' ||
-            bundle === 'payment-reverser' ||
-            bundle === 'payment-evidence-access') && (
-            <p>{paymentCopy('prerequisites')}</p>
-          )}
-          {(bundle === 'invoice-reader' ||
-            bundle === 'invoice-recorder' ||
-            bundle === 'external-invoice-access') && (
-            <p>{externalInvoiceCopy('prerequisites')}</p>
-          )}
-          {bundle === 'internal-task-manager' && (
-            <p>{internalTaskCopy('prerequisites')}</p>
-          )}
-          {bundle === 'task-manager' && (
-            <p>{copy('taskManagerPrerequisites')}</p>
-          )}
-          {(bundle === 'mission-applicability-coordinator' ||
-            bundle === 'mission-applicability-approver') && (
-            <p>{applicabilityCopy('grantPrerequisites')}</p>
-          )}
-          {bundle === 'mission-result-reviewer' && (
-            <p>{reviewCopy('prerequisites')}</p>
-          )}
-          {bundle === 'task-result-recorder' && (
-            <p>{taskResultCopy.t('prerequisites')}</p>
-          )}
-          {bundle === 'commercial-activity-reader' && (
-            <p>{copy('commercialActivityReaderPrerequisites')}</p>
-          )}
-          {bundle === 'pricing-configuration' && (
-            <p>{copy('pricingConfigurationPrerequisites')}</p>
-          )}
-          {bundle === 'project-approver' && (
-            <p>{copy('projectApproverPrerequisites')}</p>
-          )}
-          {bundle === 'contract-signature-declarer' && (
-            <p>{signingCopy('prerequisites')}</p>
-          )}
-          {bundle === 'working-evidence-case-reader' && (
-            <p>{copy('workingEvidenceCaseReaderPrerequisites')}</p>
-          )}
-          {bundle === 'working-evidence-case-recorder' && (
-            <p>{copy('workingEvidenceCaseRecorderPrerequisites')}</p>
-          )}
-          {bundle === 'received-audit-source-access' && (
-            <p>{copy('receivedAuditSourceAccessPrerequisites')}</p>
-          )}
-          {bundle === 'received-addendum-access' && (
-            <p>{addendumCopy.t('prerequisites')}</p>
-          )}
-          {bundle === 'received-contract-access' && (
-            <p>{receivedCopy.t('prerequisites')}</p>
-          )}
-          {bundle === 'mission-deliverable-access' && (
-            <p>{missionCopy.t('prerequisites')}</p>
-          )}
-          {bundle === 'document-content-reader' && (
-            <p>{pdfCopy.t('readerPrerequisites')}</p>
-          )}
-          {bundle === 'document-content-uploader' && (
-            <p>{pdfCopy.t('uploaderPrerequisites')}</p>
-          )}
-          {bundle === 'document-approver' && (
-            <p>{copy('documentApproverPrerequisites')}</p>
-          )}
-          {bundle === 'pricing-user' && (
-            <p>{copy('pricingUserPrerequisites')}</p>
-          )}
-          {bundle === 'contract-preparer' && (
-            <p>{copy('contractPreparerPrerequisites')}</p>
-          )}
-          {bundle === 'contract-early-preparation' && (
-            <p>{copy('contractEarlyPreparationPrerequisites')}</p>
-          )}
-          {bundle === 'contract-approver' && (
-            <p>{decisionCopy('prerequisites')}</p>
-          )}
-          {bundle === 'offer-preparer' && (
-            <p>{copy('offerPreparerPrerequisites')}</p>
-          )}
-          {bundle === 'mission-plan-configuration' && (
-            <p>{missionPlanCopy('configHelp')}</p>
-          )}
-          {bundle === 'mission-plan-user' && (
-            <p>{missionPlanCopy('userHelp')}</p>
-          )}
-          {bundle === 'offer-model-editor' && (
-            <p>{modelCopy('editorPrerequisites')}</p>
-          )}
-          {bundle === 'offer-model-approver' && (
-            <p>{modelCopy('approverPrerequisites')}</p>
-          )}
-          {bundle === 'contract-model-editor' && (
-            <p>{contractModelCopy('editorPrerequisites')}</p>
-          )}
-          {bundle === 'contract-model-approver' && (
-            <p>{contractModelCopy('approverPrerequisites')}</p>
-          )}
-          {bundle === 'offer-approver' && (
-            <p>{copy('offerApproverPrerequisites')}</p>
-          )}
-          {bundle === 'opportunity-manager' && (
-            <p>{copy('opportunityManagerPrerequisites')}</p>
-          )}
-          {bundle === 'opportunity-follow-up-coordinator' && (
-            <p>{copy('opportunityFollowUpCoordinatorPrerequisites')}</p>
-          )}
-          {bundle === 'project-stage-advancer' && (
-            <p>{projectStageCopy('prerequisites')}</p>
-          )}
-          {bundle === 'project-template-configuration' && (
-            <p>{templateVersionCopy('prerequisites')}</p>
-          )}
-          {bundle === 'project-template-user' && (
-            <p>{templateCopy('prerequisites')}</p>
-          )}
-          {bundle === 'sales-stage-configuration' && (
-            <p>{stageCopy('configurationPrerequisites')}</p>
-          )}
-          {bundle === 'pricing-adjustment' && (
-            <p>{copy('pricingAdjustmentPrerequisites')}</p>
-          )}
+          {prerequisites !== undefined && <p>{prerequisites}</p>}
           {workspaceMembershipId && companyId && (
             <p role="status">
               {copy('currentStateLabel')}:{' '}
@@ -1161,122 +256,11 @@ export function CompanyContextAccess({
           }),
         }))}
         disabled={pending}
-        reloadAdministration={reloadAdministration}
-        onPendingChange={setSuspensionPending}
+        reloadAdministration={access.reloadAdministration}
+        onPendingChange={access.setSuspensionPending}
         onActivityRecorded={onActivityRecorded}
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}
       />
     </section>
   );
-}
-
-function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
-  const labels = {
-    'opportunity-follow-up-coordinator':
-      'Company Opportunity Follow-up Coordinator',
-    'payment-reader': 'Company Payment Reader',
-    'payment-recorder': 'Company Payment Recorder',
-    'payment-confirmer': 'Company Payment Confirmer',
-    'payment-reverser': 'Company Payment Reverser',
-    'payment-evidence-access': 'Company Payment Evidence Access',
-    'invoice-reader': 'Company Invoice Reader',
-    'invoice-recorder': 'Company Invoice Recorder',
-    'external-invoice-access': 'Company External Invoice Access',
-    'mission-plan-configuration': 'Company Mission Plan Configuration',
-    'mission-plan-user': 'Company Mission Plan User',
-    'contract-model-editor': 'Company Contract Model Editor',
-    'contract-model-approver': 'Company Contract Model Approver',
-    'offer-model-editor': 'Company Offer Model Editor',
-    'offer-model-approver': 'Company Offer Model Approver',
-    'ideas-reader': 'Company Ideas Reader',
-    'ideas-recorder': 'Company Ideas Recorder',
-    'ideas-reviewer': 'Company Ideas Reviewer',
-    'certification-reader': 'Company Certification Reader',
-    'certification-programme-manager':
-      'Company Certification Programme Manager',
-    'certification-approver': 'Company Certification Approver',
-    'certification-auditor': 'Company Certification Auditor',
-    'operational-risk-reader': 'Company Operational Risk Reader',
-    'operational-risk-recorder': 'Company Operational Risk Recorder',
-    'profitability-contributor': 'Company Profitability Contributor',
-    'profitability-director': 'Company Profitability Director',
-    'commercial-intake': 'Company Commercial Intake',
-    'service-catalogue': 'Company Service Catalogue',
-    'pricing-configuration': 'Company Pricing Configuration',
-    'pricing-user': 'Company Pricing User',
-    'offer-preparer': 'Company Offer Preparer',
-    'contract-preparer': 'Company Contract Preparer',
-    'contract-early-preparation': 'Company Contract Early Preparation',
-    'contract-approver': 'Company Contract Approver',
-    'offer-approver': 'Company Offer Approver',
-    'pricing-adjustment': 'Company Pricing Adjustment',
-    'commercial-activity-reader': 'Company Commercial Activity Reader',
-    'opportunity-manager': 'Company Opportunity Manager',
-    'sales-stage-configuration': 'Company Sales Stage Configuration',
-    'project-template-user': 'Company Project Template User',
-    'project-template-configuration': 'Company Project Template Configuration',
-    'project-stage-advancer': 'Company Project Stage Advancer',
-    'internal-task-manager': 'Company Internal Task Manager',
-    'task-manager': 'Company Task Manager',
-    'mission-result-reviewer': 'Company Mission Result Reviewer',
-    'mission-applicability-coordinator':
-      'Company Mission Applicability Coordinator',
-    'project-next-action-coordinator':
-      'Company Project Next Action Coordinator',
-    'mission-applicability-approver': 'Company Mission Applicability Approver',
-    'task-result-recorder': 'Company Task Result Recorder',
-    'document-project-organizer': 'Company Document Project Organizer',
-    'document-registrar': 'Company Document Registrar',
-    'mission-deliverable-access': 'Company Mission Deliverable Access',
-    'contract-signature-declarer': 'Company Contract Signature Declarer',
-    'received-contract-access': 'Company Received Contract Access',
-    'received-addendum-access': 'Company Received Addendum Access',
-    'working-evidence-case-reader': 'Company Working Evidence Case Reader',
-    'working-evidence-case-recorder': 'Company Working Evidence Case Recorder',
-    'received-audit-source-access': 'Company Received Audit Source Access',
-
-    'document-content-reader': 'Company Document Content Reader',
-    'document-content-uploader': 'Company Document Content Uploader',
-    'document-approver': 'Company Document Approver',
-    project: 'Company Project Access',
-    'project-approver': 'Company Project Approver',
-    'director-client': 'Company Director Client Access',
-    'company-context': 'Company Context Access',
-  } satisfies Record<AssignmentBundle, AssignmentBundleLabel>;
-  return labels[bundle];
-}
-
-function memberLabel(member: CompanyAccessMember): string {
-  return `${member.displayName} — ${member.email}`;
-}
-
-function duplicatedLabels(labels: string[]): Set<string> {
-  const seen = new Set<string>();
-  const duplicates = new Set<string>();
-  for (const label of labels) {
-    if (seen.has(label)) duplicates.add(label);
-    seen.add(label);
-  }
-  return duplicates;
-}
-
-function disambiguatedLabel({
-  label,
-  id,
-  duplicates,
-  referenceLabel,
-}: {
-  label: string;
-  id: string;
-  duplicates: ReadonlySet<string>;
-  referenceLabel: string;
-}): string {
-  if (!duplicates.has(label)) return label;
-  return `${label} — ${referenceLabel} ${stableReference(id)}`;
-}
-
-function stableReference(id: string): string {
-  return BigInt(`0x${id.replaceAll('-', '')}`)
-    .toString(36)
-    .toUpperCase();
 }
