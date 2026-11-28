@@ -4,15 +4,21 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { ActorContext } from '../access/access.types.js';
-import type { CapturedPermissionRequest } from '../access/captured-company-permissions.js';
+import type {
+  CapturedPermissionRequest,
+  PermissionRequirement,
+} from '../access/captured-company-permissions.js';
 import {
   CompanyContextAuthorization,
   commercialIntakeRequiredPermissions,
 } from '../access/company-context-authorization.js';
 import { CertificationService } from '../certification/certification.service.js';
+import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import { CommercialIntakeService } from '../commercial-intake/commercial-intake.service.js';
 import type { CommercialIntakeDetail } from '../commercial-intake/commercial-intake.types.js';
 import { ContractService } from '../contract/contract.service.js';
+import { readConsistently } from '../database/consistent-read.js';
+import { DatabaseContext } from '../database/database-context.js';
 import { OfferService } from '../offer/offer.service.js';
 import { OpportunityFollowUpService } from '../opportunity-follow-up/opportunity-follow-up.service.js';
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
@@ -51,13 +57,17 @@ type StageTimes = Readonly<
   >
 >;
 
+/** Client read, as the Client owner requires it (ClientOperationalReferenceService). */
+const CLIENT_READ: PermissionRequirement = {
+  permissions: ['client.read'],
+  workspaceAlternative: 'client.manage',
+};
+
 /** The Project owner's read: `project.read` with Client read (ProjectService.read). */
 const PROJECT_READ: CapturedPermissionRequest = {
   permissions: ['project.read'],
   lock: false,
-  prerequisites: [
-    { permissions: ['client.read'], workspaceAlternative: 'client.manage' },
-  ],
+  prerequisites: [CLIENT_READ],
 };
 
 /**
@@ -67,13 +77,17 @@ const PROJECT_READ: CapturedPermissionRequest = {
  * read decides whether the affaire exists for the actor, so hidden and
  * missing affaires share the owner's single 404; every later stage is read
  * through its own owner's existing permission and is "not available" when
- * that owner refuses the actor.
+ * that owner refuses the actor. Presence reads run in one repeatable-read
+ * snapshot that holds the grants proving each owner's read, so a revocation
+ * is ordered before or after them, never between.
  */
 @Injectable()
 export class AffaireService {
   constructor(
+    private readonly database: DatabaseContext,
     private readonly authorization: CompanyContextAuthorization,
     private readonly presence: AffairePresenceStore,
+    private readonly clients: ClientOperationalReferenceService,
     private readonly intake: CommercialIntakeService,
     private readonly pricing: PricingSnapshotService,
     private readonly profitability: ProfitabilityEstimateService,
@@ -88,7 +102,7 @@ export class AffaireService {
     actor: ActorContext,
     opportunityId: string,
   ): Promise<AffaireDetail> {
-    const scope = await this.intakeScope(actor);
+    await this.intakeScope(actor, false);
     const target = await this.intake.requireReadableOfferOpportunity(
       actor,
       opportunityId,
@@ -137,7 +151,13 @@ export class AffaireService {
         validUntil: version.validUntil,
       };
     });
-    const agreements = await ownerRead(() => this.readAgreements(actor, id));
+    // The Contract owner refuses an executed Company-model Contract whose
+    // reference Client the actor cannot read with 403 or 404
+    // (ContractVersionReader.view). The affaire exists, so either refusal
+    // leaves the Contract stage not available.
+    const agreements = await ownerRead(() => this.readAgreements(actor, id), {
+      refusesWithNotFound: true,
+    });
     const projectsReadable =
       agreements.readable &&
       (await this.authorization.hasPermissions(actor, PROJECT_READ));
@@ -174,19 +194,29 @@ export class AffaireService {
       status: request.initialOpportunity.status,
       presence,
     });
-    const changedAt = await this.presence.opportunityChangedAt(scope, id);
-    if (!changedAt) throw new NotFoundException();
     // The list's own definition of the last change, under the same gates as
-    // the facts shown here.
-    const recorded = await this.recordTimes(actor, scope, [id], {
-      pricing: pricingSnapshot.readable,
-      profitability: profitabilityEstimate.readable,
-      offer: offer.readable,
-      contract: agreements.readable,
-      project: delivery.readable,
-      certification: certificationCases.readable,
-      followUp: followUpOn.readable,
-    });
+    // the facts shown here, each still held.
+    const { changedAt, recorded } = await readConsistently(
+      this.database,
+      async () => {
+        const scope = await this.intakeScope(actor, true);
+        const can = await this.readableStages(actor);
+        return {
+          changedAt: await this.presence.opportunityChangedAt(scope, id),
+          recorded: await this.recordTimes(actor, scope, [id], {
+            ...can,
+            pricing: can.pricing && pricingSnapshot.readable,
+            profitability: can.profitability && profitabilityEstimate.readable,
+            offer: can.offer && offer.readable,
+            contract: can.contract && agreements.readable,
+            project: can.project && delivery.readable,
+            certification: can.certification && certificationCases.readable,
+            followUp: can.followUp && followUpOn.readable,
+          }),
+        };
+      },
+    );
+    if (!changedAt) throw new NotFoundException();
 
     const available = (stage: AffaireStage) => availableMarker(markers[stage]);
     const stages: AffaireStageView[] = [
@@ -257,22 +287,32 @@ export class AffaireService {
     },
   ): Promise<AffaireListPage> {
     const page = await this.intake.list(actor, query);
-    const scope = await this.intakeScope(actor);
-    const initial = await this.presence.initialOpportunities(
-      scope,
-      page.items.map((item) => item.id),
+    // Each readability check holds its grants until the presence reads that
+    // rely on it end, in one snapshot.
+    const { rows, recorded, followUps } = await readConsistently(
+      this.database,
+      async () => {
+        const scope = await this.intakeScope(actor, true);
+        const initial = await this.presence.initialOpportunities(
+          scope,
+          page.items.map((item) => item.id),
+        );
+        const rows = page.items.map((item) => {
+          const opportunity = initial.get(item.id);
+          if (!opportunity) throw new Error('Missing initial Opportunity.');
+          return { item, ...opportunity };
+        });
+        const ids = rows.map((row) => row.opportunityId);
+        const can = await this.readableStages(actor);
+        return {
+          rows,
+          recorded: await this.recordTimes(actor, scope, ids, can),
+          followUps: can.followUp
+            ? await this.presence.followUpDates(scope, ids)
+            : undefined,
+        };
+      },
     );
-    const rows = page.items.map((item) => {
-      const opportunity = initial.get(item.id);
-      if (!opportunity) throw new Error('Missing initial Opportunity.');
-      return { item, ...opportunity };
-    });
-    const ids = rows.map((row) => row.opportunityId);
-    const can = await this.readableStages(actor);
-    const recorded = await this.recordTimes(actor, scope, ids, can);
-    const followUps = can.followUp
-      ? await this.presence.followUpDates(scope, ids)
-      : undefined;
     return {
       items: rows.map(({ item, opportunityId, changedAt }): AffaireSummary => {
         const times = recorded(opportunityId);
@@ -321,6 +361,7 @@ export class AffaireService {
    * The latest record time of each stage per Opportunity: a date, `null`
    * for none, or `undefined` when the stage's owner refuses the actor. The
    * list derives each row's stage from it; both reads derive the last change.
+   * The caller's transaction holds the grants behind `can`.
    */
   private async recordTimes(
     actor: ActorContext,
@@ -338,7 +379,7 @@ export class AffaireService {
       ? await this.presence.latestOfferVersions(scope, ids)
       : undefined;
     const agreements = can.contract
-      ? await this.presence.latestContractVersions(scope, ids)
+      ? await this.readableContractTimes(actor, scope, ids, can.client)
       : undefined;
     const links =
       can.contract && can.project
@@ -363,42 +404,40 @@ export class AffaireService {
     });
   }
 
-  private async intakeScope(actor: ActorContext): Promise<AffaireScope> {
+  private async intakeScope(
+    actor: ActorContext,
+    lock: boolean,
+  ): Promise<AffaireScope> {
     const { companyId } = await this.authorization.requirePermissions(actor, {
       permissions: commercialIntakeRequiredPermissions('read'),
-      lock: false,
+      lock,
     });
     return { workspaceId: actor.workspaceId, companyId };
   }
 
-  /** Each stage owner's own read permission, as its read enforces it. */
+  /**
+   * Each stage owner's own read permission, as its read enforces it. The
+   * caller's transaction holds every proven grant until it ends.
+   */
   private async readableStages(actor: ActorContext) {
     const holds = (request: CapturedPermissionRequest) =>
-      this.authorization.hasPermissions(actor, request);
+      this.authorization.hasPermissions(actor, { ...request, lock: true });
     const project = await holds(PROJECT_READ);
     return {
       pricing: await holds({
         permissions: ['commercial.pricing.snapshot.read'],
-        lock: false,
       }),
       profitability: await holds({
         permissions: ['commercial.profitability_estimate.read'],
-        lock: false,
       }),
-      offer: await holds({
-        permissions: ['commercial.offer.read'],
-        lock: false,
-      }),
-      contract: await holds({
-        permissions: ['commercial.contract.read'],
-        lock: false,
-      }),
+      offer: await holds({ permissions: ['commercial.offer.read'] }),
+      contract: await holds({ permissions: ['commercial.contract.read'] }),
+      client: await holds(CLIENT_READ),
       project,
       certification:
-        project &&
-        (await holds({ permissions: ['certification.read'], lock: false })),
+        project && (await holds({ permissions: ['certification.read'] })),
       followUp: await this.authorization
-        .requireOpportunityFollowUpAccess(actor, { manage: false, lock: false })
+        .requireOpportunityFollowUpAccess(actor, { manage: false, lock: true })
         .then(
           () => true,
           (error: unknown) => {
@@ -407,6 +446,37 @@ export class AffaireService {
           },
         ),
     };
+  }
+
+  /**
+   * Contract presence as the Contract owner shows it: an executed
+   * Company-model Contract also needs its reference Client read
+   * (ContractVersionReader.view), so without it that Contract counts as none.
+   */
+  private async readableContractTimes(
+    actor: ActorContext,
+    scope: AffaireScope,
+    opportunityIds: readonly string[],
+    clientRead: boolean,
+  ): Promise<LatestRecordTimes> {
+    const shown = new Map<string, boolean>();
+    const hidden: string[] = [];
+    for (const contract of await this.presence.executedCompanyModelContracts(
+      scope,
+      opportunityIds,
+    )) {
+      let readable = shown.get(contract.referenceClientId);
+      if (readable === undefined) {
+        readable =
+          clientRead &&
+          (await ownerShows(() =>
+            this.clients.readReferenceClient(actor, contract.referenceClientId),
+          ));
+        shown.set(contract.referenceClientId, readable);
+      }
+      if (!readable) hidden.push(contract.contractId);
+    }
+    return this.presence.latestContractVersions(scope, opportunityIds, hidden);
   }
 
   /** Linked Projects the Project owner lets the actor read, per Opportunity. */
@@ -418,22 +488,11 @@ export class AffaireService {
     const links = await this.presence.linkedProjects(scope, opportunityIds);
     const readable = new Map<string, boolean>();
     for (const projectId of new Set(links.map((link) => link.projectId)))
-      readable.set(projectId, await this.canReadProject(actor, projectId));
+      readable.set(
+        projectId,
+        await ownerShows(() => this.projects.read(actor, projectId)),
+      );
     return links.filter((link) => readable.get(link.projectId));
-  }
-
-  private async canReadProject(actor: ActorContext, projectId: string) {
-    try {
-      await this.projects.read(actor, projectId);
-      return true;
-    } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException
-      )
-        return false;
-      throw error;
-    }
   }
 
   private async latestCases(
@@ -531,16 +590,31 @@ export class AffaireService {
   }
 }
 
-/** Reads through an owner; its refusal of the actor makes the fact unreadable. */
+/**
+ * Reads through an owner; its refusal of the actor makes the fact unreadable.
+ * An owner that hides a record it refuses answers 404, which then refuses too.
+ */
 async function ownerRead<Value>(
   read: () => Promise<Value>,
+  options: { readonly refusesWithNotFound: boolean } = {
+    refusesWithNotFound: false,
+  },
 ): Promise<OwnerFact<Value>> {
   try {
     return { readable: true, value: await read() };
   } catch (error) {
-    if (error instanceof ForbiddenException) return { readable: false };
+    if (
+      error instanceof ForbiddenException ||
+      (options.refusesWithNotFound && error instanceof NotFoundException)
+    )
+      return { readable: false };
     throw error;
   }
+}
+
+/** Whether an owner's read shows the actor a record; its 403 and 404 refuse it alike. */
+async function ownerShows(read: () => Promise<unknown>): Promise<boolean> {
+  return (await ownerRead(read, { refusesWithNotFound: true })).readable;
 }
 
 function mapFact<Value, Result>(

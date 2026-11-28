@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq, inArray, max, sql } from 'drizzle-orm';
+import { and, eq, inArray, max, notInArray, sql } from 'drizzle-orm';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   certificationCases,
@@ -25,8 +25,9 @@ export type LatestRecordTimes = ReadonlyMap<string, Date>;
 /**
  * Batched, read-only existence facts for one page of affaires. Each query is
  * scoped to the actor's Company and is asked only after the stage owner's
- * read permission was proven by the caller; it answers only whether and when
- * a record exists, never a record's content.
+ * read permission was proven by the caller, in the transaction that holds
+ * that permission's grants; it answers only whether and when a record
+ * exists, never a record's content.
  */
 @Injectable()
 export class AffairePresenceStore {
@@ -160,9 +161,11 @@ export class AffairePresenceStore {
     );
   }
 
+  /** Versions of the excluded Contracts, which the caller may not show, are left out. */
   async latestContractVersions(
     scope: AffaireScope,
     opportunityIds: readonly string[],
+    excludedContractIds: readonly string[],
   ): Promise<LatestRecordTimes> {
     if (opportunityIds.length === 0) return new Map();
     return latestTimes(
@@ -177,10 +180,54 @@ export class AffairePresenceStore {
             eq(contractVersions.workspaceId, scope.workspaceId),
             eq(contractVersions.companyId, scope.companyId),
             inArray(contractVersions.opportunityId, [...opportunityIds]),
+            excludedContractIds.length === 0
+              ? undefined
+              : notInArray(contractVersions.contractId, [
+                  ...excludedContractIds,
+                ]),
           ),
         )
         .groupBy(contractVersions.opportunityId),
     );
+  }
+
+  /**
+   * Each Contract with an executed Company-model Version and its reference
+   * Client, whose read the Contract owner also requires to show it.
+   */
+  async executedCompanyModelContracts(
+    scope: AffaireScope,
+    opportunityIds: readonly string[],
+  ): Promise<
+    readonly {
+      readonly contractId: string;
+      readonly referenceClientId: string;
+    }[]
+  > {
+    if (opportunityIds.length === 0) return [];
+    return this.database.connection
+      .selectDistinct({
+        contractId: contracts.id,
+        referenceClientId: contracts.originalClientAccountId,
+      })
+      .from(contracts)
+      .innerJoin(
+        contractVersions,
+        and(
+          eq(contractVersions.workspaceId, contracts.workspaceId),
+          eq(contractVersions.companyId, contracts.companyId),
+          eq(contractVersions.contractId, contracts.id),
+        ),
+      )
+      .where(
+        and(
+          eq(contracts.workspaceId, scope.workspaceId),
+          eq(contracts.companyId, scope.companyId),
+          inArray(contracts.opportunityId, [...opportunityIds]),
+          eq(contractVersions.provenance, 'COMPANY_MODEL_OFFER'),
+          eq(contractVersions.executionState, 'EXECUTED'),
+        ),
+      );
   }
 
   /** Projects linked to any Contract, Precontract or Addendum parent of each Opportunity. */

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AccessModule } from '../access/access.module.js';
 import { CertificationModule } from '../certification/certification.module.js';
+import { ClientModule } from '../client/client.module.js';
 import { CommercialIntakeModule } from '../commercial-intake/commercial-intake.module.js';
 import { ContractModule } from '../contract/contract.module.js';
 import { DatabaseModule } from '../database/database.module.js';
@@ -17,6 +18,7 @@ import { AffaireService } from './affaire.service.js';
   imports: [
     AccessModule,
     CertificationModule,
+    ClientModule,
     CommercialIntakeModule,
     ContractModule,
     DatabaseModule,

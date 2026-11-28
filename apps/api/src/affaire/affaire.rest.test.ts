@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { prepareReportedSigning } from '../contract/reported-contract-signing.test-support.js';
+import { openDocumentScannerFixture } from '../documents/document-scanner.test-support.js';
+import {
+  backendPid,
+  waitForBlocked,
+} from '../offer/offer-concurrency.test-support.js';
 import {
   ESTIMATE_OFFER_OWNER,
   ESTIMATE_OFFER_PREPARER,
@@ -15,12 +21,22 @@ const withPostgres = process.env.TEST_DATABASE_URL ? describe : describe.skip;
 // Synthetic identities, Companies, Clients and prices only.
 withPostgres('Affaire reads REST', () => {
   let fixture: Awaited<ReturnType<typeof openEstimateOfferFixture>>;
+  let scanner: Awaited<ReturnType<typeof openDocumentScannerFixture>>;
 
   beforeAll(async () => {
-    fixture = await openEstimateOfferFixture();
+    scanner = await openDocumentScannerFixture();
+    fixture = await openEstimateOfferFixture({
+      scannerEnvironment: scanner.environment,
+    });
   });
-  beforeEach(async () => fixture.reset());
-  afterAll(async () => fixture?.close());
+  beforeEach(async () => {
+    await fixture.reset();
+    scanner.reset();
+  });
+  afterAll(async () => {
+    await fixture?.close();
+    await scanner?.close();
+  });
 
   /**
    * One Opportunity with its Request, an approved Profitability Estimate and a
@@ -468,4 +484,147 @@ withPostgres('Affaire reads REST', () => {
       collection: 'not_applicable',
     });
   });
+
+  async function listedRow(
+    opportunityId: string,
+    companyId: string,
+    headers: Readonly<Record<string, string>>,
+  ) {
+    const page = responseRecord(
+      await fixture.read({ path: '/affaires', companyId, headers }),
+    );
+    const rows = Array.isArray(page.items)
+      ? page.items.map(responseRecord)
+      : [];
+    const row = rows.find((item) => item.opportunityId === opportunityId);
+    if (!row) throw new Error('Expected the listed affaire.');
+    return row;
+  }
+
+  it("holds each stage owner's grant through the list's presence reads, so a revocation waits for the list", async () => {
+    const source = await affaireAtContract();
+    const barrier = await fixture.pool.connect();
+    const pending: Promise<unknown>[] = [];
+    try {
+      await barrier.query('BEGIN');
+      const pid = await backendPid(barrier);
+      // Pins the list at its Contract presence query, after its readability
+      // checks and before it reads whether a Contract exists.
+      await barrier.query(
+        'LOCK TABLE contract_versions IN ACCESS EXCLUSIVE MODE',
+      );
+      const listing = fixture.request({
+        path: '/affaires',
+        companyId: source.companyId,
+        headers: ESTIMATE_OFFER_PREPARER,
+      });
+      pending.push(listing);
+      await waitForBlocked(fixture.pool, pid);
+      // Another session revokes the actor's only Contract read meanwhile.
+      const revocation = fixture.pool.query(
+        "UPDATE company_role_assignments SET revoked_at=now() WHERE company_id=$1 AND workspace_membership_id=$2 AND bundle='company_contract_preparer' AND revoked_at IS NULL",
+        [source.companyId, source.preparerMembershipId],
+      );
+      pending.push(revocation);
+      const queued = waitForBlocked(fixture.pool, pid, 2);
+      pending.push(queued);
+      const order = await Promise.race([
+        revocation.then(() => 'revoked during the list'),
+        queued.then(() => 'revocation waits for the list'),
+      ]);
+      await barrier.query('COMMIT');
+      const response = await listing;
+      expect(response.status).toBe(200);
+      const page = responseRecord(await response.json());
+      const [row] = Array.isArray(page.items) ? page.items : [];
+
+      // The list read the Contract under a grant it held to the end, so the
+      // revocation is ordered after it.
+      expect({ order, thread: responseRecord(row).thread }).toEqual({
+        order: 'revocation waits for the list',
+        thread: { kind: 'in_progress', currentStage: 'contract' },
+      });
+      await revocation;
+      const revoked = await listedRow(
+        source.opportunityId,
+        source.companyId,
+        ESTIMATE_OFFER_PREPARER,
+      );
+      expect(revoked.thread).toEqual({
+        kind: 'in_progress',
+        currentStage: 'offer',
+      });
+    } finally {
+      await barrier.query('ROLLBACK').catch(() => undefined);
+      barrier.release();
+      await Promise.allSettled(pending);
+    }
+  }, 30_000);
+
+  it('counts an executed Company-model Contract only for an actor who also reads Clients', async () => {
+    const signing = await prepareReportedSigning(fixture);
+    await fixture.command({
+      ...signing.target,
+      path: signing.path,
+      body: signing.body,
+    });
+    const source = signing.f.ready.source;
+    // The reader now holds the Contract read but no Client read, which the
+    // Contract owner also requires for an executed Company-model Contract.
+    await fixture.grant({
+      path: '/company-contract-preparer-assignments',
+      companyId: source.companyId,
+      membershipId: source.readerMembershipId,
+    });
+
+    const preparer = await detail(source.opportunityId, source.companyId);
+    expect(markers(preparer).contract).toBe('current');
+    const reader = await detail(
+      source.opportunityId,
+      source.companyId,
+      ESTIMATE_OFFER_READER,
+    );
+    expect(markers(reader)).toMatchObject({
+      offer: 'current',
+      contract: 'not_available',
+    });
+    expect(JSON.stringify(reader)).not.toContain(signing.f.contractId);
+
+    // The list counts that Contract only where its owner shows it, so the
+    // reader's row is the one of an affaire without a readable Contract.
+    const sameAsDetail = async (
+      headers: Readonly<Record<string, string>>,
+      shown: Record<string, unknown>,
+    ) => {
+      const row = await listedRow(
+        source.opportunityId,
+        source.companyId,
+        headers,
+      );
+      expect({
+        thread: row.thread,
+        lastChangedAt: row.lastChangedAt,
+      }).toEqual({
+        thread: shown.thread,
+        lastChangedAt: shown.lastChangedAt,
+      });
+    };
+    await sameAsDetail(ESTIMATE_OFFER_PREPARER, preparer);
+    await sameAsDetail(ESTIMATE_OFFER_READER, reader);
+
+    // With Client read but its reference Client no longer readable, the
+    // Contract owner refuses the Contract with 404: the stage is not
+    // available and the rest of the affaire is still read.
+    await fixture.pool.query(
+      "UPDATE client_company_relationships SET status='archived' WHERE company_id=$1 AND client_account_id=$2",
+      [source.companyId, source.clientId],
+    );
+    const archived = await detail(source.opportunityId, source.companyId);
+    expect(archived.thread).toEqual({
+      kind: 'in_progress',
+      currentStage: 'offer',
+    });
+    expect(markers(archived).contract).toBe('not_available');
+    await sameAsDetail(ESTIMATE_OFFER_PREPARER, archived);
+  }, 60_000);
 });
