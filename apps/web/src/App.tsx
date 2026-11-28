@@ -84,6 +84,8 @@ import { WorkspaceInvitations } from './access/WorkspaceInvitations';
 import { CompanyContextSelector } from './company/CompanyContextSelector';
 import { CompanyRegistration } from './company/CompanyRegistration';
 import { ClientWorkspace } from './client/ClientWorkspace';
+import type { ClientWorkspaceProps } from './client/use-client-workspace';
+import { ClarteClients } from './clarte/clients/ClarteClients';
 import { ClientCommercialOverview } from './commercial-intake/ClientCommercialOverview';
 import { ClientMissionOverview } from './project/ClientMissionOverview';
 import {
@@ -1205,121 +1207,114 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ),
     });
   }
-  if (canAccessClients)
+  if (canAccessClients) {
+    const clientsKey = `client:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}:${grantOf(access.actor.activeCompany, 'company_director_client_access')?.assignmentId ?? 'no-assignment'}:${grantOf(access.actor.activeCompany, 'company_director_client_access')?.permissionSetVersion ?? 'no-version'}`;
+    const clients: ClientWorkspaceProps = {
+      actor: access.actor,
+      identity,
+      onCompanyContextRejected: rejectCompanyContext,
+      onActorRevalidated: acceptRevalidatedActor,
+      onWorkspaceAccessRejected: rejectWorkspaceAccess,
+      onActivityRecorded: refreshActivityLog,
+      requestedClientDossierRequest,
+      renderCommercialWork:
+        canReadCompanyClients && openRequest
+          ? (clientDossierId) => (
+              <ClientCommercialOverview
+                actor={access.actor}
+                identity={identity}
+                clientDossierId={clientDossierId}
+                clientIdentityRevision={clientIdentityGeneration}
+                onOpenRequest={(clientRequestId, sourceSignal) =>
+                  openRequest(clientRequestId, undefined, {
+                    focusTarget: 'request-detail',
+                    sourceSignal,
+                  })
+                }
+                onCompanyContextRejected={rejectCompanyContext}
+                onActorRevalidated={acceptRevalidatedActor}
+                onWorkspaceAccessRejected={rejectWorkspaceAccess}
+              />
+            )
+          : undefined,
+      onOpenProjects:
+        canAccessProjects && activeCompanyId
+          ? (client) => {
+              projectNavigation.navigate({
+                kind: 'directory',
+                client: {
+                  clientDossierId: client.id,
+                  displayName: client.displayName,
+                },
+              });
+              navigateToSection('projects');
+            }
+          : undefined,
+      renderMissionWork:
+        canReadCompanyClients && openProject
+          ? (clientDossierId) => (
+              <ClientMissionOverview
+                actor={access.actor}
+                identity={identity}
+                clientDossierId={clientDossierId}
+                clientIdentityRevision={clientIdentityGeneration}
+                onOpenProject={(target, sourceSignal) =>
+                  openProject({ ...target, sourceSignal })
+                }
+                onCompanyContextRejected={rejectCompanyContext}
+                onActorRevalidated={acceptRevalidatedActor}
+                onWorkspaceAccessRejected={rejectWorkspaceAccess}
+              />
+            )
+          : undefined,
+      onOpenDocuments:
+        canReadDocuments && activeCompanyId
+          ? (client) => {
+              documentRequests.current += 1;
+              setDocumentClientFilter({
+                navigationContext,
+                clientDossierId: client.id,
+                displayName: client.displayName,
+                requestId: documentRequests.current,
+              });
+              navigateToSection('documents');
+            }
+          : undefined,
+      renderDocumentWork: openDocument
+        ? (clientDossierId) => (
+            <ClientDocumentOverview
+              actor={access.actor}
+              identity={identity}
+              clientDossierId={clientDossierId}
+              clientIdentityRevision={clientIdentityGeneration}
+              onOpenDocument={openDocument}
+              onCompanyContextRejected={rejectCompanyContext}
+              onActorRevalidated={acceptRevalidatedActor}
+              onWorkspaceAccessRejected={rejectWorkspaceAccess}
+            />
+          )
+        : undefined,
+      onOpenRequests:
+        canAccessCommercial && canReadCompanyClients
+          ? (client) => {
+              setRequestClientFilter({
+                navigationContext: requestNavigationContext,
+                clientDossierId: client.id,
+                displayName: client.displayName,
+              });
+              navigateToSection('requests');
+            }
+          : undefined,
+      onClientIdentityChanged: () =>
+        setClientIdentityGeneration((generation) => generation + 1),
+    };
     sections.push({
       id: 'clients',
       ...prismeCopy.sections.clients,
-      content: (
-        <ClientWorkspace
-          key={`client:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}:${grantOf(access.actor.activeCompany, 'company_director_client_access')?.assignmentId ?? 'no-assignment'}:${grantOf(access.actor.activeCompany, 'company_director_client_access')?.permissionSetVersion ?? 'no-version'}`}
-          actor={access.actor}
-          identity={identity}
-          onCompanyContextRejected={rejectCompanyContext}
-          onActorRevalidated={acceptRevalidatedActor}
-          onWorkspaceAccessRejected={rejectWorkspaceAccess}
-          onActivityRecorded={refreshActivityLog}
-          requestedClientDossierRequest={requestedClientDossierRequest}
-          renderCommercialWork={
-            canReadCompanyClients && openRequest
-              ? (clientDossierId) => (
-                  <ClientCommercialOverview
-                    actor={access.actor}
-                    identity={identity}
-                    clientDossierId={clientDossierId}
-                    clientIdentityRevision={clientIdentityGeneration}
-                    onOpenRequest={(clientRequestId, sourceSignal) =>
-                      openRequest(clientRequestId, undefined, {
-                        focusTarget: 'request-detail',
-                        sourceSignal,
-                      })
-                    }
-                    onCompanyContextRejected={rejectCompanyContext}
-                    onActorRevalidated={acceptRevalidatedActor}
-                    onWorkspaceAccessRejected={rejectWorkspaceAccess}
-                  />
-                )
-              : undefined
-          }
-          onOpenProjects={
-            canAccessProjects && activeCompanyId
-              ? (client) => {
-                  projectNavigation.navigate({
-                    kind: 'directory',
-                    client: {
-                      clientDossierId: client.id,
-                      displayName: client.displayName,
-                    },
-                  });
-                  navigateToSection('projects');
-                }
-              : undefined
-          }
-          renderMissionWork={
-            canReadCompanyClients && openProject
-              ? (clientDossierId) => (
-                  <ClientMissionOverview
-                    actor={access.actor}
-                    identity={identity}
-                    clientDossierId={clientDossierId}
-                    clientIdentityRevision={clientIdentityGeneration}
-                    onOpenProject={(target, sourceSignal) =>
-                      openProject({ ...target, sourceSignal })
-                    }
-                    onCompanyContextRejected={rejectCompanyContext}
-                    onActorRevalidated={acceptRevalidatedActor}
-                    onWorkspaceAccessRejected={rejectWorkspaceAccess}
-                  />
-                )
-              : undefined
-          }
-          onOpenDocuments={
-            canReadDocuments && activeCompanyId
-              ? (client) => {
-                  documentRequests.current += 1;
-                  setDocumentClientFilter({
-                    navigationContext,
-                    clientDossierId: client.id,
-                    displayName: client.displayName,
-                    requestId: documentRequests.current,
-                  });
-                  navigateToSection('documents');
-                }
-              : undefined
-          }
-          renderDocumentWork={
-            openDocument
-              ? (clientDossierId) => (
-                  <ClientDocumentOverview
-                    actor={access.actor}
-                    identity={identity}
-                    clientDossierId={clientDossierId}
-                    clientIdentityRevision={clientIdentityGeneration}
-                    onOpenDocument={openDocument}
-                    onCompanyContextRejected={rejectCompanyContext}
-                    onActorRevalidated={acceptRevalidatedActor}
-                    onWorkspaceAccessRejected={rejectWorkspaceAccess}
-                  />
-                )
-              : undefined
-          }
-          onOpenRequests={
-            canAccessCommercial && canReadCompanyClients
-              ? (client) => {
-                  setRequestClientFilter({
-                    navigationContext: requestNavigationContext,
-                    clientDossierId: client.id,
-                    displayName: client.displayName,
-                  });
-                  navigateToSection('requests');
-                }
-              : undefined
-          }
-          onClientIdentityChanged={() =>
-            setClientIdentityGeneration((generation) => generation + 1)
-          }
-        />
-      ),
+      content: <ClientWorkspace key={clientsKey} {...clients} />,
+      clarteContent: <ClarteClients key={clientsKey} {...clients} />,
     });
+  }
   if (
     (canAccessProjects ||
       canReadProjectTemplateCatalogue(access.actor) ||

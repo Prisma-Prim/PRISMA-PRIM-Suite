@@ -1,0 +1,699 @@
+/* Clarté Clients (#1536). Scoped to the frame; light background only. */
+
+.clarte-frame .clarte-clients {
+  display: grid;
+  gap: 16px;
+  outline: none;
+}
+
+.clarte-frame .clarte-clients-directory,
+.clarte-frame .clarte-client-dossier {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-clients-intro {
+  margin: 0;
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-clients-empty-line {
+  margin: 0;
+  color: var(--clarte-muted);
+}
+
+/* Feedback lines */
+.clarte-frame .clarte-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--clarte-radius-sm);
+  color: var(--clarte-info);
+  background: var(--clarte-info-soft);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-notice svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+
+.clarte-frame .clarte-notice--pending {
+  color: var(--clarte-ink-soft);
+  background: var(--clarte-surface-sunken);
+}
+
+.clarte-frame .clarte-notice--success {
+  color: var(--clarte-success);
+  background: var(--clarte-success-soft);
+}
+
+.clarte-frame .clarte-notice--danger {
+  color: var(--clarte-danger);
+  background: var(--clarte-danger-soft);
+}
+
+/* Directory toolbar and search */
+.clarte-frame .clarte-clients-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.clarte-frame .clarte-clients-company {
+  margin: 0;
+  color: var(--clarte-ink-soft);
+  font-family: var(--clarte-font-heading);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.clarte-frame .clarte-clients-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+}
+
+.clarte-frame .clarte-clients-search .clarte-field {
+  min-width: 0;
+}
+
+.clarte-frame .clarte-clients-searchbox {
+  position: relative;
+  display: block;
+}
+
+.clarte-frame .clarte-clients-searchbox svg {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  width: 17px;
+  height: 17px;
+  color: var(--clarte-muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.clarte-frame .clarte-clients-searchbox .clarte-input {
+  width: 100%;
+  min-height: 46px;
+  padding-left: 42px;
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-clients-search-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.clarte-frame .clarte-clients-search-actions .clarte-button {
+  min-height: 42px;
+}
+
+/* Client cards */
+.clarte-frame .clarte-clients-list {
+  display: grid;
+  gap: 10px;
+}
+
+.clarte-frame .clarte-clients-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-client-card {
+  display: grid;
+  align-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-lg);
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+.clarte-frame .clarte-client-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-client-card-name {
+  min-width: 0;
+}
+
+.clarte-frame .clarte-client-card-name h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--clarte-font-heading);
+  font-size: 15.5px;
+  font-weight: 700;
+}
+
+.clarte-frame .clarte-client-card-name p {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clarte-frame .clarte-client-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-clients-count {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-clients-results {
+  display: grid;
+  gap: 10px;
+}
+
+.clarte-frame .clarte-clients-results > h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+/* Initials of a Client or a Contact */
+.clarte-frame .clarte-client-initials {
+  display: grid;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: var(--clarte-radius-md);
+  color: var(--clarte-accent-ink);
+  background: linear-gradient(
+    135deg,
+    var(--clarte-accent),
+    var(--clarte-accent-strong)
+  );
+  font-family: var(--clarte-font-heading);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.clarte-frame .clarte-client-initials--large {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--clarte-radius-lg);
+  font-size: 22px;
+}
+
+.clarte-frame .clarte-client-initials--small {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  color: var(--clarte-accent-text);
+  background: var(--clarte-accent-soft);
+  font-size: 12.5px;
+}
+
+/* Possible duplicates, reused from the duplicate review owner */
+.clarte-frame .clarte-clients-duplicates {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-lg);
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-clients-duplicates h3,
+.clarte-frame .clarte-client-part h3,
+.clarte-frame .clarte-client-part h4 {
+  margin: 0 0 8px;
+  font-family: var(--clarte-font-heading);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.clarte-frame .clarte-clients-duplicates h4,
+.clarte-frame .clarte-client-part h5 {
+  margin: 10px 0 6px;
+  font-size: 14px;
+}
+
+/* Side panel forms */
+.clarte-frame .clarte-clients-form {
+  display: grid;
+  gap: 14px;
+}
+
+.clarte-frame .clarte-clients-form .clarte-input {
+  width: 100%;
+}
+
+.clarte-frame .clarte-clients-form-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.clarte-frame .clarte-clients-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.clarte-frame .clarte-clients-contacts-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.clarte-frame .clarte-clients-contacts-editor .client-contact-editor-label {
+  margin: 0;
+  color: var(--clarte-ink-soft);
+  font-weight: 700;
+}
+
+.clarte-frame .clarte-clients-contacts-editor .client-contact-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.clarte-frame .clarte-clients-contacts-editor fieldset {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-clients-contacts-editor legend {
+  padding: 0 4px;
+  font-weight: 700;
+}
+
+.clarte-frame .clarte-clients-contacts-editor label {
+  color: var(--clarte-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-clients-contacts-editor input:not([type='checkbox']),
+.clarte-frame .clarte-clients-contacts-editor textarea {
+  width: 100%;
+}
+
+.clarte-frame .clarte-clients-stale {
+  display: grid;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-clients-stale > p {
+  margin: 0;
+  color: var(--clarte-muted);
+}
+
+/* Dossier page */
+.clarte-frame .clarte-client-back .clarte-button {
+  padding-left: 4px;
+}
+
+.clarte-frame .clarte-client-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+}
+
+.clarte-frame .clarte-client-identity {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-client-eyebrow {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-client-identity h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--clarte-font-heading);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.clarte-frame .clarte-client-identity h2:focus {
+  outline: none;
+}
+
+.clarte-frame .clarte-client-identity h2:focus-visible {
+  border-radius: 6px;
+  box-shadow: var(--clarte-focus);
+}
+
+.clarte-frame .clarte-client-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.clarte-frame .clarte-client-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Views of the dossier */
+.clarte-frame .clarte-client-views {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--clarte-line);
+  scrollbar-width: thin;
+}
+
+.clarte-frame .clarte-client-views [role='tab'] {
+  flex: none;
+  min-height: var(--clarte-touch-target, 40px);
+  margin-bottom: -1px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--clarte-muted);
+  background: none;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-client-views [role='tab']:hover {
+  color: var(--clarte-ink);
+}
+
+.clarte-frame .clarte-client-views [role='tab'][aria-selected='true'] {
+  border-bottom-color: var(--clarte-accent);
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-client-views [role='tab']:focus-visible {
+  border-radius: var(--clarte-radius-xs);
+  outline: none;
+  box-shadow: var(--clarte-focus);
+}
+
+.clarte-frame .clarte-client-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+.clarte-frame .clarte-client-panel > .clarte-clients-intro,
+.clarte-frame
+  .clarte-client-panel
+  > .clarte-client-part:not(.clarte-client-work) {
+  grid-column: 1 / -1;
+}
+
+.clarte-frame .clarte-client-part[hidden] {
+  display: none;
+}
+
+.clarte-frame .clarte-client-part {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-lg);
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+.clarte-frame .clarte-client-work {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.clarte-frame .clarte-client-work-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--clarte-line-soft);
+}
+
+.clarte-frame .clarte-client-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.clarte-frame .clarte-client-section-head h3 {
+  margin-bottom: 2px;
+}
+
+.clarte-frame .clarte-client-record {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px 20px;
+  margin: 0;
+}
+
+.clarte-frame .clarte-client-record dt {
+  color: var(--clarte-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-client-record dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-client-contacts {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-client-contacts > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--clarte-line-soft);
+}
+
+.clarte-frame .clarte-client-contacts > li:first-child {
+  border-top: 0;
+}
+
+.clarte-frame .clarte-client-contact-lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin-top: 2px;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+/* Parts reused from the other owners keep their markup and take the
+   Clarté rhythm here. */
+.clarte-frame .clarte-client-part ul,
+.clarte-frame .clarte-client-part ol {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-client-part li {
+  padding: 8px 0;
+  border-top: 1px solid var(--clarte-line-soft);
+}
+
+.clarte-frame .clarte-client-part li:first-child {
+  border-top: 0;
+}
+
+.clarte-frame .clarte-client-part dl {
+  margin: 6px 0;
+}
+
+.clarte-frame .clarte-client-part dt {
+  color: var(--clarte-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-client-part dd {
+  margin: 0 0 6px;
+}
+
+.clarte-frame .clarte-client-part p {
+  margin: 4px 0;
+}
+
+.clarte-frame .clarte-client-part form,
+.clarte-frame .clarte-client-part fieldset {
+  display: grid;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-client-part fieldset {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+}
+
+.clarte-frame .clarte-client-part label {
+  display: grid;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-client-part .client-union-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-client-part .client-union-actions,
+.clarte-frame .clarte-client-part .client-legal-entities-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-client-part .client-legal-entities-heading {
+  justify-content: space-between;
+}
+
+.clarte-frame .clarte-client-part .client-union,
+.clarte-frame .clarte-client-part .client-legal-entities,
+.clarte-frame .clarte-client-part .client-correction-history,
+.clarte-frame .clarte-client-work section {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.clarte-frame .clarte-client-part .client-union-history-dossiers,
+.clarte-frame .clarte-client-part .client-union-dossiers,
+.clarte-frame .clarte-client-part .client-union-field-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.clarte-frame .clarte-client-part .client-union-history-source,
+.clarte-frame .clarte-client-part .client-union-dossiers article {
+  padding: 12px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface-muted);
+}
+
+.clarte-frame .clarte-client-part [role='alert'] {
+  color: var(--clarte-danger);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-client-part [role='status'] {
+  color: var(--clarte-success);
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .clarte-frame .clarte-clients-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clarte-frame .clarte-clients-toolbar .clarte-button--primary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .clarte-frame .clarte-clients-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clarte-frame .clarte-client-head {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 12px 14px;
+  }
+
+  .clarte-frame .clarte-client-initials--large {
+    width: 52px;
+    height: 52px;
+    font-size: 18px;
+  }
+
+  .clarte-frame .clarte-client-identity h2 {
+    font-size: 23px;
+  }
+
+  .clarte-frame .clarte-client-head-actions {
+    grid-column: 1 / -1;
+  }
+
+  .clarte-frame .clarte-client-head-actions .clarte-button {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .clarte-frame .clarte-client-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clarte-frame .clarte-client-part {
+    padding: 14px;
+  }
+
+  .clarte-frame .clarte-clients-form-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

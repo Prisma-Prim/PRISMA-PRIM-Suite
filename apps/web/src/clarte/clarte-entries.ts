@@ -128,7 +128,7 @@ export const clarteEntries = [
     id: 'clients',
     group: 'primary',
     icon: Building2,
-    tabs: [{ destination: 'clients', render: renderCurrentScreen }],
+    tabs: [{ destination: 'clients', render: renderClarteScreen }],
   },
   {
     id: 'missions',

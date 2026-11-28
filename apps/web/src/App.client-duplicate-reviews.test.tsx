@@ -1,4 +1,5 @@
 import { grantOf } from './access/company-grants';
+import { appInterfaces, renderInInterface } from './test/app-interface';
 import {
   companyGrants,
   withCompanyGrants,
@@ -15,7 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
-import { ClientWorkspace } from './client/ClientWorkspace';
+import { clientScreenOf } from './test/client-interface';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -173,237 +174,246 @@ function revalidateAuthority() {
   fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
 }
 
-describe('duplicate review ownership through App', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    window.history.replaceState(null, '', '/#clients');
-  });
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-    window.history.replaceState(null, '', '/');
-  });
+describe.each(appInterfaces)(
+  'duplicate review ownership through App in the %s interface',
+  (appInterface) => {
+    beforeEach(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.history.replaceState(null, '', '/#clients');
+    });
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+      window.history.replaceState(null, '', '/');
+    });
 
-  it.each([
-    'Company',
-    'session',
-    'identity',
-    'assignment',
-    'version',
-    'permission',
-  ])(
-    'clears a confirmed attachment on a real %s boundary',
-    async (boundary) => {
-      const state = installTransport();
-      const rendered = render(
+    it.each([
+      'Company',
+      'session',
+      'identity',
+      'assignment',
+      'version',
+      'permission',
+    ])(
+      'clears a confirmed attachment on a real %s boundary',
+      async (boundary) => {
+        const state = installTransport();
+        const rendered = renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+        );
+        await openReview();
+        await attachReview();
+        await screen.findByText(attachedCopy);
+        await waitFor(() => expect(state.activityReads).toBeGreaterThan(1));
+        if (boundary === 'Company') {
+          changeValue(
+            screen.getByLabelText('Active Company', { exact: true }),
+            companyB.id,
+          );
+          await screen.findByText('Clients in Company B');
+        } else if (boundary === 'session' || boundary === 'identity') {
+          if (boundary === 'identity')
+            state.actor = {
+              ...state.actor,
+              internalUserId: 'other-user',
+              workspaceMembershipId: 'other-membership',
+            };
+          rendered.rerender(<App identity={deterministicBrowserIdentity()} />);
+        } else if (boundary === 'permission') {
+          state.actor = { ...state.actor, workspacePermissions: [] };
+          revalidateAuthority();
+        } else {
+          state.actor = {
+            ...state.actor,
+            activeCompany: {
+              ...state.actor.activeCompany,
+              ...companyA,
+              ...(boundary === 'assignment'
+                ? {
+                    grants: companyGrants({
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId: 'assignment-2',
+                    }),
+                  }
+                : {
+                    grants: companyGrants({
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId: 'fixture-client-access',
+                    }),
+                  }),
+            },
+          };
+          revalidateAuthority();
+        }
+        await waitFor(() =>
+          expect(screen.queryByText(attachedCopy)).not.toBeInTheDocument(),
+        );
+        expect(screen.queryByText('Rejected proposal')).not.toBeInTheDocument();
+      },
+    );
+
+    it.each(['Company', 'session', 'assignment', 'permission'])(
+      'aborts attachment and suppresses late confirmation across a %s boundary',
+      async (boundary) => {
+        const state = installTransport();
+        let release: ((response: Response) => void) | undefined;
+        let signal: AbortSignal | null | undefined;
+        state.attach = (init) => {
+          signal = init?.signal;
+          return new Promise<Response>((resolve) => {
+            release = resolve;
+          });
+        };
+        const rendered = renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+        );
+        await openReview();
+        await attachReview();
+        await waitFor(() => expect(release).toBeDefined());
+        if (boundary === 'Company') {
+          changeValue(
+            screen.getByLabelText('Active Company', { exact: true }),
+            companyB.id,
+          );
+          await screen.findByText('Clients in Company B');
+        } else if (boundary === 'session') {
+          rendered.rerender(<App identity={deterministicBrowserIdentity()} />);
+        } else if (boundary === 'permission') {
+          state.actor = { ...state.actor, workspacePermissions: [] };
+          revalidateAuthority();
+        } else {
+          state.actor = {
+            ...state.actor,
+            activeCompany: {
+              ...state.actor.activeCompany,
+              ...companyA,
+
+              grants: withCompanyGrants(state.actor.activeCompany?.grants, {
+                bundle: 'company_director_client_access',
+                version:
+                  grantOf(
+                    { grants: state.actor.activeCompany?.grants },
+                    'company_director_client_access',
+                  )?.permissionSetVersion ?? 'v1',
+                assignmentId: 'assignment-2',
+              }),
+            },
+          };
+          revalidateAuthority();
+        }
+        await waitFor(() => expect(signal?.aborted).toBe(true));
+        await screen.findByRole('button', {
+          name: 'Review possible duplicate 1',
+        });
+        await openReview();
+        await screen.findByText('Rejected proposal');
+        const readsBeforeLateResponse = state.activityReads;
+        await act(async () => {
+          if (!release) throw new Error('Expected pending attachment');
+          release(respond({}));
+        });
+        expect(screen.queryByText(attachedCopy)).not.toBeInTheDocument();
+        expect(screen.getByText('Rejected proposal')).toBeInTheDocument();
+        expect(state.activityReads).toBe(readsBeforeLateResponse);
+      },
+    );
+
+    it.each(['list', 'detail', 'attach', 'confirmed'])(
+      'clears %s review state when the public workspace accepts a new membership',
+      async (phase) => {
+        const state = installTransport();
+        const actor = state.actor;
+        const identity = deterministicBrowserIdentity();
+        let release: ((response: Response) => void) | undefined;
+        let signal: AbortSignal | null | undefined;
+        const pending = (init?: RequestInit) => {
+          signal = init?.signal;
+          return new Promise<Response>((resolve) => {
+            release = resolve;
+          });
+        };
+        if (phase === 'list') state.list = pending;
+        if (phase === 'detail') state.detail = pending;
+        if (phase === 'attach') state.attach = pending;
+        const ClientScreen = clientScreenOf[appInterface];
+        const workspace = (current: ActorContext) => (
+          <ClientScreen
+            actor={current}
+            identity={identity}
+            onCompanyContextRejected={() => undefined}
+            onActivityRecorded={async () => {
+              state.activityReads++;
+            }}
+          />
+        );
+        const rendered = render(workspace(actor));
+        if (phase !== 'list') await openReview();
+        if (phase === 'attach' || phase === 'confirmed') await attachReview();
+        if (phase === 'confirmed') await screen.findByText(attachedCopy);
+        else await waitFor(() => expect(release).toBeDefined());
+        state.list = undefined;
+        state.detail = undefined;
+        state.attach = undefined;
+        // App rejects a different membership on an old request origin. Exercise
+        // the public workspace boundary that receives an already accepted actor.
+        rendered.rerender(
+          workspace({ ...actor, workspaceMembershipId: 'membership-2' }),
+        );
+        if (phase !== 'confirmed')
+          await waitFor(() => expect(signal?.aborted).toBe(true));
+        await waitFor(() =>
+          expect(screen.queryByText(attachedCopy)).not.toBeInTheDocument(),
+        );
+        const activityBefore = state.activityReads;
+        if (phase !== 'confirmed')
+          await act(async () => {
+            if (!release) throw new Error('Expected pending review operation');
+            release(
+              respond(
+                phase === 'detail'
+                  ? comparison
+                  : {
+                      items: [
+                        {
+                          duplicate_review_reference:
+                            '23600000-0000-4000-8000-000000000099',
+                        },
+                      ],
+                      next_cursor: null,
+                    },
+              ),
+            );
+          });
+        expect(screen.queryByText('Rejected proposal')).not.toBeInTheDocument();
+        expect(screen.queryByText(attachedCopy)).not.toBeInTheDocument();
+        expect(state.activityReads).toBe(activityBefore);
+      },
+    );
+
+    it('clears local confirmation when a new rejected registration invalidates review references', async () => {
+      installTransport();
+      renderInInterface(
+        appInterface,
         <App identity={deterministicBrowserIdentity()} />,
       );
       await openReview();
       await attachReview();
       await screen.findByText(attachedCopy);
-      await waitFor(() => expect(state.activityReads).toBeGreaterThan(1));
-      if (boundary === 'Company') {
-        changeValue(
-          screen.getByLabelText('Active Company', { exact: true }),
-          companyB.id,
-        );
-        await screen.findByText('Clients in Company B');
-      } else if (boundary === 'session' || boundary === 'identity') {
-        if (boundary === 'identity')
-          state.actor = {
-            ...state.actor,
-            internalUserId: 'other-user',
-            workspaceMembershipId: 'other-membership',
-          };
-        rendered.rerender(<App identity={deterministicBrowserIdentity()} />);
-      } else if (boundary === 'permission') {
-        state.actor = { ...state.actor, workspacePermissions: [] };
-        revalidateAuthority();
-      } else {
-        state.actor = {
-          ...state.actor,
-          activeCompany: {
-            ...state.actor.activeCompany,
-            ...companyA,
-            ...(boundary === 'assignment'
-              ? {
-                  grants: companyGrants({
-                    bundle: 'company_director_client_access',
-                    version: 'v1',
-                    assignmentId: 'assignment-2',
-                  }),
-                }
-              : {
-                  grants: companyGrants({
-                    bundle: 'company_director_client_access',
-                    version: 'v1',
-                    assignmentId: 'fixture-client-access',
-                  }),
-                }),
-          },
-        };
-        revalidateAuthority();
-      }
+      fireEvent.click(screen.getByRole('button', { name: 'New Client' }));
+      changeValue(
+        screen.getByLabelText('Client display name'),
+        'Another rejected proposal',
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+      await screen.findByText(/No Client was created or changed/);
       await waitFor(() =>
         expect(screen.queryByText(attachedCopy)).not.toBeInTheDocument(),
       );
-      expect(screen.queryByText('Rejected proposal')).not.toBeInTheDocument();
-    },
-  );
-
-  it.each(['Company', 'session', 'assignment', 'permission'])(
-    'aborts attachment and suppresses late confirmation across a %s boundary',
-    async (boundary) => {
-      const state = installTransport();
-      let release: ((response: Response) => void) | undefined;
-      let signal: AbortSignal | null | undefined;
-      state.attach = (init) => {
-        signal = init?.signal;
-        return new Promise<Response>((resolve) => {
-          release = resolve;
-        });
-      };
-      const rendered = render(
-        <App identity={deterministicBrowserIdentity()} />,
-      );
-      await openReview();
-      await attachReview();
-      await waitFor(() => expect(release).toBeDefined());
-      if (boundary === 'Company') {
-        changeValue(
-          screen.getByLabelText('Active Company', { exact: true }),
-          companyB.id,
-        );
-        await screen.findByText('Clients in Company B');
-      } else if (boundary === 'session') {
-        rendered.rerender(<App identity={deterministicBrowserIdentity()} />);
-      } else if (boundary === 'permission') {
-        state.actor = { ...state.actor, workspacePermissions: [] };
-        revalidateAuthority();
-      } else {
-        state.actor = {
-          ...state.actor,
-          activeCompany: {
-            ...state.actor.activeCompany,
-            ...companyA,
-
-            grants: withCompanyGrants(state.actor.activeCompany?.grants, {
-              bundle: 'company_director_client_access',
-              version:
-                grantOf(
-                  { grants: state.actor.activeCompany?.grants },
-                  'company_director_client_access',
-                )?.permissionSetVersion ?? 'v1',
-              assignmentId: 'assignment-2',
-            }),
-          },
-        };
-        revalidateAuthority();
-      }
-      await waitFor(() => expect(signal?.aborted).toBe(true));
-      await screen.findByRole('button', {
-        name: 'Review possible duplicate 1',
-      });
-      await openReview();
-      await screen.findByText('Rejected proposal');
-      const readsBeforeLateResponse = state.activityReads;
-      await act(async () => {
-        if (!release) throw new Error('Expected pending attachment');
-        release(respond({}));
-      });
-      expect(screen.queryByText(attachedCopy)).not.toBeInTheDocument();
-      expect(screen.getByText('Rejected proposal')).toBeInTheDocument();
-      expect(state.activityReads).toBe(readsBeforeLateResponse);
-    },
-  );
-
-  it.each(['list', 'detail', 'attach', 'confirmed'])(
-    'clears %s review state when the public workspace accepts a new membership',
-    async (phase) => {
-      const state = installTransport();
-      const actor = state.actor;
-      const identity = deterministicBrowserIdentity();
-      let release: ((response: Response) => void) | undefined;
-      let signal: AbortSignal | null | undefined;
-      const pending = (init?: RequestInit) => {
-        signal = init?.signal;
-        return new Promise<Response>((resolve) => {
-          release = resolve;
-        });
-      };
-      if (phase === 'list') state.list = pending;
-      if (phase === 'detail') state.detail = pending;
-      if (phase === 'attach') state.attach = pending;
-      const workspace = (current: ActorContext) => (
-        <ClientWorkspace
-          actor={current}
-          identity={identity}
-          onCompanyContextRejected={() => undefined}
-          onActivityRecorded={async () => {
-            state.activityReads++;
-          }}
-        />
-      );
-      const rendered = render(workspace(actor));
-      if (phase !== 'list') await openReview();
-      if (phase === 'attach' || phase === 'confirmed') await attachReview();
-      if (phase === 'confirmed') await screen.findByText(attachedCopy);
-      else await waitFor(() => expect(release).toBeDefined());
-      state.list = undefined;
-      state.detail = undefined;
-      state.attach = undefined;
-      // App rejects a different membership on an old request origin. Exercise
-      // the public workspace boundary that receives an already accepted actor.
-      rendered.rerender(
-        workspace({ ...actor, workspaceMembershipId: 'membership-2' }),
-      );
-      if (phase !== 'confirmed')
-        await waitFor(() => expect(signal?.aborted).toBe(true));
-      await waitFor(() =>
-        expect(screen.queryByText(attachedCopy)).not.toBeInTheDocument(),
-      );
-      const activityBefore = state.activityReads;
-      if (phase !== 'confirmed')
-        await act(async () => {
-          if (!release) throw new Error('Expected pending review operation');
-          release(
-            respond(
-              phase === 'detail'
-                ? comparison
-                : {
-                    items: [
-                      {
-                        duplicate_review_reference:
-                          '23600000-0000-4000-8000-000000000099',
-                      },
-                    ],
-                    next_cursor: null,
-                  },
-            ),
-          );
-        });
-      expect(screen.queryByText('Rejected proposal')).not.toBeInTheDocument();
-      expect(screen.queryByText(attachedCopy)).not.toBeInTheDocument();
-      expect(state.activityReads).toBe(activityBefore);
-    },
-  );
-
-  it('clears local confirmation when a new rejected registration invalidates review references', async () => {
-    installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await openReview();
-    await attachReview();
-    await screen.findByText(attachedCopy);
-    fireEvent.click(screen.getByRole('button', { name: 'New Client' }));
-    changeValue(
-      screen.getByLabelText('Client display name'),
-      'Another rejected proposal',
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
-    await screen.findByText(/No Client was created or changed/);
-    await waitFor(() =>
-      expect(screen.queryByText(attachedCopy)).not.toBeInTheDocument(),
-    );
-  });
-});
+    });
+  },
+);

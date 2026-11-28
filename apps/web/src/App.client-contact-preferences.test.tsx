@@ -12,6 +12,8 @@ import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { ClientDossierPanel } from './client/ClientDossierPanel';
 import { ClientWorkspace } from './client/ClientWorkspace';
+import { appInterfaces } from './test/app-interface';
+import { clientScreenOf } from './test/client-interface';
 
 /** U+1F600 is one Unicode code point stored as two UTF-16 code units. */
 const astral = '\u{1F600}';
@@ -511,106 +513,122 @@ describe('Client Contact communication preferences', () => {
     const form = screen.getByRole('form', { name: 'Correct Client dossier' });
     expect(preferencesField(contactGroup(form, 1))).toHaveValue('');
   });
-
-  it('registers an enriched Client with trimmed preferences and omits blank ones', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(respond([]))
-        .mockResolvedValueOnce(
-          respond(
-            {
-              id: 'client-preferences',
-              displayName: 'Preferences Demo SRL',
-              relatedToActiveCompany: true,
-            },
-            201,
-          ),
-        )
-        .mockResolvedValueOnce(
-          respond([
-            {
-              id: 'client-preferences',
-              displayName: 'Preferences Demo SRL',
-              relatedToActiveCompany: true,
-            },
-          ]),
-        ),
-    );
-    render(
-      <ClientWorkspace
-        actor={directorActor()}
-        identity={deterministicBrowserIdentity()}
-        onCompanyContextRejected={vi.fn()}
-        onActivityRecorded={vi.fn(async () => undefined)}
-      />,
-    );
-
-    await screen.findByText('No Clients for PRISMA-PRIM yet.');
-    fireEvent.click(screen.getByRole('button', { name: 'New Client' }));
-    fireEvent.change(screen.getByLabelText('Client display name'), {
-      target: { value: 'Preferences Demo SRL' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Add Contact' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add Contact' }));
-    const first = screen.getByRole('group', { name: 'Contact 1' });
-    const second = screen.getByRole('group', { name: 'Contact 2' });
-    fireEvent.change(within(first).getByLabelText('Contact name'), {
-      target: { value: 'Ion Demo' },
-    });
-    fireEvent.change(preferencesField(first), {
-      target: { value: `  ${preferences}  ` },
-    });
-    expect(preferencesField(first)).toHaveAccessibleDescription(help);
-    fireEvent.change(within(second).getByLabelText('Contact name'), {
-      target: { value: 'Ana Demo' },
-    });
-    fireEvent.change(preferencesField(second), { target: { value: '   ' } });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
-
-    await screen.findByRole('heading', { name: 'Preferences Demo SRL' });
-    const body = record(
-      JSON.parse(String(vi.mocked(fetch).mock.calls[1]?.[1]?.body)),
-    );
-    expect(body.contacts).toEqual([
-      { name: 'Ion Demo', communicationPreferences: preferences },
-      { name: 'Ana Demo' },
-    ]);
-  });
-
-  it('keeps a too-long registration draft and sends nothing', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(respond([])));
-    render(
-      <ClientWorkspace
-        actor={directorActor()}
-        identity={deterministicBrowserIdentity()}
-        onCompanyContextRejected={vi.fn()}
-        onActivityRecorded={vi.fn(async () => undefined)}
-      />,
-    );
-
-    await screen.findByText('No Clients for PRISMA-PRIM yet.');
-    fireEvent.click(screen.getByRole('button', { name: 'New Client' }));
-    fireEvent.change(screen.getByLabelText('Client display name'), {
-      target: { value: 'Preferences Demo SRL' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Add Contact' }));
-    fireEvent.change(screen.getByLabelText('Contact name'), {
-      target: { value: 'Ion Demo' },
-    });
-    fireEvent.change(
-      screen.getByLabelText('Contact communication preferences'),
-      { target: { value: 'x'.repeat(1_001) } },
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
-
-    expect(screen.getByRole('alert')).toHaveTextContent(tooLong);
-    expect(fetch).toHaveBeenCalledOnce();
-    expect(
-      screen.getByLabelText('Contact communication preferences'),
-    ).toHaveValue('x'.repeat(1_001));
-    expect(screen.getByLabelText('Contact name')).toHaveValue('Ion Demo');
-  });
 });
+
+describe.each(appInterfaces)(
+  'Client registration with Contact preferences in the %s interface',
+  (appInterface) => {
+    beforeEach(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+    });
+
+    it('registers an enriched Client with trimmed preferences and omits blank ones', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValueOnce(respond([]))
+          .mockResolvedValueOnce(
+            respond(
+              {
+                id: 'client-preferences',
+                displayName: 'Preferences Demo SRL',
+                relatedToActiveCompany: true,
+              },
+              201,
+            ),
+          )
+          .mockResolvedValueOnce(
+            respond([
+              {
+                id: 'client-preferences',
+                displayName: 'Preferences Demo SRL',
+                relatedToActiveCompany: true,
+              },
+            ]),
+          ),
+      );
+      const ClientScreen = clientScreenOf[appInterface];
+      render(
+        <ClientScreen
+          actor={directorActor()}
+          identity={deterministicBrowserIdentity()}
+          onCompanyContextRejected={vi.fn()}
+          onActivityRecorded={vi.fn(async () => undefined)}
+        />,
+      );
+
+      await screen.findByText('No Clients for PRISMA-PRIM yet.');
+      fireEvent.click(screen.getByRole('button', { name: 'New Client' }));
+      fireEvent.change(screen.getByLabelText('Client display name'), {
+        target: { value: 'Preferences Demo SRL' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Add Contact' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Add Contact' }));
+      const first = screen.getByRole('group', { name: 'Contact 1' });
+      const second = screen.getByRole('group', { name: 'Contact 2' });
+      fireEvent.change(within(first).getByLabelText('Contact name'), {
+        target: { value: 'Ion Demo' },
+      });
+      fireEvent.change(preferencesField(first), {
+        target: { value: `  ${preferences}  ` },
+      });
+      expect(preferencesField(first)).toHaveAccessibleDescription(help);
+      fireEvent.change(within(second).getByLabelText('Contact name'), {
+        target: { value: 'Ana Demo' },
+      });
+      fireEvent.change(preferencesField(second), { target: { value: '   ' } });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+
+      await screen.findByRole('heading', { name: 'Preferences Demo SRL' });
+      const body = record(
+        JSON.parse(String(vi.mocked(fetch).mock.calls[1]?.[1]?.body)),
+      );
+      expect(body.contacts).toEqual([
+        { name: 'Ion Demo', communicationPreferences: preferences },
+        { name: 'Ana Demo' },
+      ]);
+    });
+
+    it('keeps a too-long registration draft and sends nothing', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(respond([])));
+      const ClientScreen = clientScreenOf[appInterface];
+      render(
+        <ClientScreen
+          actor={directorActor()}
+          identity={deterministicBrowserIdentity()}
+          onCompanyContextRejected={vi.fn()}
+          onActivityRecorded={vi.fn(async () => undefined)}
+        />,
+      );
+
+      await screen.findByText('No Clients for PRISMA-PRIM yet.');
+      fireEvent.click(screen.getByRole('button', { name: 'New Client' }));
+      fireEvent.change(screen.getByLabelText('Client display name'), {
+        target: { value: 'Preferences Demo SRL' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Add Contact' }));
+      fireEvent.change(screen.getByLabelText('Contact name'), {
+        target: { value: 'Ion Demo' },
+      });
+      fireEvent.change(
+        screen.getByLabelText('Contact communication preferences'),
+        { target: { value: 'x'.repeat(1_001) } },
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
+
+      expect(screen.getByRole('alert')).toHaveTextContent(tooLong);
+      expect(fetch).toHaveBeenCalledOnce();
+      expect(
+        screen.getByLabelText('Contact communication preferences'),
+      ).toHaveValue('x'.repeat(1_001));
+      expect(screen.getByLabelText('Contact name')).toHaveValue('Ion Demo');
+    });
+  },
+);

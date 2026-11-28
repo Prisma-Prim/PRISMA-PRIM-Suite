@@ -1,4 +1,5 @@
 import { companyGrants } from './access/company-grants.test-fixture';
+import { appInterfaces, renderInInterface } from './test/app-interface';
 import { changeValue } from './test/select-option';
 import {
   act,
@@ -12,7 +13,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
-import { ClientWorkspace } from './client/ClientWorkspace';
+import {
+  clientScreenOf,
+  goToSection,
+  showClientDirectory,
+  showDossierView,
+} from './test/client-interface';
+
+/** The interface the running parameterized test renders. */
+let shown: (typeof appInterfaces)[number] = 'current';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -168,6 +177,7 @@ async function openComparison() {
   if (!openFirst)
     throw new Error('Expected the first dossier in the directory');
   fireEvent.click(openFirst);
+  await showDossierView(shown, 'History');
   fireEvent.click(
     await screen.findByRole('button', { name: 'Review existing duplicates' }),
   );
@@ -187,289 +197,207 @@ function chooseSecond(form: HTMLElement) {
   for (const checkbox of within(form).getAllByRole('checkbox'))
     fireEvent.click(checkbox);
 }
-describe('persisted Client union through App', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    window.history.replaceState(null, '', '/#clients');
-  });
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-    window.history.replaceState(null, '', '/');
-  });
-  it('preserves an uncertain mixed-source command across navigation and reports success in the second canonical dossier', async () => {
-    const state = installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    const form = await openComparison();
-    chooseSecond(form);
-    const clientsBefore = state.clientReads;
-    const activityBefore = state.activityReads;
-    fireEvent.submit(form);
-    await screen.findByText(
-      'The request could not be completed. You can retry safely.',
-    );
-    const nav = screen.getByRole('navigation', { name: 'Primary navigation' });
-    fireEvent.click(within(nav).getByRole('link', { name: 'Activity Log' }));
-    fireEvent.click(within(nav).getByRole('link', { name: 'Clients' }));
-    const retained = screen.getByRole('form', { name: 'Confirm union' });
-    expect(
-      within(retained).getByLabelText('Canonical Client dossier'),
-    ).toHaveValue(second.id);
-    expect(
-      within(retained).getByLabelText('Telephone', { exact: true }),
-    ).toHaveValue(first.id);
-    expect(
-      within(retained).getByLabelText('Reason for this union'),
-    ).toHaveValue('Reviewed both saved dossiers.');
-    expect(state.confirmations).toHaveLength(1);
-    fireEvent.submit(retained);
-    await waitFor(() => expect(state.confirmations).toHaveLength(2));
-    expect(state.confirmations[1]).toEqual(state.confirmations[0]);
-    expect(state.confirmations[0]?.key).toBeTruthy();
-    expect(JSON.parse(state.confirmations[0]?.body ?? '{}')).toEqual({
-      canonicalClientId: second.id,
-      fields: {
-        displayName: second.id,
-        taxId: second.id,
-        address: second.id,
-        telephone: first.id,
-        generalEmail: second.id,
-        businessActivity: second.id,
-      },
-      reason: 'Reviewed both saved dossiers.',
-      reviewedDifferences: true,
-      companyIds: ['company-a', 'company-b'],
+describe.each(appInterfaces)(
+  'persisted Client union through App in the %s interface',
+  (appInterface) => {
+    beforeEach(() => {
+      shown = appInterface;
+      localStorage.clear();
+      sessionStorage.clear();
+      window.history.replaceState(null, '', '/#clients');
     });
-    const canonical = await screen.findByRole('region', {
-      name: second.displayName,
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+      window.history.replaceState(null, '', '/');
     });
-    expect(
-      within(canonical).getByRole('heading', { name: second.displayName }),
-    ).toBeVisible();
-    expect(
-      await screen.findByText(
-        'Union confirmed. The canonical dossier is now available in the affected Companies.',
-      ),
-    ).toBeVisible();
-    expect(state.clientReads).toBeGreaterThan(clientsBefore);
-    expect(state.activityReads).toBeGreaterThan(activityBefore);
-  });
-  it.each([
-    'Client',
-    'Company',
-    'session',
-    'identity',
-    'assignment',
-    'version',
-    'permission',
-  ])(
-    'suppresses a late union confirmation across the real %s boundary',
-    async (boundary) => {
+    it('preserves an uncertain mixed-source command across navigation and reports success in the second canonical dossier', async () => {
       const state = installTransport();
-      let release: ((response: Response) => void) | undefined;
-      let signal: AbortSignal | null | undefined;
-      state.confirm = (init) => {
-        signal = init?.signal;
-        return new Promise((resolve) => {
-          release = resolve;
-        });
-      };
-      const rendered = render(
+      renderInInterface(
+        appInterface,
         <App identity={deterministicBrowserIdentity()} />,
       );
       const form = await openComparison();
       chooseSecond(form);
+      const clientsBefore = state.clientReads;
+      const activityBefore = state.activityReads;
       fireEvent.submit(form);
-      await waitFor(() => expect(release).toBeDefined());
-      if (boundary === 'Client') {
-        const buttons = screen.getAllByRole('button', {
-          name: 'Open dossier',
-        });
-        const secondButton = buttons[1];
-        if (!secondButton)
-          throw new Error('Expected the second directory Client');
-        fireEvent.click(secondButton);
-        await screen.findByRole('region', {
-          name: second.displayName,
-        });
-      } else if (boundary === 'Company') {
-        changeValue(
-          screen.getByLabelText('Active Company', { exact: true }),
-          companyB.id,
-        );
-        await screen.findByText('Clients in Company B');
-      } else if (boundary === 'session' || boundary === 'identity') {
-        if (boundary === 'identity')
-          state.actor = {
-            ...state.actor,
-            internalUserId: 'other-user',
-            workspaceMembershipId: 'other-membership',
-          };
-        rendered.rerender(<App identity={deterministicBrowserIdentity()} />);
-      } else {
-        state.actor = {
-          ...state.actor,
-          activeCompany: {
-            ...state.actor.activeCompany,
-            ...companyA,
-            ...(boundary === 'assignment'
-              ? {
-                  grants: companyGrants({
-                    bundle: 'company_director_client_access',
-                    version: 'v1',
-                    assignmentId: 'assignment-2',
-                  }),
-                }
-              : boundary === 'version'
-                ? {
-                    grants: companyGrants({
-                      bundle: 'company_director_client_access',
-                      version: 'v1',
-                      assignmentId: 'fixture-client-access',
-                    }),
-                  }
-                : {
-                    grants: companyGrants({
-                      bundle: 'company_director_client_access',
-                      version: 'v1',
-                      assignmentId: 'fixture-client-access',
-                    }),
-                  }),
-          },
-        };
-        changeValue(
-          screen.getByLabelText('Find a shared Client'),
-          'Check authority',
-        );
-        fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
-      }
-      await waitFor(() => expect(signal?.aborted).toBe(true));
-      const readsBefore = state.activityReads;
-      await act(async () => {
-        if (!release) throw new Error('Expected pending confirmation');
-        release(
-          respond(
-            {
-              outcome: 'united',
-              canonicalClientId: first.id,
-              projectionReference: 'late-projection',
-            },
-            201,
-          ),
-        );
+      await screen.findByText(
+        'The request could not be completed. You can retry safely.',
+      );
+      goToSection(appInterface, 'Activity Log');
+      goToSection(appInterface, 'Clients');
+      const retained = screen.getByRole('form', { name: 'Confirm union' });
+      expect(
+        within(retained).getByLabelText('Canonical Client dossier'),
+      ).toHaveValue(second.id);
+      expect(
+        within(retained).getByLabelText('Telephone', { exact: true }),
+      ).toHaveValue(first.id);
+      expect(
+        within(retained).getByLabelText('Reason for this union'),
+      ).toHaveValue('Reviewed both saved dossiers.');
+      expect(state.confirmations).toHaveLength(1);
+      fireEvent.submit(retained);
+      await waitFor(() => expect(state.confirmations).toHaveLength(2));
+      expect(state.confirmations[1]).toEqual(state.confirmations[0]);
+      expect(state.confirmations[0]?.key).toBeTruthy();
+      expect(JSON.parse(state.confirmations[0]?.body ?? '{}')).toEqual({
+        canonicalClientId: second.id,
+        fields: {
+          displayName: second.id,
+          taxId: second.id,
+          address: second.id,
+          telephone: first.id,
+          generalEmail: second.id,
+          businessActivity: second.id,
+        },
+        reason: 'Reviewed both saved dossiers.',
+        reviewedDifferences: true,
+        companyIds: ['company-a', 'company-b'],
+      });
+      const canonical = await screen.findByRole('region', {
+        name: second.displayName,
       });
       expect(
-        screen.queryByRole('form', { name: 'Confirm union' }),
-      ).not.toBeInTheDocument();
-      expect(screen.queryByText(/Union confirmed\./)).not.toBeInTheDocument();
-      expect(state.activityReads).toBe(readsBefore);
-    },
-  );
-
-  it.each([
-    'Company',
-    'session',
-    'identity',
-    'assignment',
-    'version',
-    'permission',
-  ])(
-    'clears confirmed completion at the real %s boundary',
-    async (boundary) => {
-      const state = installTransport();
-      state.confirm = async () => {
-        state.united = true;
-        return respond(
-          {
-            outcome: 'united',
-            canonicalClientId: second.id,
-            projectionReference: 'projection-241',
-          },
-          201,
+        within(canonical).getByRole('heading', { name: second.displayName }),
+      ).toBeVisible();
+      expect(
+        await screen.findByText(
+          'Union confirmed. The canonical dossier is now available in the affected Companies.',
+        ),
+      ).toBeVisible();
+      expect(state.clientReads).toBeGreaterThan(clientsBefore);
+      expect(state.activityReads).toBeGreaterThan(activityBefore);
+    });
+    it.each([
+      'Client',
+      'Company',
+      'session',
+      'identity',
+      'assignment',
+      'version',
+      'permission',
+    ])(
+      'suppresses a late union confirmation across the real %s boundary',
+      async (boundary) => {
+        const state = installTransport();
+        let release: ((response: Response) => void) | undefined;
+        let signal: AbortSignal | null | undefined;
+        state.confirm = (init) => {
+          signal = init?.signal;
+          return new Promise((resolve) => {
+            release = resolve;
+          });
+        };
+        const rendered = renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
         );
-      };
-      const rendered = render(
-        <App identity={deterministicBrowserIdentity()} />,
-      );
-      const form = await openComparison();
-      chooseSecond(form);
-      fireEvent.submit(form);
-      await screen.findByText(/Union confirmed\./);
-      if (boundary === 'Company') {
-        changeValue(
-          screen.getByLabelText('Active Company', { exact: true }),
-          companyB.id,
-        );
-        await screen.findByText('Clients in Company B');
-      } else if (boundary === 'session' || boundary === 'identity') {
-        if (boundary === 'identity')
+        const form = await openComparison();
+        chooseSecond(form);
+        fireEvent.submit(form);
+        await waitFor(() => expect(release).toBeDefined());
+        if (boundary === 'Client') {
+          showClientDirectory(appInterface);
+          const buttons = screen.getAllByRole('button', {
+            name: 'Open dossier',
+          });
+          const secondButton = buttons[1];
+          if (!secondButton)
+            throw new Error('Expected the second directory Client');
+          fireEvent.click(secondButton);
+          await screen.findByRole('region', {
+            name: second.displayName,
+          });
+        } else if (boundary === 'Company') {
+          changeValue(
+            screen.getByLabelText('Active Company', { exact: true }),
+            companyB.id,
+          );
+          await screen.findByText('Clients in Company B');
+        } else if (boundary === 'session' || boundary === 'identity') {
+          if (boundary === 'identity')
+            state.actor = {
+              ...state.actor,
+              internalUserId: 'other-user',
+              workspaceMembershipId: 'other-membership',
+            };
+          rendered.rerender(<App identity={deterministicBrowserIdentity()} />);
+        } else {
           state.actor = {
             ...state.actor,
-            internalUserId: 'other-user',
-            workspaceMembershipId: 'other-membership',
-          };
-        rendered.rerender(<App identity={deterministicBrowserIdentity()} />);
-      } else {
-        state.actor = {
-          ...state.actor,
-          activeCompany: {
-            ...state.actor.activeCompany,
-            ...companyA,
-            ...(boundary === 'assignment'
-              ? {
-                  grants: companyGrants({
-                    bundle: 'company_director_client_access',
-                    version: 'v1',
-                    assignmentId: 'assignment-2',
-                  }),
-                }
-              : boundary === 'version'
+            activeCompany: {
+              ...state.actor.activeCompany,
+              ...companyA,
+              ...(boundary === 'assignment'
                 ? {
                     grants: companyGrants({
                       bundle: 'company_director_client_access',
                       version: 'v1',
-                      assignmentId: 'fixture-client-access',
+                      assignmentId: 'assignment-2',
                     }),
                   }
-                : {
-                    grants: companyGrants({
-                      bundle: 'company_director_client_access',
-                      version: 'v1',
-                      assignmentId: 'fixture-client-access',
+                : boundary === 'version'
+                  ? {
+                      grants: companyGrants({
+                        bundle: 'company_director_client_access',
+                        version: 'v1',
+                        assignmentId: 'fixture-client-access',
+                      }),
+                    }
+                  : {
+                      grants: companyGrants({
+                        bundle: 'company_director_client_access',
+                        version: 'v1',
+                        assignmentId: 'fixture-client-access',
+                      }),
                     }),
-                  }),
-          },
-        };
-        changeValue(
-          screen.getByLabelText('Find a shared Client'),
-          'Check authority',
-        );
-        fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
-      }
-      await waitFor(() =>
-        expect(screen.queryByText(/Union confirmed\./)).not.toBeInTheDocument(),
-      );
-    },
-  );
-
-  it.each(['review', 'confirm', 'confirmed'])(
-    'invalidates %s when ClientWorkspace accepts a replacement membership',
-    async (phase) => {
-      const state = installTransport();
-      const actor = state.actor;
-      const identity = deterministicBrowserIdentity();
-      let release: ((response: Response) => void) | undefined;
-      let signal: AbortSignal | null | undefined;
-      const pending = (init?: RequestInit) => {
-        signal = init?.signal;
-        return new Promise<Response>((resolve) => {
-          release = resolve;
+            },
+          };
+          showClientDirectory(appInterface);
+          changeValue(
+            screen.getByLabelText('Find a shared Client'),
+            'Check authority',
+          );
+          fireEvent.click(
+            screen.getByRole('button', { name: 'Search Clients' }),
+          );
+        }
+        await waitFor(() => expect(signal?.aborted).toBe(true));
+        const readsBefore = state.activityReads;
+        await act(async () => {
+          if (!release) throw new Error('Expected pending confirmation');
+          release(
+            respond(
+              {
+                outcome: 'united',
+                canonicalClientId: first.id,
+                projectionReference: 'late-projection',
+              },
+              201,
+            ),
+          );
         });
-      };
-      if (phase === 'review') state.review = pending;
-      if (phase === 'confirm') state.confirm = pending;
-      if (phase === 'confirmed')
+        expect(
+          screen.queryByRole('form', { name: 'Confirm union' }),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText(/Union confirmed\./)).not.toBeInTheDocument();
+        expect(state.activityReads).toBe(readsBefore);
+      },
+    );
+
+    it.each([
+      'Company',
+      'session',
+      'identity',
+      'assignment',
+      'version',
+      'permission',
+    ])(
+      'clears confirmed completion at the real %s boundary',
+      async (boundary) => {
+        const state = installTransport();
         state.confirm = async () => {
           state.united = true;
           return respond(
@@ -481,60 +409,161 @@ describe('persisted Client union through App', () => {
             201,
           );
         };
-      const workspace = (current: ActorContext) => (
-        <ClientWorkspace
-          actor={current}
-          identity={identity}
-          onCompanyContextRejected={() => undefined}
-          onActivityRecorded={async () => {
-            state.activityReads++;
-          }}
-        />
-      );
-      const rendered = render(workspace(actor));
-      if (phase === 'review') {
-        const [button] = await screen.findAllByRole('button', {
-          name: 'Open dossier',
-        });
-        if (!button) throw new Error('Expected first dossier');
-        fireEvent.click(button);
-        fireEvent.click(
-          await screen.findByRole('button', {
-            name: 'Review existing duplicates',
-          }),
+        const rendered = renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
         );
-      } else {
         const form = await openComparison();
         chooseSecond(form);
         fireEvent.submit(form);
-      }
-      if (phase === 'confirmed') await screen.findByText(/Union confirmed\./);
-      else await waitFor(() => expect(release).toBeDefined());
-      rendered.rerender(
-        workspace({ ...actor, workspaceMembershipId: 'membership-2' }),
-      );
-      if (phase !== 'confirmed') {
-        await waitFor(() => expect(signal?.aborted).toBe(true));
-        await act(async () => {
-          if (!release) throw new Error('Expected pending union response');
-          release(
-            respond(
-              phase === 'review'
-                ? comparison
-                : {
-                    outcome: 'united',
-                    canonicalClientId: second.id,
-                    projectionReference: 'late-projection',
-                  },
-              201,
-            ),
+        await screen.findByText(/Union confirmed\./);
+        if (boundary === 'Company') {
+          changeValue(
+            screen.getByLabelText('Active Company', { exact: true }),
+            companyB.id,
           );
-        });
-      }
-      expect(screen.queryByText(/Union confirmed\./)).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole('form', { name: 'Confirm union' }),
-      ).not.toBeInTheDocument();
-    },
-  );
-});
+          await screen.findByText('Clients in Company B');
+        } else if (boundary === 'session' || boundary === 'identity') {
+          if (boundary === 'identity')
+            state.actor = {
+              ...state.actor,
+              internalUserId: 'other-user',
+              workspaceMembershipId: 'other-membership',
+            };
+          rendered.rerender(<App identity={deterministicBrowserIdentity()} />);
+        } else {
+          state.actor = {
+            ...state.actor,
+            activeCompany: {
+              ...state.actor.activeCompany,
+              ...companyA,
+              ...(boundary === 'assignment'
+                ? {
+                    grants: companyGrants({
+                      bundle: 'company_director_client_access',
+                      version: 'v1',
+                      assignmentId: 'assignment-2',
+                    }),
+                  }
+                : boundary === 'version'
+                  ? {
+                      grants: companyGrants({
+                        bundle: 'company_director_client_access',
+                        version: 'v1',
+                        assignmentId: 'fixture-client-access',
+                      }),
+                    }
+                  : {
+                      grants: companyGrants({
+                        bundle: 'company_director_client_access',
+                        version: 'v1',
+                        assignmentId: 'fixture-client-access',
+                      }),
+                    }),
+            },
+          };
+          showClientDirectory(appInterface);
+          changeValue(
+            screen.getByLabelText('Find a shared Client'),
+            'Check authority',
+          );
+          fireEvent.click(
+            screen.getByRole('button', { name: 'Search Clients' }),
+          );
+        }
+        await waitFor(() =>
+          expect(
+            screen.queryByText(/Union confirmed\./),
+          ).not.toBeInTheDocument(),
+        );
+      },
+    );
+
+    it.each(['review', 'confirm', 'confirmed'])(
+      'invalidates %s when ClientWorkspace accepts a replacement membership',
+      async (phase) => {
+        const state = installTransport();
+        const actor = state.actor;
+        const identity = deterministicBrowserIdentity();
+        let release: ((response: Response) => void) | undefined;
+        let signal: AbortSignal | null | undefined;
+        const pending = (init?: RequestInit) => {
+          signal = init?.signal;
+          return new Promise<Response>((resolve) => {
+            release = resolve;
+          });
+        };
+        if (phase === 'review') state.review = pending;
+        if (phase === 'confirm') state.confirm = pending;
+        if (phase === 'confirmed')
+          state.confirm = async () => {
+            state.united = true;
+            return respond(
+              {
+                outcome: 'united',
+                canonicalClientId: second.id,
+                projectionReference: 'projection-241',
+              },
+              201,
+            );
+          };
+        const ClientScreen = clientScreenOf[appInterface];
+        const workspace = (current: ActorContext) => (
+          <ClientScreen
+            actor={current}
+            identity={identity}
+            onCompanyContextRejected={() => undefined}
+            onActivityRecorded={async () => {
+              state.activityReads++;
+            }}
+          />
+        );
+        const rendered = render(workspace(actor));
+        if (phase === 'review') {
+          const [button] = await screen.findAllByRole('button', {
+            name: 'Open dossier',
+          });
+          if (!button) throw new Error('Expected first dossier');
+          fireEvent.click(button);
+          await showDossierView(appInterface, 'History');
+          fireEvent.click(
+            await screen.findByRole('button', {
+              name: 'Review existing duplicates',
+            }),
+          );
+        } else {
+          const form = await openComparison();
+          chooseSecond(form);
+          fireEvent.submit(form);
+        }
+        if (phase === 'confirmed') await screen.findByText(/Union confirmed\./);
+        else await waitFor(() => expect(release).toBeDefined());
+        rendered.rerender(
+          workspace({ ...actor, workspaceMembershipId: 'membership-2' }),
+        );
+        if (phase !== 'confirmed') {
+          await waitFor(() => expect(signal?.aborted).toBe(true));
+          await act(async () => {
+            if (!release) throw new Error('Expected pending union response');
+            release(
+              respond(
+                phase === 'review'
+                  ? comparison
+                  : {
+                      outcome: 'united',
+                      canonicalClientId: second.id,
+                      projectionReference: 'late-projection',
+                    },
+                201,
+              ),
+            );
+          });
+        }
+        expect(screen.queryByText(/Union confirmed\./)).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole('form', { name: 'Confirm union' }),
+        ).not.toBeInTheDocument();
+      },
+    );
+  },
+);

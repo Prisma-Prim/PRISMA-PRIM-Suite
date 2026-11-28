@@ -14,6 +14,10 @@ import {
 } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { appInterfaces, renderInInterface } from './test/app-interface';
+import {
+  openClientDossierInInterface,
+  showDossierView,
+} from './test/client-interface';
 import type { InterfacePreference } from './clarte/interface-preference';
 import { App } from './App';
 import {
@@ -357,11 +361,7 @@ async function openProjectWithTaskDraft() {
 }
 async function openDossier(displayName: string) {
   navigateTo('Clients');
-  const heading = await screen.findByRole('heading', { name: displayName });
-  const row = heading.closest('li');
-  if (!row) throw new Error(`Expected a directory row for ${displayName}`);
-  fireEvent.click(within(row).getByRole('button', { name: 'Open dossier' }));
-  return screen.findByRole('region', { name: displayName });
+  return openClientDossierInInterface(shown, displayName);
 }
 function openClientProjects(dossier: HTMLElement) {
   fireEvent.click(
@@ -369,6 +369,7 @@ function openClientProjects(dossier: HTMLElement) {
   );
 }
 async function uniteFirstIntoSecond(dossier: HTMLElement) {
+  await showDossierView(shown, 'History');
   fireEvent.click(
     within(dossier.parentElement ?? dossier).getByRole('button', {
       name: 'Review existing duplicates',
@@ -387,6 +388,7 @@ async function uniteFirstIntoSecond(dossier: HTMLElement) {
   return screen.findByRole('region', { name: secondClient.displayName });
 }
 async function reverseUnion(dossier: HTMLElement) {
+  await showDossierView(shown, 'History');
   fireEvent.click(
     within(dossier.parentElement ?? dossier).getByRole('button', {
       name: 'Union history',

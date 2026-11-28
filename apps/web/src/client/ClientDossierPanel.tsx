@@ -2,381 +2,74 @@ import {
   type FormEvent,
   type ReactNode,
   type Ref,
-  useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
-import type { BrowserIdentity } from '../access-composition';
-import type { ActorContext } from '../access-types';
-import {
-  handleAuthenticatedAccessRejection,
-  runLatestAuthenticatedRequest,
-} from '../api/latest-authenticated-request';
-import { useRequestLifetime } from '../api/use-actor-requests';
-import {
-  useScopedOperation,
-  useScopedOperationGroup,
-} from '../api/use-scoped-operation';
-import { resolveRetryCommand, type RetryCommand } from './client-command';
 import {
   ClientContactDescription,
   ClientContactEditor,
-  contactDraft,
-  normalizedContacts,
-  type ClientContactDraft,
-  type ClientContactValidationIssue,
 } from './ClientContactEditor';
-import {
-  clientDossierValidationIssue,
-  useClientDossierCopy,
-  type ClientDossierValidationIssue,
-} from './client-dossier.copy';
+import { useClientDossierCopy } from './client-dossier.copy';
 import { useClientContactEditorCopy } from './client-contact-editor.copy';
-import {
-  clientRegistrationValidationIssue,
-  useClientRegistrationCopy,
-  type ClientRegistrationValidationIssue,
-} from './client-registration.copy';
+import { useClientRegistrationCopy } from './client-registration.copy';
 import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
 import { ClientCorrectionHistory } from './ClientCorrectionHistory';
 import { ClientLegalEntities } from './ClientLegalEntities';
 import {
-  readClientDossier,
-  type ClientDossierView,
-} from './client-dossier-response';
+  useClientDossier,
+  type ClientCorrectionValidation,
+  type ClientDossierDraft,
+  type ClientDossierOwnerProps,
+} from './use-client-dossier';
+import type { ClientLinkTarget } from './use-client-workspace';
 import './client-dossier.css';
 
-interface DossierDraft {
-  displayName: string;
-  taxId: string;
-  address: string;
-  telephone: string;
-  generalEmail: string;
-  contacts: ClientContactDraft[];
-  businessActivity: string;
-}
-
-type DossierState =
-  | { status: 'idle' | 'loading' | 'notFound' | 'forbidden' | 'error' }
-  | { status: 'ready'; dossier: ClientDossierView };
-
-type CorrectionState =
-  | {
-      status:
-        | 'idle'
-        | 'submitting'
-        | 'success'
-        | 'stale'
-        | 'possibleDuplicate'
-        | 'error';
-    }
-  | {
-      status: 'validation';
-      source: 'localContact';
-      issue: ClientContactValidationIssue;
-      field: 'contacts';
-    }
-  | {
-      status: 'validation';
-      source: 'sharedClient';
-      issue: ClientRegistrationValidationIssue;
-      field?: undefined;
-    }
-  | {
-      status: 'validation';
-      source: 'dossier';
-      issue: ClientDossierValidationIssue;
-      field?: 'displayName';
-    };
-
-export function ClientDossierPanel({
-  clientAccountId,
-  companyContextId,
-  canUpdate,
-  identity,
-  captureRecovery,
-  onCompanyContextRejected,
-  onActorRevalidated = () => undefined,
-  onWorkspaceAccessRejected = () => undefined,
-  onActivityRecorded,
-  onClientsChanged,
-  onDuplicateReviewRequired = () => undefined,
-  onHeadingReady,
-  onOpenProjects,
-  onOpenDocuments,
-  onOpenRequests,
-  renderCommercialWork,
-  renderMissionWork,
-  renderDocumentWork,
-}: {
-  clientAccountId: string | undefined;
-  companyContextId: string;
-  canUpdate: boolean;
-  identity: BrowserIdentity;
-  captureRecovery?: () => () => boolean;
-  onCompanyContextRejected: (companyContextId: string) => void;
-  onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
-  onWorkspaceAccessRejected?: () => Promise<void> | void;
-  onActivityRecorded: () => Promise<void>;
-  onClientsChanged: () => Promise<void>;
-  onDuplicateReviewRequired?: () => void;
-  onHeadingReady?: (heading: HTMLHeadingElement | null) => void;
-  onOpenProjects?: (client: { id: string; displayName: string }) => void;
-  onOpenDocuments?: (client: { id: string; displayName: string }) => void;
-  onOpenRequests?: (client: { id: string; displayName: string }) => void;
-  renderCommercialWork?: (clientDossierId: string) => ReactNode;
-  renderMissionWork?: (clientDossierId: string) => ReactNode;
-  renderDocumentWork?: (clientDossierId: string) => ReactNode;
-}) {
+export function ClientDossierPanel(
+  props: ClientDossierOwnerProps & {
+    onHeadingReady?: (heading: HTMLHeadingElement | null) => void;
+    onOpenProjects?: (client: ClientLinkTarget) => void;
+    onOpenDocuments?: (client: ClientLinkTarget) => void;
+    onOpenRequests?: (client: ClientLinkTarget) => void;
+    renderCommercialWork?: (clientDossierId: string) => ReactNode;
+    renderMissionWork?: (clientDossierId: string) => ReactNode;
+    renderDocumentWork?: (clientDossierId: string) => ReactNode;
+  },
+) {
+  const {
+    clientAccountId,
+    companyContextId,
+    canUpdate,
+    identity,
+    captureRecovery,
+    onCompanyContextRejected,
+    onActorRevalidated = () => undefined,
+    onWorkspaceAccessRejected = () => undefined,
+    onActivityRecorded,
+    onHeadingReady,
+    onOpenProjects,
+    onOpenDocuments,
+    onOpenRequests,
+    renderCommercialWork,
+    renderMissionWork,
+    renderDocumentWork,
+  } = props;
   const copy = useClientDossierCopy();
   const contactCopy = useClientContactEditorCopy();
   const sharedClientCopy = useClientRegistrationCopy();
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const correctionTrigger = useRef<HTMLButtonElement>(null);
   const nameInput = useRef<HTMLInputElement>(null);
-  const [dossierState, setDossierState] = useState<DossierState>({
-    status: 'idle',
-  });
+  const owner = useClientDossier(props);
+  const dossierState = owner.state;
+  const correctionState = owner.correction.state;
+  const draft = owner.correction.draft;
   useEffect(() => {
     if (correctionOpen) nameInput.current?.focus();
   }, [correctionOpen, dossierState.status]);
-  const [correctionState, setCorrectionState] = useState<CorrectionState>({
-    status: 'idle',
-  });
-  const [draft, setDraft] = useState<DossierDraft>(emptyDraft());
-  // A confirmed legal-entity change refreshes the displayed version only; the
-  // correction draft keeps the version it observed.
-  const [confirmedVersion, setConfirmedVersion] = useState(0);
-  const draftEdited = useRef(false);
-  const correctionRetryCommand = useRef<RetryCommand | undefined>(undefined);
-  const requestScope = String(
-    useRequestLifetime(
-      identity,
-      JSON.stringify([companyContextId, clientAccountId, canUpdate]),
-    ),
-  );
-  const dossierRead = useScopedOperation(requestScope);
-  const correctionWork = useScopedOperationGroup(requestScope);
-  const rejectCompanyContext = useRef(onCompanyContextRejected);
-  const acceptRevalidatedActor = useRef(onActorRevalidated);
-  const rejectWorkspaceAccess = useRef(onWorkspaceAccessRejected);
-  useLayoutEffect(() => {
-    rejectCompanyContext.current = onCompanyContextRejected;
-    acceptRevalidatedActor.current = onActorRevalidated;
-    rejectWorkspaceAccess.current = onWorkspaceAccessRejected;
-  });
-
-  const loadDossier = useCallback(
-    async (selectedClientId: string): Promise<void> => {
-      const requestSignal = dossierRead.begin();
-      if (!requestSignal) return;
-      const recoveryCurrent = captureRecovery?.();
-      setDossierState({ status: 'loading' });
-      setCorrectionState({ status: 'idle' });
-      correctionRetryCommand.current = undefined;
-      await runLatestAuthenticatedRequest({
-        signal: requestSignal,
-        identity,
-        execute: (api, signal) =>
-          api.request(`/clients/${encodeURIComponent(selectedClientId)}`, {
-            companyContextId,
-            signal,
-          }),
-        async onResult(result, signal) {
-          if (signal.aborted) return;
-          const rejection = await handleAuthenticatedAccessRejection({
-            result,
-            identity,
-            companyContextId,
-            onCompanyContextRejected: (rejectedCompanyId) =>
-              rejectCompanyContext.current(rejectedCompanyId),
-            onActorRevalidated: (revalidatedActor) =>
-              acceptRevalidatedActor.current(revalidatedActor),
-            onWorkspaceAccessRejected: () => rejectWorkspaceAccess.current(),
-            signal,
-            isCurrent: () => !signal.aborted && (recoveryCurrent?.() ?? true),
-          });
-          if (signal.aborted) return;
-          if (rejection) {
-            setDossierState({ status: 'forbidden' });
-            return;
-          }
-          if (result.status === 'notFound') {
-            setDossierState({ status: 'notFound' });
-            return;
-          }
-          if (result.status !== 'ok') {
-            setDossierState({ status: 'error' });
-            return;
-          }
-          const dossier = readClientDossier(result.value, {
-            clientAccountId: selectedClientId,
-          });
-          draftEdited.current = false;
-          setDraft(draftFrom(dossier));
-          setDossierState({ status: 'ready', dossier });
-        },
-        onError: () => setDossierState({ status: 'error' }),
-      });
-    },
-    [captureRecovery, companyContextId, dossierRead, identity],
-  );
-
   useEffect(() => {
-    correctionRetryCommand.current = undefined;
-    setCorrectionState({ status: 'idle' });
     setCorrectionOpen(false);
-    draftEdited.current = false;
-    setDraft(emptyDraft());
-    setConfirmedVersion(0);
-    if (!clientAccountId) {
-      setDossierState({ status: 'idle' });
-      return;
-    }
-    void loadDossier(clientAccountId);
-  }, [clientAccountId, companyContextId, loadDossier]);
-
-  async function correctDossier(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!canUpdate || dossierState.status !== 'ready') return;
-    const correctionClientId = dossierState.dossier.id;
-    if (!draft.displayName.trim()) {
-      setCorrectionState({
-        status: 'validation',
-        source: 'dossier',
-        issue: 'displayNameRequired',
-        field: 'displayName',
-      });
-      return;
-    }
-    const contacts = normalizedContacts(draft.contacts);
-    if (contacts.status === 'invalid') {
-      setCorrectionState({
-        status: 'validation',
-        source: 'localContact',
-        issue: contacts.issue,
-        field: 'contacts',
-      });
-      return;
-    }
-    const serializedBody = JSON.stringify({
-      expectedVersion: dossierState.dossier.version,
-      displayName: draft.displayName.trim(),
-      taxId: nullableText(draft.taxId),
-      address: nullableText(draft.address),
-      telephone: nullableText(draft.telephone),
-      generalEmail: nullableText(draft.generalEmail),
-      contacts: contacts.contacts,
-      businessActivity: nullableText(draft.businessActivity),
-    });
-    const command = resolveRetryCommand(
-      serializedBody,
-      correctionRetryCommand.current,
-    );
-    if (correctionWork.isPending()) return;
-    const operation = correctionWork.beginLatest();
-    if (!operation) return;
-    const recoveryCurrent = captureRecovery?.();
-    correctionRetryCommand.current = command;
-    setCorrectionState({ status: 'submitting' });
-
-    await runLatestAuthenticatedRequest({
-      signal: operation.signal,
-      identity,
-      execute: (api, signal) =>
-        api.request(`/clients/${encodeURIComponent(correctionClientId)}`, {
-          method: 'PATCH',
-          headers: {
-            'content-type': 'application/json',
-            'idempotency-key': command.idempotencyKey,
-          },
-          companyContextId,
-          body: command.serializedBody,
-          signal,
-        }),
-      async onResult(result, signal) {
-        if (signal.aborted) return;
-        const rejection = await handleAuthenticatedAccessRejection({
-          result,
-          identity,
-          companyContextId,
-          onCompanyContextRejected: (rejectedCompanyId) =>
-            rejectCompanyContext.current(rejectedCompanyId),
-          onActorRevalidated: (revalidatedActor) =>
-            acceptRevalidatedActor.current(revalidatedActor),
-          onWorkspaceAccessRejected: () => rejectWorkspaceAccess.current(),
-          signal,
-          isCurrent: () => !signal.aborted && (recoveryCurrent?.() ?? true),
-        });
-        if (signal.aborted) return;
-        if (rejection) {
-          setDossierState({ status: 'forbidden' });
-          return;
-        }
-        if (result.status === 'conflict') {
-          if (result.reason === 'possibleDuplicateReviewRequired') {
-            setCorrectionState({ status: 'possibleDuplicate' });
-            onDuplicateReviewRequired();
-          } else {
-            correctionRetryCommand.current = undefined;
-            setCorrectionState({ status: 'stale' });
-          }
-          return;
-        }
-        if (result.status === 'notFound') {
-          correctionRetryCommand.current = undefined;
-          setDossierState({ status: 'notFound' });
-          return;
-        }
-        if (result.status === 'validation') {
-          const dossierIssue = clientDossierValidationIssue(result.message);
-          const sharedIssue =
-            result.message === undefined
-              ? 'registrationInvalid'
-              : clientRegistrationValidationIssue(result.message);
-          setCorrectionState(
-            dossierIssue !== undefined || sharedIssue === 'registrationInvalid'
-              ? {
-                  status: 'validation',
-                  source: 'dossier',
-                  issue: dossierIssue ?? 'correctionInvalid',
-                }
-              : {
-                  status: 'validation',
-                  source: 'sharedClient',
-                  issue: sharedIssue,
-                },
-          );
-          return;
-        }
-        if (result.status !== 'ok') {
-          setCorrectionState({ status: 'error' });
-          return;
-        }
-        const dossier = readClientDossier(result.value, {
-          clientAccountId: correctionClientId,
-        });
-        correctionRetryCommand.current = undefined;
-        draftEdited.current = false;
-        setDraft(draftFrom(dossier));
-        setDossierState({ status: 'ready', dossier });
-        setCorrectionState({ status: 'success' });
-        operation.release();
-        void Promise.allSettled([
-          Promise.resolve().then(() => {
-            if (!signal.aborted) return onActivityRecorded();
-          }),
-          Promise.resolve().then(() => {
-            if (!signal.aborted) return onClientsChanged();
-          }),
-        ]);
-      },
-      onError: () => setCorrectionState({ status: 'error' }),
-      onSettled: operation.release,
-    });
-  }
+  }, [clientAccountId, companyContextId, owner.reload]);
 
   if (dossierState.status === 'idle') return null;
   if (dossierState.status === 'loading') {
@@ -410,7 +103,7 @@ export function ClientDossierPanel({
   if (dossierState.status !== 'ready') return null;
 
   const dossier = dossierState.dossier;
-  const displayedVersion = Math.max(dossier.version, confirmedVersion);
+  const displayedVersion = owner.displayedVersion(dossier);
   const correctionFeedback = (
     <div key="correction-feedback" className="client-correction-feedback">
       {correctionState.status === 'submitting' && (
@@ -455,7 +148,7 @@ export function ClientDossierPanel({
           <button
             type="button"
             className="client-secondary-action"
-            onClick={() => void loadDossier(dossier.id)}
+            onClick={() => void owner.reload(dossier.id)}
           >
             {copy.reloadDossier}
           </button>
@@ -485,16 +178,7 @@ export function ClientDossierPanel({
             aria-expanded={correctionOpen}
             aria-controls="client-correction"
             onClick={() => {
-              if (
-                !correctionOpen &&
-                !draftEdited.current &&
-                !correctionRetryCommand.current &&
-                confirmedVersion > dossier.version
-              ) {
-                // A new draft must observe fields and their version together.
-                // Edited or uncertain commands retain their original observation.
-                void loadDossier(dossier.id);
-              }
+              if (!correctionOpen) owner.correction.prepare(dossier);
               setCorrectionOpen((open) => !open);
             }}
           >
@@ -604,9 +288,7 @@ export function ClientDossierPanel({
         onCompanyContextRejected={onCompanyContextRejected}
         onActorRevalidated={onActorRevalidated}
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}
-        onClientVersionChanged={(version) =>
-          setConfirmedVersion((current) => Math.max(current, version))
-        }
+        onClientVersionChanged={owner.confirmVersion}
         onActivityRecorded={onActivityRecorded}
       />
       <ClientCorrectionHistory
@@ -651,11 +333,8 @@ export function ClientDossierPanel({
                 : undefined
             }
             nameInput={nameInput}
-            onDraftChange={(nextDraft) => {
-              draftEdited.current = true;
-              setDraft(nextDraft);
-            }}
-            onSubmit={correctDossier}
+            onDraftChange={owner.correction.change}
+            onSubmit={(event) => void owner.correction.submit(event)}
           />
         </div>
       )}
@@ -687,11 +366,11 @@ function CorrectionForm({
   onDraftChange,
   onSubmit,
 }: {
-  draft: DossierDraft;
+  draft: ClientDossierDraft;
   pending: boolean;
-  validation: Extract<CorrectionState, { status: 'validation' }> | undefined;
+  validation: ClientCorrectionValidation | undefined;
   nameInput: Ref<HTMLInputElement>;
-  onDraftChange: (draft: DossierDraft) => void;
+  onDraftChange: (draft: ClientDossierDraft) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   const copy = useClientDossierCopy();
@@ -769,32 +448,4 @@ function InputField({
       />
     </>
   );
-}
-
-function emptyDraft(): DossierDraft {
-  return {
-    displayName: '',
-    taxId: '',
-    address: '',
-    telephone: '',
-    generalEmail: '',
-    contacts: [],
-    businessActivity: '',
-  };
-}
-
-function draftFrom(dossier: ClientDossierView): DossierDraft {
-  return {
-    displayName: dossier.displayName,
-    taxId: dossier.taxId ?? '',
-    address: dossier.address ?? '',
-    telephone: dossier.telephone ?? '',
-    generalEmail: dossier.generalEmail ?? '',
-    contacts: dossier.contacts.map(contactDraft),
-    businessActivity: dossier.businessActivity ?? '',
-  };
-}
-
-function nullableText(value: string): string | null {
-  return value.trim() || null;
 }
