@@ -297,9 +297,56 @@ const visibleTaskTitle = () =>
   within(
     within(projectsRegion()).getByRole('region', { name: 'Tasks' }),
   ).getByLabelText('Task title');
+/**
+ * Clarté shows an opened Project instead of the list; its way back is the
+ * mission space's "All Projects". The current interface shows both at once.
+ */
+function showProjectList() {
+  const region = screen.queryByRole('region', { name: 'Projects' });
+  if (shown === 'clarte' && region && projectDetail())
+    fireEvent.click(
+      within(region).getByRole('button', { name: 'Back to Projects' }),
+    );
+}
+/** The listed Projects: a list in the current interface, a table in Clarté. */
+function listedProjects() {
+  return within(projectsRegion()).getByRole(
+    shown === 'current' ? 'list' : 'table',
+    { name: 'Projects' },
+  );
+}
+/** Chooses the All or open-only view: a select, or two buttons in Clarté. */
+function chooseView(view: 'all' | 'mine_open') {
+  if (shown === 'current')
+    changeValue(
+      within(projectsRegion()).getByRole('combobox', { name: 'Project view' }),
+      view,
+    );
+  else
+    fireEvent.click(
+      within(projectsRegion()).getByRole('button', {
+        name: view === 'all' ? 'All Projects' : 'My open Projects',
+      }),
+    );
+}
+/** Whether the named view is the chosen one. */
+function expectView(label: 'All Projects' | 'My open Projects') {
+  if (shown === 'current')
+    expect(
+      within(projectsRegion()).getByRole('combobox', { name: 'Project view' }),
+    ).toHaveTextContent(label);
+  else
+    expect(
+      within(projectsRegion()).getByRole('button', { name: label }),
+    ).toHaveAttribute('aria-pressed', 'true');
+}
 /** Waits for a row of the currently mounted Projects owner. */
-const projectRow = (row: string) =>
-  waitFor(() => within(projectsRegion()).getByRole('button', { name: row }));
+const projectRow = (row: string) => {
+  showProjectList();
+  return waitFor(() =>
+    within(projectsRegion()).getByRole('button', { name: row }),
+  );
+};
 async function chooseProjectRow(row: string) {
   fireEvent.click(await projectRow(row));
   const client = row.slice(`${sharedTitle} `.length);
@@ -380,19 +427,14 @@ describe.each(appInterfaces)(
         <App identity={deterministicBrowserIdentity()} />,
       );
       await projectRow(betaRow);
-      const view = within(projectsRegion()).getByRole('combobox', {
-        name: 'Project view',
-      });
       const closed = within(projectsRegion()).getByRole('checkbox', {
         name: 'Include closed Projects',
       });
       fireEvent.click(closed);
       expect(closed).toBeChecked();
-      changeValue(view, 'mine_open');
+      chooseView('mine_open');
       await waitFor(() => {
-        const list = within(projectsRegion()).getByRole('list', {
-          name: 'Projects',
-        });
+        const list = listedProjects();
         expect(within(list).getAllByRole('button')).toHaveLength(1);
         expect(
           within(list).getByRole('button', { name: betaRow }),
@@ -415,16 +457,15 @@ describe.each(appInterfaces)(
           within(detail).getByText(`Client: ${atelier.displayName}`),
         ).toBeVisible();
       });
-      expect(view).toHaveTextContent('My open Projects');
+      showProjectList();
+      expectView('My open Projects');
       expect(server.count('GET /api/projects')).toBe(allReads);
-      const list = within(projectsRegion()).getByRole('list', {
-        name: 'Projects',
-      });
+      const list = listedProjects();
       expect(within(list).getAllByRole('button')).toHaveLength(1);
       expect(within(list).getByRole('button', { name: betaRow })).toBeVisible();
       expect(server.count(`GET ${atelierDetailPath}`)).toBe(1);
-      changeValue(view, 'all');
-      await waitFor(() => expect(view).toHaveTextContent('All Projects'));
+      chooseView('all');
+      await waitFor(() => expectView('All Projects'));
       expect(
         within(projectsRegion()).getByRole('checkbox', {
           name: 'Include closed Projects',
@@ -550,6 +591,13 @@ describe.each(appInterfaces)(
         waiting: 'a Project registration is pending',
         prepare: async (server: ReturnType<typeof installServer>) => {
           await projectRow(betaRow);
+          // Clarté registers a preparatory Project from its side panel.
+          if (shown === 'clarte')
+            fireEvent.click(
+              within(projectsRegion()).getByRole('button', {
+                name: 'Preparatory Project',
+              }),
+            );
           changeValue(
             within(projectsRegion()).getByLabelText('Project title'),
             registeredProject.title,
@@ -561,7 +609,10 @@ describe.each(appInterfaces)(
           server.hold('POST /api/projects');
           fireEvent.click(
             within(projectsRegion()).getByRole('button', {
-              name: 'Create Project',
+              name:
+                shown === 'current'
+                  ? 'Create Project'
+                  : 'Create preparatory Project',
             }),
           );
           await server.requested('POST /api/projects');

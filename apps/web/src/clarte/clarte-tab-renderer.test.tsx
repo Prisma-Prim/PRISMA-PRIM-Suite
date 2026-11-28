@@ -48,11 +48,11 @@ it('shows the Clarté screen App composed once its tab renderer is replaced', ()
             clarteContent: <p>Clarté Clients screen</p>,
           },
           {
-            id: 'projects',
-            label: 'Projects',
-            description: 'Project records',
-            content: <p>Current Projects component</p>,
-            clarteContent: <p>Unused Clarté Projects screen</p>,
+            id: 'my-tasks',
+            label: 'My Tasks',
+            description: 'Tasks assigned to me',
+            content: <p>Current My Tasks component</p>,
+            clarteContent: <p>Unused Clarté My Tasks screen</p>,
           },
         ]}
         companyContext={null}
@@ -69,6 +69,6 @@ it('shows the Clarté screen App composed once its tab renderer is replaced', ()
 
   expect(screen.getByText('Clarté Clients screen')).toBeVisible();
   expect(screen.queryByText('Current Clients component')).toBeNull();
-  expect(screen.getByText('Current Projects component')).not.toBeVisible();
-  expect(screen.queryByText('Unused Clarté Projects screen')).toBeNull();
+  expect(screen.getByText('Current My Tasks component')).not.toBeVisible();
+  expect(screen.queryByText('Unused Clarté My Tasks screen')).toBeNull();
 });

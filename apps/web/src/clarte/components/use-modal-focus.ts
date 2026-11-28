@@ -11,20 +11,24 @@ const focusable =
 /**
  * Modal focus for a Clarté dialog or side panel: focus moves inside on open,
  * Tab stays inside, Escape dismisses without reaching the frame's menus, and
- * focus returns to the opener when the dialog unmounts.
+ * focus returns to the opener when the dialog unmounts or, for a panel kept
+ * mounted while closed, when it stops being `active`.
  */
 export function useModalFocus({
   container,
   initialFocus,
   onDismiss,
+  active = true,
 }: Readonly<{
   container: RefObject<HTMLElement | null>;
   initialFocus?: RefObject<HTMLElement | null>;
   onDismiss: () => void;
+  active?: boolean;
 }>) {
   const dismiss = useRef(onDismiss);
   dismiss.current = onDismiss;
   useEffect(() => {
+    if (!active) return;
     const opener = document.activeElement;
     const root = container.current;
     const first = root?.querySelector<HTMLElement>(focusable);
@@ -32,7 +36,7 @@ export function useModalFocus({
     return () => {
       if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
     };
-  }, [container, initialFocus]);
+  }, [container, initialFocus, active]);
 
   return function handleKeyDown(event: ReactKeyboardEvent) {
     if (event.key === 'Escape') {

@@ -13,6 +13,8 @@ import {
   within,
 } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { appInterfaces, renderInInterface } from './test/app-interface';
+import type { InterfacePreference } from './clarte/interface-preference';
 import { App } from './App';
 import {
   isLifecycleRead,
@@ -267,22 +269,67 @@ function installTransport(options: { united?: boolean } = {}) {
 function navigation() {
   return screen.getByRole('navigation', { name: 'Primary navigation' });
 }
+/** The interface the running parameterized test renders. */
+let shown: InterfacePreference = 'current';
 function navigateTo(label: string) {
-  fireEvent.click(within(navigation()).getByRole('link', { name: label }));
+  if (shown === 'current') {
+    fireEvent.click(within(navigation()).getByRole('link', { name: label }));
+    return;
+  }
+  // Clarté groups sections under entries; its jump list reaches any of them.
+  // The overview is Clarté's Today.
+  fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+  const field = screen.getByRole('combobox', { name: 'Screen name' });
+  fireEvent.change(field, {
+    target: { value: label === 'Overview' ? 'Today' : label },
+  });
+  fireEvent.keyDown(field, { key: 'Enter' });
+}
+/** Chooses the All or open-only view: a select, or two buttons in Clarté. */
+function chooseView(view: 'all' | 'mine_open') {
+  if (shown === 'current')
+    changeValue(
+      within(projectsRegion()).getByRole('combobox', { name: 'Project view' }),
+      view,
+    );
+  else
+    fireEvent.click(
+      within(projectsRegion()).getByRole('button', {
+        name: view === 'all' ? 'All Projects' : 'My open Projects',
+      }),
+    );
+}
+/** Whether the named view is the chosen one. */
+function expectView(label: 'All Projects' | 'My open Projects') {
+  if (shown === 'current')
+    expect(
+      within(projectsRegion()).getByRole('combobox', { name: 'Project view' }),
+    ).toHaveTextContent(label);
+  else
+    expect(
+      within(projectsRegion()).getByRole('button', { name: label }),
+    ).toHaveAttribute('aria-pressed', 'true');
 }
 function projectsRegion() {
   return screen.getByRole('region', { name: 'Projects' });
 }
+/** The listed Projects' row names; Clarté first returns from an opened Project. */
 function projectRows() {
+  // Clarté keeps the list mounted, hidden, while a Project is open.
+  const hidden = shown === 'clarte';
   return within(
-    within(projectsRegion()).getByRole('list', { name: 'Projects' }),
+    within(projectsRegion()).getByRole(shown === 'current' ? 'list' : 'table', {
+      name: 'Projects',
+      hidden,
+    }),
   )
-    .queryAllByRole('button')
+    .queryAllByRole('button', { hidden })
     .map((button) => button.textContent);
 }
 function projectSearch() {
   return within(projectsRegion()).getByRole('searchbox', {
     name: 'Find Projects',
+    hidden: shown === 'clarte',
   });
 }
 function taskTitle() {
@@ -372,8 +419,425 @@ const scrollable: {
 } = Element.prototype;
 const nativeScrollIntoView = scrollable.scrollIntoView;
 
-describe('Client dossier and Project navigation through App', () => {
+describe.each(appInterfaces)('in the %s interface', (appInterface) => {
+  describe('Client dossier and Project navigation through App', () => {
+    beforeEach(() => {
+      shown = appInterface;
+      resetCurrentWorkApp();
+      scrollable.scrollIntoView = vi.fn();
+      window.history.replaceState(null, '', '/#clients');
+    });
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+      scrollable.scrollIntoView = nativeScrollIntoView;
+      window.history.replaceState(null, '', '/');
+    });
+
+    it.each(
+      ['directory', 'Task preview'].flatMap((owner) =>
+        ['company', 'workspace', 'workspace denial'].map((recovery) => ({
+          owner,
+          recovery,
+        })),
+      ),
+    )(
+      'completes current $owner $recovery recovery under the actual StrictMode root',
+      async ({ owner, recovery }) => {
+        installTransport();
+        const original = fetch;
+        let denied = false;
+        const recoveries: string[] = [];
+        vi.stubGlobal(
+          'fetch',
+          vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
+            const url = new URL(String(input), window.location.origin);
+            if (denied && url.pathname.endsWith('/access/current-actor')) {
+              const selected = new Headers(init.headers).has(
+                'x-company-context-id',
+              );
+              recoveries.push(selected ? 'company' : 'workspace');
+              if (selected && recovery !== 'company') return respond({}, 403);
+              if (recovery === 'workspace denial') return respond({}, 403);
+              const actor = actorFor(companyA.id);
+              actor.displayName = 'Current Client recovery Actor';
+              if (recovery === 'company' && actor.activeCompany)
+                actor.activeCompany.grants = withoutCompanyGrants(
+                  actor.activeCompany.grants,
+                  'company_task_manager',
+                );
+              else delete actor.activeCompany;
+              return respond(actor);
+            }
+            if (
+              denied &&
+              recovery === 'company' &&
+              url.pathname.endsWith('/operational-home')
+            )
+              return respond({
+                companyId: companyA.id,
+                today: '2026-09-27',
+                summaries: [
+                  { kind: 'active_clients', count: 2 },
+                  { kind: 'open_projects', count: 1 },
+                ],
+              });
+            if (
+              denied &&
+              (owner === 'directory'
+                ? url.pathname === '/api/projects' &&
+                  url.searchParams.has('clientDossierId')
+                : url.pathname ===
+                  `/api/projects/${historicalProject.id}/tasks`)
+            )
+              return respond({}, 403);
+            return original(input, init);
+          }),
+        );
+        renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+          {
+            reactStrictMode: true,
+          },
+        );
+        await screen.findByRole('navigation', { name: 'Primary navigation' });
+        const dossier = await openDossier(firstClient.displayName);
+        const missions = await within(dossier).findByRole('region', {
+          name: 'Client missions',
+        });
+        // The region also renders while loading, when Refresh is disabled.
+        const previewTasks = await within(missions).findByRole('button', {
+          name: `View Tasks: ${historicalProject.title}`,
+        });
+        if (owner === 'Task preview') {
+          fireEvent.click(previewTasks);
+          await within(missions).findByText(
+            'No manual Tasks for this Project yet.',
+          );
+        }
+        denied = true;
+        fireEvent.click(
+          within(missions).getByRole('button', {
+            name:
+              owner === 'directory'
+                ? 'Refresh missions from beginning'
+                : 'Reload Tasks',
+          }),
+        );
+        if (recovery === 'workspace denial') {
+          await screen.findByText('Your access to this workspace is inactive.');
+          expect(
+            screen.queryByRole('navigation', { name: 'Primary navigation' }),
+          ).toBeNull();
+        } else {
+          if (recovery === 'company') {
+            // Clarté names the member inside its user menu.
+            if (shown === 'clarte')
+              fireEvent.click(
+                screen.getByRole('button', { name: 'User menu' }),
+              );
+            await screen.findAllByText('Current Client recovery Actor');
+            expect(
+              within(missions).queryByRole('region', {
+                name: `Tasks for: ${historicalProject.title}`,
+              }),
+            ).toBeNull();
+          } else {
+            await waitFor(() =>
+              expect(
+                screen.queryByRole('region', { name: firstClient.displayName }),
+              ).toBeNull(),
+            );
+            // The selected-origin shell rejects a Workspace-only Actor; its
+            // established Company rejection still removes Company-bound work.
+            expect(
+              screen.getByText(
+                'Select an active Company to work with Clients.',
+              ),
+            ).toBeVisible();
+          }
+        }
+        expect(recoveries).toEqual(
+          recovery === 'company' ? ['company'] : ['company', 'workspace'],
+        );
+      },
+    );
+
+    it('discovers recorded Client missions inline and opens the exact existing Project', async () => {
+      const transport = installTransport();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await screen.findByRole('navigation', { name: 'Primary navigation' });
+      const dossier = await openDossier(firstClient.displayName);
+      const missions = await within(dossier).findByRole('region', {
+        name: 'Client missions',
+      });
+      expect(
+        await within(missions).findByText('Recorded mission coordinator'),
+      ).toBeVisible();
+      fireEvent.click(
+        within(missions).getByRole('button', {
+          name: `Open Project: ${historicalProject.title}`,
+        }),
+      );
+      await within(projectsRegion()).findByRole('article', {
+        name: historicalProject.title,
+      });
+      await waitFor(() =>
+        expect(
+          within(projectsRegion()).getByRole('heading', {
+            name: historicalProject.title,
+          }),
+        ).toHaveFocus(),
+      );
+      expect(transport.clientProjectListReads).toBe(1);
+      expect(transport.projectDetailReads).toBe(1);
+      expect(window.location.hash).toBe('#projects');
+    });
+
+    it.each([200, 403])(
+      'retires the actual inline opening on union before a late %s can affect the newer dossier',
+      async (status) => {
+        installTransport();
+        const originalFetch = globalThis.fetch;
+        const held: Array<{
+          answer: (value: Response) => void;
+          signal: AbortSignal | null | undefined;
+        }> = [];
+        vi.stubGlobal(
+          'fetch',
+          vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+            if (input.toString().endsWith(`/projects/${historicalProject.id}`))
+              return new Promise<Response>((answer) =>
+                held.push({ answer, signal: init?.signal }),
+              );
+            return originalFetch(input, init);
+          }),
+        );
+        renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+        );
+        await screen.findByRole('navigation', { name: 'Primary navigation' });
+        const dossier = await openDossier(firstClient.displayName);
+        fireEvent.click(
+          await within(dossier).findByRole('button', {
+            name: `Open Project: ${historicalProject.title}`,
+          }),
+        );
+        await waitFor(() => expect(held).toHaveLength(1));
+        navigateTo('Clients');
+        const canonical = await uniteFirstIntoSecond(dossier);
+        const current = held[0];
+        if (!current) throw new Error('Expected held exact opening.');
+        expect(current.signal?.aborted).toBe(true);
+        await act(async () =>
+          current.answer(
+            status === 200
+              ? respond(historicalProject)
+              : new Response(null, { status }),
+          ),
+        );
+        expect(canonical).toBeVisible();
+        navigateTo('Projects');
+        await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
+        expect(
+          within(projectsRegion()).queryByRole('article', {
+            name: historicalProject.title,
+          }),
+        ).not.toBeInTheDocument();
+      },
+    );
+
+    it('lists the superseded Client’s Project from the canonical dossier and returns there, keeping the Task draft', async () => {
+      const transport = installTransport();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await openProjectWithTaskDraft();
+      const instructions = within(projectsRegion()).getByLabelText(
+        'Task instructions (optional)',
+      );
+      changeValue(
+        instructions,
+        'Independent instructions through union\n  Ș / Я / 😀',
+      );
+      expect(transport.projectListReads).toBe(1);
+
+      const dossier = await openDossier(firstClient.displayName);
+      const canonical = await uniteFirstIntoSecond(dossier);
+      openClientProjects(canonical);
+
+      expect(projectSearch()).toHaveValue(secondClient.displayName);
+      await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
+      expect(taskTitle()).toHaveValue(taskDraft);
+      expect(instructions).toHaveValue(
+        'Independent instructions through union\n  Ș / Я / 😀',
+      );
+      await returnToCurrentDossier(secondClient.displayName);
+      expect(transport.projectListReads).toBe(2);
+      expect(transport.projectDetailReads).toBe(2);
+
+      navigateTo('Projects');
+      expect(taskTitle()).toHaveValue(taskDraft);
+    });
+
+    it('lists the Project again under the restored Client after a reversal, keeping the Task draft', async () => {
+      const transport = installTransport({ united: true });
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await openProjectWithTaskDraft();
+      const instructions = within(projectsRegion()).getByLabelText(
+        'Task instructions (optional)',
+      );
+      changeValue(
+        instructions,
+        'Independent instructions through reversal\n  Ș / Я / 😀',
+      );
+
+      const canonical = await openDossier(secondClient.displayName);
+      await reverseUnion(canonical);
+      const restored = await openDossier(firstClient.displayName);
+      openClientProjects(restored);
+
+      expect(projectSearch()).toHaveValue(firstClient.displayName);
+      await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
+      expect(taskTitle()).toHaveValue(taskDraft);
+      expect(instructions).toHaveValue(
+        'Independent instructions through reversal\n  Ș / Я / 😀',
+      );
+      await returnToCurrentDossier(firstClient.displayName);
+      expect(transport.projectListReads).toBe(2);
+      expect(transport.projectDetailReads).toBe(2);
+    });
+
+    it('retires a Project restriction applied before the union and adds no read for navigation alone', async () => {
+      const transport = installTransport();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await screen.findByRole('navigation', { name: 'Primary navigation' });
+      const dossier = await openDossier(firstClient.displayName);
+      openClientProjects(dossier);
+      await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
+      navigateTo('Clients');
+      openClientProjects(dossier);
+      expect(transport.projectListReads).toBe(1);
+
+      navigateTo('Clients');
+      await uniteFirstIntoSecond(dossier);
+      navigateTo('Projects');
+
+      expect(projectSearch()).toHaveValue('');
+      await waitFor(() => expect(transport.projectListReads).toBe(2));
+      expect(projectRows()).toEqual([historicalRow]);
+    });
+
+    it('opens the Project list from the Company summary without the Client restriction App holds', async () => {
+      const transport = installTransport();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await screen.findByRole('navigation', { name: 'Primary navigation' });
+      const dossier = await openDossier(firstClient.displayName);
+      openClientProjects(dossier);
+      expect(projectSearch()).toHaveValue(firstClient.displayName);
+      await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
+
+      navigateTo('Overview');
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Open Projects: 1. Open the Project list',
+        }),
+      );
+      await waitFor(() => expect(projectSearch()).toHaveValue(''));
+      expect(projectRows()).toEqual([historicalRow]);
+      expect(transport.projectListReads).toBe(1);
+    });
+
+    it('does not restore a previous Company’s Project restriction when the member returns to that Company', async () => {
+      installTransport();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await screen.findByRole('navigation', { name: 'Primary navigation' });
+      const dossier = await openDossier(firstClient.displayName);
+      openClientProjects(dossier);
+      await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
+
+      const company = screen.getByLabelText('Active Company', { exact: true });
+      changeValue(company, companyB.id);
+      await waitFor(() =>
+        expect(projectRows()).toEqual([
+          `${otherCompanyProject.title} Client: ${otherCompanyProject.clientDisplayName}`,
+        ]),
+      );
+      expect(projectSearch()).toHaveValue('');
+      changeValue(company, companyA.id);
+
+      await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
+      expect(projectSearch()).toHaveValue('');
+    });
+
+    it.each(['Home', 'Client'] as const)(
+      'returns Mine to All and open-only through the actual %s directory intent',
+      async (source) => {
+        installTransport();
+        renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+        );
+        await screen.findByRole('navigation', { name: 'Primary navigation' });
+        const dossier = await openDossier(firstClient.displayName);
+        openClientProjects(dossier);
+        await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
+        const closed = within(projectsRegion()).getByRole('checkbox', {
+          name: 'Include closed Projects',
+        });
+        fireEvent.click(closed);
+        expect(closed).toBeChecked();
+        chooseView('mine_open');
+        await waitFor(() => expectView('My open Projects'));
+        if (source === 'Home') {
+          navigateTo('Overview');
+          fireEvent.click(
+            await screen.findByRole('button', {
+              name: 'Open Projects: 1. Open the Project list',
+            }),
+          );
+        } else {
+          navigateTo('Clients');
+          openClientProjects(dossier);
+        }
+        await waitFor(() => expectView('All Projects'));
+        expect(
+          within(projectsRegion()).getByRole('checkbox', {
+            name: 'Include closed Projects',
+          }),
+        ).not.toBeChecked();
+        expect(projectSearch()).toHaveValue(
+          source === 'Home' ? '' : firstClient.displayName,
+        );
+        await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
+      },
+    );
+  });
+});
+
+// These drive the Company access administration of another slice, so they
+// stay in the current interface until that screen migrates.
+describe('Client Task-preview recovery after actual administration', () => {
   beforeEach(() => {
+    shown = 'current';
     resetCurrentWorkApp();
     scrollable.scrollIntoView = vi.fn();
     window.history.replaceState(null, '', '/#clients');
@@ -384,125 +848,6 @@ describe('Client dossier and Project navigation through App', () => {
     scrollable.scrollIntoView = nativeScrollIntoView;
     window.history.replaceState(null, '', '/');
   });
-
-  it.each(
-    ['directory', 'Task preview'].flatMap((owner) =>
-      ['company', 'workspace', 'workspace denial'].map((recovery) => ({
-        owner,
-        recovery,
-      })),
-    ),
-  )(
-    'completes current $owner $recovery recovery under the actual StrictMode root',
-    async ({ owner, recovery }) => {
-      installTransport();
-      const original = fetch;
-      let denied = false;
-      const recoveries: string[] = [];
-      vi.stubGlobal(
-        'fetch',
-        vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
-          const url = new URL(String(input), window.location.origin);
-          if (denied && url.pathname.endsWith('/access/current-actor')) {
-            const selected = new Headers(init.headers).has(
-              'x-company-context-id',
-            );
-            recoveries.push(selected ? 'company' : 'workspace');
-            if (selected && recovery !== 'company') return respond({}, 403);
-            if (recovery === 'workspace denial') return respond({}, 403);
-            const actor = actorFor(companyA.id);
-            actor.displayName = 'Current Client recovery Actor';
-            if (recovery === 'company' && actor.activeCompany)
-              actor.activeCompany.grants = withoutCompanyGrants(
-                actor.activeCompany.grants,
-                'company_task_manager',
-              );
-            else delete actor.activeCompany;
-            return respond(actor);
-          }
-          if (
-            denied &&
-            recovery === 'company' &&
-            url.pathname.endsWith('/operational-home')
-          )
-            return respond({
-              companyId: companyA.id,
-              today: '2026-09-27',
-              summaries: [
-                { kind: 'active_clients', count: 2 },
-                { kind: 'open_projects', count: 1 },
-              ],
-            });
-          if (
-            denied &&
-            (owner === 'directory'
-              ? url.pathname === '/api/projects' &&
-                url.searchParams.has('clientDossierId')
-              : url.pathname === `/api/projects/${historicalProject.id}/tasks`)
-          )
-            return respond({}, 403);
-          return original(input, init);
-        }),
-      );
-      render(<App identity={deterministicBrowserIdentity()} />, {
-        reactStrictMode: true,
-      });
-      await screen.findByRole('navigation', { name: 'Primary navigation' });
-      const dossier = await openDossier(firstClient.displayName);
-      const missions = await within(dossier).findByRole('region', {
-        name: 'Client missions',
-      });
-      // The region also renders while loading, when Refresh is disabled.
-      const previewTasks = await within(missions).findByRole('button', {
-        name: `View Tasks: ${historicalProject.title}`,
-      });
-      if (owner === 'Task preview') {
-        fireEvent.click(previewTasks);
-        await within(missions).findByText(
-          'No manual Tasks for this Project yet.',
-        );
-      }
-      denied = true;
-      fireEvent.click(
-        within(missions).getByRole('button', {
-          name:
-            owner === 'directory'
-              ? 'Refresh missions from beginning'
-              : 'Reload Tasks',
-        }),
-      );
-      if (recovery === 'workspace denial') {
-        await screen.findByText('Your access to this workspace is inactive.');
-        expect(
-          screen.queryByRole('navigation', { name: 'Primary navigation' }),
-        ).toBeNull();
-      } else {
-        if (recovery === 'company') {
-          await screen.findAllByText('Current Client recovery Actor');
-          expect(
-            within(missions).queryByRole('region', {
-              name: `Tasks for: ${historicalProject.title}`,
-            }),
-          ).toBeNull();
-        } else {
-          await waitFor(() =>
-            expect(
-              screen.queryByRole('region', { name: firstClient.displayName }),
-            ).toBeNull(),
-          );
-          // The selected-origin shell rejects a Workspace-only Actor; its
-          // established Company rejection still removes Company-bound work.
-          expect(
-            screen.getByText('Select an active Company to work with Clients.'),
-          ).toBeVisible();
-        }
-      }
-      expect(recoveries).toEqual(
-        recovery === 'company' ? ['company'] : ['company', 'workspace'],
-      );
-    },
-  );
-
   it.each(
     ['company', 'workspace'].flatMap((phase) =>
       [200, 403].map((status) => ({ phase, status })),
@@ -685,252 +1030,6 @@ describe('Client dossier and Project navigation through App', () => {
       expect(instructions).toHaveValue(
         'Independent literal instructions during preview recovery\n  Ș / Я / 😀',
       );
-    },
-  );
-
-  it('discovers recorded Client missions inline and opens the exact existing Project', async () => {
-    const transport = installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await screen.findByRole('navigation', { name: 'Primary navigation' });
-    const dossier = await openDossier(firstClient.displayName);
-    const missions = await within(dossier).findByRole('region', {
-      name: 'Client missions',
-    });
-    expect(
-      await within(missions).findByText('Recorded mission coordinator'),
-    ).toBeVisible();
-    fireEvent.click(
-      within(missions).getByRole('button', {
-        name: `Open Project: ${historicalProject.title}`,
-      }),
-    );
-    await within(projectsRegion()).findByRole('article', {
-      name: historicalProject.title,
-    });
-    await waitFor(() =>
-      expect(
-        within(projectsRegion()).getByRole('heading', {
-          name: historicalProject.title,
-        }),
-      ).toHaveFocus(),
-    );
-    expect(transport.clientProjectListReads).toBe(1);
-    expect(transport.projectDetailReads).toBe(1);
-    expect(window.location.hash).toBe('#projects');
-  });
-
-  it.each([200, 403])(
-    'retires the actual inline opening on union before a late %s can affect the newer dossier',
-    async (status) => {
-      installTransport();
-      const originalFetch = globalThis.fetch;
-      const held: Array<{
-        answer: (value: Response) => void;
-        signal: AbortSignal | null | undefined;
-      }> = [];
-      vi.stubGlobal(
-        'fetch',
-        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-          if (input.toString().endsWith(`/projects/${historicalProject.id}`))
-            return new Promise<Response>((answer) =>
-              held.push({ answer, signal: init?.signal }),
-            );
-          return originalFetch(input, init);
-        }),
-      );
-      render(<App identity={deterministicBrowserIdentity()} />);
-      await screen.findByRole('navigation', { name: 'Primary navigation' });
-      const dossier = await openDossier(firstClient.displayName);
-      fireEvent.click(
-        await within(dossier).findByRole('button', {
-          name: `Open Project: ${historicalProject.title}`,
-        }),
-      );
-      await waitFor(() => expect(held).toHaveLength(1));
-      navigateTo('Clients');
-      const canonical = await uniteFirstIntoSecond(dossier);
-      const current = held[0];
-      if (!current) throw new Error('Expected held exact opening.');
-      expect(current.signal?.aborted).toBe(true);
-      await act(async () =>
-        current.answer(
-          status === 200
-            ? respond(historicalProject)
-            : new Response(null, { status }),
-        ),
-      );
-      expect(canonical).toBeVisible();
-      navigateTo('Projects');
-      await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
-      expect(
-        within(projectsRegion()).queryByRole('article', {
-          name: historicalProject.title,
-        }),
-      ).not.toBeInTheDocument();
-    },
-  );
-
-  it('lists the superseded Client’s Project from the canonical dossier and returns there, keeping the Task draft', async () => {
-    const transport = installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await openProjectWithTaskDraft();
-    const instructions = within(projectsRegion()).getByLabelText(
-      'Task instructions (optional)',
-    );
-    changeValue(
-      instructions,
-      'Independent instructions through union\n  Ș / Я / 😀',
-    );
-    expect(transport.projectListReads).toBe(1);
-
-    const dossier = await openDossier(firstClient.displayName);
-    const canonical = await uniteFirstIntoSecond(dossier);
-    openClientProjects(canonical);
-
-    expect(projectSearch()).toHaveValue(secondClient.displayName);
-    await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
-    expect(taskTitle()).toHaveValue(taskDraft);
-    expect(instructions).toHaveValue(
-      'Independent instructions through union\n  Ș / Я / 😀',
-    );
-    await returnToCurrentDossier(secondClient.displayName);
-    expect(transport.projectListReads).toBe(2);
-    expect(transport.projectDetailReads).toBe(2);
-
-    navigateTo('Projects');
-    expect(taskTitle()).toHaveValue(taskDraft);
-  });
-
-  it('lists the Project again under the restored Client after a reversal, keeping the Task draft', async () => {
-    const transport = installTransport({ united: true });
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await openProjectWithTaskDraft();
-    const instructions = within(projectsRegion()).getByLabelText(
-      'Task instructions (optional)',
-    );
-    changeValue(
-      instructions,
-      'Independent instructions through reversal\n  Ș / Я / 😀',
-    );
-
-    const canonical = await openDossier(secondClient.displayName);
-    await reverseUnion(canonical);
-    const restored = await openDossier(firstClient.displayName);
-    openClientProjects(restored);
-
-    expect(projectSearch()).toHaveValue(firstClient.displayName);
-    await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
-    expect(taskTitle()).toHaveValue(taskDraft);
-    expect(instructions).toHaveValue(
-      'Independent instructions through reversal\n  Ș / Я / 😀',
-    );
-    await returnToCurrentDossier(firstClient.displayName);
-    expect(transport.projectListReads).toBe(2);
-    expect(transport.projectDetailReads).toBe(2);
-  });
-
-  it('retires a Project restriction applied before the union and adds no read for navigation alone', async () => {
-    const transport = installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await screen.findByRole('navigation', { name: 'Primary navigation' });
-    const dossier = await openDossier(firstClient.displayName);
-    openClientProjects(dossier);
-    await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
-    navigateTo('Clients');
-    openClientProjects(dossier);
-    expect(transport.projectListReads).toBe(1);
-
-    navigateTo('Clients');
-    await uniteFirstIntoSecond(dossier);
-    navigateTo('Projects');
-
-    expect(projectSearch()).toHaveValue('');
-    await waitFor(() => expect(transport.projectListReads).toBe(2));
-    expect(projectRows()).toEqual([historicalRow]);
-  });
-
-  it('opens the Project list from the Company summary without the Client restriction App holds', async () => {
-    const transport = installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await screen.findByRole('navigation', { name: 'Primary navigation' });
-    const dossier = await openDossier(firstClient.displayName);
-    openClientProjects(dossier);
-    expect(projectSearch()).toHaveValue(firstClient.displayName);
-    await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
-
-    navigateTo('Overview');
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'Open Projects: 1. Open the Project list',
-      }),
-    );
-    await waitFor(() => expect(projectSearch()).toHaveValue(''));
-    expect(projectRows()).toEqual([historicalRow]);
-    expect(transport.projectListReads).toBe(1);
-  });
-
-  it('does not restore a previous Company’s Project restriction when the member returns to that Company', async () => {
-    installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await screen.findByRole('navigation', { name: 'Primary navigation' });
-    const dossier = await openDossier(firstClient.displayName);
-    openClientProjects(dossier);
-    await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
-
-    const company = screen.getByLabelText('Active Company', { exact: true });
-    changeValue(company, companyB.id);
-    await waitFor(() =>
-      expect(projectRows()).toEqual([
-        `${otherCompanyProject.title} Client: ${otherCompanyProject.clientDisplayName}`,
-      ]),
-    );
-    expect(projectSearch()).toHaveValue('');
-    changeValue(company, companyA.id);
-
-    await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
-    expect(projectSearch()).toHaveValue('');
-  });
-
-  it.each(['Home', 'Client'] as const)(
-    'returns Mine to All and open-only through the actual %s directory intent',
-    async (source) => {
-      installTransport();
-      render(<App identity={deterministicBrowserIdentity()} />);
-      await screen.findByRole('navigation', { name: 'Primary navigation' });
-      const dossier = await openDossier(firstClient.displayName);
-      openClientProjects(dossier);
-      await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
-      const view = within(projectsRegion()).getByRole('combobox', {
-        name: 'Project view',
-      });
-      const closed = within(projectsRegion()).getByRole('checkbox', {
-        name: 'Include closed Projects',
-      });
-      fireEvent.click(closed);
-      expect(closed).toBeChecked();
-      changeValue(view, 'mine_open');
-      await waitFor(() => expect(view).toHaveTextContent('My open Projects'));
-      if (source === 'Home') {
-        navigateTo('Overview');
-        fireEvent.click(
-          await screen.findByRole('button', {
-            name: 'Open Projects: 1. Open the Project list',
-          }),
-        );
-      } else {
-        navigateTo('Clients');
-        openClientProjects(dossier);
-      }
-      await waitFor(() => expect(view).toHaveTextContent('All Projects'));
-      expect(
-        within(projectsRegion()).getByRole('checkbox', {
-          name: 'Include closed Projects',
-        }),
-      ).not.toBeChecked();
-      expect(projectSearch()).toHaveValue(
-        source === 'Home' ? '' : firstClient.displayName,
-      );
-      await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
     },
   );
 });

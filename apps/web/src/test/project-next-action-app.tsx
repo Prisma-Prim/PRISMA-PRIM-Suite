@@ -4,11 +4,13 @@ import { deterministicBrowserIdentity } from '../access-composition';
 import { InterfaceLocaleSelect } from '../localization/InterfaceLocaleSelect';
 import {
   fireEvent,
-  render,
   screen,
   within,
   waitFor,
 } from './render-with-interface-locale';
+import type { InterfacePreference } from '../clarte/interface-preference';
+import { renderInInterface } from './app-interface';
+import { projectDetailSection } from './project-interface';
 import { changeValue } from './select-option';
 import {
   actor,
@@ -146,28 +148,51 @@ export function installNextActionPublication(
   );
   return { counts: () => ({ actorReads, activityReads, actionReads }) };
 }
+/**
+ * Renders App in `appInterface`, leaves an independent Project registration
+ * draft, opens the fixture Project and its next action: inline in the
+ * current interface, in the mission space's panel in Clarté.
+ */
 export async function openNextActionApp(
   identity = deterministicBrowserIdentity(),
+  appInterface: InterfacePreference = 'current',
 ) {
-  const view = render(
+  const view = renderInInterface(
+    appInterface,
     <StrictMode>
       <InterfaceLocaleSelect />
       <App identity={identity} />
     </StrictMode>,
   );
   const projects = await screen.findByRole('region', { name: 'Projects' });
+  if (appInterface === 'clarte')
+    fireEvent.click(
+      await within(projects).findByRole('button', {
+        name: 'Preparatory Project',
+      }),
+    );
   fireEvent.change(
     await within(projects).findByRole('textbox', { name: 'Project title' }),
     { target: { value: 'Independent parent Project draft DEMO' } },
   );
+  // The Clarté draft stays in the Projects session while its panel is closed.
+  if (appInterface === 'clarte')
+    fireEvent.click(
+      within(
+        screen.getByRole('dialog', { name: 'New preparatory Project' }),
+      ).getByRole('button', { name: 'Close' }),
+    );
   fireEvent.click(
     await within(projects).findByRole('button', {
       name: new RegExp(project.title),
     }),
   );
-  const panel = await screen.findByRole('region', {
-      name: 'Project next action',
-    }),
+  const detail = await within(projects).findByRole('article', {
+    name: project.title,
+  });
+  const panel = await waitFor(() =>
+      projectDetailSection(appInterface, detail, 'Project next action'),
+    ),
     editor = await within(panel).findByRole('textbox', { name: 'Next action' });
   await waitFor(() => expectEnabled(editor));
   return { view, projects, panel, editor, identity };

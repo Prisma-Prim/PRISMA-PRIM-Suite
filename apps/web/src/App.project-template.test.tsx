@@ -1,5 +1,7 @@
 import { withoutCompanyGrants } from './access/company-grants.test-fixture';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { describe, afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { appInterfaces, renderInInterface } from './test/app-interface';
+import * as projectInterface from './test/project-interface';
 import {
   act,
   fireEvent,
@@ -99,243 +101,268 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-it('returns from the final historical page to unselected newer Versions before and after exact Project creation', async () => {
-  const catalogueReads: string[] = [];
-  const writes: { body: unknown; key: string | null }[] = [];
-  const createdProjects: (typeof project)[] = [];
-  let finishFirstCreation: ((response: Response) => void) | undefined;
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = new URL(input.toString(), window.location.origin);
-      const path = url.pathname;
-      if (path === '/api/access/current-actor')
-        return Response.json(templateActor);
-      if (path === '/api/companies')
-        return Response.json([
-          { id: companyId, displayName: company.displayName },
-        ]);
-      if (path === '/api/activity-log') return Response.json({ events: [] });
-      if (path === '/api/operational-home')
-        return Response.json({ companyId, today: '2026-10-18', summaries: [] });
-      if (path === '/api/clients')
-        return Response.json([
-          { id: clientId, displayName: project.clientDisplayName },
-        ]);
-      if (path === '/api/projects') return Response.json(createdProjects);
-      if (path === '/api/assigned-tasks') return Response.json({ tasks: [] });
-      if (path === '/api/project-templates') {
-        catalogueReads.push(url.search);
-        const cursor = url.searchParams.get('beforeVersion');
-        expect(cursor === null || cursor === '2').toBe(true);
-        return Response.json({
-          templates:
-            cursor === '2'
-              ? [templateFixture]
-              : Array.from({ length: 20 }, (_, index) => ({
-                  ...templateFixture,
-                  version: 21 - index,
-                })),
-          headVersion: 21,
-          nextBeforeVersion: cursor === '2' ? null : 2,
-        });
-      }
-      if (path === '/api/projects/from-template' && init?.method === 'POST') {
-        const body: unknown = JSON.parse(
-          typeof init.body === 'string' ? init.body : '{}',
-        );
-        writes.push({
-          body,
-          key: new Headers(init.headers).get('idempotency-key'),
-        });
-        if (writes.length === 1)
-          return new Promise<Response>((resolve) => {
-            finishFirstCreation = resolve;
+describe.each(appInterfaces)('in the %s interface', (appInterface) => {
+  it('returns from the final historical page to unselected newer Versions before and after exact Project creation', async () => {
+    const catalogueReads: string[] = [];
+    const writes: { body: unknown; key: string | null }[] = [];
+    const createdProjects: (typeof project)[] = [];
+    let finishFirstCreation: ((response: Response) => void) | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = new URL(input.toString(), window.location.origin);
+        const path = url.pathname;
+        if (path === '/api/access/current-actor')
+          return Response.json(templateActor);
+        if (path === '/api/companies')
+          return Response.json([
+            { id: companyId, displayName: company.displayName },
+          ]);
+        if (path === '/api/activity-log') return Response.json({ events: [] });
+        if (path === '/api/operational-home')
+          return Response.json({
+            companyId,
+            today: '2026-10-18',
+            summaries: [],
           });
-        const olderProject = {
-          ...project,
-          id: '30000000-0000-4000-8000-000000000002',
-          title: 'Exact Version 1 Project',
-        };
-        createdProjects.push(olderProject);
-        return Response.json(olderProject, { status: 201 });
-      }
-      if (path.endsWith('/template'))
-        return Response.json({
-          template: {
-            ...copiedPlanFixture,
-            version: path.includes(projectId) ? 20 : 1,
-          },
-        });
-      if (path.endsWith('/tasks'))
-        return Response.json({ mutable: true, tasks: [] });
-      if (path.endsWith('/eligible-task-assignees'))
-        return Response.json({ members: [] });
-      if (isLifecycleRead(path)) return Response.json(preparatoryLifecycle);
-      return new Response(null, { status: 404 });
-    }),
-  );
-  render(
-    <>
-      <InterfaceLocaleSelect />
-      <App identity={deterministicBrowserIdentity()} />
-    </>,
-  );
-  const projects = await screen.findByRole('region', { name: 'Projects' });
-  const selector = await within(projects).findByRole('combobox', {
-    name: 'Project template',
-  });
-  changeValue(selector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:21');
-  fireEvent.click(
-    within(projects).getByRole('button', {
-      name: 'Load older Template Versions',
-    }),
-  );
-  const olderSelector = await within(projects).findByRole('combobox', {
-    name: 'Project template',
-  });
-  expect(selectOptionLabels(olderSelector)).toContain(
-    'Préparation d’une mission de conseil — Version 1',
-  );
-  expect(selectOptionLabels(olderSelector)).toContain(
-    'Préparation d’une mission de conseil — Version 21',
-  );
-  expect(
-    within(projects).queryByRole('button', {
-      name: 'Load older Template Versions',
-    }),
-  ).not.toBeInTheDocument();
-  expect(catalogueReads).toContain('?beforeVersion=2');
-  fireEvent.click(
-    await within(projects).findByRole('button', {
-      name: 'Return to latest Template Versions',
-    }),
-  );
-  const newerSelector = await within(projects).findByRole('combobox', {
-    name: 'Project template',
-  });
-  expect(newerSelector).toHaveAttribute(
-    'data-value',
-    'CONSULTING_PREPARATION_ILLUSTRATIVE:21',
-  );
-  expect(selectOptionLabels(newerSelector)).toContain(
-    'Préparation d’une mission de conseil — Version 20',
-  );
-  changeValue(newerSelector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:20');
-  changeValue(
-    within(projects).getByRole('textbox', { name: 'Project title' }),
-    'Exact Version 20 Project',
-  );
-  changeValue(
-    within(projects).getByRole('combobox', { name: 'Client' }),
-    clientId,
-  );
-  fireEvent.click(
-    within(projects).getByRole('button', {
-      name: 'Create Project from template',
-    }),
-  );
-  await waitFor(() => expect(writes).toHaveLength(1));
-  expect(writes[0]?.body).toEqual({
-    title: 'Exact Version 20 Project',
-    clientAccountId: clientId,
-    templateKey: 'CONSULTING_PREPARATION_ILLUSTRATIVE',
-    templateVersion: 20,
-  });
-  expect(writes[0]?.key).toBeTruthy();
-  const readsBeforeLocales = [...catalogueReads];
-  for (const [locale, label] of [
-    ['ro', 'Model de Proiect'],
-    ['ru', 'Шаблон Проекта'],
-    ['fr', 'Modèle de Projet'],
-    ['en', 'Project template'],
-  ]) {
-    changeValue(
-      screen.getByRole('combobox', {
-        name: /Interface language|Limba interfeței|Язык интерфейса|Langue de l’interface/u,
+        if (path === '/api/clients')
+          return Response.json([
+            { id: clientId, displayName: project.clientDisplayName },
+          ]);
+        if (path === '/api/projects') return Response.json(createdProjects);
+        if (path === '/api/assigned-tasks') return Response.json({ tasks: [] });
+        if (path === '/api/project-templates') {
+          catalogueReads.push(url.search);
+          const cursor = url.searchParams.get('beforeVersion');
+          expect(cursor === null || cursor === '2').toBe(true);
+          return Response.json({
+            templates:
+              cursor === '2'
+                ? [templateFixture]
+                : Array.from({ length: 20 }, (_, index) => ({
+                    ...templateFixture,
+                    version: 21 - index,
+                  })),
+            headVersion: 21,
+            nextBeforeVersion: cursor === '2' ? null : 2,
+          });
+        }
+        if (path === '/api/projects/from-template' && init?.method === 'POST') {
+          const body: unknown = JSON.parse(
+            typeof init.body === 'string' ? init.body : '{}',
+          );
+          writes.push({
+            body,
+            key: new Headers(init.headers).get('idempotency-key'),
+          });
+          if (writes.length === 1)
+            return new Promise<Response>((resolve) => {
+              finishFirstCreation = resolve;
+            });
+          const olderProject = {
+            ...project,
+            id: '30000000-0000-4000-8000-000000000002',
+            title: 'Exact Version 1 Project',
+          };
+          createdProjects.push(olderProject);
+          return Response.json(olderProject, { status: 201 });
+        }
+        if (path.endsWith('/template'))
+          return Response.json({
+            template: {
+              ...copiedPlanFixture,
+              version: path.includes(projectId) ? 20 : 1,
+            },
+          });
+        if (path.endsWith('/tasks'))
+          return Response.json({ mutable: true, tasks: [] });
+        if (path.endsWith('/eligible-task-assignees'))
+          return Response.json({ members: [] });
+        if (isLifecycleRead(path)) return Response.json(preparatoryLifecycle);
+        return new Response(null, { status: 404 });
       }),
-      locale ?? '',
     );
-    const captured = within(projects).getByRole('combobox', { name: label });
-    expect(captured).toHaveAttribute(
+    renderInInterface(
+      appInterface,
+      <>
+        <InterfaceLocaleSelect />
+        <App identity={deterministicBrowserIdentity()} />
+      </>,
+    );
+    const projects = await screen.findByRole('region', { name: 'Projects' });
+    if (appInterface === 'clarte')
+      await within(projects).findByRole('button', { name: 'From a template' });
+    const form = () =>
+      projectInterface.registrationForm(appInterface, projects, 'template');
+    const selector = await within(form()).findByRole('combobox', {
+      name: 'Project template',
+    });
+    changeValue(selector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:21');
+    fireEvent.click(
+      within(form()).getByRole('button', {
+        name: 'Load older Template Versions',
+      }),
+    );
+    const olderSelector = await within(form()).findByRole('combobox', {
+      name: 'Project template',
+    });
+    expect(selectOptionLabels(olderSelector)).toContain(
+      'Préparation d’une mission de conseil — Version 1',
+    );
+    expect(selectOptionLabels(olderSelector)).toContain(
+      'Préparation d’une mission de conseil — Version 21',
+    );
+    expect(
+      within(form()).queryByRole('button', {
+        name: 'Load older Template Versions',
+      }),
+    ).not.toBeInTheDocument();
+    expect(catalogueReads).toContain('?beforeVersion=2');
+    fireEvent.click(
+      await within(form()).findByRole('button', {
+        name: 'Return to latest Template Versions',
+      }),
+    );
+    const newerSelector = await within(form()).findByRole('combobox', {
+      name: 'Project template',
+    });
+    expect(newerSelector).toHaveAttribute(
+      'data-value',
+      'CONSULTING_PREPARATION_ILLUSTRATIVE:21',
+    );
+    expect(selectOptionLabels(newerSelector)).toContain(
+      'Préparation d’une mission de conseil — Version 20',
+    );
+    changeValue(newerSelector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:20');
+    changeValue(
+      within(form()).getByRole('textbox', { name: 'Project title' }),
+      'Exact Version 20 Project',
+    );
+    changeValue(
+      within(form()).getByRole('combobox', { name: 'Client' }),
+      clientId,
+    );
+    fireEvent.click(
+      within(form()).getByRole('button', {
+        name: 'Create Project from template',
+      }),
+    );
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect(writes[0]?.body).toEqual({
+      title: 'Exact Version 20 Project',
+      clientAccountId: clientId,
+      templateKey: 'CONSULTING_PREPARATION_ILLUSTRATIVE',
+      templateVersion: 20,
+    });
+    expect(writes[0]?.key).toBeTruthy();
+    const readsBeforeLocales = [...catalogueReads];
+    // The open creation panel keeps its element while its title is translated.
+    const creation = form();
+    for (const [locale, label] of [
+      ['ro', 'Model de Proiect'],
+      ['ru', 'Шаблон Проекта'],
+      ['fr', 'Modèle de Projet'],
+      ['en', 'Project template'],
+    ] as const) {
+      projectInterface.chooseInterfaceLanguage(appInterface, locale);
+      const captured = within(creation).getByRole('combobox', { name: label });
+      expect(captured).toHaveAttribute(
+        'data-value',
+        'CONSULTING_PREPARATION_ILLUSTRATIVE:20',
+      );
+      expect(captured).toBeDisabled();
+      expect(catalogueReads).toEqual(readsBeforeLocales);
+      expect(writes).toHaveLength(1);
+    }
+    await act(async () => {
+      if (!finishFirstCreation)
+        throw new Error('Expected an observed pending creation.');
+      const newerProject = { ...project, title: 'Exact Version 20 Project' };
+      createdProjects.push(newerProject);
+      finishFirstCreation(Response.json(newerProject, { status: 201 }));
+    });
+    await within(projects).findByRole('article', {
+      name: 'Exact Version 20 Project',
+    });
+    // Clarté closes the creation panel; its next opening starts afresh.
+    if (appInterface === 'current')
+      expect(newerSelector).toHaveAttribute('data-value', '');
+    else
+      expect(
+        await within(form()).findByRole('combobox', {
+          name: 'Project template',
+        }),
+      ).toHaveAttribute('data-value', '');
+    fireEvent.click(
+      within(form()).getByRole('button', {
+        name: 'Load older Template Versions',
+      }),
+    );
+    const finalSelector = await within(form()).findByRole('combobox', {
+      name: 'Project template',
+    });
+    changeValue(finalSelector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:1');
+    changeValue(
+      within(form()).getByRole('textbox', { name: 'Project title' }),
+      'Exact Version 1 Project',
+    );
+    changeValue(
+      within(form()).getByRole('combobox', { name: 'Client' }),
+      clientId,
+    );
+    fireEvent.click(
+      within(form()).getByRole('button', {
+        name: 'Create Project from template',
+      }),
+    );
+    await within(projects).findByRole('article', {
+      name: 'Exact Version 1 Project',
+    });
+    expect(writes[1]?.body).toEqual({
+      title: 'Exact Version 1 Project',
+      clientAccountId: clientId,
+      templateKey: 'CONSULTING_PREPARATION_ILLUSTRATIVE',
+      templateVersion: 1,
+    });
+    if (appInterface === 'current') {
+      expect(finalSelector).toHaveAttribute('data-value', '');
+      fireEvent.click(
+        within(projects).getByRole('button', {
+          name: 'Return to latest Template Versions',
+        }),
+      );
+    }
+    const afterCreationSelector = await within(form()).findByRole('combobox', {
+      name: 'Project template',
+    });
+    if (appInterface === 'clarte')
+      expect(afterCreationSelector).toHaveAttribute('data-value', '');
+    changeValue(
+      afterCreationSelector,
+      'CONSULTING_PREPARATION_ILLUSTRATIVE:20',
+    );
+    const readsBeforeReload = [...catalogueReads];
+    fireEvent.click(
+      within(projects).getByRole('button', { name: 'Reload Projects' }),
+    );
+    await within(projects).findByRole('button', {
+      name: 'Exact Version 1 Project Client: Independent Client',
+    });
+    const reloadedSelector = await within(form()).findByRole('combobox', {
+      name: 'Project template',
+    });
+    expect(reloadedSelector).toHaveAttribute('data-value', '');
+    changeValue(reloadedSelector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:20');
+    expect(reloadedSelector).toHaveAttribute(
       'data-value',
       'CONSULTING_PREPARATION_ILLUSTRATIVE:20',
     );
-    expect(captured).toBeDisabled();
-    expect(catalogueReads).toEqual(readsBeforeLocales);
-    expect(writes).toHaveLength(1);
-  }
-  await act(async () => {
-    if (!finishFirstCreation)
-      throw new Error('Expected an observed pending creation.');
-    const newerProject = { ...project, title: 'Exact Version 20 Project' };
-    createdProjects.push(newerProject);
-    finishFirstCreation(Response.json(newerProject, { status: 201 }));
+    expect(catalogueReads).toEqual([...readsBeforeReload, '']);
   });
-  await within(projects).findByRole('article', {
-    name: 'Exact Version 20 Project',
-  });
-  expect(newerSelector).toHaveAttribute('data-value', '');
-  fireEvent.click(
-    within(projects).getByRole('button', {
-      name: 'Load older Template Versions',
-    }),
-  );
-  const finalSelector = await within(projects).findByRole('combobox', {
-    name: 'Project template',
-  });
-  changeValue(finalSelector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:1');
-  changeValue(
-    within(projects).getByRole('textbox', { name: 'Project title' }),
-    'Exact Version 1 Project',
-  );
-  changeValue(
-    within(projects).getByRole('combobox', { name: 'Client' }),
-    clientId,
-  );
-  fireEvent.click(
-    within(projects).getByRole('button', {
-      name: 'Create Project from template',
-    }),
-  );
-  await within(projects).findByRole('article', {
-    name: 'Exact Version 1 Project',
-  });
-  expect(writes[1]?.body).toEqual({
-    title: 'Exact Version 1 Project',
-    clientAccountId: clientId,
-    templateKey: 'CONSULTING_PREPARATION_ILLUSTRATIVE',
-    templateVersion: 1,
-  });
-  expect(finalSelector).toHaveAttribute('data-value', '');
-  fireEvent.click(
-    within(projects).getByRole('button', {
-      name: 'Return to latest Template Versions',
-    }),
-  );
-  const afterCreationSelector = await within(projects).findByRole('combobox', {
-    name: 'Project template',
-  });
-  changeValue(afterCreationSelector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:20');
-  const readsBeforeReload = [...catalogueReads];
-  fireEvent.click(
-    within(projects).getByRole('button', { name: 'Reload Projects' }),
-  );
-  await within(projects).findByRole('button', {
-    name: 'Exact Version 1 Project Client: Independent Client',
-  });
-  const reloadedSelector = await within(projects).findByRole('combobox', {
-    name: 'Project template',
-  });
-  expect(reloadedSelector).toHaveAttribute('data-value', '');
-  changeValue(reloadedSelector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:20');
-  expect(reloadedSelector).toHaveAttribute(
-    'data-value',
-    'CONSULTING_PREPARATION_ILLUSTRATIVE:20',
-  );
-  expect(catalogueReads).toEqual([...readsBeforeReload, '']);
 });
 
+// It drives the Companies and Configuration screens of other slices, so it
+// stays in the current interface until those screens migrate.
 it.each(['Template', 'Stage', 'Configuration'] as const)(
   'preserves ordinary Project and Task work when a real App actor revalidation changes only dedicated %s authority',
   async (authority) => {
@@ -526,7 +553,9 @@ it.each(['Template', 'Stage', 'Configuration'] as const)(
         'Attempted Company',
       );
       fireEvent.click(
-        within(registration).getByRole('button', { name: 'Register Company' }),
+        within(registration).getByRole('button', {
+          name: 'Register Company',
+        }),
       );
       await within(registration).findByText(
         'You do not have permission to register or view Companies in this Workspace.',
@@ -600,183 +629,199 @@ it.each(['Template', 'Stage', 'Configuration'] as const)(
   },
 );
 
-it('shows a blocked copied stage then explicitly advances with an unchanged retry and reloads immutable history', async () => {
-  const actor: ActorContext = {
-    ...templateActor,
-    activeCompany: {
-      ...templateActor.activeCompany,
-      ...company,
-      grants: withCompanyGrants(
-        company.grants,
-        {
-          bundle: 'company_project_template_user',
-          version: 'v1',
-          assignmentId: 'template-grant',
-        },
-        {
-          bundle: 'company_project_stage_advancer',
-          version: 'v1',
-          assignmentId: 'stage-grant',
-        },
-      ),
-    },
-  };
-  let done = false;
-  let advanced = false;
-  const writes: {
-    body: string | undefined;
-    key: string | null;
-    contentType: string | null;
-  }[] = [];
-  const requiredTasks = copiedPlanFixture.stages[0].tasks.map((task) => ({
-    ...task,
-    status: 'todo',
-    version: 1,
-  }));
-  const transition = {
-    projectId,
-    transitionId: '40000000-0000-4000-8000-000000000001',
-    stageRevision: 1,
-    fromStageKey: 'scoping',
-    fromStageTitle: 'Cadrage',
-    toStageKey: 'preparation',
-    toStageTitle: 'Préparation',
-    occurredAt: '2026-10-18T12:00:00.000Z',
-    actor: {
-      internalUserId: 'owner',
-      workspaceMembershipId: 'member',
-      displayName: 'Owner',
-    },
-    requiredTasks: requiredTasks.map((task) => ({
-      taskId: task.taskId,
-      version: 2,
-    })),
-  };
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const path = new URL(input.toString(), window.location.origin).pathname;
-      if (path === '/api/access/current-actor') return Response.json(actor);
-      if (path === '/api/companies')
-        return Response.json([
-          { id: companyId, displayName: company.displayName },
-        ]);
-      if (path === '/api/activity-log') return Response.json({ events: [] });
-      if (path === '/api/operational-home')
-        return Response.json({ companyId, today: '2026-10-18', summaries: [] });
-      if (path === '/api/clients')
-        return Response.json([
-          { id: clientId, displayName: project.clientDisplayName },
-        ]);
-      if (path === '/api/projects') return Response.json([project]);
-      if (path === `/api/projects/${projectId}`) return Response.json(project);
-      if (path === '/api/project-templates')
-        return Response.json({ templates: [templateFixture] });
-      if (path === `/api/projects/${projectId}/template`)
-        return Response.json({ template: copiedPlanFixture });
-      if (path === `/api/projects/${projectId}/stage-progress`)
-        return Response.json({
-          progress: {
-            currentStageKey: advanced ? 'preparation' : 'scoping',
-            currentStageTitle: advanced ? 'Préparation' : 'Cadrage',
-            stageRevision: advanced ? 1 : 0,
-            nextStage: advanced
-              ? null
-              : { key: 'preparation', title: 'Préparation' },
-            requiredTasks: advanced
-              ? copiedPlanFixture.stages[1].tasks.map((task) => ({
-                  ...task,
-                  status: 'todo',
-                  version: 1,
-                }))
-              : requiredTasks.map((task) => ({
-                  ...task,
-                  status: done ? 'done' : 'todo',
-                  version: done ? 2 : 1,
-                })),
-            gate: advanced
-              ? 'last_supported_stage'
-              : done
-                ? 'ready'
-                : 'required_tasks_incomplete',
-            canAdvance: done && !advanced,
-            transitions: advanced ? [transition] : [],
+describe.each(appInterfaces)('in the %s interface', (appInterface) => {
+  it('shows a blocked copied stage then explicitly advances with an unchanged retry and reloads immutable history', async () => {
+    const actor: ActorContext = {
+      ...templateActor,
+      activeCompany: {
+        ...templateActor.activeCompany,
+        ...company,
+        grants: withCompanyGrants(
+          company.grants,
+          {
+            bundle: 'company_project_template_user',
+            version: 'v1',
+            assignmentId: 'template-grant',
           },
-        });
-      if (path === `/api/projects/${projectId}/stage-advance`) {
-        writes.push({
-          body: typeof init?.body === 'string' ? init.body : undefined,
-          key: new Headers(init?.headers).get('idempotency-key'),
-          contentType: new Headers(init?.headers).get('content-type'),
-        });
-        advanced = true;
-        return writes.length === 1
-          ? new Response(null, { status: 503 })
-          : Response.json(
-              {
-                projectId,
-                transitionId: transition.transitionId,
-                stageRevision: 1,
-                fromStageKey: 'scoping',
-                toStageKey: 'preparation',
-              },
-              { status: 201 },
-            );
-      }
-      if (path === `/api/projects/${projectId}/tasks`)
-        return Response.json({ mutable: true, tasks: [] });
-      if (path === `/api/projects/${projectId}/eligible-task-assignees`)
-        return Response.json({ members: [] });
-      if (isLifecycleRead(path)) return Response.json(preparatoryLifecycle);
-      return new Response(null, { status: 404 });
-    }),
-  );
-  render(<App identity={deterministicBrowserIdentity()} />);
-  const projects = await screen.findByRole('region', { name: 'Projects' });
-  fireEvent.click(
-    await within(projects).findByRole('button', {
-      name: `${project.title} Client: ${project.clientDisplayName}`,
-    }),
-  );
-  const stage = await within(projects).findByRole('region', {
-    name: 'Project stage',
+          {
+            bundle: 'company_project_stage_advancer',
+            version: 'v1',
+            assignmentId: 'stage-grant',
+          },
+        ),
+      },
+    };
+    let done = false;
+    let advanced = false;
+    const writes: {
+      body: string | undefined;
+      key: string | null;
+      contentType: string | null;
+    }[] = [];
+    const requiredTasks = copiedPlanFixture.stages[0].tasks.map((task) => ({
+      ...task,
+      status: 'todo',
+      version: 1,
+    }));
+    const transition = {
+      projectId,
+      transitionId: '40000000-0000-4000-8000-000000000001',
+      stageRevision: 1,
+      fromStageKey: 'scoping',
+      fromStageTitle: 'Cadrage',
+      toStageKey: 'preparation',
+      toStageTitle: 'Préparation',
+      occurredAt: '2026-10-18T12:00:00.000Z',
+      actor: {
+        internalUserId: 'owner',
+        workspaceMembershipId: 'member',
+        displayName: 'Owner',
+      },
+      requiredTasks: requiredTasks.map((task) => ({
+        taskId: task.taskId,
+        version: 2,
+      })),
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const path = new URL(input.toString(), window.location.origin).pathname;
+        if (path === '/api/access/current-actor') return Response.json(actor);
+        if (path === '/api/companies')
+          return Response.json([
+            { id: companyId, displayName: company.displayName },
+          ]);
+        if (path === '/api/activity-log') return Response.json({ events: [] });
+        if (path === '/api/operational-home')
+          return Response.json({
+            companyId,
+            today: '2026-10-18',
+            summaries: [],
+          });
+        if (path === '/api/clients')
+          return Response.json([
+            { id: clientId, displayName: project.clientDisplayName },
+          ]);
+        if (path === '/api/projects') return Response.json([project]);
+        if (path === `/api/projects/${projectId}`)
+          return Response.json(project);
+        if (path === '/api/project-templates')
+          return Response.json({ templates: [templateFixture] });
+        if (path === `/api/projects/${projectId}/template`)
+          return Response.json({ template: copiedPlanFixture });
+        if (path === `/api/projects/${projectId}/stage-progress`)
+          return Response.json({
+            progress: {
+              currentStageKey: advanced ? 'preparation' : 'scoping',
+              currentStageTitle: advanced ? 'Préparation' : 'Cadrage',
+              stageRevision: advanced ? 1 : 0,
+              nextStage: advanced
+                ? null
+                : { key: 'preparation', title: 'Préparation' },
+              requiredTasks: advanced
+                ? copiedPlanFixture.stages[1].tasks.map((task) => ({
+                    ...task,
+                    status: 'todo',
+                    version: 1,
+                  }))
+                : requiredTasks.map((task) => ({
+                    ...task,
+                    status: done ? 'done' : 'todo',
+                    version: done ? 2 : 1,
+                  })),
+              gate: advanced
+                ? 'last_supported_stage'
+                : done
+                  ? 'ready'
+                  : 'required_tasks_incomplete',
+              canAdvance: done && !advanced,
+              transitions: advanced ? [transition] : [],
+            },
+          });
+        if (path === `/api/projects/${projectId}/stage-advance`) {
+          writes.push({
+            body: typeof init?.body === 'string' ? init.body : undefined,
+            key: new Headers(init?.headers).get('idempotency-key'),
+            contentType: new Headers(init?.headers).get('content-type'),
+          });
+          advanced = true;
+          return writes.length === 1
+            ? new Response(null, { status: 503 })
+            : Response.json(
+                {
+                  projectId,
+                  transitionId: transition.transitionId,
+                  stageRevision: 1,
+                  fromStageKey: 'scoping',
+                  toStageKey: 'preparation',
+                },
+                { status: 201 },
+              );
+        }
+        if (path === `/api/projects/${projectId}/tasks`)
+          return Response.json({ mutable: true, tasks: [] });
+        if (path === `/api/projects/${projectId}/eligible-task-assignees`)
+          return Response.json({ members: [] });
+        if (isLifecycleRead(path)) return Response.json(preparatoryLifecycle);
+        return new Response(null, { status: 404 });
+      }),
+    );
+    renderInInterface(
+      appInterface,
+      <App identity={deterministicBrowserIdentity()} />,
+    );
+    const projects = await screen.findByRole('region', { name: 'Projects' });
+    fireEvent.click(
+      await within(projects).findByRole('button', {
+        name: `${project.title} Client: ${project.clientDisplayName}`,
+      }),
+    );
+    // Clarté shows the copied stage in the mission space's current work.
+    projectInterface.showProjectView(
+      appInterface,
+      await within(projects).findByRole('article', { name: project.title }),
+      'Current work',
+    );
+    const stage = await within(projects).findByRole('region', {
+      name: 'Project stage',
+    });
+    await within(stage).findByText(
+      'Complete both required Tasks before advancing. Cancelled Tasks do not satisfy this gate.',
+    );
+    expect(
+      within(stage).getByRole('button', { name: 'Advance to Préparation' }),
+    ).toBeDisabled();
+    done = true;
+    fireEvent.click(
+      within(stage).getByRole('button', { name: 'Reload stage progress' }),
+    );
+    const advance = await within(stage).findByRole('button', {
+      name: 'Advance to Préparation',
+    });
+    await waitFor(() => expect(advance).toBeEnabled());
+    fireEvent.click(advance);
+    await within(stage).findByText(
+      'The stage change could not be confirmed. Retry the exact same intent explicitly.',
+    );
+    fireEvent.click(
+      within(stage).getByRole('button', { name: 'Retry stage advance' }),
+    );
+    await within(stage).findByText(
+      'Last supported stage. No further transition is available.',
+    );
+    expect(writes).toHaveLength(2);
+    expect(writes[0]?.contentType).toBe('application/json');
+    expect(writes[1]).toEqual(writes[0]);
+    expect(writes[0]?.body).toBe(
+      JSON.stringify({
+        expectedStageKey: 'scoping',
+        expectedStageRevision: 0,
+        targetStageKey: 'preparation',
+      }),
+    );
+    expect(within(stage).getByText('Owner')).toBeInTheDocument();
+    expect(
+      within(stage).getByRole('heading', { name: 'Stage history' }),
+    ).toBeInTheDocument();
   });
-  await within(stage).findByText(
-    'Complete both required Tasks before advancing. Cancelled Tasks do not satisfy this gate.',
-  );
-  expect(
-    within(stage).getByRole('button', { name: 'Advance to Préparation' }),
-  ).toBeDisabled();
-  done = true;
-  fireEvent.click(
-    within(stage).getByRole('button', { name: 'Reload stage progress' }),
-  );
-  const advance = await within(stage).findByRole('button', {
-    name: 'Advance to Préparation',
-  });
-  await waitFor(() => expect(advance).toBeEnabled());
-  fireEvent.click(advance);
-  await within(stage).findByText(
-    'The stage change could not be confirmed. Retry the exact same intent explicitly.',
-  );
-  fireEvent.click(
-    within(stage).getByRole('button', { name: 'Retry stage advance' }),
-  );
-  await within(stage).findByText(
-    'Last supported stage. No further transition is available.',
-  );
-  expect(writes).toHaveLength(2);
-  expect(writes[0]?.contentType).toBe('application/json');
-  expect(writes[1]).toEqual(writes[0]);
-  expect(writes[0]?.body).toBe(
-    JSON.stringify({
-      expectedStageKey: 'scoping',
-      expectedStageRevision: 0,
-      targetStageKey: 'preparation',
-    }),
-  );
-  expect(within(stage).getByText('Owner')).toBeInTheDocument();
-  expect(
-    within(stage).getByRole('heading', { name: 'Stage history' }),
-  ).toBeInTheDocument();
 });

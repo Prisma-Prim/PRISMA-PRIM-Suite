@@ -21,6 +21,7 @@ import {
 import { useProjectNextActionCopy } from './project-next-action.copy';
 import {
   readNextAction,
+  type NextActionRecord,
   type NextActionScope,
   type NextActionSnapshot,
 } from './project-next-action-response';
@@ -41,6 +42,11 @@ interface Props {
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onCompanyContextRejected?: (companyId: string) => void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
+  /**
+   * The current next action each read presents, or undefined while none is
+   * presented, so a summary beside the section shows exactly what it shows.
+   */
+  onCurrentRead?: (record: NextActionRecord | undefined) => void;
 }
 export function nextActionReadAuthority(actor: ActorContext) {
   const c = actor.activeCompany;
@@ -232,6 +238,11 @@ function NextActionReader(
     if (pendingHistoryFocus.current?.()) historyHeading.current?.focus();
     pendingHistoryFocus.current = undefined;
   }, [refresh]);
+  const presented = snapshot && state !== 'denied' ? snapshot.current : null;
+  const reportCurrent = props.onCurrentRead;
+  useEffect(() => {
+    reportCurrent?.(presented ?? undefined);
+  }, [presented, reportCurrent]);
   const writer = canCoordinateNextAction(props.actor),
     closed = isClosedProjectStatus(props.projectStatus);
   return (
