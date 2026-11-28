@@ -88,6 +88,10 @@ function ClarteDocumentSession(props: DocumentWorkspaceProps) {
   const canOrganizeByProject =
     holds(company, 'company_project_access', 'project.read') &&
     holds(company, 'company_document_registrar', 'document.read');
+  // A revoked Project read retires the panel with its reads and Project names.
+  useEffect(() => {
+    if (!canOrganizeByProject) setOrganizing(false);
+  }, [canOrganizeByProject]);
   const rowsBusy = mutation === 'pending' || receivedBusy;
   const familiesPresent = WORKSPACE_FAMILIES.filter((type) =>
     visibleDocuments.some((document) => document.type === type),
@@ -289,7 +293,7 @@ function ClarteDocumentSession(props: DocumentWorkspaceProps) {
           onClose={() => setRegistering(false)}
         />
       )}
-      {organizing && !detail && (
+      {organizing && canOrganizeByProject && !detail && (
         <ClarteProjectDocuments
           actor={actor}
           identity={identity}
