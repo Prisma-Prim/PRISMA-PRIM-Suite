@@ -13,6 +13,7 @@ import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { documentGrants } from './documents/document-grants.test-fixture';
+import { clarteScreenName } from './test/clarte-screen-name';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -260,7 +261,7 @@ function navigateTo(label: string) {
   // Clarté groups sections under entries; its jump list reaches any of them.
   fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
   const field = screen.getByRole('combobox', { name: 'Screen name' });
-  fireEvent.change(field, { target: { value: label } });
+  fireEvent.change(field, { target: { value: clarteScreenName(label) } });
   fireEvent.keyDown(field, { key: 'Enter' });
 }
 /**

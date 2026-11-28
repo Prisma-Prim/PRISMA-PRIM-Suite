@@ -453,7 +453,7 @@ describe('Clarté entries for actors with different grants', () => {
       'Unassigned TasksTasks',
       'Blocked TasksTasks',
       'Team TasksTasks',
-      'Working DocumentsDocuments',
+      'RegisterDocuments',
       'IdeasImprovement',
       'Operational risksImprovement',
       'All settingsSettings',
@@ -506,7 +506,7 @@ describe('Clarté entries for actors with different grants', () => {
     expect(names(jump, 'option')).toEqual([
       'Today',
       'Clients',
-      'Working DocumentsDocuments',
+      'RegisterDocuments',
       'All settingsSettings',
       'Language and regionSettings',
       'Activity LogSettings',
@@ -514,7 +514,7 @@ describe('Clarté entries for actors with different grants', () => {
     const field = within(jump).getByRole('combobox', { name: 'Screen name' });
     fireEvent.change(field, { target: { value: 'Lumen' } });
     expect(within(jump).queryAllByRole('option')).toHaveLength(0);
-    fireEvent.change(field, { target: { value: 'working doc' } });
+    fireEvent.change(field, { target: { value: 'regist' } });
     fireEvent.keyDown(field, { key: 'Enter' });
     expect(window.location.hash).toBe('#documents');
     expect(

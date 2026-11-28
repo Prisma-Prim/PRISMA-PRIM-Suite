@@ -67,6 +67,8 @@ async function openAppCitation() {
 describe.each(appInterfaces)(
   'Knowledge evidence in the %s interface',
   (appInterface) => {
+    const knowledgeRegion =
+      appInterface === 'clarte' ? 'Knowledge base' : 'Knowledge evidence';
     for (const mode of ['current', 'historical'] as const)
       it.each([
         {
@@ -158,7 +160,7 @@ describe.each(appInterfaces)(
             ).toBeNull(),
           );
           const panel = screen.getByRole('region', {
-            name: 'Knowledge evidence',
+            name: knowledgeRegion,
           });
           expect(
             within(panel).getByText(
@@ -273,7 +275,7 @@ describe.each(appInterfaces)(
           );
           await waitFor(() =>
             expect(
-              screen.queryByRole('region', { name: 'Knowledge evidence' }),
+              screen.queryByRole('region', { name: knowledgeRegion }),
             ).toBeNull(),
           );
         }
@@ -293,7 +295,7 @@ describe.each(appInterfaces)(
           expect(query).toHaveValue('new exact query');
         else
           expect(
-            screen.queryByRole('region', { name: 'Knowledge evidence' }),
+            screen.queryByRole('region', { name: knowledgeRegion }),
           ).toBeNull();
         expect(document.activeElement).toBe(focused);
         expect(nativeRequests).toEqual([]);

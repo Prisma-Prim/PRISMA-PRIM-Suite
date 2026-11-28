@@ -19,6 +19,7 @@ import {
 } from './access/company-grants.test-fixture';
 import { projectDocumentGrants } from './project/project-document-grants.test-fixture';
 import { appInterfaces, renderInInterface } from './test/app-interface';
+import { clarteScreenName } from './test/clarte-screen-name';
 
 /** The interface the running parameterized test renders. */
 let shown: (typeof appInterfaces)[number] = 'current';
@@ -238,7 +239,7 @@ function navigateTo(label: string) {
   // Clarté groups sections under entries; its jump list reaches any of them.
   fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
   const field = screen.getByRole('combobox', { name: 'Screen name' });
-  fireEvent.change(field, { target: { value: label } });
+  fireEvent.change(field, { target: { value: clarteScreenName(label) } });
   fireEvent.keyDown(field, { key: 'Enter' });
 }
 /**
