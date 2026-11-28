@@ -155,7 +155,9 @@ test('registers a Client, works through one dossier, unites two Clients and undo
   // Correct the shared record from its side panel.
   await dossier.getByRole('button', { name: 'Correct Client dossier' }).click();
   const correction = page.getByRole('form', { name: 'Correct Client dossier' });
-  await correction.getByLabel('Telephone').fill('+373 235 20 199');
+  await correction
+    .getByLabel('Telephone', { exact: true })
+    .fill('+373 235 20 199');
   await correction.getByRole('button', { name: 'Save correction' }).click();
   await expect(
     correction.getByText('Client correction saved with attributable history.'),
@@ -188,10 +190,10 @@ test('registers a Client, works through one dossier, unites two Clients and undo
     .fill('Same legal identity, registered twice.');
   for (const checkbox of await union.getByRole('checkbox').all())
     await checkbox.check();
-  await union
-    .getByRole('heading', { level: 4 })
-    .first()
-    .scrollIntoViewIfNeeded();
+  // The comparison starts at the top of the screenshot.
+  await page
+    .getByRole('heading', { name: 'Compare the two existing Clients' })
+    .evaluate((heading) => heading.scrollIntoView({ block: 'start' }));
   await screenshot(page, 'merge');
   await union.getByRole('button', { name: 'Confirm union' }).click();
   const canonical = page.getByRole('region', {

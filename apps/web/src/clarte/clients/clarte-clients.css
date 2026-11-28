@@ -646,14 +646,85 @@
   font-weight: 600;
 }
 
+/* Each compared Contact reads top to bottom, its values in two columns. */
+.clarte-frame .clarte-client-part .client-union-contacts li,
+.clarte-frame .clarte-client-part .client-union-history-contacts li {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+}
+
+.clarte-frame .clarte-client-part .client-union-contacts dl,
+.clarte-frame .clarte-client-part .client-union-values {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 6px 16px;
+  width: 100%;
+}
+
+/* The union and reversal forms read top to bottom, their action last. */
+.clarte-frame .clarte-client-part form.client-union-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.clarte-frame .clarte-client-part form.client-union-form > button {
+  justify-self: start;
+}
+
+/* The Contact editor stacks each label above its field. */
+.clarte-frame .clarte-clients-contacts-editor fieldset {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.clarte-frame .clarte-clients-contacts-editor fieldset > label {
+  margin-top: 6px;
+}
+
+.clarte-frame .clarte-clients-contacts-editor textarea {
+  min-height: 42px;
+  resize: vertical;
+  font: inherit;
+}
+
+/* The reused duplicate review sits in the directory card without its own frame. */
+.clarte-frame .clarte-clients-duplicates .client-duplicate-review {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.clarte-frame .clarte-clients .client-directory-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-clients .client-directory-feedback svg {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+
+.clarte-frame .clarte-clients .client-directory-feedback[data-tone='error'] {
+  color: var(--clarte-danger);
+}
+
+.clarte-frame .clarte-clients .client-directory-feedback[data-tone='success'] {
+  color: var(--clarte-success);
+}
+
 @media (max-width: 768px) {
   .clarte-frame .clarte-clients-search {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .clarte-frame .clarte-clients-toolbar .clarte-button--primary {
-    width: 100%;
-    justify-content: center;
   }
 
   .clarte-frame .clarte-clients-grid {
