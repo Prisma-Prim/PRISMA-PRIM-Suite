@@ -55,6 +55,26 @@ To add or migrate a Settings section, change one row of `settingsSections`:
 
 Language and region and the console's home are Clarté-only screens from `useSettingsConsoleScreens`.
 
+## Certification Case page
+
+The Certification Cases live inside a Project, so their screen ([#1538](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1538)) has no tab of its own: `CertificationWorkspace` keeps the gate and the owner key and chooses `certification/ClarteCertification` while the preference is `clarte`, wherever the Project's Certification tab mounts it. Both interfaces share one owner, `useCertificationRegistry`, with every read, command, draft, retry and access recovery.
+
+The page shows one Case: its header, the steps on the left and one step at a time beside them. `certification/case-steps.tsx` is the step registry, in the server's next-step order:
+
+```ts
+{
+  id: 'recommendation',
+  label: 'stepRecommendation',
+  covers: ['recommendation'],
+  recorded: (detail) => detail.recommendation !== null,
+  state: (states) => states.recommendation,
+  render: ({ registry, view, busy }) => registry.closing.render(busy, 'recommendation'),
+},
+```
+
+- `covers` marks the step current when the Case's next step is one of them; earlier steps are done and later ones upcoming. On a closed Case, `recorded` marks a step done or never reached.
+- `render` draws the step's body under the page's step heading, or returns `null` while the step waits for earlier ones. The steps up to Stage 2 are Clarté's; from the nonconformity follow-up on, and in `caseRegisters` except the timeline, `render` still shows the current interface's sections of that step, so nothing becomes unreachable. #1539 replaces only those `render` functions and the registers'; it adds no step.
+
 ## Render App in Clarté in a test
 
 `src/test/app-interface.tsx` renders App through the real preference provider:

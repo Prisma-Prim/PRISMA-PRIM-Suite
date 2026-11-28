@@ -86,6 +86,13 @@ const CLOSING_KINDS = [
   'certificateRevision',
 ] as const;
 export type ClosingKind = (typeof CLOSING_KINDS)[number];
+/** The closing steps one render can show on its own. */
+export type ClosingPart =
+  | 'recommendation'
+  | 'certificateData'
+  | 'dossierReview'
+  | 'decision'
+  | 'certificate';
 /** Whether a command records one of the closing steps. */
 export function isClosingCommand(kind: string): boolean {
   return CLOSING_KINDS.some((entry) => entry === kind);
@@ -242,7 +249,11 @@ export function useCertificationClosing({
     return unexpected(kind);
   }
 
-  function render(busy: boolean) {
+  /**
+   * The closing steps in Case order; the Clarté Case page asks for one part
+   * at a time, the current interface for all of them.
+   */
+  function render(busy: boolean, part: ClosingPart | 'all' = 'all') {
     if (!view) return null;
     const caseView = view;
     /** Sends one closing-step command for the read Case, reusing an uncertain key. */
@@ -966,75 +977,81 @@ export function useCertificationClosing({
         />
       );
     }
+    const shown = (candidate: ClosingPart) =>
+      part === 'all' || part === candidate;
     return (
       <>
-        {caseView.caseDetail.stage2Report !== null &&
+        {shown('recommendation') &&
+          caseView.caseDetail.stage2Report !== null &&
           recommendationSection(caseView)}
-        {(caseView.caseDetail.certificateData !== null ||
-          (caseView.caseDetail.stage2Report !== null &&
-            caseView.caseDetail.status === 'open')) &&
+        {shown('certificateData') &&
+          (caseView.caseDetail.certificateData !== null ||
+            (caseView.caseDetail.stage2Report !== null &&
+              caseView.caseDetail.status === 'open')) &&
           certificateDataSection(caseView)}
         {caseView.caseDetail.recommendation !== null && (
           <>
-            {dossierSection(caseView)}
-            {decisionSection(caseView)}
+            {shown('dossierReview') && dossierSection(caseView)}
+            {shown('decision') && decisionSection(caseView)}
           </>
         )}
-        <CertificateReleaseRegion
-          form={releaseForm}
-          key={caseView.caseDetail.id}
-          current={caseView.caseDetail}
-          register={caseView.register}
-          manage={authority.manage}
-          approve={
-            authority.approve &&
-            !linkedToAnyTeamVersion(
-              caseView.timeline,
-              actor.workspaceMembershipId,
-            )
-          }
-          disabled={busy}
-          blocked={{
-            certificateDraft: blockedUntilReload(certificateDraftFeedback),
-            clientOpinion: blockedUntilReload(clientOpinionFeedback),
-            draftApproval: blockedUntilReload(draftApprovalFeedback),
-            certificateRevision: blockedUntilReload(
-              certificateRevisionFeedback,
-            ),
-          }}
-          feedback={{
-            certificateDraft: feedbackMessage(
-              'certificateDraft',
-              certificateDraftFeedback,
-            ),
-            clientOpinion: feedbackMessage(
-              'clientOpinion',
-              clientOpinionFeedback,
-            ),
-            draftApproval: feedbackMessage(
-              'draftApproval',
-              draftApprovalFeedback,
-            ),
-            certificateRevision: feedbackMessage(
-              'certificateRevision',
-              certificateRevisionFeedback,
-            ),
-          }}
-          onCommand={(command) =>
-            sendClosing(
-              command.kind,
-              caseView.caseDetail,
-              command.path,
-              command.value,
-            )
-          }
-          download={registerDownload(caseView)}
-          issuance={
-            caseView.caseDetail.decision?.value.decision === 'granted'
-              ? certificateSection(caseView)
-              : null
-          }
-        />
+        {shown('certificate') && (
+          <CertificateReleaseRegion
+            form={releaseForm}
+            key={caseView.caseDetail.id}
+            current={caseView.caseDetail}
+            register={caseView.register}
+            manage={authority.manage}
+            approve={
+              authority.approve &&
+              !linkedToAnyTeamVersion(
+                caseView.timeline,
+                actor.workspaceMembershipId,
+              )
+            }
+            disabled={busy}
+            blocked={{
+              certificateDraft: blockedUntilReload(certificateDraftFeedback),
+              clientOpinion: blockedUntilReload(clientOpinionFeedback),
+              draftApproval: blockedUntilReload(draftApprovalFeedback),
+              certificateRevision: blockedUntilReload(
+                certificateRevisionFeedback,
+              ),
+            }}
+            feedback={{
+              certificateDraft: feedbackMessage(
+                'certificateDraft',
+                certificateDraftFeedback,
+              ),
+              clientOpinion: feedbackMessage(
+                'clientOpinion',
+                clientOpinionFeedback,
+              ),
+              draftApproval: feedbackMessage(
+                'draftApproval',
+                draftApprovalFeedback,
+              ),
+              certificateRevision: feedbackMessage(
+                'certificateRevision',
+                certificateRevisionFeedback,
+              ),
+            }}
+            onCommand={(command) =>
+              sendClosing(
+                command.kind,
+                caseView.caseDetail,
+                command.path,
+                command.value,
+              )
+            }
+            download={registerDownload(caseView)}
+            issuance={
+              caseView.caseDetail.decision?.value.decision === 'granted'
+                ? certificateSection(caseView)
+                : null
+            }
+          />
+        )}
       </>
     );
   }

@@ -1,408 +1,40 @@
 import './ideas-workspace.css';
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type FormEvent,
-} from 'react';
-import type { BrowserIdentity } from '../access-composition';
-import type { ActorContext } from '../access-types';
-import {
-  createAuthenticatedApiClient,
-  type ApiResult,
-} from '../api/authenticated-api-client';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
-import {
-  useActorObservation,
-  useRequestLifetime,
-} from '../api/use-actor-requests';
-import { useScopedOperationGroup } from '../api/use-scoped-operation';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
 import { useIdeasCopy } from './ideas.copy';
 import {
-  calendarDate,
-  ideasAuthority,
-  ideasContextKey,
-  parseDispositionResult,
-  parseHistory,
-  parseIdea,
-  parseIdeaPage,
-  type History,
-  type Idea,
-  type IdeaPage,
-} from './ideas-contract';
+  ideaExcerpt,
+  useIdeasLifetime,
+  useIdeasRegistry,
+  type IdeasWorkspaceProps,
+} from './use-ideas-registry';
 
-interface Props {
-  actor: ActorContext;
-  identity: BrowserIdentity;
-  onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
-  onCompanyContextRejected: (companyId: string) => void;
-  onWorkspaceAccessRejected: () => Promise<void> | void;
+export function IdeasWorkspace(props: IdeasWorkspaceProps) {
+  const lifetime = useIdeasLifetime(props);
+  if (lifetime === undefined) return null;
+  return <IdeasRegistry key={lifetime} {...props} />;
 }
-type View<T> =
-  | { status: 'loading' }
-  | { status: 'ready'; value: T }
-  | { status: 'error' | 'denied' | 'unavailable' };
-type Intent = { body: string; key: string };
-type ReviewIntent = Intent & { ideaId: string };
-type Save<I extends Intent = Intent> =
-  | { status: 'idle' | 'saved' | 'validation' | 'denied' | 'conflict' }
-  | { status: 'saving' | 'uncertain'; intent: I };
-
-export function IdeasWorkspace(props: Props) {
-  const identityScope = useRequestLifetime(
-    props.identity,
-    ideasContextKey(props.actor),
-  );
-  if (!ideasAuthority(props.actor).read) return null;
-  return <IdeasRegistry key={identityScope} {...props} />;
-}
-function IdeasRegistry(props: Props) {
-  const { actor, identity } = props;
-  const companyId = actor.activeCompany?.id ?? '';
+function IdeasRegistry(props: IdeasWorkspaceProps) {
   const copy = useIdeasCopy();
   const { formatDate, formatDateTime, formatNumber } = useInterfaceLocale();
-  const authority = ideasAuthority(actor);
-  const callbacks = useRef(props);
-  useLayoutEffect(() => {
-    callbacks.current = props;
-  });
-  const [page, setPage] = useState<View<IdeaPage>>({ status: 'loading' });
-  const [detail, setDetail] =
-    useState<View<{ idea: Idea; history: History }>>();
-  const [selectedId, setSelectedId] = useState<string>();
-  const [description, setDescription] = useState('');
-  const [origin, setOrigin] = useState('');
-  const [save, setSave] = useState<Save>({ status: 'idle' });
-  const [reviewSave, setReviewSave] = useState<
-    Save<ReviewIntent> | { status: 'stale' }
-  >({ status: 'idle' });
-  const [kind, setKind] = useState<'deferred' | 'rejected'>('deferred');
-  const [reason, setReason] = useState('');
-  const [date, setDate] = useState('');
-  const listWork = useScopedOperationGroup('ideas-list');
-  const detailWork = useScopedOperationGroup('ideas-detail');
-  const commands = useScopedOperationGroup('ideas-command');
-  const observation = useActorObservation(actor);
-  const recoveryWork = useScopedOperationGroup(String(observation));
-  const committedRecovery = useRef(recoveryWork);
-  useLayoutEffect(() => {
-    committedRecovery.current = recoveryWork;
-  }, [recoveryWork]);
-  const heading = useRef<HTMLHeadingElement>(null);
-  const workspace = useRef<HTMLElement>(null);
-  const openingTrigger = useRef<Element | null>(null);
-  const rowTrigger = useRef<HTMLElement | null>(null);
-  const busy = save.status === 'saving' || reviewSave.status === 'saving';
-
-  const query = useCallback(
-    async (
-      path: string,
-      signal: AbortSignal,
-      command?: Intent,
-    ): Promise<ApiResult<unknown>> => {
-      const recoveryOwner = committedRecovery.current;
-      const api = await createAuthenticatedApiClient(identity);
-      if (signal.aborted) return { status: 'error' };
-      const result = await api.request(path, {
-        companyContextId: companyId,
-        signal,
-        ...(command
-          ? {
-              method: 'POST',
-              body: command.body,
-              headers: {
-                'idempotency-key': command.key,
-                'content-type': 'application/json',
-              },
-            }
-          : {}),
-      });
-      if (signal.aborted) return { status: 'error' };
-      if (result.status !== 'unauthorized' && result.status !== 'forbidden')
-        return result;
-      const recovery = recoveryOwner.begin();
-      listWork.retire();
-      detailWork.retire();
-      commands.retire();
-      setPage({ status: 'denied' });
-      setDetail(undefined);
-      setSelectedId(undefined);
-      setDescription('');
-      setOrigin('');
-      setReason('');
-      setDate('');
-      setKind('deferred');
-      setSave({ status: 'denied' });
-      setReviewSave({ status: 'idle' });
-      openingTrigger.current = null;
-      rowTrigger.current = null;
-      if (recovery) {
-        const current = () => !recovery.signal.aborted;
-        try {
-          if (result.status === 'unauthorized') {
-            const workspaceRejection =
-              callbacks.current.onWorkspaceAccessRejected();
-            await Promise.all([workspaceRejection, identity.rejectSession()]);
-            return result;
-          }
-          await handleAuthenticatedAccessRejection({
-            result,
-            identity,
-            companyContextId: companyId,
-            signal: recovery.signal,
-            isCurrent: current,
-            onActorRevalidated: (actor) =>
-              callbacks.current.onActorRevalidated(actor),
-            onCompanyContextRejected: (id) =>
-              callbacks.current.onCompanyContextRejected(id),
-            onWorkspaceAccessRejected: () =>
-              callbacks.current.onWorkspaceAccessRejected(),
-          });
-        } finally {
-          recovery.release();
-        }
-      }
-      return result;
-    },
-    [identity, companyId, listWork, detailWork, commands],
-  );
-  const loadList = useCallback(
-    async (cursor?: string) => {
-      const operation = listWork.beginLatest();
-      if (!operation) return;
-      const { signal } = operation;
-      setPage({ status: 'loading' });
-      try {
-        const result = await query(
-          `/ideas${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
-          signal,
-        );
-        if (signal.aborted) return;
-        setPage(
-          result.status === 'ok'
-            ? { status: 'ready', value: parseIdeaPage(result.value, companyId) }
-            : { status: refusal(result) },
-        );
-      } catch {
-        if (!signal.aborted) setPage({ status: 'error' });
-      } finally {
-        operation.release();
-      }
-    },
-    [query, companyId, listWork],
-  );
-  useEffect(() => {
-    void loadList();
-  }, [loadList]);
-  useEffect(() => {
-    if (
-      detail?.status !== 'ready' ||
-      !openingTrigger.current ||
-      !heading.current
-    )
-      return;
-    const trigger = openingTrigger.current;
-    if (
-      !heading.current.closest('[hidden]') &&
-      (document.activeElement === trigger ||
-        (!trigger.isConnected && document.activeElement === document.body))
-    )
-      heading.current.focus();
-    openingTrigger.current = null;
-  }, [detail]);
-
-  async function open(
-    ideaId: string,
-    options: { cursor?: string; preserveConfirmation?: boolean } = {},
-  ) {
-    if (commands.isPending()) return;
-    const operation = detailWork.beginLatest();
-    if (!operation) return;
-    const { signal } = operation;
-    setSelectedId(ideaId);
-    setDetail({ status: 'loading' });
-    setReason('');
-    setDate('');
-    setKind('deferred');
-    if (!options.preserveConfirmation) setReviewSave({ status: 'idle' });
-    try {
-      const [record, history] = await Promise.all([
-        query(`/ideas/${encodeURIComponent(ideaId)}`, signal),
-        query(
-          `/ideas/${encodeURIComponent(ideaId)}/dispositions${options.cursor ? `?cursor=${encodeURIComponent(options.cursor)}` : ''}`,
-          signal,
-        ),
-      ]);
-      if (signal.aborted) return;
-      if (record.status === 'ok' && history.status === 'ok') {
-        const idea = parseIdea(record.value, companyId),
-          entries = parseHistory(history.value, ideaId);
-        if (idea.id !== ideaId || entries.total !== idea.revision - 1)
-          throw new Error('Idea changed during the read.');
-        setDetail({ status: 'ready', value: { idea, history: entries } });
-      } else
-        setDetail({
-          status: refusal(record.status === 'ok' ? history : record),
-        });
-    } catch {
-      if (!signal.aborted) setDetail({ status: 'error' });
-    } finally {
-      operation.release();
-    }
-  }
-  function close() {
-    if (commands.isPending()) return;
-    detailWork.retire();
-    setDetail(undefined);
-    setSelectedId(undefined);
-    setReason('');
-    setDate('');
-    setReviewSave({ status: 'idle' });
-    if (
-      rowTrigger.current?.isConnected &&
-      !rowTrigger.current.closest('[hidden]')
-    )
-      rowTrigger.current.focus();
-    else if (workspace.current && !workspace.current.closest('[hidden]'))
-      workspace.current.focus();
-  }
-  async function executeRecord(intent: Intent) {
-    if (!authority.record || commands.isPending()) return;
-    const operation = commands.begin();
-    if (!operation) return;
-    const { signal } = operation;
-    setSave({ status: 'saving', intent });
-    let recordedIdeaId: string | undefined;
-    try {
-      const result = await query('/ideas', signal, intent);
-      if (signal.aborted) return;
-      if (result.status === 'ok') {
-        const idea = parseIdea(result.value, companyId);
-        setSave({ status: 'saved' });
-        setDescription('');
-        setOrigin('');
-        recordedIdeaId = idea.id;
-      } else if (result.status === 'validation' || result.status === 'conflict')
-        setSave({ status: result.status });
-      else if (
-        result.status === 'forbidden' ||
-        result.status === 'unauthorized'
-      )
-        setSave({ status: 'denied' });
-      else setSave({ status: 'uncertain', intent });
-    } catch {
-      if (!signal.aborted) setSave({ status: 'uncertain', intent });
-    } finally {
-      operation.release();
-    }
-    if (recordedIdeaId !== undefined && !signal.aborted) {
-      void open(recordedIdeaId);
-      void loadList();
-    }
-  }
-  async function executeReview(intent: ReviewIntent) {
-    if (!authority.review || commands.isPending()) return;
-    const operation = commands.begin();
-    if (!operation) return;
-    const { signal } = operation;
-    setReviewSave({ status: 'saving', intent });
-    let confirmed = false;
-    try {
-      const result = await query(
-        `/ideas/${encodeURIComponent(intent.ideaId)}/dispositions`,
-        signal,
-        intent,
-      );
-      if (signal.aborted) return;
-      if (result.status === 'ok') {
-        const response = parseDispositionResult(result.value, companyId);
-        if (response.idea.id !== intent.ideaId)
-          throw new Error('Invalid Idea target.');
-        setReviewSave({ status: 'saved' });
-        setReason('');
-        setDate('');
-        confirmed = true;
-      } else if (result.status === 'conflict')
-        setReviewSave({
-          status:
-            result.reason === undefined && result.code === 'STALE_VERSION'
-              ? 'stale'
-              : 'conflict',
-        });
-      else if (result.status === 'validation')
-        setReviewSave({ status: 'validation' });
-      else if (
-        result.status === 'forbidden' ||
-        result.status === 'unauthorized'
-      )
-        setReviewSave({ status: 'denied' });
-      else setReviewSave({ status: 'uncertain', intent });
-    } catch {
-      if (!signal.aborted) setReviewSave({ status: 'uncertain', intent });
-    } finally {
-      operation.release();
-    }
-    if (confirmed && !signal.aborted) {
-      void open(intent.ideaId, { preserveConfirmation: true });
-      void loadList();
-    }
-  }
-  function record(event: FormEvent) {
-    event.preventDefault();
-    if (busy || !authority.record) return;
-    if (
-      !description.trim() ||
-      description.length > 5000 ||
-      !origin.trim() ||
-      origin.length > 300
-    ) {
-      setSave({ status: 'validation' });
-      return;
-    }
-    const body = JSON.stringify({ description, origin });
-    void executeRecord(
-      save.status === 'uncertain' && save.intent.body === body
-        ? save.intent
-        : { body, key: crypto.randomUUID() },
-    );
-  }
-  function review(event: FormEvent) {
-    event.preventDefault();
-    if (
-      busy ||
-      !authority.review ||
-      detail?.status !== 'ready' ||
-      reviewSave.status === 'stale' ||
-      reviewSave.status === 'conflict'
-    )
-      return;
-    if (
-      !reason.trim() ||
-      reason.length > 2000 ||
-      (kind === 'deferred' && date !== '' && !calendarDate(date))
-    ) {
-      setReviewSave({ status: 'validation' });
-      return;
-    }
-    const ideaId = detail.value.idea.id;
-    const body = JSON.stringify({
-      kind,
-      reason,
-      expectedRevision: detail.value.idea.revision,
-      ...(kind === 'deferred' && date ? { reconsiderationDate: date } : {}),
-    });
-    const intent =
-      reviewSave.status === 'uncertain' &&
-      reviewSave.intent.ideaId === ideaId &&
-      reviewSave.intent.body === body
-        ? reviewSave.intent
-        : { ideaId, body, key: crypto.randomUUID() };
-    void executeReview(intent);
-  }
+  const {
+    authority,
+    page,
+    detail,
+    selectedId,
+    description,
+    origin,
+    save,
+    reviewSave,
+    kind,
+    reason,
+    date,
+    busy,
+    reviewLocked,
+    heading,
+    workspace,
+    ...registry
+  } = useIdeasRegistry(props);
   return (
     <section
       ref={workspace}
@@ -413,7 +45,7 @@ function IdeasRegistry(props: Props) {
     >
       <header>
         <h2 id="ideas-title">{copy('label')}</h2>
-        <button type="button" disabled={busy} onClick={() => void loadList()}>
+        <button type="button" disabled={busy} onClick={registry.refresh}>
           {copy('refresh')}
         </button>
       </header>
@@ -421,11 +53,7 @@ function IdeasRegistry(props: Props) {
       {save.status === 'uncertain' && (
         <div role="alert">
           <p>{copy('uncertain')}</p>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void executeRecord(save.intent)}
-          >
+          <button type="button" disabled={busy} onClick={registry.retryRecord}>
             {copy('retry')}
           </button>
         </div>
@@ -438,7 +66,7 @@ function IdeasRegistry(props: Props) {
         </p>
       )}
       {authority.record && (
-        <form onSubmit={record} noValidate>
+        <form onSubmit={registry.record} noValidate>
           <div className="ideas-fields">
             <label htmlFor="idea-description">
               {copy('description')}
@@ -451,10 +79,9 @@ function IdeasRegistry(props: Props) {
                 aria-describedby={
                   save.status === 'validation' ? 'idea-validation' : undefined
                 }
-                onChange={(event) => {
-                  setDescription(event.target.value);
-                  if (!busy) setSave({ status: 'idle' });
-                }}
+                onChange={(event) =>
+                  registry.changeDescription(event.target.value)
+                }
               />
             </label>
             <label htmlFor="idea-origin">
@@ -468,10 +95,7 @@ function IdeasRegistry(props: Props) {
                 aria-describedby={
                   save.status === 'validation' ? 'idea-validation' : undefined
                 }
-                onChange={(event) => {
-                  setOrigin(event.target.value);
-                  if (!busy) setSave({ status: 'idle' });
-                }}
+                onChange={(event) => registry.changeOrigin(event.target.value)}
               />
             </label>
             <button type="submit" className="ideas-primary" disabled={busy}>
@@ -496,13 +120,11 @@ function IdeasRegistry(props: Props) {
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={(event) => {
-                    rowTrigger.current = event.currentTarget;
-                    openingTrigger.current = event.currentTarget;
-                    void open(idea.id);
-                  }}
+                  onClick={(event) =>
+                    registry.openFromRow(idea.id, event.currentTarget)
+                  }
                 >
-                  {excerpt(idea.description)}
+                  {ideaExcerpt(idea.description)}
                 </button>
                 <span
                   className={`ideas-status ideas-status-${idea.disposition}`}
@@ -513,11 +135,7 @@ function IdeasRegistry(props: Props) {
             ))}
           </ul>
           {page.value.nextCursor && (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void loadList(page.value.nextCursor ?? undefined)}
-            >
+            <button type="button" disabled={busy} onClick={registry.nextPage}>
               {copy('next')}
             </button>
           )}
@@ -529,14 +147,10 @@ function IdeasRegistry(props: Props) {
       )}
       {selectedId && (
         <div className="ideas-actions">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void open(selectedId)}
-          >
+          <button type="button" disabled={busy} onClick={registry.reloadIdea}>
             {copy('reload')}
           </button>
-          <button type="button" disabled={busy} onClick={close}>
+          <button type="button" disabled={busy} onClick={registry.close}>
             {copy('close')}
           </button>
         </div>
@@ -547,11 +161,7 @@ function IdeasRegistry(props: Props) {
       {reviewSave.status === 'uncertain' && (
         <div role="alert">
           <p>{copy('uncertain')}</p>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void executeReview(reviewSave.intent)}
-          >
+          <button type="button" disabled={busy} onClick={registry.retryReview}>
             {copy('retry')}
           </button>
         </div>
@@ -611,19 +221,13 @@ function IdeasRegistry(props: Props) {
             <button
               type="button"
               disabled={busy}
-              onClick={(event) => {
-                openingTrigger.current = event.currentTarget;
-                void open(detail.value.idea.id, {
-                  cursor: detail.value.history.nextCursor ?? undefined,
-                  preserveConfirmation: true,
-                });
-              }}
+              onClick={(event) => registry.moreHistory(event.currentTarget)}
             >
               {copy('moreHistory')}
             </button>
           )}
           {authority.review && (
-            <form onSubmit={review} noValidate>
+            <form onSubmit={registry.review} noValidate>
               <p>{copy('reviewHelp')}</p>
               <div className="ideas-fields">
                 <label htmlFor="idea-disposition">{copy('kind')}</label>
@@ -634,20 +238,10 @@ function IdeasRegistry(props: Props) {
                     { value: 'deferred', label: copy('deferred') },
                     { value: 'rejected', label: copy('rejected') },
                   ]}
-                  disabled={
-                    busy ||
-                    reviewSave.status === 'stale' ||
-                    reviewSave.status === 'conflict'
-                  }
+                  disabled={busy || reviewLocked}
                   onValueChange={(value) => {
-                    if (value === 'deferred' || value === 'rejected') {
-                      setKind(value);
-                      if (
-                        reviewSave.status !== 'stale' &&
-                        reviewSave.status !== 'conflict'
-                      )
-                        setReviewSave({ status: 'idle' });
-                    }
+                    if (value === 'deferred' || value === 'rejected')
+                      registry.changeKind(value);
                   }}
                 />
                 <label htmlFor="idea-reason">
@@ -656,25 +250,16 @@ function IdeasRegistry(props: Props) {
                     id="idea-reason"
                     required
                     value={reason}
-                    disabled={
-                      busy ||
-                      reviewSave.status === 'stale' ||
-                      reviewSave.status === 'conflict'
-                    }
+                    disabled={busy || reviewLocked}
                     aria-invalid={reviewSave.status === 'validation'}
                     aria-describedby={
                       reviewSave.status === 'validation'
                         ? 'idea-review-validation'
                         : undefined
                     }
-                    onChange={(event) => {
-                      setReason(event.target.value);
-                      if (
-                        reviewSave.status !== 'stale' &&
-                        reviewSave.status !== 'conflict'
-                      )
-                        setReviewSave({ status: 'idle' });
-                    }}
+                    onChange={(event) =>
+                      registry.changeReason(event.target.value)
+                    }
                   />
                 </label>
                 {kind === 'deferred' && (
@@ -685,20 +270,11 @@ function IdeasRegistry(props: Props) {
                         id="idea-date"
                         type="date"
                         value={date}
-                        disabled={
-                          busy ||
-                          reviewSave.status === 'stale' ||
-                          reviewSave.status === 'conflict'
-                        }
+                        disabled={busy || reviewLocked}
                         aria-describedby="idea-date-help"
-                        onChange={(event) => {
-                          setDate(event.target.value);
-                          if (
-                            reviewSave.status !== 'stale' &&
-                            reviewSave.status !== 'conflict'
-                          )
-                            setReviewSave({ status: 'idle' });
-                        }}
+                        onChange={(event) =>
+                          registry.changeDate(event.target.value)
+                        }
                       />
                     </label>
                     <small id="idea-date-help">{copy('dateHelp')}</small>
@@ -709,11 +285,7 @@ function IdeasRegistry(props: Props) {
                   className={
                     kind === 'rejected' ? 'ideas-reject' : 'ideas-primary'
                   }
-                  disabled={
-                    busy ||
-                    reviewSave.status === 'stale' ||
-                    reviewSave.status === 'conflict'
-                  }
+                  disabled={busy || reviewLocked}
                 >
                   {copy(
                     reviewSave.status === 'saving' ? 'recording' : 'review',
@@ -725,20 +297,5 @@ function IdeasRegistry(props: Props) {
         </article>
       )}
     </section>
-  );
-}
-function refusal(
-  result: ApiResult<unknown>,
-): 'error' | 'denied' | 'unavailable' {
-  return result.status === 'forbidden' || result.status === 'unauthorized'
-    ? 'denied'
-    : result.status === 'notFound'
-      ? 'unavailable'
-      : 'error';
-}
-function excerpt(description: string): string {
-  return (description.split('\n')[0]?.trim() || description.trim()).slice(
-    0,
-    140,
   );
 }

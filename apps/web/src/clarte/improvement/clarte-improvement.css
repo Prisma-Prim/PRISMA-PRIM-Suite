@@ -1,0 +1,597 @@
+/*
+ * Clarté Improvement (#1545): Ideas and Operational risks. Every rule is
+ * scoped to `.clarte-improvement` inside the Clarté frame; light background
+ * only.
+ */
+.clarte-frame .clarte-improvement {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-improvement:focus {
+  outline: none;
+}
+
+/*
+ * The screen title above names the list: its card heading stays for
+ * assistive technology only and the card keeps its actions on the right.
+ */
+.clarte-frame .clarte-improvement .clarte-card-head {
+  justify-content: flex-end;
+}
+
+.clarte-frame .clarte-improvement .clarte-card-head h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.clarte-frame .clarte-improvement-banner {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--clarte-accent-line);
+  border-radius: var(--clarte-radius-md);
+  color: var(--clarte-accent-text);
+  background: var(--clarte-accent-soft);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-improvement-quiet {
+  margin: 0;
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-improvement-literal {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Notices: a status or refusal stated where the person is looking */
+.clarte-frame .clarte-improvement-notice {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--clarte-success-soft);
+  border-radius: var(--clarte-radius-md);
+  color: var(--clarte-success);
+  background: var(--clarte-success-soft);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-improvement-notice p {
+  margin: 0;
+}
+
+.clarte-frame .clarte-improvement-notice--warning {
+  border-color: var(--clarte-warning-soft);
+  color: var(--clarte-warning);
+  background: var(--clarte-warning-soft);
+}
+
+.clarte-frame .clarte-improvement-notice--danger {
+  border-color: var(--clarte-danger-soft);
+  color: var(--clarte-danger);
+  background: var(--clarte-danger-soft);
+}
+
+/* Tables: the whole row opens its record */
+.clarte-frame .clarte-improvement-table td {
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-improvement-row {
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-improvement-table tbody tr:hover td {
+  background: var(--clarte-surface-muted);
+}
+
+.clarte-frame .clarte-improvement-row-open {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  color: var(--clarte-ink);
+  background: none;
+  font-weight: 700;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-improvement-row-open:hover:not(:disabled),
+.clarte-frame .clarte-improvement-row-open[aria-pressed='true'] {
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-improvement-row-open:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.clarte-frame .clarte-improvement-row-open:focus-visible {
+  border-radius: 4px;
+  outline: none;
+  box-shadow: var(--clarte-focus);
+}
+
+.clarte-frame .clarte-improvement-row-open:disabled {
+  cursor: not-allowed;
+}
+
+.clarte-frame .clarte-improvement-chevron {
+  width: 28px;
+  color: var(--clarte-faint);
+  vertical-align: middle;
+}
+
+.clarte-frame .clarte-improvement-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+.clarte-frame .clarte-improvement-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 12px;
+}
+
+.clarte-frame .clarte-improvement-foot p {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+/* Side panels */
+.clarte-frame .clarte-improvement-panel {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.clarte-frame .clarte-improvement-toolbar,
+.clarte-frame .clarte-improvement-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-improvement-toolbar > .clarte-button {
+  margin-left: auto;
+}
+
+/* The parts of a long panel, shown as the panel's tabs */
+.clarte-frame .clarte-improvement-parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.clarte-frame .clarte-improvement-parts button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--clarte-ink-soft);
+  background: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-improvement-parts button:hover {
+  border-bottom-color: var(--clarte-accent-line);
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-improvement-parts button:focus-visible {
+  border-radius: 6px;
+  outline: none;
+  box-shadow: var(--clarte-focus);
+}
+
+.clarte-frame .clarte-improvement-form .clarte-improvement-actions {
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.clarte-frame .clarte-improvement-record,
+.clarte-frame .clarte-improvement-section,
+.clarte-frame .clarte-improvement-form {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-improvement-record h3,
+.clarte-frame .clarte-improvement-section h3,
+.clarte-frame .clarte-improvement-editor h3 {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-improvement-record h3:focus,
+.clarte-frame .clarte-improvement-section h3:focus {
+  outline: none;
+}
+
+.clarte-frame .clarte-improvement-record h3,
+.clarte-frame .clarte-improvement-section h3 {
+  scroll-margin-top: 12px;
+}
+
+.clarte-frame .clarte-improvement-record > .clarte-improvement-section,
+.clarte-frame .clarte-improvement-panel > .clarte-improvement-section,
+.clarte-frame .clarte-improvement-editor {
+  padding-top: 16px;
+  border-top: 1px solid var(--clarte-line);
+}
+
+.clarte-frame
+  .clarte-improvement-panel
+  > .clarte-improvement-editor:first-child,
+.clarte-frame .clarte-improvement-toolbar + .clarte-improvement-editor {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.clarte-frame .clarte-improvement-lead {
+  margin: 0;
+  color: var(--clarte-ink);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-improvement-meta {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-improvement-byline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.clarte-frame .clarte-improvement-meta code,
+.clarte-frame .clarte-improvement-facts code {
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+
+/* Facts: label above value, two columns when there is room */
+.clarte-frame .clarte-improvement-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  margin: 0;
+}
+
+.clarte-frame .clarte-improvement-facts > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-improvement-facts dt {
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-improvement-facts dd {
+  margin: 0;
+  color: var(--clarte-ink);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-improvement-context {
+  padding: 12px 14px;
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface-sunken);
+}
+
+.clarte-frame .clarte-improvement-status {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+
+.clarte-frame .clarte-improvement-status p {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-improvement-details {
+  padding: 12px 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-improvement-details summary {
+  color: var(--clarte-ink-soft);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-improvement-details[open] summary {
+  margin-bottom: 12px;
+}
+
+/* Timeline: one point per immutable entry */
+.clarte-frame .clarte-improvement-timeline {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-improvement-timeline > li {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 0 0 18px 30px;
+}
+
+.clarte-frame .clarte-improvement-timeline > li::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 0;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--clarte-line);
+  border-radius: 50%;
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-improvement-timeline > li::after {
+  content: '';
+  position: absolute;
+  top: 21px;
+  bottom: 2px;
+  left: 8px;
+  width: 2px;
+  background: var(--clarte-line-soft);
+}
+
+.clarte-frame .clarte-improvement-timeline > li:last-child {
+  padding-bottom: 0;
+}
+
+.clarte-frame .clarte-improvement-timeline > li:last-child::after {
+  display: none;
+}
+
+.clarte-frame .clarte-improvement-timeline p {
+  margin: 0;
+}
+
+.clarte-frame .clarte-improvement-entry-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.clarte-frame .clarte-improvement-entry-head span {
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-improvement-timeline .clarte-improvement-facts {
+  padding: 10px 12px;
+  border-radius: var(--clarte-radius-sm);
+  background: var(--clarte-surface-sunken);
+  font-size: 13px;
+}
+
+/* A log statement: the original beside its current text */
+.clarte-frame .clarte-improvement-statement {
+  padding: 16px;
+  border: 1px solid var(--clarte-accent-line);
+  border-radius: var(--clarte-radius-lg);
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-improvement-panel > .clarte-improvement-statement {
+  border-top: 1px solid var(--clarte-accent-line);
+}
+
+.clarte-frame .clarte-improvement-compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.clarte-frame .clarte-improvement-compare > div {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface-sunken);
+}
+
+.clarte-frame .clarte-improvement-compare h4 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-improvement-compare p,
+.clarte-frame .clarte-improvement-compare .clarte-improvement-facts {
+  margin: 0;
+}
+
+.clarte-frame .clarte-improvement-compare .clarte-improvement-facts {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Forms */
+.clarte-frame .clarte-improvement-form textarea.clarte-input {
+  resize: vertical;
+}
+
+.clarte-frame .clarte-improvement-date {
+  max-width: 220px;
+}
+
+.clarte-frame .clarte-improvement-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.clarte-frame .clarte-improvement-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.clarte-frame .clarte-improvement-choice legend {
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 0;
+  color: var(--clarte-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-improvement-choice label {
+  position: relative;
+  display: inline-flex;
+}
+
+.clarte-frame .clarte-improvement-choice input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-improvement-choice span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: 999px;
+  color: var(--clarte-ink-soft);
+  background: var(--clarte-surface);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-improvement-choice input:checked + span {
+  border-color: var(--clarte-accent-line);
+  color: var(--clarte-accent-text);
+  background: var(--clarte-accent-soft);
+}
+
+.clarte-frame .clarte-improvement-choice input:focus-visible + span {
+  box-shadow: var(--clarte-focus);
+}
+
+.clarte-frame .clarte-improvement-choice:disabled span {
+  opacity: 0.55;
+}
+
+@media (max-width: 768px) {
+  /* Tables become one card per row */
+  .clarte-frame .clarte-improvement-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .clarte-frame .clarte-improvement-table,
+  .clarte-frame .clarte-improvement-table tbody,
+  .clarte-frame .clarte-improvement-table tr,
+  .clarte-frame .clarte-improvement-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .clarte-frame .clarte-improvement-table tr {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--clarte-line);
+  }
+
+  .clarte-frame .clarte-improvement-table.clarte-table td {
+    display: grid;
+    grid-template-columns: minmax(6.5rem, 36%) minmax(0, 1fr);
+    gap: 2px 12px;
+    padding: 4px 0;
+    border: 0;
+  }
+
+  .clarte-frame .clarte-improvement-table td::before {
+    content: attr(data-label);
+    color: var(--clarte-muted);
+    font-size: 12.5px;
+    text-align: left;
+  }
+
+  /* Each value sits at the right of its label */
+  .clarte-frame .clarte-improvement-table.clarte-table td:not(:first-child) {
+    text-align: right;
+  }
+
+  .clarte-frame .clarte-improvement-table td:first-child {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clarte-frame .clarte-improvement-table td:first-child::before {
+    display: none;
+  }
+
+  .clarte-frame .clarte-improvement-table td > .clarte-badge {
+    justify-self: end;
+    white-space: normal;
+  }
+
+  .clarte-frame
+    .clarte-improvement-table.clarte-table
+    .clarte-improvement-chevron {
+    display: none;
+  }
+
+  .clarte-frame .clarte-improvement-row-open {
+    min-height: var(--clarte-touch-target);
+  }
+
+  .clarte-frame .clarte-improvement-facts,
+  .clarte-frame .clarte-improvement-pair,
+  .clarte-frame .clarte-improvement-compare {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clarte-frame .clarte-improvement-choice span {
+    min-height: var(--clarte-touch-target);
+  }
+}

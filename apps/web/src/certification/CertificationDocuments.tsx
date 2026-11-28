@@ -479,25 +479,30 @@ export function useCertificationDocuments({
       </section>
     );
   }
+  /** The generated register's download for the read Case, if one is open. */
+  function registerPdfDownload(busy: boolean): RegisterPdfDownload | undefined {
+    if (!view) return undefined;
+    const caseId = view.caseDetail.id;
+    return {
+      status: registerPdf.status,
+      disabled: busy,
+      onDownload: () => void downloadRegisterPdf(caseId),
+    };
+  }
   function renderRegister(busy: boolean) {
-    if (!view) return null;
-    const caseView = view;
+    const download = registerPdfDownload(busy);
+    if (!download) return null;
     return (
       <section aria-labelledby={`${prefix}-register-pdf-title`}>
         <h5 id={`${prefix}-register-pdf-title`}>{copy('registerPdfTitle')}</h5>
-        <RegisterPdfAction
-          download={{
-            status: registerPdf.status,
-            disabled: busy,
-            onDownload: () => void downloadRegisterPdf(caseView.caseDetail.id),
-          }}
-        />
+        <RegisterPdfAction download={download} />
       </section>
     );
   }
   return {
     render,
     renderRegister,
+    registerPdfDownload,
     registerDownload,
     reset: () => {
       resetAttachDraft();
