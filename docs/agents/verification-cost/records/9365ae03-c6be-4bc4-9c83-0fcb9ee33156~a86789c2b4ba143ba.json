@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "9365ae03-c6be-4bc4-9c83-0fcb9ee33156:a86789c2b4ba143ba",
+  "date": "2026-11-28",
+  "runType": "pull-request-proof",
+  "issue": 1542,
+  "pullRequest": 1574,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-28T10:13:55.746Z",
+    "end": "2026-11-28T11:34:25.268Z",
+    "durationSeconds": 4830
+  },
+  "tokens": {
+    "input": 640,
+    "output": 253497,
+    "cacheCreation": 619847,
+    "cacheRead": 132820598
+  },
+  "models": [
+    {
+      "model": "claude-opus-5-5",
+      "tokens": {
+        "input": 640,
+        "output": 253497,
+        "cacheCreation": 619847,
+        "cacheRead": 132820598
+      },
+      "estimatedPriceUsd": 34.735855
+    }
+  ],
+  "price": {
+    "estimatedUsd": 34.735855,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Clarte Tasks slice: views, Task side panel, grouped planning, internal Tasks; local journey at 1440 and 390 px"
+  }
+}
