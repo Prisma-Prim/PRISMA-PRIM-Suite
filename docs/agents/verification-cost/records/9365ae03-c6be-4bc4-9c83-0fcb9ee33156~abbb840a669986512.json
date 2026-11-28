@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "9365ae03-c6be-4bc4-9c83-0fcb9ee33156:abbb840a669986512",
+  "date": "2026-11-28",
+  "runType": "pull-request-proof",
+  "issue": 1539,
+  "pullRequest": 1590,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-28T13:01:33.249Z",
+    "end": "2026-11-28T13:29:50.759Z",
+    "durationSeconds": 1698
+  },
+  "tokens": {
+    "input": 172,
+    "output": 28649,
+    "cacheCreation": 148514,
+    "cacheRead": 12043126
+  },
+  "models": [
+    {
+      "model": "claude-sonnet-5-5",
+      "tokens": {
+        "input": 172,
+        "output": 28649,
+        "cacheCreation": 148514,
+        "cacheRead": 12043126
+      },
+      "estimatedPriceUsd": 1.862432
+    }
+  ],
+  "price": {
+    "estimatedUsd": 1.862432,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Shepherded a Codex-written slice; caught Clarté mission-space mounting regression after merge of main"
+  }
+}
