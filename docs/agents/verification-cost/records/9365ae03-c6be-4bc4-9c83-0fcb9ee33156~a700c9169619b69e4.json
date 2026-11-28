@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "9365ae03-c6be-4bc4-9c83-0fcb9ee33156:a700c9169619b69e4",
+  "date": "2026-11-28",
+  "runType": "pull-request-proof",
+  "issue": 1544,
+  "pullRequest": 1554,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-28T01:14:21.991Z",
+    "end": "2026-11-28T02:37:17.555Z",
+    "durationSeconds": 4976
+  },
+  "tokens": {
+    "input": 582,
+    "output": 283993,
+    "cacheCreation": 701339,
+    "cacheRead": 131603483
+  },
+  "models": [
+    {
+      "model": "claude-opus-5-5",
+      "tokens": {
+        "input": 582,
+        "output": 283993,
+        "cacheCreation": 701339,
+        "cacheRead": 131603483
+      },
+      "estimatedPriceUsd": 35.50958
+    }
+  ],
+  "price": {
+    "estimatedUsd": 35.50958,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 1,
+      "P2": 1,
+      "P3": 0
+    },
+    "notes": "Clarte Finance slice: App-level tests in Clarte, intercepted journey at 1440 and 390 px, full web suite once"
+  }
+}
