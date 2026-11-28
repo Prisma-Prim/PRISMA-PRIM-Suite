@@ -164,7 +164,14 @@ export function useCertificationDossier({
     );
   }
 
-  function render(busy: boolean) {
+  /**
+   * The Dossier Consistency Check, then the exchange register; the Clarté
+   * Case page shows each as its own register.
+   */
+  function render(
+    busy: boolean,
+    part: 'consistency' | 'exchanges' | 'all' = 'all',
+  ) {
     if (!view) return null;
     const caseView = view;
     /** Who may record or resolve Discrepancies on the read Case. */
@@ -337,8 +344,8 @@ export function useCertificationDossier({
     }
     return (
       <>
-        {consistencySection(caseView)}
-        {exchangesSection(caseView)}
+        {part !== 'exchanges' && consistencySection(caseView)}
+        {part !== 'consistency' && exchangesSection(caseView)}
       </>
     );
   }

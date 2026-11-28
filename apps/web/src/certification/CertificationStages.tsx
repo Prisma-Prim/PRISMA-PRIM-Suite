@@ -299,15 +299,54 @@ export function useCertificationStages({
     busy: boolean,
     renderFindings: (stage: AuditStage) => ReactNode,
   ) {
-    const current = view.caseDetail;
     const titleId = `${prefix}-${stage}-title`;
-    const plan = stagePlanOf(current, stage);
     return (
       <section aria-labelledby={titleId}>
         <h5 id={titleId}>
           {copy(stage === 'stage_1' ? 'stage1Title' : 'stage2Title')}
         </h5>
         <h6>{copy('stagePlanTitle')}</h6>
+        {stagePlanPart(view, stage, busy)}
+        <h6>{copy('stageReportTitle')}</h6>
+        {stageReportPart(view, stage, busy)}
+        {stagePlanOf(view.caseDetail, stage) && renderFindings(stage)}
+      </section>
+    );
+  }
+
+  /**
+   * One Stage as the Clarté Case page shows it: the plan and the report each
+   * in its own named section, then the Stage's Findings.
+   */
+  function stageParts(
+    view: StageCase,
+    stage: AuditStage,
+    busy: boolean,
+    renderFindings: (stage: AuditStage) => ReactNode,
+  ) {
+    const planTitleId = `${prefix}-${stage}-plan-title`;
+    const reportTitleId = `${prefix}-${stage}-report-title`;
+    return (
+      <>
+        <section aria-labelledby={planTitleId}>
+          <h5 id={planTitleId}>{copy('stagePlanTitle')}</h5>
+          {stagePlanPart(view, stage, busy)}
+        </section>
+        <section aria-labelledby={reportTitleId}>
+          <h5 id={reportTitleId}>{copy('stageReportTitle')}</h5>
+          {stageReportPart(view, stage, busy)}
+        </section>
+        {stagePlanOf(view.caseDetail, stage) && renderFindings(stage)}
+      </>
+    );
+  }
+
+  /** The latest plan, its sendings, then its form or why it waits. */
+  function stagePlanPart(view: StageCase, stage: AuditStage, busy: boolean) {
+    const current = view.caseDetail;
+    const plan = stagePlanOf(current, stage);
+    return (
+      <>
         {plan ? (
           <>
             <VersionAttribution version={plan} />
@@ -323,12 +362,18 @@ export function useCertificationStages({
         )}
         {feedbackMessage(planKind(stage), stageFeedback[planKind(stage)])}
         {stagePlanStep(view, stage, busy)}
-        <h6>{copy('stageReportTitle')}</h6>
+      </>
+    );
+  }
+
+  /** The latest report, its sendings, then its form or why it waits. */
+  function stageReportPart(view: StageCase, stage: AuditStage, busy: boolean) {
+    return (
+      <>
         {stageReportView(view, stage)}
         {feedbackMessage(reportKind(stage), stageFeedback[reportKind(stage)])}
         {stageReportStep(view, stage, busy)}
-        {plan && renderFindings(stage)}
-      </section>
+      </>
     );
   }
 
@@ -631,13 +676,22 @@ export function useCertificationStages({
     const { caseDetail } = view;
     return (
       <>
-        {(caseDetail.stage1Plan !== null ||
-          approvedTeam(caseDetail) !== undefined) &&
+        {stageShown(caseDetail, 'stage_1') &&
           stageSection(view, 'stage_1', busy, renderFindings)}
-        {caseDetail.stage1Plan !== null &&
+        {stageShown(caseDetail, 'stage_2') &&
           stageSection(view, 'stage_2', busy, renderFindings)}
       </>
     );
+  }
+
+  /** One Stage for the Clarté Case page, or nothing before it is shown. */
+  function renderStage(
+    busy: boolean,
+    stage: AuditStage,
+    renderFindings: (stage: AuditStage) => ReactNode,
+  ) {
+    if (!view || !stageShown(view.caseDetail, stage)) return null;
+    return stageParts(view, stage, busy, renderFindings);
   }
 
   return {
@@ -650,6 +704,7 @@ export function useCertificationStages({
     reset,
     clearRefusals,
     render,
+    renderStage,
   };
 }
 
@@ -667,6 +722,16 @@ function stagePath(
   record: 'plan' | 'report',
 ): string {
   return `/certification-cases/${encodeURIComponent(caseId)}/stages/${stage === 'stage_1' ? 'stage-1' : 'stage-2'}/${record}`;
+}
+
+/**
+ * Whether a Stage is shown yet: Stage 1 once a team is approved or its plan
+ * exists, Stage 2 once Stage 1 is planned.
+ */
+function stageShown(caseDetail: CaseDetail, stage: AuditStage): boolean {
+  return stage === 'stage_1'
+    ? caseDetail.stage1Plan !== null || approvedTeam(caseDetail) !== undefined
+    : caseDetail.stage1Plan !== null;
 }
 
 function stagePlanOf(current: CaseDetail, stage: AuditStage) {
