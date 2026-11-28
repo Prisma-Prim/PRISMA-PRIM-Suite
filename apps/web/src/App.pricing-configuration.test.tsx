@@ -1,6 +1,7 @@
 import { withoutCompanyGrants } from './access/company-grants.test-fixture';
-import { render, screen, within } from './test/render-with-interface-locale';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { screen, within } from './test/render-with-interface-locale';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { appInterfaces, renderInInterface } from './test/app-interface';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
@@ -127,68 +128,91 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-it('offers the configuration screen to a configuration reader', async () => {
-  const paths = serve(actor);
-  window.history.replaceState(null, '', '/#pricing');
-  render(<App identity={deterministicBrowserIdentity()} />);
-  const navigation = await screen.findByRole('navigation', {
-    name: 'Primary navigation',
+// Clarté lists the sections in the Settings console, not the left menu.
+function sectionNavigation(appInterface: (typeof appInterfaces)[number]) {
+  return screen.findByRole('navigation', {
+    name:
+      appInterface === 'clarte' ? 'Settings sections' : 'Primary navigation',
   });
-  expect(
-    await within(navigation).findByRole('link', {
-      name: 'Pricing Configuration',
-    }),
-  ).toHaveAttribute('aria-current', 'page');
-  const prisme = screen.getByRole('region', { name: 'Pricing Configuration' });
-  expect(
-    await within(prisme).findByText(
-      pricingConfigurationCopy.illustrativeMarker,
-    ),
-  ).toBeVisible();
-  expect(
-    await within(prisme).findByText(pricingConfigurationCopy.noCurrent),
-  ).toBeVisible();
-  expect(paths).toContain('/api/pricing-configuration/rule-scope');
-  // The Tariff panel sits beside the Pricing Rule screen, separate from it.
-  const tariffs = within(prisme.parentElement ?? document.body).getByRole(
-    'region',
-    { name: tariffVersionCopy.title },
-  );
-  expect(prisme).not.toContainElement(tariffs);
-  expect(
-    await within(tariffs).findByText(tariffVersionCopy.illustrativeMarker),
-  ).toBeVisible();
-  selectOption(
-    await within(tariffs).findByLabelText(tariffVersionCopy.offering),
-    OFFERING_ID,
-  );
-  expect(
-    await within(tariffs).findByText(tariffVersionCopy.noCurrent),
-  ).toBeVisible();
-  expect(paths).toContain(
-    `/api/pricing-configuration/offerings/${OFFERING_ID}/tariff-scope`,
-  );
-});
+}
 
-it('offers no configuration screen to a Catalogue-only member', async () => {
-  const paths = serve(catalogueOnly);
-  window.history.replaceState(null, '', '/#pricing');
-  render(<App identity={deterministicBrowserIdentity()} />);
-  const navigation = await screen.findByRole('navigation', {
-    name: 'Primary navigation',
+describe.each(appInterfaces)('Pricing in the %s interface', (appInterface) => {
+  it('offers the configuration screen to a configuration reader', async () => {
+    const paths = serve(actor);
+    window.history.replaceState(null, '', '/#pricing');
+    renderInInterface(
+      appInterface,
+      <App identity={deterministicBrowserIdentity()} />,
+    );
+    const navigation = await sectionNavigation(appInterface);
+    expect(
+      await within(navigation).findByRole('link', {
+        name: 'Pricing Configuration',
+      }),
+    ).toHaveAttribute('aria-current', 'page');
+    const prisme = screen.getByRole('region', {
+      name: 'Pricing Configuration',
+    });
+    expect(
+      await within(prisme).findByText(
+        pricingConfigurationCopy.illustrativeMarker,
+      ),
+    ).toBeVisible();
+    expect(
+      await within(prisme).findByText(pricingConfigurationCopy.noCurrent),
+    ).toBeVisible();
+    expect(paths).toContain('/api/pricing-configuration/rule-scope');
+    // The Tariff panel sits beside the Pricing Rule screen, separate from it;
+    // Clarté shows both as cards of the Pricing section.
+    const tariffs = within(prisme.parentElement ?? document.body).getByRole(
+      'region',
+      { name: tariffVersionCopy.title },
+    );
+    if (appInterface === 'current')
+      expect(prisme).not.toContainElement(tariffs);
+    else expect(prisme).toContainElement(tariffs);
+    expect(
+      await within(tariffs).findByText(tariffVersionCopy.illustrativeMarker),
+    ).toBeVisible();
+    selectOption(
+      await within(tariffs).findByLabelText(tariffVersionCopy.offering),
+      OFFERING_ID,
+    );
+    expect(
+      await within(tariffs).findByText(tariffVersionCopy.noCurrent),
+    ).toBeVisible();
+    expect(paths).toContain(
+      `/api/pricing-configuration/offerings/${OFFERING_ID}/tariff-scope`,
+    );
   });
-  expect(
-    await within(navigation).findByRole('link', { name: 'Service Catalogue' }),
-  ).toBeInTheDocument();
-  expect(
-    within(navigation).queryByRole('link', { name: 'Pricing Configuration' }),
-  ).not.toBeInTheDocument();
-  expect(
-    screen.queryByRole('region', { name: 'Pricing Configuration' }),
-  ).not.toBeInTheDocument();
-  expect(paths).not.toContain('/api/pricing-configuration/rule-scope');
-  expect(
-    screen.queryByRole('region', { name: tariffVersionCopy.title }),
-  ).not.toBeInTheDocument();
-  expect(paths.filter((path) => path.includes('/tariff-'))).toEqual([]);
+
+  it('offers no configuration screen to a Catalogue-only member', async () => {
+    const paths = serve(catalogueOnly);
+    window.history.replaceState(
+      null,
+      '',
+      appInterface === 'clarte' ? '/#settings' : '/#pricing',
+    );
+    renderInInterface(
+      appInterface,
+      <App identity={deterministicBrowserIdentity()} />,
+    );
+    const navigation = await sectionNavigation(appInterface);
+    expect(
+      await within(navigation).findByRole('link', {
+        name: 'Service Catalogue',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(navigation).queryByRole('link', { name: 'Pricing Configuration' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Pricing Configuration' }),
+    ).not.toBeInTheDocument();
+    expect(paths).not.toContain('/api/pricing-configuration/rule-scope');
+    expect(
+      screen.queryByRole('region', { name: tariffVersionCopy.title }),
+    ).not.toBeInTheDocument();
+    expect(paths.filter((path) => path.includes('/tariff-'))).toEqual([]);
+  });
 });

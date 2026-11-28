@@ -349,6 +349,7 @@ describe('Settings console sections', () => {
       'Companies',
       'Team & access',
       'Invitations',
+      'Procedure deadlines',
       'Activity Log',
     ]);
     expect(
@@ -364,6 +365,7 @@ describe('Settings console sections', () => {
       'Companies',
       'Team & access',
       'Invitations',
+      'Procedure deadlines',
       'Activity Log',
     ]);
     expect(

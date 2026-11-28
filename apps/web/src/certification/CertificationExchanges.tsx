@@ -1273,7 +1273,7 @@ function stateLabel(state: DeadlineState | null): ExchangeMessageKey {
   return unexpected(state);
 }
 
-function deadlineLabel(kind: DeadlineKind): ExchangeMessageKey {
+export function deadlineLabel(kind: DeadlineKind): ExchangeMessageKey {
   switch (kind) {
     case 'stage_plan_sent':
       return 'deadlineStagePlan';

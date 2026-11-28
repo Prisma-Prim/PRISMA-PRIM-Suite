@@ -1,5 +1,4 @@
-import { useCallback, useLayoutEffect, useState, type FormEvent } from 'react';
-import { conflictCode } from '../api/authenticated-api-client';
+import { useState, type FormEvent } from 'react';
 import {
   useScopedOperation,
   type ScopedOperation,
@@ -17,18 +16,8 @@ import {
 } from './certification-consistency';
 import { useConsistencyCopy } from './certification-consistency.copy';
 import { ConsistencyRegion, ruleLabel } from './CertificationConsistency';
-import {
-  deadlinesFromDraft,
-  draftFromDeadlines,
-  parseDeadlineHistory,
-  parseDeadlineSet,
-  type DeadlineDraft,
-} from './certification-exchanges';
-import {
-  DeadlineAdministration,
-  type DeadlineAdministrationView,
-  type DeadlineFeedback,
-} from './CertificationExchanges';
+import { DeadlineAdministration } from './CertificationExchanges';
+import { useDeadlineAdministration } from './use-deadline-administration';
 
 import {
   useCertificationExchangeRegister,
@@ -83,9 +72,6 @@ export function useCertificationDossier({
   const administersDeadlines = actor.workspacePermissions.includes(
     'company.assignment.manage',
   );
-  const deadlineOperation = useScopedOperation(
-    JSON.stringify([scope, administersDeadlines]),
-  );
   const exchangePageOperation = useScopedOperation(scope);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualDraft, setManualDraft] = useState<ManualDraft>(emptyManualDraft);
@@ -95,24 +81,15 @@ export function useCertificationDossier({
     useState<ResolutionDraft | null>(null);
   const [resolutionFeedback, setResolutionFeedback] = useState<Feedback>(IDLE);
   /** The Company's procedure deadline configuration, for its administrator. */
-  const [deadlineView, setDeadlineView] = useState<DeadlineAdministrationView>({
-    status: 'closed',
+  const deadlines = useDeadlineAdministration({
+    scope,
+    enabled: administersDeadlines,
+    query: (slot, signal, path, post) =>
+      query(slot, signal, path, post, 'administration'),
+    onSaved: () => {
+      if (view) reload(view.caseDetail.id);
+    },
   });
-  const [deadlineDraft, setDeadlineDraft] = useState<DeadlineDraft>(() =>
-    draftFromDeadlines(null),
-  );
-  const [deadlineFeedback, setDeadlineFeedback] = useState<DeadlineFeedback>({
-    status: 'idle',
-  });
-  const closeDeadlines = useCallback(() => {
-    deadlineOperation.retire();
-    setDeadlineView({ status: 'closed' });
-    setDeadlineDraft(draftFromDeadlines(null));
-    setDeadlineFeedback({ status: 'idle' });
-  }, [deadlineOperation]);
-  useLayoutEffect(() => {
-    if (!administersDeadlines) closeDeadlines();
-  }, [administersDeadlines, closeDeadlines]);
   const consistencyCopy = useConsistencyCopy();
   const exchangeRegister = useCertificationExchangeRegister({
     view,
@@ -328,110 +305,6 @@ export function useCertificationDossier({
       );
     }
 
-    /** Reads the Company's procedure deadline set and its history. */
-    async function loadDeadlines() {
-      const signal = deadlineOperation.begin();
-      if (!signal) return;
-      setDeadlineView({ status: 'loading' });
-      setDeadlineFeedback({ status: 'idle' });
-      try {
-        const result = await query(
-          deadlineOperation,
-          signal,
-          '/certification-procedure-deadlines',
-          undefined,
-          'administration',
-        );
-        if (signal.aborted) return;
-        if (result.status !== 'ok') {
-          setDeadlineView({
-            status:
-              result.status === 'forbidden' || result.status === 'unauthorized'
-                ? 'denied'
-                : 'unavailable',
-          });
-          return;
-        }
-        const history = parseDeadlineHistory(result.value);
-        setDeadlineView({ status: 'ready', history });
-        setDeadlineDraft(draftFromDeadlines(history.current));
-      } catch {
-        if (!signal.aborted) setDeadlineView({ status: 'unavailable' });
-      }
-    }
-
-    /**
-     * Saves the next version of the deadline set. An unanswered request is
-     * retried with the same key; the Case then reads the new states.
-     */
-    async function saveDeadlines(retry: boolean) {
-      if (busy || deadlineView.status !== 'ready') return;
-      const check = deadlinesFromDraft(
-        deadlineDraft,
-        deadlineView.history.current?.version ?? 0,
-      );
-      if (check.status !== 'valid') {
-        setDeadlineFeedback({ status: 'invalid' });
-        return;
-      }
-      const body = JSON.stringify(check.body);
-      // Only an unanswered save of the same values is sent again unchanged.
-      const key =
-        retry &&
-        deadlineFeedback.status === 'uncertain' &&
-        deadlineFeedback.body === body
-          ? deadlineFeedback.key
-          : crypto.randomUUID();
-      const signal = deadlineOperation.begin();
-      if (!signal) return;
-      setDeadlineFeedback({ status: 'saving', key, body });
-      try {
-        const result = await query(
-          deadlineOperation,
-          signal,
-          '/certification-procedure-deadlines',
-          { body, key },
-          'administration',
-        );
-        if (signal.aborted) return;
-        if (result.status === 'ok') {
-          const saved = parseDeadlineSet(result.value);
-          setDeadlineFeedback({ status: 'saved', version: saved.version });
-          const history = deadlineView.history;
-          setDeadlineView({
-            status: 'ready',
-            history: {
-              current: saved,
-              history: [
-                saved,
-                ...history.history.filter(
-                  (entry) => entry.version !== saved.version,
-                ),
-              ],
-            },
-          });
-          reload(caseView.caseDetail.id);
-          return;
-        }
-        if (result.status === 'forbidden' || result.status === 'unauthorized') {
-          setDeadlineView({ status: 'denied' });
-          setDeadlineFeedback({ status: 'idle' });
-        } else if (result.status === 'conflict')
-          setDeadlineFeedback({
-            status:
-              conflictCode(result) === 'CERTIFICATION_DEADLINES_UNCHANGED'
-                ? 'unchanged'
-                : 'stale',
-          });
-        else if (result.status === 'validation')
-          setDeadlineFeedback({ status: 'invalid' });
-        else setDeadlineFeedback({ status: 'uncertain', key, body });
-      } catch {
-        if (!signal.aborted)
-          setDeadlineFeedback({ status: 'uncertain', key, body });
-      }
-    }
-
     function exchangesSection(view: CaseView) {
       const roles = consistencyRoles(view);
       return exchangeRegister.render({
@@ -445,27 +318,19 @@ export function useCertificationDossier({
         administration: administersDeadlines ? (
           <DeadlineAdministration
             prefix={prefix}
-            view={deadlineView}
-            feedback={deadlineFeedback}
-            draft={deadlineDraft}
+            view={deadlines.view}
+            feedback={deadlines.feedback}
+            draft={deadlines.draft}
             busy={busy}
-            onOpen={() => void loadDeadlines()}
-            onClose={closeDeadlines}
-            onReload={() => void loadDeadlines()}
-            onDraft={(draft) => {
-              setDeadlineDraft(draft);
-              if (
-                deadlineFeedback.status === 'invalid' ||
-                deadlineFeedback.status === 'unchanged' ||
-                deadlineFeedback.status === 'saved'
-              )
-                setDeadlineFeedback({ status: 'idle' });
-            }}
+            onOpen={() => void deadlines.load()}
+            onClose={deadlines.close}
+            onReload={() => void deadlines.load()}
+            onDraft={deadlines.editDraft}
             onSubmit={(event) => {
               event.preventDefault();
-              void saveDeadlines(false);
+              void deadlines.save({ retry: false, busy });
             }}
-            onRetry={() => void saveDeadlines(true)}
+            onRetry={() => void deadlines.save({ retry: true, busy })}
           />
         ) : null,
       });
@@ -500,11 +365,11 @@ export function useCertificationDossier({
     retirePage: exchangePageOperation.retire,
     retireAccess: (except: ScopedOperation) => {
       if (exchangePageOperation !== except) exchangePageOperation.retire();
-      closeDeadlines();
+      deadlines.close();
     },
     saving:
       exchangeRegister.saving ||
-      deadlineFeedback.status === 'saving' ||
+      deadlines.feedback.status === 'saving' ||
       feedback.some((item) => item.status === 'saving'),
     saved:
       exchangeRegister.saved ||

@@ -55,6 +55,8 @@ To add or migrate a Settings section, change one row of `settingsSections`:
 
 Language and region and the console's home are Clarté-only screens from `useSettingsConsoleScreens`.
 
+The configuration sections of [#1547](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1547) live in `settings-config/`. Sales stages, Project templates (with the Mission Plans) and Procedure deadlines sit inside Requests, Projects and a Certification Case in the current interface; in Clarté they are sections App pushes only while the preference is `clarte`, with `content: null`, the same gates as their current place, `mountWhenSelected` and `retainAfterSelection`, and Projects drops its configuration there. Each screen reuses its owner's hook (`useSalesStageSettings`, `useServiceCatalogue`, `usePricingRules`, `useTariffVersions`, `useCompanyModel`, `useTemplateConfiguration`, `useDeadlineAdministration`), so both interfaces send the same commands.
+
 ## Render App in Clarté in a test
 
 `src/test/app-interface.tsx` renders App through the real preference provider:

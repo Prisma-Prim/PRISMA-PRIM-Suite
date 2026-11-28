@@ -1,12 +1,15 @@
 import {
   Building2,
+  Columns3,
   FileSignature,
   FileText,
   History,
+  Hourglass,
   Languages,
   ListChecks,
   MailPlus,
   Percent,
+  Route,
   UsersRound,
   type LucideIcon,
 } from 'lucide-react';
@@ -30,6 +33,7 @@ export const settingsGroups: readonly SettingsGroup[] = [
   'you',
   'organisation',
   'commercial',
+  'delivery',
   'traceability',
 ];
 
@@ -64,28 +68,46 @@ export const settingsSections: readonly SettingsSection[] = [
     screen: 'clarte',
   },
   {
+    destination: 'sales-stages',
+    group: 'commercial',
+    icon: Route,
+    screen: 'clarte',
+  },
+  {
     destination: 'catalogue',
     group: 'commercial',
     icon: ListChecks,
-    screen: 'current',
+    screen: 'clarte',
   },
   {
     destination: 'pricing',
     group: 'commercial',
     icon: Percent,
-    screen: 'current',
+    screen: 'clarte',
   },
   {
     destination: 'offer-models',
     group: 'commercial',
     icon: FileText,
-    screen: 'current',
+    screen: 'clarte',
   },
   {
     destination: 'contract-models',
     group: 'commercial',
     icon: FileSignature,
-    screen: 'current',
+    screen: 'clarte',
+  },
+  {
+    destination: 'project-templates',
+    group: 'delivery',
+    icon: Columns3,
+    screen: 'clarte',
+  },
+  {
+    destination: 'procedure-deadlines',
+    group: 'delivery',
+    icon: Hourglass,
+    screen: 'clarte',
   },
   {
     destination: 'activity',

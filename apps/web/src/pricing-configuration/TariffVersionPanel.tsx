@@ -25,12 +25,12 @@ import {
 import './tariff-versions.css';
 
 // The closed illustrative currency set the API accepts.
-const currencies = ['MDL', 'EUR', 'RON', 'USD'] as const;
+export const currencies = ['MDL', 'EUR', 'RON', 'USD'] as const;
 type Currency = (typeof currencies)[number];
 
 type TariffVersionState = keyof typeof compatibilityCopy.stateLabels;
 
-type TariffVersion = {
+export type TariffVersion = {
   id: string;
   offeringId: string;
   versionNumber: number;
@@ -197,19 +197,22 @@ const emptyDraft: Draft = {
   effectiveTo: '',
 };
 
-export function TariffVersionPanel({
-  actor,
-  identity,
-  onCompanyContextRejected,
-  onActorRevalidated = () => undefined,
-  onWorkspaceAccessRejected = () => undefined,
-}: {
+export type TariffPanelProps = {
   actor: ActorContext;
   identity: BrowserIdentity;
   onCompanyContextRejected: (companyContextId: string) => void;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
-}) {
+};
+
+/** The screen's reads, draft and publication, shared by both interfaces. */
+export function useTariffVersions({
+  actor,
+  identity,
+  onCompanyContextRejected,
+  onActorRevalidated = () => undefined,
+  onWorkspaceAccessRejected = () => undefined,
+}: TariffPanelProps) {
   const lifetime = useRequestLifetime(
     identity,
     JSON.stringify([
@@ -224,7 +227,6 @@ export function TariffVersionPanel({
       grantOf(actor.activeCompany, 'company_pricing_user') ?? null,
     ]),
   );
-  const copy = useTariffVersionCopy();
   const [denied, setDenied] = useState(false);
   const [offerings, setOfferings] = useState<OfferingsState>({
     kind: 'loading',
@@ -237,7 +239,6 @@ export function TariffVersionPanel({
   // A publication whose commit is unknown. Until a definite answer, only its
   // explicit retry is sent, unchanged, and no other publication replaces it.
   const [unresolved, setUnresolved] = useState<Publication>();
-  const fieldId = useId();
   const offeringsRequest = useScopedOperationGroup(
     `${lifetime}:offeringsRequest`,
   );
@@ -725,6 +726,53 @@ export function TariffVersionPanel({
     }
   }
 
+  return {
+    denied,
+    offerings,
+    offeringId,
+    view,
+    draft,
+    setDraft,
+    feedback,
+    pending,
+    unresolved,
+    companyId,
+    companyName,
+    canPublish,
+    zone,
+    loadOfferings,
+    chooseOffering,
+    reload,
+    submit,
+    send,
+    loadOlder,
+  };
+}
+
+export function TariffVersionPanel(props: TariffPanelProps) {
+  const fieldId = useId();
+  const {
+    denied,
+    offerings,
+    offeringId,
+    view,
+    draft,
+    setDraft,
+    feedback,
+    pending,
+    unresolved,
+    companyId,
+    companyName,
+    canPublish,
+    zone,
+    loadOfferings,
+    chooseOffering,
+    reload,
+    submit,
+    send,
+    loadOlder,
+  } = useTariffVersions(props);
+  const copy = useTariffVersionCopy();
   if (denied)
     return (
       <section className="tariff-versions">
@@ -1165,12 +1213,12 @@ function VersionSummary({
   );
 }
 
-function Instant({ value }: { value: string }) {
+export function Instant({ value }: { value: string }) {
   const { formatDateTime } = useInterfaceLocale();
   return <time dateTime={value}>{formatDateTime(value)}</time>;
 }
 
-function FeedbackMessage({ feedback }: { feedback: Feedback }) {
+export function FeedbackMessage({ feedback }: { feedback: Feedback }) {
   const copy = useTariffVersionCopy();
   switch (feedback.kind) {
     case 'published':
@@ -1259,7 +1307,7 @@ function readsAgree({
   );
 }
 
-function readCurrency(value: string): Draft['currency'] {
+export function readCurrency(value: string): Draft['currency'] {
   return currencies.find((currency) => currency === value) ?? '';
 }
 

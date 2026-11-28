@@ -9,7 +9,11 @@ import {
 import { MissionPlanPicker } from './MissionPlanPicker';
 import { MissionPlanContent } from './MissionPlanContent';
 import { MissionPlanForm } from './MissionPlanForm';
-import { readVersion, type PlanVersion } from './mission-plan-response';
+import {
+  readVersion,
+  type PlanContent,
+  type PlanVersion,
+} from './mission-plan-response';
 import { useMissionPlanCopy } from './mission-plan.copy';
 import { useMissionPlanCommand, type PlanContext } from './use-mission-plan-io';
 import './mission-plan.css';
@@ -116,37 +120,62 @@ function Configuration({
           initial={editor.basis}
           disabled={command.blocked}
           onCancel={() => setEditor(null)}
-          onPublish={(content) => {
-            const basis = editor.basis,
-              payload = basis
-                ? { ...content, expectedHeadVersion: basis.versionNumber }
-                : content;
-            command.start(
-              basis
-                ? `/mission-plans/${basis.planId}/versions`
-                : '/mission-plans',
-              payload,
-              (value) => {
-                const v = readVersion(value, authority);
-                if (
-                  v.actor.membershipId !== authority.membershipId ||
-                  v.versionNumber !== (basis?.versionNumber ?? 0) + 1 ||
-                  (basis && v.planId !== basis.planId) ||
-                  v.title !== content.title ||
-                  JSON.stringify(v.activities) !==
-                    JSON.stringify(content.activities)
-                )
-                  throw new Error('Unexpected publication receipt.');
-                return v;
-              },
-            );
-          }}
+          onPublish={(content) =>
+            publishMissionPlan({
+              command,
+              authority,
+              basis: editor.basis,
+              content,
+            })
+          }
         />
       )}
       <MissionPlanCommandStatus command={command} />
     </section>
   );
 }
+/**
+ * Publishes a new plan, or the next version of its basis, and accepts only
+ * the receipt of exactly that publication by this member.
+ */
+export function publishMissionPlan({
+  command,
+  authority,
+  basis,
+  content,
+}: {
+  command: {
+    start: (
+      path: string,
+      payload: Record<string, unknown>,
+      decode: (value: unknown) => PlanVersion,
+    ) => void;
+  };
+  authority: PlanAuthority;
+  basis: PlanVersion | null;
+  content: PlanContent;
+}) {
+  const payload = basis
+    ? { ...content, expectedHeadVersion: basis.versionNumber }
+    : content;
+  command.start(
+    basis ? `/mission-plans/${basis.planId}/versions` : '/mission-plans',
+    payload,
+    (value) => {
+      const v = readVersion(value, authority);
+      if (
+        v.actor.membershipId !== authority.membershipId ||
+        v.versionNumber !== (basis?.versionNumber ?? 0) + 1 ||
+        (basis && v.planId !== basis.planId) ||
+        v.title !== content.title ||
+        JSON.stringify(v.activities) !== JSON.stringify(content.activities)
+      )
+        throw new Error('Unexpected publication receipt.');
+      return v;
+    },
+  );
+}
+
 export function MissionPlanCommandStatus({
   command,
 }: {

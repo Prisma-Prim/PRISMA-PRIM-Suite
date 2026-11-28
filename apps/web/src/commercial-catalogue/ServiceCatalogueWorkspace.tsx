@@ -26,7 +26,7 @@ import { Select } from '../presentation/Select';
 import { useServiceCatalogueCopy } from './service-catalogue.copy';
 import './service-catalogue.css';
 
-type ServiceDefinition = {
+export type ServiceDefinition = {
   id: string;
   code: string;
   name: string;
@@ -37,7 +37,7 @@ type ServiceDefinition = {
   createdAt: string;
 };
 
-type CompanyServiceOffering = {
+export type CompanyServiceOffering = {
   id: string;
   companyId: string;
   serviceDefinitionId: string;
@@ -52,7 +52,7 @@ type CompanyServiceOffering = {
 
 type Page<T> = { items: T[]; nextCursor?: string };
 
-type ListState<T> =
+export type CatalogueListState<T> =
   | { kind: 'loading' }
   | {
       kind: 'ready';
@@ -63,7 +63,7 @@ type ListState<T> =
     }
   | { kind: 'error' };
 
-type Feedback = { tone: 'status' | 'alert' } & (
+export type CatalogueFeedback = { tone: 'status' | 'alert' } & (
   | {
       message: 'definitionCreated' | 'definitionUnchanged' | 'codeConflict';
       code: string;
@@ -94,34 +94,44 @@ const emptyOffering: OfferingForm = {
 const definitionsPath = '/commercial-catalogue/service-definitions';
 const offeringsPath = '/commercial-catalogue/offerings';
 
-export function ServiceCatalogueWorkspace({
-  actor,
-  identity,
-  onCompanyContextRejected,
-  onActorRevalidated = () => undefined,
-  onWorkspaceAccessRejected = () => undefined,
-}: {
+export type ServiceCatalogueProps = {
   actor: ActorContext;
   identity: BrowserIdentity;
   onCompanyContextRejected: (companyContextId: string) => void;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
-}) {
+};
+
+/**
+ * The illustrative Service Catalogue of the active Company, shared by both
+ * interfaces: shared Service definitions and the Company's Offerings, each
+ * a paged list with its create command. An unanswered create resends the
+ * same payload with the same key.
+ */
+export function useServiceCatalogue({
+  actor,
+  identity,
+  onCompanyContextRejected,
+  onActorRevalidated = () => undefined,
+  onWorkspaceAccessRejected = () => undefined,
+}: ServiceCatalogueProps) {
   const copy = useServiceCatalogueCopy();
   const [denied, setDenied] = useState(false);
-  const [definitions, setDefinitions] = useState<ListState<ServiceDefinition>>({
+  const [definitions, setDefinitions] = useState<
+    CatalogueListState<ServiceDefinition>
+  >({
     kind: 'loading',
   });
-  const [offerings, setOfferings] = useState<ListState<CompanyServiceOffering>>(
-    { kind: 'loading' },
-  );
+  const [offerings, setOfferings] = useState<
+    CatalogueListState<CompanyServiceOffering>
+  >({ kind: 'loading' });
   const [definitionForm, setDefinitionForm] =
     useState<DefinitionForm>(emptyDefinition);
   const [offeringForm, setOfferingForm] = useState<OfferingForm>(emptyOffering);
-  const [definitionFeedback, setDefinitionFeedback] = useState<Feedback>();
-  const [offeringFeedback, setOfferingFeedback] = useState<Feedback>();
+  const [definitionFeedback, setDefinitionFeedback] =
+    useState<CatalogueFeedback>();
+  const [offeringFeedback, setOfferingFeedback] = useState<CatalogueFeedback>();
   const [pending, setPending] = useState(false);
-  const fieldId = useId();
   const definitionRetry = useRef<{ payload: string; key: string }>(undefined);
   const offeringRetry = useRef<{ payload: string; key: string }>(undefined);
   const offeringsBootstrap = useRef<string | undefined>(undefined);
@@ -549,12 +559,55 @@ export function ServiceCatalogueWorkspace({
     }
   }
 
-  function feedbackMessage(feedback: Feedback): string {
+  function feedbackMessage(feedback: CatalogueFeedback): string {
     if ('code' in feedback) return copy[feedback.message](feedback.code);
     if ('name' in feedback) return copy[feedback.message](feedback.name);
     return copy[feedback.message];
   }
 
+  return {
+    denied,
+    definitions,
+    offerings,
+    definitionForm,
+    setDefinitionForm,
+    offeringForm,
+    setOfferingForm,
+    definitionFeedback,
+    offeringFeedback,
+    pending,
+    companyId,
+    companyName,
+    loadDefinitions,
+    loadOfferings,
+    submitDefinition,
+    submitOffering,
+    feedbackMessage,
+  };
+}
+
+export function ServiceCatalogueWorkspace(props: ServiceCatalogueProps) {
+  const copy = useServiceCatalogueCopy();
+  const fieldId = useId();
+  const {
+    denied,
+    definitions,
+    offerings,
+    definitionForm,
+    setDefinitionForm,
+    offeringForm,
+    setOfferingForm,
+    definitionFeedback,
+    offeringFeedback,
+    pending,
+    companyId,
+    companyName,
+    loadDefinitions,
+    loadOfferings,
+    submitDefinition,
+    submitOffering,
+    feedbackMessage,
+  } = useServiceCatalogue(props);
   if (denied) {
     return (
       <section className="service-catalogue">
@@ -785,7 +838,7 @@ function CatalogueList<T extends { id: string }>({
   onLoadOlder,
   renderItem,
 }: {
-  state: ListState<T>;
+  state: CatalogueListState<T>;
   label: string;
   loading: string;
   empty: string;
@@ -844,10 +897,10 @@ function startedPage<T>({
   companyContextId,
   cursor,
 }: {
-  current: ListState<T>;
+  current: CatalogueListState<T>;
   companyContextId: string;
   cursor: string | undefined;
-}): ListState<T> {
+}): CatalogueListState<T> {
   if (!cursor) return { kind: 'loading' };
   return sameCompanyPage(current, companyContextId)
     ? { ...current, olderPage: 'loading' }
@@ -860,11 +913,11 @@ function appliedPage<T>({
   cursor,
   page,
 }: {
-  current: ListState<T>;
+  current: CatalogueListState<T>;
   companyContextId: string;
   cursor: string | undefined;
   page: Page<T> | undefined;
-}): ListState<T> {
+}): CatalogueListState<T> {
   if (!cursor)
     return page
       ? readyPage({
@@ -884,9 +937,9 @@ function appliedPage<T>({
 }
 
 function sameCompanyPage<T>(
-  current: ListState<T>,
+  current: CatalogueListState<T>,
   companyContextId: string,
-): current is Extract<ListState<T>, { kind: 'ready' }> {
+): current is Extract<CatalogueListState<T>, { kind: 'ready' }> {
   return current.kind === 'ready' && current.companyId === companyContextId;
 }
 
@@ -898,7 +951,7 @@ function readyPage<T>({
   companyId: string;
   items: T[];
   nextCursor: string | undefined;
-}): ListState<T> {
+}): CatalogueListState<T> {
   return {
     kind: 'ready',
     companyId,

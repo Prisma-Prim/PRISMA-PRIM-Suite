@@ -1,6 +1,7 @@
 import { companyGrants } from './access/company-grants.test-fixture';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { render, screen } from './test/render-with-interface-locale';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { screen } from './test/render-with-interface-locale';
+import { appInterfaces, renderInInterface } from './test/app-interface';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
@@ -47,59 +48,69 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-it('opens the Company consulting-model configuration without pricing, Client or Offer authority', async () => {
-  const reads: { path: string; company: string | null }[] = [];
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = new URL(input.toString(), window.location.origin);
-      reads.push({
-        path: url.pathname,
-        company: new Headers(init?.headers).get('x-company-context-id'),
-      });
-      switch (url.pathname) {
-        case '/api/access/current-actor':
-          return Response.json(actor);
-        case '/api/companies':
-          return Response.json([
-            { id: companyId, displayName: 'Synthetic consulting Company' },
-          ]);
-        case '/api/activity-log':
-          return Response.json({ events: [] });
-        case '/api/operational-home':
-          return Response.json({
-            companyId,
-            today: '2026-10-24',
-            summaries: [],
+describe.each(appInterfaces)(
+  'The model section in the %s interface',
+  (appInterface) => {
+    it('opens the Company consulting-model configuration without pricing, Client or Offer authority', async () => {
+      const reads: { path: string; company: string | null }[] = [];
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+          const url = new URL(input.toString(), window.location.origin);
+          reads.push({
+            path: url.pathname,
+            company: new Headers(init?.headers).get('x-company-context-id'),
           });
-        case '/api/contract-models/consulting-ro':
-          return Response.json({ model: null });
-        default:
-          throw new Error(`Unexpected model journey read: ${url.pathname}`);
-      }
-    }),
-  );
-  render(<App identity={deterministicBrowserIdentity()} />);
-  expect(
-    (
-      await screen.findAllByRole('link', {
-        name: 'Consulting Contract model',
-      })
-    ).length,
-  ).toBeGreaterThan(0);
-  expect(
-    await screen.findByText(
-      'No consulting Contract model has been configured.',
-    ),
-  ).toBeVisible();
-  expect(
-    reads.filter((read) => read.path === '/api/contract-models/consulting-ro'),
-  ).toEqual([
-    { path: '/api/contract-models/consulting-ro', company: companyId },
-  ]);
-  expect(
-    reads.some((read) =>
-      /pricing|clients|opportunities|profitability/.test(read.path),
-    ),
-  ).toBe(false);
-});
+          switch (url.pathname) {
+            case '/api/access/current-actor':
+              return Response.json(actor);
+            case '/api/companies':
+              return Response.json([
+                { id: companyId, displayName: 'Synthetic consulting Company' },
+              ]);
+            case '/api/activity-log':
+              return Response.json({ events: [] });
+            case '/api/operational-home':
+              return Response.json({
+                companyId,
+                today: '2026-10-24',
+                summaries: [],
+              });
+            case '/api/contract-models/consulting-ro':
+              return Response.json({ model: null });
+            default:
+              throw new Error(`Unexpected model journey read: ${url.pathname}`);
+          }
+        }),
+      );
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      expect(
+        (
+          await screen.findAllByRole('link', {
+            name: 'Consulting Contract model',
+          })
+        ).length,
+      ).toBeGreaterThan(0);
+      expect(
+        await screen.findByText(
+          'No consulting Contract model has been configured.',
+        ),
+      ).toBeVisible();
+      expect(
+        reads.filter(
+          (read) => read.path === '/api/contract-models/consulting-ro',
+        ),
+      ).toEqual([
+        { path: '/api/contract-models/consulting-ro', company: companyId },
+      ]);
+      expect(
+        reads.some((read) =>
+          /pricing|clients|opportunities|profitability/.test(read.path),
+        ),
+      ).toBe(false);
+    });
+  },
+);
