@@ -1,6 +1,6 @@
 import { webcrypto } from 'node:crypto';
 import { StrictMode } from 'react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import {
@@ -24,6 +24,7 @@ import {
 } from './access/company-grants.test-fixture';
 import { readCurrentActor } from './access/current-actor';
 import { changeValue } from './test/select-option';
+import { appInterfaces, renderInInterface } from './test/app-interface';
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
@@ -62,226 +63,248 @@ async function openAppCitation() {
   return query;
 }
 
-for (const mode of ['current', 'historical'] as const)
-  it.each([
-    {
-      fault: 'malformed retrieval instant',
-      reply: () => ({ ...passage(), retrievedAt: 'not-an-instant' }),
-    },
-    {
-      fault: 'foreign exact Representation',
-      reply: () => ({
-        ...passage(),
-        source: {
-          ...source,
-          representationId: '40000000-0000-4000-8000-000000001016',
+// The citation journeys run in both interfaces until the switch-over (#1548).
+describe.each(appInterfaces)(
+  'Knowledge evidence in the %s interface',
+  (appInterface) => {
+    for (const mode of ['current', 'historical'] as const)
+      it.each([
+        {
+          fault: 'malformed retrieval instant',
+          reply: () => ({ ...passage(), retrievedAt: 'not-an-instant' }),
         },
-      }),
-    },
-    {
-      fault: 'incompatible passage digest',
-      reply: () => ({ ...passage(), passageSha256: '0'.repeat(64) }),
-    },
-  ])(
-    `clears stale ${mode} citation after a PDF preflight with $fault through the actual App`,
-    async ({ reply }) => {
-      let broken = false;
-      const evidenceRequests: string[] = [],
-        nativeRequests: string[] = [],
-        created = vi.fn(() => 'blob:withheld-preflight'),
-        click = vi
-          .spyOn(HTMLAnchorElement.prototype, 'click')
-          .mockImplementation(() => undefined);
-      vi.stubGlobal(
-        'URL',
-        class extends URL {
-          static createObjectURL = created;
-          static revokeObjectURL = vi.fn();
-        },
-      );
-      installParentServer(
-        () => knowledgeActor,
-        async (path, _init, url) => {
-          if (path.includes('/content/')) {
-            nativeRequests.push(url.pathname);
-            return new Response('%PDF-test exact source', {
-              headers: { 'content-type': 'application/pdf' },
-            });
-          }
-          if (!path.startsWith('/api/knowledge/evidence/')) return undefined;
-          evidenceRequests.push(url.pathname + url.search);
-          if (path.includes('/passages/')) {
-            if (broken) return Response.json(reply());
-            return Response.json(
-              url.searchParams.get('mode') === 'historical'
-                ? {
-                    ...passage(),
-                    source: { ...source, versionStatus: 'superseded' },
-                    retrievedAt: '2026-11-02T12:00:00.000Z',
-                  }
-                : passage(),
-            );
-          }
-          return Response.json({
-            items: [path.endsWith('/search') ? passage() : source],
-            nextCursor: null,
-          });
-        },
-      );
-      render(<App identity={deterministicBrowserIdentity()} />);
-      const query = await openAppCitation();
-      if (mode === 'historical') {
-        fireEvent.click(
-          screen.getByRole('button', {
-            name: 'Reopen this cited version — ' + source.title,
+        {
+          fault: 'foreign exact Representation',
+          reply: () => ({
+            ...passage(),
+            source: {
+              ...source,
+              representationId: '40000000-0000-4000-8000-000000001016',
+            },
           }),
-        );
-        await screen.findByText('Historical evidence');
-      }
-      broken = true;
-      const before = evidenceRequests.length;
-      fireEvent.click(
-        screen.getByRole('button', { name: 'Download exact source PDF' }),
+        },
+        {
+          fault: 'incompatible passage digest',
+          reply: () => ({ ...passage(), passageSha256: '0'.repeat(64) }),
+        },
+      ])(
+        `clears stale ${mode} citation after a PDF preflight with $fault through the actual App`,
+        async ({ reply }) => {
+          let broken = false;
+          const evidenceRequests: string[] = [],
+            nativeRequests: string[] = [],
+            created = vi.fn(() => 'blob:withheld-preflight'),
+            click = vi
+              .spyOn(HTMLAnchorElement.prototype, 'click')
+              .mockImplementation(() => undefined);
+          vi.stubGlobal(
+            'URL',
+            class extends URL {
+              static createObjectURL = created;
+              static revokeObjectURL = vi.fn();
+            },
+          );
+          installParentServer(
+            () => knowledgeActor,
+            async (path, _init, url) => {
+              if (path.includes('/content/')) {
+                nativeRequests.push(url.pathname);
+                return new Response('%PDF-test exact source', {
+                  headers: { 'content-type': 'application/pdf' },
+                });
+              }
+              if (!path.startsWith('/api/knowledge/evidence/'))
+                return undefined;
+              evidenceRequests.push(url.pathname + url.search);
+              if (path.includes('/passages/')) {
+                if (broken) return Response.json(reply());
+                return Response.json(
+                  url.searchParams.get('mode') === 'historical'
+                    ? {
+                        ...passage(),
+                        source: { ...source, versionStatus: 'superseded' },
+                        retrievedAt: '2026-11-02T12:00:00.000Z',
+                      }
+                    : passage(),
+                );
+              }
+              return Response.json({
+                items: [path.endsWith('/search') ? passage() : source],
+                nextCursor: null,
+              });
+            },
+          );
+          renderInInterface(
+            appInterface,
+            <App identity={deterministicBrowserIdentity()} />,
+          );
+          const query = await openAppCitation();
+          if (mode === 'historical') {
+            fireEvent.click(
+              screen.getByRole('button', {
+                name: 'Reopen this cited version — ' + source.title,
+              }),
+            );
+            await screen.findByText('Historical evidence');
+          }
+          broken = true;
+          const before = evidenceRequests.length;
+          fireEvent.click(
+            screen.getByRole('button', { name: 'Download exact source PDF' }),
+          );
+          await waitFor(() =>
+            expect(
+              screen.queryByRole('article', { name: source.title }),
+            ).toBeNull(),
+          );
+          const panel = screen.getByRole('region', {
+            name: 'Knowledge evidence',
+          });
+          expect(
+            within(panel).getByText(
+              'The evidence response could not be verified.',
+            ),
+          ).toBeVisible();
+          expect(within(panel).queryByText(source.title)).toBeNull();
+          expect(within(panel).queryByText(/Exact cited version ·/)).toBeNull();
+          expect(
+            within(panel).queryByRole('button', {
+              name: 'Download exact source PDF',
+            }),
+          ).toBeNull();
+          expect(
+            within(panel).queryByRole('button', {
+              name: 'Reopen this cited version — ' + source.title,
+            }),
+          ).toBeNull();
+          expect(query).toHaveValue(' Four Ж');
+          expect(evidenceRequests.slice(before)).toEqual([
+            `/api/knowledge/evidence/sources/${source.sourceId}/passages/${encodeURIComponent(passage().locator)}` +
+              (mode === 'historical'
+                ? `?mode=historical&documentVersionId=${source.documentVersionId}`
+                : ''),
+          ]);
+          expect(nativeRequests).toEqual([]);
+          expect(created).not.toHaveBeenCalled();
+          expect(click).not.toHaveBeenCalled();
+          broken = false;
+          fireEvent.click(within(panel).getByRole('button', { name: 'Retry' }));
+          await within(panel).findByRole('button', { name: 'Open passage' });
+          expect(query).toHaveValue(' Four Ж');
+          expect(within(panel).queryByRole('article')).toBeNull();
+          expect(nativeRequests).toEqual([]);
+          expect(created).not.toHaveBeenCalled();
+          expect(click).not.toHaveBeenCalled();
+        },
       );
-      await waitFor(() =>
+
+    it.each(['query change', 'section departure'] as const)(
+      'keeps a retired malformed PDF preflight inert after %s through the actual App',
+      async (retirement) => {
+        let release: (response: Response) => void = () => {
+          throw new Error('PDF preflight not started.');
+        };
+        const delayed = new Promise<Response>((resolve) => {
+          release = resolve;
+        });
+        let hold = false,
+          held = false;
+        const nativeRequests: string[] = [],
+          created = vi.fn(() => 'blob:withheld-retired-preflight'),
+          rejected = vi.fn(async () => undefined),
+          click = vi
+            .spyOn(HTMLAnchorElement.prototype, 'click')
+            .mockImplementation(() => undefined);
+        vi.stubGlobal(
+          'URL',
+          class extends URL {
+            static createObjectURL = created;
+            static revokeObjectURL = vi.fn();
+          },
+        );
+        installParentServer(
+          () => knowledgeActor,
+          async (path) => {
+            if (path.includes('/content/')) {
+              nativeRequests.push(path);
+              return new Response('%PDF-test exact source', {
+                headers: { 'content-type': 'application/pdf' },
+              });
+            }
+            if (!path.startsWith('/api/knowledge/evidence/')) return undefined;
+            if (path.includes('/passages/')) {
+              if (hold) {
+                held = true;
+                return delayed;
+              }
+              return Response.json(passage());
+            }
+            return Response.json({
+              items: [path.endsWith('/search') ? passage() : source],
+              nextCursor: null,
+            });
+          },
+        );
+        renderInInterface(
+          appInterface,
+          <App
+            identity={{
+              ...deterministicBrowserIdentity(),
+              rejectSession: rejected,
+            }}
+          />,
+        );
+        const query = await openAppCitation();
+        hold = true;
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Download exact source PDF' }),
+        );
+        await waitFor(() => expect(held).toBe(true));
+        if (retirement === 'query change') {
+          query.focus();
+          fireEvent.change(query, { target: { value: 'new exact query' } });
+        } else {
+          fireEvent.click(
+            within(
+              screen.getByRole('navigation', { name: 'Primary navigation' }),
+            ).getByRole('link', {
+              name: appInterface === 'clarte' ? 'Today' : 'Overview',
+            }),
+          );
+          await waitFor(() =>
+            expect(
+              screen.queryByRole('region', { name: 'Knowledge evidence' }),
+            ).toBeNull(),
+          );
+        }
+        const focused = document.activeElement;
+        await act(async () =>
+          release(
+            Response.json({ ...passage(), retrievedAt: 'not-an-instant' }),
+          ),
+        );
         expect(
           screen.queryByRole('article', { name: source.title }),
-        ).toBeNull(),
-      );
-      const panel = screen.getByRole('region', { name: 'Knowledge evidence' });
-      expect(
-        within(panel).getByText('The evidence response could not be verified.'),
-      ).toBeVisible();
-      expect(within(panel).queryByText(source.title)).toBeNull();
-      expect(within(panel).queryByText(/Exact cited version ·/)).toBeNull();
-      expect(
-        within(panel).queryByRole('button', {
-          name: 'Download exact source PDF',
-        }),
-      ).toBeNull();
-      expect(
-        within(panel).queryByRole('button', {
-          name: 'Reopen this cited version — ' + source.title,
-        }),
-      ).toBeNull();
-      expect(query).toHaveValue(' Four Ж');
-      expect(evidenceRequests.slice(before)).toEqual([
-        `/api/knowledge/evidence/sources/${source.sourceId}/passages/${encodeURIComponent(passage().locator)}` +
-          (mode === 'historical'
-            ? `?mode=historical&documentVersionId=${source.documentVersionId}`
-            : ''),
-      ]);
-      expect(nativeRequests).toEqual([]);
-      expect(created).not.toHaveBeenCalled();
-      expect(click).not.toHaveBeenCalled();
-      broken = false;
-      fireEvent.click(within(panel).getByRole('button', { name: 'Retry' }));
-      await within(panel).findByRole('button', { name: 'Open passage' });
-      expect(query).toHaveValue(' Four Ж');
-      expect(within(panel).queryByRole('article')).toBeNull();
-      expect(nativeRequests).toEqual([]);
-      expect(created).not.toHaveBeenCalled();
-      expect(click).not.toHaveBeenCalled();
-    },
-  );
-
-it.each(['query change', 'section departure'] as const)(
-  'keeps a retired malformed PDF preflight inert after %s through the actual App',
-  async (retirement) => {
-    let release: (response: Response) => void = () => {
-      throw new Error('PDF preflight not started.');
-    };
-    const delayed = new Promise<Response>((resolve) => {
-      release = resolve;
-    });
-    let hold = false,
-      held = false;
-    const nativeRequests: string[] = [],
-      created = vi.fn(() => 'blob:withheld-retired-preflight'),
-      rejected = vi.fn(async () => undefined),
-      click = vi
-        .spyOn(HTMLAnchorElement.prototype, 'click')
-        .mockImplementation(() => undefined);
-    vi.stubGlobal(
-      'URL',
-      class extends URL {
-        static createObjectURL = created;
-        static revokeObjectURL = vi.fn();
-      },
-    );
-    installParentServer(
-      () => knowledgeActor,
-      async (path) => {
-        if (path.includes('/content/')) {
-          nativeRequests.push(path);
-          return new Response('%PDF-test exact source', {
-            headers: { 'content-type': 'application/pdf' },
-          });
-        }
-        if (!path.startsWith('/api/knowledge/evidence/')) return undefined;
-        if (path.includes('/passages/')) {
-          if (hold) {
-            held = true;
-            return delayed;
-          }
-          return Response.json(passage());
-        }
-        return Response.json({
-          items: [path.endsWith('/search') ? passage() : source],
-          nextCursor: null,
-        });
-      },
-    );
-    render(
-      <App
-        identity={{
-          ...deterministicBrowserIdentity(),
-          rejectSession: rejected,
-        }}
-      />,
-    );
-    const query = await openAppCitation();
-    hold = true;
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Download exact source PDF' }),
-    );
-    await waitFor(() => expect(held).toBe(true));
-    if (retirement === 'query change') {
-      query.focus();
-      fireEvent.change(query, { target: { value: 'new exact query' } });
-    } else {
-      fireEvent.click(
-        within(
-          screen.getByRole('navigation', { name: 'Primary navigation' }),
-        ).getByRole('link', { name: 'Overview' }),
-      );
-      await waitFor(() =>
+        ).toBeNull();
         expect(
-          screen.queryByRole('region', { name: 'Knowledge evidence' }),
-        ).toBeNull(),
-      );
-    }
-    const focused = document.activeElement;
-    await act(async () =>
-      release(Response.json({ ...passage(), retrievedAt: 'not-an-instant' })),
+          screen.queryByText('The evidence response could not be verified.'),
+        ).toBeNull();
+        if (retirement === 'query change')
+          expect(query).toHaveValue('new exact query');
+        else
+          expect(
+            screen.queryByRole('region', { name: 'Knowledge evidence' }),
+          ).toBeNull();
+        expect(document.activeElement).toBe(focused);
+        expect(nativeRequests).toEqual([]);
+        expect(created).not.toHaveBeenCalled();
+        expect(click).not.toHaveBeenCalled();
+        expect(rejected).not.toHaveBeenCalled();
+      },
     );
-    expect(screen.queryByRole('article', { name: source.title })).toBeNull();
-    expect(
-      screen.queryByText('The evidence response could not be verified.'),
-    ).toBeNull();
-    if (retirement === 'query change')
-      expect(query).toHaveValue('new exact query');
-    else
-      expect(
-        screen.queryByRole('region', { name: 'Knowledge evidence' }),
-      ).toBeNull();
-    expect(document.activeElement).toBe(focused);
-    expect(nativeRequests).toEqual([]);
-    expect(created).not.toHaveBeenCalled();
-    expect(click).not.toHaveBeenCalled();
-    expect(rejected).not.toHaveBeenCalled();
   },
 );
+
 const readerGrants = knowledgeActor.activeCompany.grants;
 it('refuses the whole current Actor for a duplicated or unknown Evidence Reader capture', async () => {
   // The current Actor parser refuses such a list for the whole Actor

@@ -1,7 +1,6 @@
 import { changeValue } from './test/select-option';
 import {
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
@@ -19,6 +18,10 @@ import {
   withCompanyGrants,
 } from './access/company-grants.test-fixture';
 import { projectDocumentGrants } from './project/project-document-grants.test-fixture';
+import { appInterfaces, renderInInterface } from './test/app-interface';
+
+/** The interface the running parameterized test renders. */
+let shown: (typeof appInterfaces)[number] = 'current';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -228,7 +231,26 @@ function navigation() {
   return screen.getByRole('navigation', { name: 'Primary navigation' });
 }
 function navigateTo(label: string) {
-  fireEvent.click(within(navigation()).getByRole('link', { name: label }));
+  if (shown === 'current') {
+    fireEvent.click(within(navigation()).getByRole('link', { name: label }));
+    return;
+  }
+  // Clarté groups sections under entries; its jump list reaches any of them.
+  fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+  const field = screen.getByRole('combobox', { name: 'Screen name' });
+  fireEvent.change(field, { target: { value: label } });
+  fireEvent.keyDown(field, { key: 'Enter' });
+}
+/** The opened Document: an article in the current interface, a side panel in Clarté. */
+function documentDetail() {
+  return shown === 'current'
+    ? within(documentsSection()).findByRole('article')
+    : screen.findByRole('dialog', { name: sharedTitle });
+}
+function queryDocumentDetail() {
+  return shown === 'current'
+    ? within(documentsSection()).queryByRole('article')
+    : screen.queryByRole('dialog', { name: sharedTitle });
 }
 function projectsRegion() {
   return screen.getByRole('region', { name: 'Projects' });
@@ -275,157 +297,179 @@ const scrollable: {
 } = Element.prototype;
 const nativeScrollIntoView = scrollable.scrollIntoView;
 
-describe('Project detail and working Document navigation through App', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    scrollable.scrollIntoView = vi.fn();
-    // The Prisme overview renders the motion hero once the frame is left.
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn(
-        (query: string) =>
-          ({
-            matches: true,
-            media: query,
-            onchange: null,
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            dispatchEvent: vi.fn(() => false),
-          }) satisfies MediaQueryList,
-      ),
-    );
-    window.history.replaceState(null, '', '/#projects');
-  });
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-    scrollable.scrollIntoView = nativeScrollIntoView;
-    window.history.replaceState(null, '', '/');
-  });
-
-  it('opens the exact linked Document from its own read and keeps the Task draft', async () => {
-    const transport = installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await openProjectWithTaskDraft();
-
-    await openLinkedDocument();
-
-    const detail = await within(documentsSection()).findByRole('article');
-    expect(
-      within(detail).getByRole('heading', { name: sharedTitle }),
-    ).toBeInTheDocument();
-    expect(within(detail).getByText(linkedDocument.purpose)).toBeVisible();
-    expect(within(detail).getByText('Registration time')).toBeVisible();
-    expect(
-      within(documentsSection()).queryByText(projectResponsePurpose),
-    ).not.toBeInTheDocument();
-    expect(
-      within(documentsSection()).queryByText(unlinkedDocument.purpose),
-    ).not.toBeInTheDocument();
-    expect(transport.detailReads.get(linkedDocument.id)).toBe(1);
-    expect(transport.detailReads.has(unlinkedDocument.id)).toBe(false);
-    await waitFor(() => expect(documentsSection()).toHaveFocus());
-    // The target travels only through the shell's in-memory intent.
-    expect(window.location.hash).toBe('#documents');
-    expect(window.location.href).not.toContain(linkedDocument.id);
-    expect(JSON.stringify(window.history.state ?? null)).not.toContain(
-      linkedDocument.id,
-    );
-    expect(documentsSection().textContent).not.toContain(linkedDocument.id);
-
-    navigateTo('Projects');
-    fireEvent.click(
-      within(projectsRegion()).getByRole('tab', { name: 'Tasks' }),
-    );
-    expect(taskTitle()).toHaveValue(taskDraft);
-    expect(
-      within(projectsRegion()).getByRole('article', { name: project.title }),
-    ).toBeInTheDocument();
-
-    // Activating the same Document again reads it afresh.
-    await openLinkedDocument();
-    await waitFor(() =>
-      expect(transport.detailReads.get(linkedDocument.id)).toBe(2),
-    );
-    expect(transport.detailReads.has(unlinkedDocument.id)).toBe(false);
-  });
-
-  it('never applies a request its Company retired, even after returning to that Company', async () => {
-    const transport = installTransport({ holdLinkedRead: true });
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await openProjectWithTaskDraft();
-    await openLinkedDocument();
-    await waitFor(() => expect(transport.heldLinkedReads).toHaveLength(1));
-
-    const company = screen.getByLabelText('Active Company', { exact: true });
-    changeValue(company, companyB.id);
-    // Each Company mounts its own Documents section; query it afresh.
-    await waitFor(() =>
-      expect(
-        within(documentsSection()).getByText(
-          'No working references registered yet.',
+describe.each(appInterfaces)(
+  'Project detail and working Document navigation through App in the %s interface',
+  (appInterface) => {
+    beforeEach(() => {
+      shown = appInterface;
+      localStorage.clear();
+      sessionStorage.clear();
+      scrollable.scrollIntoView = vi.fn();
+      // The Prisme overview renders the motion hero once the frame is left.
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn(
+          (query: string) =>
+            ({
+              matches: true,
+              media: query,
+              onchange: null,
+              addListener: vi.fn(),
+              removeListener: vi.fn(),
+              addEventListener: vi.fn(),
+              removeEventListener: vi.fn(),
+              dispatchEvent: vi.fn(() => false),
+            }) satisfies MediaQueryList,
         ),
-      ).toBeInTheDocument(),
-    );
-    navigateTo('Projects');
-    expect(within(projectsRegion()).queryByRole('article')).toBeNull();
-    navigateTo('Working Documents');
-    transport.heldLinkedReads[0]?.resolve(respond(linkedDocument));
-    changeValue(company, companyA.id);
-
-    await waitFor(() =>
-      expect(
-        within(documentsSection()).getAllByRole('button', {
-          name: sharedTitle,
-        }),
-      ).toHaveLength(2),
-    );
-    expect(within(documentsSection()).queryByRole('article')).toBeNull();
-    expect(transport.detailReads.get(linkedDocument.id)).toBe(1);
-  });
-
-  it('never applies a request after a Client authority change', async () => {
-    const transport = installTransport({
-      administrator: true,
-      holdLinkedRead: true,
+      );
+      window.history.replaceState(null, '', '/#projects');
     });
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await openProjectWithTaskDraft();
-    await openLinkedDocument();
-    await waitFor(() => expect(transport.heldLinkedReads).toHaveLength(1));
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+      scrollable.scrollIntoView = nativeScrollIntoView;
+      window.history.replaceState(null, '', '/');
+    });
 
-    navigateTo('Team & access');
-    const access = screen.getByRole('region', { name: 'Company access' });
-    changeValue(
-      within(access).getByLabelText('Workspace member'),
-      membershipId,
-    );
-    changeValue(
-      within(access).getByLabelText('Company', { exact: true }),
-      companyA.id,
-    );
-    changeValue(
-      within(access).getByLabelText('Access bundle'),
-      'director-client',
-    );
-    fireEvent.click(
-      within(access).getByRole('button', { name: 'Grant access' }),
-    );
-    await screen.findByText('Access granted. Server state refreshed.');
-    transport.heldLinkedReads[0]?.resolve(respond(linkedDocument));
-    navigateTo('Working Documents');
+    it('opens the exact linked Document from its own read and keeps the Task draft', async () => {
+      const transport = installTransport();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await openProjectWithTaskDraft();
 
-    await waitFor(() =>
+      await openLinkedDocument();
+
+      const detail = await documentDetail();
       expect(
-        within(documentsSection()).getAllByRole('button', {
-          name: sharedTitle,
-        }),
-      ).toHaveLength(2),
-    );
-    expect(within(documentsSection()).queryByRole('article')).toBeNull();
-    expect(transport.detailReads.get(linkedDocument.id)).toBe(1);
-  });
-});
+        within(detail).getByRole('heading', { name: sharedTitle }),
+      ).toBeInTheDocument();
+      expect(within(detail).getByText(linkedDocument.purpose)).toBeVisible();
+      expect(within(detail).getByText('Registration time')).toBeVisible();
+      expect(
+        within(documentsSection()).queryByText(projectResponsePurpose),
+      ).not.toBeInTheDocument();
+      expect(
+        within(documentsSection()).queryByText(unlinkedDocument.purpose),
+      ).not.toBeInTheDocument();
+      expect(transport.detailReads.get(linkedDocument.id)).toBe(1);
+      expect(transport.detailReads.has(unlinkedDocument.id)).toBe(false);
+      // Clarté opens the Document in a modal side panel that takes the focus.
+      await waitFor(() =>
+        shown === 'current'
+          ? expect(documentsSection()).toHaveFocus()
+          : expect(detail).toContainElement(
+              document.activeElement instanceof HTMLElement
+                ? document.activeElement
+                : null,
+            ),
+      );
+      // The target travels only through the shell's in-memory intent.
+      expect(window.location.hash).toBe('#documents');
+      expect(window.location.href).not.toContain(linkedDocument.id);
+      expect(JSON.stringify(window.history.state ?? null)).not.toContain(
+        linkedDocument.id,
+      );
+      expect(documentsSection().textContent).not.toContain(linkedDocument.id);
+
+      navigateTo('Projects');
+      fireEvent.click(
+        within(projectsRegion()).getByRole('tab', { name: 'Tasks' }),
+      );
+      expect(taskTitle()).toHaveValue(taskDraft);
+      expect(
+        within(projectsRegion()).getByRole('article', { name: project.title }),
+      ).toBeInTheDocument();
+
+      // Activating the same Document again reads it afresh.
+      await openLinkedDocument();
+      await waitFor(() =>
+        expect(transport.detailReads.get(linkedDocument.id)).toBe(2),
+      );
+      expect(transport.detailReads.has(unlinkedDocument.id)).toBe(false);
+    });
+
+    it('never applies a request its Company retired, even after returning to that Company', async () => {
+      const transport = installTransport({ holdLinkedRead: true });
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await openProjectWithTaskDraft();
+      await openLinkedDocument();
+      await waitFor(() => expect(transport.heldLinkedReads).toHaveLength(1));
+
+      const company = screen.getByLabelText('Active Company', { exact: true });
+      changeValue(company, companyB.id);
+      // Each Company mounts its own Documents section; query it afresh.
+      await waitFor(() =>
+        expect(
+          within(documentsSection()).getByText(
+            'No working references registered yet.',
+          ),
+        ).toBeInTheDocument(),
+      );
+      navigateTo('Projects');
+      expect(within(projectsRegion()).queryByRole('article')).toBeNull();
+      navigateTo('Working Documents');
+      transport.heldLinkedReads[0]?.resolve(respond(linkedDocument));
+      changeValue(company, companyA.id);
+
+      await waitFor(() =>
+        expect(
+          within(documentsSection()).getAllByRole('button', {
+            name: sharedTitle,
+          }),
+        ).toHaveLength(2),
+      );
+      expect(queryDocumentDetail()).toBeNull();
+      expect(transport.detailReads.get(linkedDocument.id)).toBe(1);
+    });
+
+    it('never applies a request after a Client authority change', async () => {
+      const transport = installTransport({
+        administrator: true,
+        holdLinkedRead: true,
+      });
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await openProjectWithTaskDraft();
+      await openLinkedDocument();
+      await waitFor(() => expect(transport.heldLinkedReads).toHaveLength(1));
+
+      navigateTo('Team & access');
+      const access = screen.getByRole('region', { name: 'Company access' });
+      changeValue(
+        within(access).getByLabelText('Workspace member'),
+        membershipId,
+      );
+      changeValue(
+        within(access).getByLabelText('Company', { exact: true }),
+        companyA.id,
+      );
+      changeValue(
+        within(access).getByLabelText('Access bundle'),
+        'director-client',
+      );
+      fireEvent.click(
+        within(access).getByRole('button', { name: 'Grant access' }),
+      );
+      await screen.findByText('Access granted. Server state refreshed.');
+      transport.heldLinkedReads[0]?.resolve(respond(linkedDocument));
+      navigateTo('Working Documents');
+
+      await waitFor(() =>
+        expect(
+          within(documentsSection()).getAllByRole('button', {
+            name: sharedTitle,
+          }),
+        ).toHaveLength(2),
+      );
+      expect(queryDocumentDetail()).toBeNull();
+      expect(transport.detailReads.get(linkedDocument.id)).toBe(1);
+    });
+  },
+);

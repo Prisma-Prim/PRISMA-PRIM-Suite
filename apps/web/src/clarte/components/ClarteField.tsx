@@ -15,11 +15,14 @@ export type ClarteFieldControl = Readonly<{
  */
 export function ClarteField({
   label,
+  labelHidden = false,
   hint,
   error,
   children,
 }: Readonly<{
   label: string;
+  /** A search field whose purpose its icon and placeholder show keeps its label for assistive technology only. */
+  labelHidden?: boolean;
   hint?: string;
   error?: string;
   children: (control: ClarteFieldControl) => ReactNode;
@@ -30,7 +33,12 @@ export function ClarteField({
   const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;
   return (
     <div className="clarte-field" data-invalid={error ? true : undefined}>
-      <label htmlFor={id}>{label}</label>
+      <label
+        htmlFor={id}
+        className={labelHidden ? 'clarte-visually-hidden' : undefined}
+      >
+        {label}
+      </label>
       {children({
         id,
         'aria-describedby': describedBy,
