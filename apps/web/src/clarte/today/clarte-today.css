@@ -1,0 +1,1327 @@
+/* Clarté Today (#1532): hero, work in order, decisions, To do, summaries. */
+
+.clarte-frame .clarte-today {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-today [hidden] {
+  display: none !important;
+}
+
+.clarte-frame .clarte-today-home {
+  display: grid;
+  gap: 28px;
+  min-width: 0;
+}
+
+/* Hero */
+.clarte-frame .clarte-today-hero {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  overflow: hidden;
+  padding: 30px 34px;
+  border: 1px solid var(--clarte-line);
+  border-radius: 20px;
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+.clarte-frame .clarte-today-hero::after {
+  content: '';
+  position: absolute;
+  top: -40%;
+  right: -6%;
+  width: 34%;
+  height: 180%;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    var(--clarte-accent-line),
+    var(--clarte-accent-soft) 60%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+.clarte-frame .clarte-today-hero > * {
+  position: relative;
+  z-index: 1;
+  max-width: 62ch;
+  margin: 0;
+}
+
+.clarte-frame .clarte-today-hero-date {
+  color: var(--clarte-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.clarte-frame .clarte-today-hero-date time::first-letter {
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-today-hero-lead {
+  color: var(--clarte-ink);
+  font-family: var(--clarte-font-heading);
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.clarte-frame .clarte-today-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.clarte-frame .clarte-today-hero-actions .clarte-button--primary {
+  min-height: 46px;
+  padding: 0 22px;
+  border-radius: 13px;
+  font-size: 15px;
+}
+
+.clarte-frame .clarte-today-hero-actions .clarte-button--secondary {
+  min-height: 46px;
+}
+
+/* Two columns */
+.clarte-frame .clarte-today-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  align-items: start;
+  gap: 24px;
+}
+
+.clarte-frame .clarte-today-main,
+.clarte-frame .clarte-today-side {
+  display: grid;
+  gap: 28px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-today-side {
+  gap: 18px;
+}
+
+.clarte-frame .clarte-today-section {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-today-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.clarte-frame .clarte-today-section-head h2 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.clarte-frame .clarte-today-section-head p {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+/* Decisions */
+.clarte-frame .clarte-today-queues {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  align-items: start;
+  gap: 18px 16px;
+}
+
+.clarte-frame .clarte-today-queue {
+  display: grid;
+  gap: 10px;
+}
+
+.clarte-frame .clarte-today-queue-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.clarte-frame .clarte-today-queue-head h3 {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-family: var(--clarte-font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-today-queue-head h3:focus {
+  outline: none;
+}
+
+.clarte-frame .clarte-today-queue-head small {
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-today-queue-head .clarte-button {
+  min-height: 28px;
+  margin-left: auto;
+  padding: 0 6px;
+}
+
+.clarte-frame .clarte-today-decisions {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-today-decision {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 18px 20px 20px;
+  border: 1px solid var(--clarte-line);
+  border-top: 3px solid var(--clarte-accent);
+  border-radius: 16px;
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+.clarte-frame .clarte-today-decision-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.clarte-frame .clarte-today-decision-top small {
+  color: var(--clarte-muted);
+  font-size: 12px;
+}
+
+.clarte-frame .clarte-today-decision h4 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.3;
+}
+
+.clarte-frame .clarte-today-decision > .clarte-button {
+  justify-self: start;
+  margin-top: 4px;
+}
+
+.clarte-frame .clarte-today-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.clarte-frame .clarte-today-facts div {
+  padding: 6px 10px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-sm);
+  background: var(--clarte-surface-muted);
+}
+
+.clarte-frame .clarte-today-facts dt {
+  color: var(--clarte-muted);
+  font-size: 11.5px;
+}
+
+.clarte-frame .clarte-today-facts dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.clarte-frame .clarte-today-queue-empty {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--clarte-line);
+  border-radius: 12px;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-today-pager {
+  display: flex;
+  gap: 8px;
+}
+
+/* To do: the reused attention and deadline lists take Clarté surfaces */
+.clarte-frame .clarte-today-todo-body {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--clarte-line);
+  border-radius: 16px;
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+.clarte-frame .clarte-today-todo-body > section {
+  margin: 0;
+  padding: 18px 22px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.clarte-frame .clarte-today-todo-body > section + section {
+  border-top: 1px solid var(--clarte-line);
+}
+
+.clarte-frame .clarte-today .operational-home-upcoming {
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-today .operational-home-upcoming-intro {
+  padding: 0;
+}
+
+.clarte-frame .clarte-today .operational-home-attention-heading,
+.clarte-frame .clarte-today .operational-home-upcoming-intro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+.clarte-frame .clarte-today .operational-home-attention-heading h3,
+.clarte-frame .clarte-today .operational-home-upcoming-intro h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--clarte-ink);
+  font-size: 16px;
+}
+
+.clarte-frame .clarte-today .operational-home-upcoming-intro h3 svg {
+  width: 17px;
+  height: 17px;
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-today .operational-home-upcoming-intro p,
+.clarte-frame .clarte-today .operational-home-attention-note,
+.clarte-frame .clarte-today .operational-home-upcoming-range,
+.clarte-frame .clarte-today .operational-home-upcoming-page,
+.clarte-frame .clarte-today .operational-home-overdue-note {
+  margin: 6px 0 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-today .operational-home-attention-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-today .operational-home-attention-list,
+.clarte-frame .clarte-today .operational-home-overdue-list {
+  display: grid;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-today .operational-home-attention-list li,
+.clarte-frame .clarte-today .operational-home-overdue-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--clarte-line-soft);
+  border-radius: 0;
+  background: transparent;
+}
+
+.clarte-frame .clarte-today .operational-home-attention-list li:last-child,
+.clarte-frame .clarte-today .operational-home-overdue-list li:last-child {
+  border-bottom: 0;
+}
+
+.clarte-frame .clarte-today .operational-home-attention-list h4,
+.clarte-frame .clarte-today .operational-home-attention-list h5,
+.clarte-frame .clarte-today .operational-home-overdue-list h4,
+.clarte-frame .clarte-today .operational-home-overdue-list h5 {
+  margin: 0;
+  color: var(--clarte-ink);
+  font-size: 14.5px;
+}
+
+.clarte-frame .clarte-today .operational-home-attention-list dl,
+.clarte-frame .clarte-today .operational-home-overdue-list dl {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1;
+  gap: 2px 14px;
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-today .operational-home-attention-list dl div,
+.clarte-frame .clarte-today .operational-home-overdue-list dl div {
+  display: flex;
+  gap: 4px;
+}
+
+.clarte-frame .clarte-today .operational-home-attention-list dt::after,
+.clarte-frame .clarte-today .operational-home-overdue-list dt::after {
+  content: ':';
+}
+
+.clarte-frame .clarte-today .operational-home-attention-list dd,
+.clarte-frame .clarte-today .operational-home-overdue-list dd {
+  margin: 0;
+  color: var(--clarte-ink-soft);
+}
+
+.clarte-frame .clarte-today .operational-home-attention-list li > button,
+.clarte-frame .clarte-today .operational-home-overdue-list li > button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-height: 32px;
+  border-color: transparent;
+  color: var(--clarte-accent-text);
+  background: var(--clarte-accent-soft);
+}
+
+.clarte-frame .clarte-today .operational-home-attention-rules,
+.clarte-frame .clarte-today .operational-home-overdue-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+}
+
+.clarte-frame .clarte-today .operational-home-attention-rules span {
+  padding: 2px 9px;
+  border-radius: 999px;
+  color: var(--clarte-warning);
+  background: var(--clarte-warning-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-today .operational-home-overdue-state span {
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-today .operational-home-overdue-state span + span {
+  padding: 2px 9px;
+  border-radius: 999px;
+  color: var(--clarte-danger);
+  background: var(--clarte-danger-soft);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-today .operational-home-upcoming-panel {
+  margin-top: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--clarte-line);
+  border-radius: 14px;
+  background: var(--clarte-surface-muted);
+}
+
+.clarte-frame .clarte-today .operational-home-overdue-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.clarte-frame .clarte-today .operational-home-overdue-heading h3,
+.clarte-frame .clarte-today .operational-home-overdue-heading h4 {
+  margin: 0;
+  color: var(--clarte-ink);
+  font-size: 17px;
+}
+
+.clarte-frame .clarte-today .operational-home-overdue-heading h3:focus,
+.clarte-frame .clarte-today .operational-home-overdue-heading h4:focus {
+  outline: none;
+}
+
+.clarte-frame .clarte-today .operational-home-overdue-heading button,
+.clarte-frame .clarte-today .operational-home-upcoming-pagination button,
+.clarte-frame .clarte-today .operational-home-overdue-pagination button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.clarte-frame .clarte-today .operational-home-overdue-heading svg,
+.clarte-frame .clarte-today .operational-home-upcoming-pagination svg,
+.clarte-frame .clarte-today .operational-home-overdue-pagination svg {
+  width: 15px;
+  height: 15px;
+}
+
+.clarte-frame .clarte-today .operational-home-upcoming-pagination,
+.clarte-frame .clarte-today .operational-home-overdue-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.clarte-frame .clarte-today .operational-home-state {
+  margin: 10px 0 0;
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-today .operational-home-state--alert p {
+  color: var(--clarte-danger);
+}
+
+/* The full overdue list, as its own page */
+.clarte-frame .clarte-today-followup .operational-home-overdue {
+  padding: 22px 26px;
+  border: 1px solid var(--clarte-line);
+  border-radius: 16px;
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+/* Side cards */
+.clarte-frame .clarte-today-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--clarte-line);
+  border-radius: 16px;
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+.clarte-frame .clarte-today-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-today-card-head .clarte-button {
+  min-height: 32px;
+  padding: 0 8px;
+}
+
+.clarte-frame .clarte-today-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--clarte-muted);
+  font-family: var(--clarte-font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-today-card-title svg {
+  width: 15px;
+  height: 15px;
+}
+
+.clarte-frame .clarte-today-card-note {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-today-counters {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-today-counters li + li {
+  border-top: 1px solid var(--clarte-line-soft);
+}
+
+.clarte-frame .clarte-today .clarte-today-counter {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 0;
+  padding: 10px 4px;
+  border: 0;
+  border-radius: var(--clarte-radius-sm);
+  color: var(--clarte-ink);
+  background: transparent;
+  text-align: left;
+  font-weight: 400;
+}
+
+.clarte-frame .clarte-today .clarte-today-counter:hover {
+  background: var(--clarte-surface-muted);
+}
+
+.clarte-frame .clarte-today-counter-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  color: var(--clarte-accent-text);
+  background: var(--clarte-accent-soft);
+}
+
+.clarte-frame
+  .clarte-today-counter[data-kind='overdue_tasks']
+  .clarte-today-counter-icon {
+  color: var(--clarte-danger);
+  background: var(--clarte-danger-soft);
+}
+
+.clarte-frame .clarte-today-counter-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.clarte-frame .clarte-today-counter-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-today-counter-text span {
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-today-counter-text small {
+  color: var(--clarte-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.clarte-frame .clarte-today-counter strong {
+  font-family: var(--clarte-font-heading);
+  font-size: 22px;
+}
+
+/* All Companies summaries, reused inside a side card */
+.clarte-frame .clarte-today-companies .multi-company-summary-entry {
+  display: grid;
+  gap: 12px;
+}
+
+.clarte-frame .clarte-today-companies .multi-company-summary-entry > button {
+  justify-self: stretch;
+}
+
+.clarte-frame .clarte-today-companies .multi-company-summary {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.clarte-frame .clarte-today-companies .multi-company-summary-heading {
+  display: grid;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-today-companies .multi-company-summary-heading h2 {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-family: var(--clarte-font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-today-companies .multi-company-summary-heading h2:focus {
+  outline: none;
+}
+
+.clarte-frame .clarte-today-companies .multi-company-summary-heading p,
+.clarte-frame .clarte-today-companies .multi-company-summary-row > p {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-today-companies .multi-company-summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-today-companies .multi-company-summary-rows {
+  display: grid;
+  gap: 12px;
+}
+
+.clarte-frame .clarte-today-companies .multi-company-summary-row {
+  display: grid;
+  gap: 6px;
+  padding: 0 0 12px;
+  border: 0;
+  border-bottom: 1px solid var(--clarte-line-soft);
+  border-radius: 0;
+  background: transparent;
+}
+
+.clarte-frame .clarte-today-companies .multi-company-summary-row h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.clarte-frame .clarte-today-companies .multi-company-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+/* Compact tiles: each tile's name already states its count and destination. */
+.clarte-frame .clarte-today-companies .multi-company-summary-cards button {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-height: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  text-align: left;
+  font-weight: 400;
+}
+
+.clarte-frame
+  .clarte-today-companies
+  .multi-company-summary-cards
+  button
+  > span:first-child {
+  order: 2;
+  color: var(--clarte-muted);
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.clarte-frame .clarte-today-companies .multi-company-summary-cards strong {
+  order: 1;
+  font-family: var(--clarte-font-heading);
+  font-size: 19px;
+}
+
+.clarte-frame
+  .clarte-today-companies
+  .multi-company-summary-cards
+  button
+  > span:not(:first-child) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.clarte-frame .clarte-today-companies .multi-company-summary-cards button {
+  position: relative;
+}
+
+.clarte-frame .clarte-today-companies .multi-company-summary-confirmation {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--clarte-accent-line);
+  border-radius: 12px;
+  background: var(--clarte-accent-soft);
+}
+
+.clarte-frame .clarte-today-companies .multi-company-summary-confirmation h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.clarte-frame
+  .clarte-today-companies
+  .multi-company-summary-confirmation
+  h3:focus {
+  outline: none;
+}
+
+.clarte-frame .clarte-today-companies .multi-company-summary-confirmation p {
+  margin: 0;
+}
+
+.clarte-frame
+  .clarte-today
+  .multi-company-summary-confirmation
+  .multi-company-summary-actions
+  button:first-child {
+  border-color: transparent;
+  color: var(--clarte-accent-ink);
+  background: var(--clarte-accent);
+}
+
+/* This week */
+.clarte-frame .clarte-today-week {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-today-week-day {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--clarte-line-soft);
+}
+
+.clarte-frame .clarte-today-week-day:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.clarte-frame .clarte-today-week-date {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+}
+
+.clarte-frame .clarte-today-week-date small {
+  color: var(--clarte-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-today-week-date strong {
+  font-family: var(--clarte-font-heading);
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.clarte-frame
+  .clarte-today-week-day[data-today]
+  .clarte-today-week-date
+  strong {
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-today-week-day ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-today .clarte-today-week-task {
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  min-height: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--clarte-line);
+  border-left: 3px solid var(--clarte-accent);
+  border-radius: 8px;
+  color: var(--clarte-ink);
+  background: var(--clarte-surface-muted);
+  text-align: left;
+  font-weight: 400;
+}
+
+.clarte-frame .clarte-today .clarte-today-week-task strong {
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.clarte-frame .clarte-today .clarte-today-week-task small {
+  color: var(--clarte-muted);
+  font-size: 12px;
+}
+
+/* Work in order */
+.clarte-frame .clarte-today-work {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-today-work-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.clarte-frame .clarte-today-work-head h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.clarte-frame .clarte-today-work-head h2:focus {
+  outline: none;
+}
+
+.clarte-frame .clarte-today-work-head p {
+  margin: 4px 0 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-today-work-warning {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  color: var(--clarte-warning);
+  background: var(--clarte-warning-soft);
+}
+
+.clarte-frame .clarte-today-work-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.clarte-frame .clarte-today-work-list {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: 16px;
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+.clarte-frame .clarte-today-work-group {
+  display: grid;
+  gap: 6px;
+}
+
+.clarte-frame .clarte-today-work-group h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 0 6px;
+  color: var(--clarte-muted);
+  font-family: var(--clarte-font-body);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-today-work-group h3 svg {
+  width: 14px;
+  height: 14px;
+}
+
+.clarte-frame .clarte-today-work-group h3 span {
+  color: var(--clarte-ink-soft);
+}
+
+.clarte-frame .clarte-today-work-group ol {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-today .clarte-today-work-group button {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 1px;
+  width: 100%;
+  min-height: 0;
+  padding: 8px 10px;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 10px;
+  color: var(--clarte-ink);
+  background: transparent;
+  text-align: left;
+  font-weight: 400;
+}
+
+.clarte-frame .clarte-today .clarte-today-work-group button:hover {
+  background: var(--clarte-surface-muted);
+}
+
+.clarte-frame .clarte-today .clarte-today-work-group button[aria-current] {
+  border-left-color: var(--clarte-accent);
+  background: var(--clarte-accent-soft);
+}
+
+.clarte-frame .clarte-today-work-icon {
+  display: grid;
+  grid-row: 1 / span 2;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--clarte-accent-text);
+  background: var(--clarte-accent-soft);
+}
+
+.clarte-frame .clarte-today-work-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.clarte-frame
+  .clarte-today-work-group
+  button[aria-current]
+  .clarte-today-work-icon {
+  color: var(--clarte-accent-ink);
+  background: var(--clarte-accent);
+}
+
+.clarte-frame .clarte-today-work-group button strong {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clarte-frame .clarte-today-work-group button small {
+  overflow: hidden;
+  color: var(--clarte-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clarte-frame .clarte-today-work-item {
+  display: grid;
+  gap: 10px;
+  padding: 26px 30px;
+  border: 1px solid var(--clarte-accent-line);
+  border-left: 4px solid var(--clarte-accent);
+  border-radius: 16px;
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+.clarte-frame .clarte-today-work-item > * {
+  margin: 0;
+}
+
+.clarte-frame .clarte-today-work-position {
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-today-work-kind {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--clarte-accent-text);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-today-work-kind svg {
+  width: 15px;
+  height: 15px;
+}
+
+.clarte-frame .clarte-today-work-item h3 {
+  font-size: 24px;
+  line-height: 1.25;
+}
+
+.clarte-frame .clarte-today-work-context {
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-today-work-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.clarte-frame .clarte-today-work-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.clarte-frame .clarte-today-work-steps {
+  display: flex;
+  gap: 8px;
+}
+
+/* Quick action panels */
+.clarte-frame .clarte-today-receipt {
+  display: grid;
+  gap: 14px;
+}
+
+.clarte-frame .clarte-today-receipt p {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  color: var(--clarte-success);
+  background: var(--clarte-success-soft);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-today-receipt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-today-capture .commercial-intake-capture {
+  display: grid;
+  gap: 14px;
+}
+
+.clarte-frame .clarte-today-capture .commercial-intake-source {
+  padding: 12px 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: 12px;
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-today-capture .commercial-intake-source p {
+  margin: 4px 0 0;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-today-capture .commercial-intake-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--clarte-line);
+  border-radius: 14px;
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-today-capture .commercial-intake-form > * {
+  grid-column: 1;
+}
+
+.clarte-frame .clarte-today-capture .commercial-intake-form label,
+.clarte-frame .clarte-today-capture .commercial-intake-field {
+  display: grid;
+  gap: 6px;
+  color: var(--clarte-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-today-capture .commercial-intake-field small {
+  color: var(--clarte-muted);
+  font-weight: 400;
+}
+
+.clarte-frame .clarte-today-capture textarea {
+  min-height: 110px;
+}
+
+.clarte-frame .clarte-today-capture button[type='submit'] {
+  justify-self: start;
+  border-color: transparent;
+  color: var(--clarte-accent-ink);
+  background: var(--clarte-accent);
+}
+
+.clarte-frame .clarte-today-affaires {
+  display: grid;
+  gap: 12px;
+}
+
+.clarte-frame .clarte-today-affaires h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.clarte-frame .clarte-today-affaires ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-today .clarte-today-affaire,
+.clarte-frame .clarte-side-panel .clarte-today-affaire {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: 12px;
+  color: var(--clarte-ink);
+  background: var(--clarte-surface);
+  text-align: left;
+  font-weight: 400;
+}
+
+.clarte-frame .clarte-today-affaire span {
+  display: grid;
+  gap: 2px;
+}
+
+.clarte-frame .clarte-today-affaire strong {
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-today-affaire small {
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-today-affaire svg {
+  width: 16px;
+  height: 16px;
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-today-contract {
+  display: grid;
+  gap: 12px;
+}
+
+.clarte-frame .clarte-today-contract-affaire {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+}
+
+.clarte-frame .clarte-today-review,
+.clarte-frame .clarte-today-contract {
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .clarte-frame .clarte-today-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clarte-frame .clarte-today-work-layout {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .clarte-frame .clarte-today {
+    gap: 18px;
+  }
+
+  .clarte-frame .clarte-today-home {
+    gap: 22px;
+  }
+
+  .clarte-frame .clarte-today-hero {
+    padding: 20px;
+    border-radius: 18px;
+  }
+
+  .clarte-frame .clarte-today-hero::after {
+    display: none;
+  }
+
+  .clarte-frame .clarte-today-hero-lead {
+    font-size: 17px;
+  }
+
+  .clarte-frame .clarte-today-hero-actions > .clarte-button {
+    flex: 1 1 auto;
+  }
+
+  .clarte-frame .clarte-today-hero-actions .clarte-button--primary {
+    flex-basis: 100%;
+  }
+
+  .clarte-frame .clarte-today-decisions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clarte-frame .clarte-today-todo-body > section {
+    padding: 16px;
+  }
+
+  .clarte-frame .clarte-today .operational-home-attention-list li,
+  .clarte-frame .clarte-today .operational-home-overdue-list li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clarte-frame .clarte-today .operational-home-attention-list li > button,
+  .clarte-frame .clarte-today .operational-home-overdue-list li > button {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+  }
+
+  .clarte-frame .clarte-today-followup .operational-home-overdue {
+    padding: 16px;
+  }
+
+  .clarte-frame .clarte-today-work-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clarte-frame .clarte-today-work-item {
+    order: -1;
+    padding: 20px;
+  }
+
+  .clarte-frame .clarte-today-work-item h3 {
+    font-size: 20px;
+  }
+
+  .clarte-frame .clarte-today-work-actions > .clarte-button {
+    flex: 1 1 100%;
+  }
+
+  .clarte-frame .clarte-today-work-steps {
+    flex: 1 1 100%;
+  }
+
+  .clarte-frame .clarte-today-work-steps > .clarte-button {
+    flex: 1;
+  }
+}

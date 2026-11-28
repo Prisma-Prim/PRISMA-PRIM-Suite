@@ -9,6 +9,7 @@ import {
   within,
 } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { appInterfaces, renderInInterface } from './test/app-interface';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
@@ -355,89 +356,154 @@ const scrollable: {
 } = Element.prototype;
 const nativeScrollIntoView = scrollable.scrollIntoView;
 
-describe('Operational home through App', () => {
-  let language: string;
-  beforeEach(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    language = document.documentElement.lang;
-    document.documentElement.lang = 'en-US';
-    scrollable.scrollIntoView = vi.fn();
-    // The Prisme overview renders the motion hero before a section is selected.
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn(
-        (query: string) =>
-          ({
-            matches: true,
-            media: query,
-            onchange: null,
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            dispatchEvent: vi.fn(() => false),
-          }) satisfies MediaQueryList,
-      ),
-    );
-  });
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-    document.documentElement.lang = language;
-    scrollable.scrollIntoView = nativeScrollIntoView;
-    window.history.replaceState(null, '', '/');
-  });
+describe.each(appInterfaces)(
+  'Operational home through App in the %s interface',
+  (appInterface) => {
+    // The home destination: Overview in the current interface, Today in Clarté.
+    const home = appInterface === 'clarte' ? 'Today' : 'Overview';
+    let language: string;
+    beforeEach(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      language = document.documentElement.lang;
+      document.documentElement.lang = 'en-US';
+      scrollable.scrollIntoView = vi.fn();
+      // The Prisme overview renders the motion hero before a section is selected.
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn(
+          (query: string) =>
+            ({
+              matches: true,
+              media: query,
+              onchange: null,
+              addListener: vi.fn(),
+              removeListener: vi.fn(),
+              addEventListener: vi.fn(),
+              removeEventListener: vi.fn(),
+              dispatchEvent: vi.fn(() => false),
+            }) satisfies MediaQueryList,
+        ),
+      );
+    });
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+      document.documentElement.lang = language;
+      scrollable.scrollIntoView = nativeScrollIntoView;
+      window.history.replaceState(null, '', '/');
+    });
 
-  it('collects independently authorized Company summaries without switching the working Company', async () => {
-    window.history.replaceState(null, '', '/');
-    const server = installServer();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await screen.findByRole('button', {
-      name: cardName('active_clients', 3),
-    });
-    fireEvent.click(
-      screen.getByRole('button', { name: 'All Companies summaries' }),
-    );
-    const consolidated = await screen.findByRole('region', {
-      name: 'All Companies summaries',
-    });
-    await within(consolidated).findByRole('heading', {
-      name: companyB.displayName,
-    });
-    expect(within(consolidated).getByText('71')).toBeVisible();
-    expect(
-      screen.getByLabelText('Active Company', { exact: true }),
-    ).toHaveValue(companyA.id);
-    expect(window.location.hash).toBe('');
-    expect(server.count(homeRoute, companyB.id)).toBe(1);
-  });
-
-  it.each([
-    {
-      kind: 'active_clients',
-      count: 71,
-      hash: '#clients',
-      route: 'GET /api/clients',
-    },
-    {
-      kind: 'open_projects',
-      count: 72,
-      hash: '#projects',
-      route: 'GET /api/projects',
-    },
-    { kind: 'overdue_tasks', count: 0, hash: '#overview', route: overdueRoute },
-  ] satisfies Array<{
-    kind: keyof typeof copy.summaries;
-    count: number;
-    hash: string;
-    route: string;
-  }>)(
-    'opens the exact selected-Company $kind destination after the normal owner confirms it',
-    async ({ kind, count, hash, route }) => {
+    it('collects independently authorized Company summaries without switching the working Company', async () => {
       window.history.replaceState(null, '', '/');
       const server = installServer();
-      render(<App identity={deterministicBrowserIdentity()} />);
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await screen.findByRole('button', {
+        name: cardName('active_clients', 3),
+      });
+      fireEvent.click(
+        screen.getByRole('button', { name: 'All Companies summaries' }),
+      );
+      const consolidated = await screen.findByRole('region', {
+        name: 'All Companies summaries',
+      });
+      await within(consolidated).findByRole('heading', {
+        name: companyB.displayName,
+      });
+      expect(within(consolidated).getByText('71')).toBeVisible();
+      expect(
+        screen.getByLabelText('Active Company', { exact: true }),
+      ).toHaveValue(companyA.id);
+      expect(window.location.hash).toBe('');
+      expect(server.count(homeRoute, companyB.id)).toBe(1);
+    });
+
+    it.each([
+      {
+        kind: 'active_clients',
+        count: 71,
+        hash: '#clients',
+        route: 'GET /api/clients',
+      },
+      {
+        kind: 'open_projects',
+        count: 72,
+        hash: '#projects',
+        route: 'GET /api/projects',
+      },
+      {
+        kind: 'overdue_tasks',
+        count: 0,
+        hash: '#overview',
+        route: overdueRoute,
+      },
+    ] satisfies Array<{
+      kind: keyof typeof copy.summaries;
+      count: number;
+      hash: string;
+      route: string;
+    }>)(
+      'opens the exact selected-Company $kind destination after the normal owner confirms it',
+      async ({ kind, count, hash, route }) => {
+        window.history.replaceState(null, '', '/');
+        const server = installServer();
+        renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+        );
+        fireEvent.click(
+          await screen.findByRole('button', {
+            name: 'All Companies summaries',
+          }),
+        );
+        const row = await screen.findByRole('region', {
+          name: companyB.displayName,
+        });
+        fireEvent.click(
+          await within(row).findByRole('button', {
+            name: `${companyB.displayName}: ${cardName(kind, count)}`,
+          }),
+        );
+        expect(
+          screen.getByLabelText('Active Company', { exact: true }),
+        ).toHaveValue(companyA.id);
+        expect(window.location.hash).toBe('');
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        await waitFor(() => expect(window.location.hash).toBe(hash));
+        expect(
+          screen.getByLabelText('Active Company', { exact: true }),
+        ).toHaveValue(companyB.id);
+        await waitFor(() =>
+          expect(server.count(route, companyB.id)).toBeGreaterThan(0),
+        );
+        if (kind === 'overdue_tasks') {
+          expect(
+            await screen.findByRole('region', {
+              name: copy.overdue.title({ company: companyB.displayName }),
+            }),
+          ).toBeVisible();
+          fireEvent.click(
+            screen.getByRole('button', { name: copy.overdue.closeName }),
+          );
+          const reads = server.count(homeRoute, companyB.id);
+          fireEvent.click(screen.getByRole('button', { name: copy.refresh }));
+          await waitFor(() =>
+            expect(server.count(homeRoute, companyB.id)).toBe(reads + 1),
+          );
+          await screen.findByRole('button', {
+            name: cardName('overdue_tasks', 0),
+          });
+          expect(overduePanel(companyB)).toBeNull();
+        }
+      },
+    );
+
+    async function continueToHeldOverdue(
+      server: ReturnType<typeof installServer>,
+    ) {
       fireEvent.click(
         await screen.findByRole('button', { name: 'All Companies summaries' }),
       );
@@ -446,126 +512,128 @@ describe('Operational home through App', () => {
       });
       fireEvent.click(
         await within(row).findByRole('button', {
-          name: `${companyB.displayName}: ${cardName(kind, count)}`,
+          name: `${companyB.displayName}: ${cardName('overdue_tasks', 0)}`,
         }),
       );
-      expect(
-        screen.getByLabelText('Active Company', { exact: true }),
-      ).toHaveValue(companyA.id);
-      expect(window.location.hash).toBe('');
+      server.hold(homeRoute, companyB.id);
       fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-      await waitFor(() => expect(window.location.hash).toBe(hash));
-      expect(
-        screen.getByLabelText('Active Company', { exact: true }),
-      ).toHaveValue(companyB.id);
-      await waitFor(() =>
-        expect(server.count(route, companyB.id)).toBeGreaterThan(0),
-      );
-      if (kind === 'overdue_tasks') {
+      await waitFor(() => {
+        expect(server.count(homeRoute, companyB.id)).toBe(2);
+        expect(server.count('GET /api/activity-log', companyB.id)).toBe(1);
         expect(
-          await screen.findByRole('region', {
-            name: copy.overdue.title({ company: companyB.displayName }),
-          }),
-        ).toBeVisible();
-        fireEvent.click(
-          screen.getByRole('button', { name: copy.overdue.closeName }),
-        );
-        const reads = server.count(homeRoute, companyB.id);
-        fireEvent.click(screen.getByRole('button', { name: copy.refresh }));
-        await waitFor(() =>
-          expect(server.count(homeRoute, companyB.id)).toBe(reads + 1),
-        );
-        await screen.findByRole('button', {
-          name: cardName('overdue_tasks', 0),
-        });
-        expect(overduePanel(companyB)).toBeNull();
-      }
-    },
-  );
+          screen.getByLabelText('Active Company', { exact: true }),
+        ).toHaveValue(companyB.id);
+        expect(window.location.hash).toBe('#overview');
+      });
+      expect(server.count(overdueRoute, companyB.id)).toBe(0);
+    }
 
-  async function continueToHeldOverdue(
-    server: ReturnType<typeof installServer>,
-  ) {
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'All Companies summaries' }),
-    );
-    const row = await screen.findByRole('region', {
-      name: companyB.displayName,
-    });
-    fireEvent.click(
-      await within(row).findByRole('button', {
-        name: `${companyB.displayName}: ${cardName('overdue_tasks', 0)}`,
-      }),
-    );
-    server.hold(homeRoute, companyB.id);
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() => {
-      expect(server.count(homeRoute, companyB.id)).toBe(2);
-      expect(server.count('GET /api/activity-log', companyB.id)).toBe(1);
-      expect(
-        screen.getByLabelText('Active Company', { exact: true }),
-      ).toHaveValue(companyB.id);
-      expect(window.location.hash).toBe('#overview');
-    });
-    expect(server.count(overdueRoute, companyB.id)).toBe(0);
-  }
-
-  it('permanently retires a held overdue continuation after another Company selection and return', async () => {
-    window.history.replaceState(null, '', '/');
-    const server = installServer();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await continueToHeldOverdue(server);
-    await selectCompany(companyA.id);
-    await selectCompany(companyB.id);
-    await waitFor(() => expect(server.count(homeRoute, companyB.id)).toBe(3));
-    await server.releaseAll(homeRoute, companyB.id);
-    await screen.findByRole('button', { name: cardName('overdue_tasks', 0) });
-    expect(overduePanel(companyB)).toBeNull();
-    expect(server.count(overdueRoute, companyB.id)).toBe(0);
-  });
-
-  it('permanently retires a held overdue continuation when leaving Home and returning', async () => {
-    const server = installServer();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await continueToHeldOverdue(server);
-    const navigation = screen.getByRole('navigation', {
-      name: 'Primary navigation',
-    });
-    fireEvent.click(within(navigation).getByRole('link', { name: 'Clients' }));
-    await waitFor(() => expect(window.location.hash).toBe('#clients'));
-    fireEvent.click(within(navigation).getByRole('link', { name: 'Overview' }));
-    await waitFor(() => expect(server.count(homeRoute, companyB.id)).toBe(3));
-    await server.releaseAll(homeRoute, companyB.id);
-    await screen.findByRole('button', { name: cardName('overdue_tasks', 0) });
-    expect(overduePanel(companyB)).toBeNull();
-    expect(server.count(overdueRoute, companyB.id)).toBe(0);
-  });
-
-  it('preserves its own held selected-Company overdue continuation through a locale-only render', async () => {
-    window.history.replaceState(null, '', '/');
-    const server = installServer();
-    render(
-      <>
-        <InterfaceLocaleSelect />
-        <App identity={deterministicBrowserIdentity()} />
-      </>,
-    );
-    await continueToHeldOverdue(server);
-    changeValue(screen.getByLabelText('Interface language'), 'fr');
-    expect(server.count(homeRoute, companyB.id)).toBe(2);
-    await server.releaseAll(homeRoute, companyB.id);
-    expect(
-      await screen.findByRole('region', { name: 'Tâches en retard dans BIC' }),
-    ).toBeVisible();
-    expect(server.count(overdueRoute, companyB.id)).toBe(1);
-  });
-
-  it.each(['selection', 'activity'])(
-    'preserves current $s denial retirement instead of opening a staged destination',
-    async (deniedAt) => {
+    it('permanently retires a held overdue continuation after another Company selection and return', async () => {
       window.history.replaceState(null, '', '/');
       const server = installServer();
-      render(<App identity={deterministicBrowserIdentity()} />);
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await continueToHeldOverdue(server);
+      await selectCompany(companyA.id);
+      await selectCompany(companyB.id);
+      await waitFor(() => expect(server.count(homeRoute, companyB.id)).toBe(3));
+      await server.releaseAll(homeRoute, companyB.id);
+      await screen.findByRole('button', { name: cardName('overdue_tasks', 0) });
+      expect(overduePanel(companyB)).toBeNull();
+      expect(server.count(overdueRoute, companyB.id)).toBe(0);
+    });
+
+    it('permanently retires a held overdue continuation when leaving Home and returning', async () => {
+      const server = installServer();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await continueToHeldOverdue(server);
+      const navigation = screen.getByRole('navigation', {
+        name: 'Primary navigation',
+      });
+      fireEvent.click(
+        within(navigation).getByRole('link', { name: 'Clients' }),
+      );
+      await waitFor(() => expect(window.location.hash).toBe('#clients'));
+      fireEvent.click(within(navigation).getByRole('link', { name: home }));
+      await waitFor(() => expect(server.count(homeRoute, companyB.id)).toBe(3));
+      await server.releaseAll(homeRoute, companyB.id);
+      await screen.findByRole('button', { name: cardName('overdue_tasks', 0) });
+      expect(overduePanel(companyB)).toBeNull();
+      expect(server.count(overdueRoute, companyB.id)).toBe(0);
+    });
+
+    it('preserves its own held selected-Company overdue continuation through a locale-only render', async () => {
+      window.history.replaceState(null, '', '/');
+      const server = installServer();
+      render(
+        <>
+          <InterfaceLocaleSelect />
+          <App identity={deterministicBrowserIdentity()} />
+        </>,
+      );
+      await continueToHeldOverdue(server);
+      changeValue(screen.getByLabelText('Interface language'), 'fr');
+      expect(server.count(homeRoute, companyB.id)).toBe(2);
+      await server.releaseAll(homeRoute, companyB.id);
+      expect(
+        await screen.findByRole('region', {
+          name: 'Tâches en retard dans BIC',
+        }),
+      ).toBeVisible();
+      expect(server.count(overdueRoute, companyB.id)).toBe(1);
+    });
+
+    it.each(['selection', 'activity'])(
+      'preserves current $s denial retirement instead of opening a staged destination',
+      async (deniedAt) => {
+        window.history.replaceState(null, '', '/');
+        const server = installServer();
+        renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+        );
+        fireEvent.click(
+          await screen.findByRole('button', {
+            name: 'All Companies summaries',
+          }),
+        );
+        const row = await screen.findByRole('region', {
+          name: companyB.displayName,
+        });
+        fireEvent.click(
+          await within(row).findByRole('button', {
+            name: `${companyB.displayName}: ${cardName('active_clients', 71)}`,
+          }),
+        );
+        (deniedAt === 'selection'
+          ? server.state.deniedActors
+          : server.state.deniedActivity
+        ).add(companyB.id);
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+        await waitFor(() =>
+          expect(
+            screen.getByLabelText('Active Company', { exact: true }),
+          ).toHaveValue(''),
+        );
+        expect(window.location.hash).toBe('');
+        expect(
+          screen.queryByRole('region', { name: 'All Companies summaries' }),
+        ).toBeNull();
+      },
+    );
+
+    it('does not open a staged destination after closing while the actual selection is pending', async () => {
+      window.history.replaceState(null, '', '/');
+      const server = installServer();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
       fireEvent.click(
         await screen.findByRole('button', { name: 'All Companies summaries' }),
       );
@@ -577,577 +645,637 @@ describe('Operational home through App', () => {
           name: `${companyB.displayName}: ${cardName('active_clients', 71)}`,
         }),
       );
-      (deniedAt === 'selection'
-        ? server.state.deniedActors
-        : server.state.deniedActivity
-      ).add(companyB.id);
+      server.hold('GET /api/access/current-actor', companyB.id);
       fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+      await waitFor(() =>
+        expect(server.count('GET /api/access/current-actor', companyB.id)).toBe(
+          2,
+        ),
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Close All Companies summaries' }),
+      );
+      await server.release('GET /api/access/current-actor', companyB.id);
       await waitFor(() =>
         expect(
           screen.getByLabelText('Active Company', { exact: true }),
-        ).toHaveValue(''),
+        ).toHaveValue(companyB.id),
       );
       expect(window.location.hash).toBe('');
       expect(
         screen.queryByRole('region', { name: 'All Companies summaries' }),
       ).toBeNull();
-    },
-  );
-
-  it('does not open a staged destination after closing while the actual selection is pending', async () => {
-    window.history.replaceState(null, '', '/');
-    const server = installServer();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'All Companies summaries' }),
-    );
-    const row = await screen.findByRole('region', {
-      name: companyB.displayName,
     });
-    fireEvent.click(
-      await within(row).findByRole('button', {
-        name: `${companyB.displayName}: ${cardName('active_clients', 71)}`,
-      }),
-    );
-    server.hold('GET /api/access/current-actor', companyB.id);
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(() =>
-      expect(server.count('GET /api/access/current-actor', companyB.id)).toBe(
-        2,
-      ),
-    );
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Close All Companies summaries' }),
-    );
-    await server.release('GET /api/access/current-actor', companyB.id);
-    await waitFor(() =>
+
+    it('opens the exact Task from the next overdue page through the real App Project intent', async () => {
+      window.history.replaceState(null, '', '/');
+      const server = installServer({ overdueTasks: nextPageTasks });
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: cardName('overdue_tasks', 26),
+        }),
+      );
+      const panel = await screen.findByRole('region', {
+        name: copy.overdue.title({ company: companyA.displayName }),
+      });
+      await within(panel).findByRole('heading', {
+        name: 'Overdue page Task 1',
+      });
+      fireEvent.click(within(panel).getByRole('button', { name: 'Next page' }));
+      fireEvent.click(
+        await within(panel).findByRole('button', {
+          name: copy.overdue.openTask({
+            task: 'Overdue page Task 26',
+            project: project.title,
+            client: project.clientDisplayName,
+          }),
+        }),
+      );
+      await waitFor(() =>
+        expect(server.count('GET /api/tasks/overdue-page-26')).toBe(1),
+      );
+      const projectsRegion = await screen.findByRole('region', {
+        name: 'Projects',
+      });
+      const taskRegion = await within(projectsRegion).findByRole('region', {
+        name: 'Tasks',
+      });
+      const openedTask = await within(taskRegion).findByRole('heading', {
+        name: 'Overdue page Task 26',
+      });
+      expect(openedTask).toBeVisible();
+      await waitFor(() => expect(openedTask).toHaveFocus());
+      expect(server.count(`GET /api/projects/${project.id}`)).toBe(1);
+      expect(
+        server.requests
+          .filter((request) => request.route === overdueRoute)
+          .map((request) => request.search),
+      ).toEqual(['?offset=0', '?offset=25']);
+      expect(window.location.href).not.toContain('overdue-page-26');
+    });
+
+    it('ignores a held next-page response after switching Company and restarts from zero on return', async () => {
+      window.history.replaceState(null, '', '/');
+      const server = installServer({ overdueTasks: nextPageTasks });
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: cardName('overdue_tasks', 26),
+        }),
+      );
+      const panel = await screen.findByRole('region', {
+        name: copy.overdue.title({ company: companyA.displayName }),
+      });
+      await within(panel).findByRole('heading', {
+        name: 'Overdue page Task 1',
+      });
+      server.hold(overdueRoute, companyA.id);
+      fireEvent.click(within(panel).getByRole('button', { name: 'Next page' }));
+      await waitFor(() =>
+        expect(server.count(overdueRoute, companyA.id)).toBe(2),
+      );
+      try {
+        await selectCompany(companyB.id);
+        await screen.findByRole('button', {
+          name: cardName('active_clients', 71),
+        });
+        expect(overduePanel(companyA)).toBeNull();
+        expect(overduePanel(companyB)).toBeNull();
+        screen.getByLabelText('Active Company', { exact: true }).focus();
+      } finally {
+        await server.release(overdueRoute, companyA.id);
+      }
       expect(
         screen.getByLabelText('Active Company', { exact: true }),
-      ).toHaveValue(companyB.id),
-    );
-    expect(window.location.hash).toBe('');
-    expect(
-      screen.queryByRole('region', { name: 'All Companies summaries' }),
-    ).toBeNull();
-  });
-
-  it('opens the exact Task from the next overdue page through the real App Project intent', async () => {
-    window.history.replaceState(null, '', '/');
-    const server = installServer({ overdueTasks: nextPageTasks });
-    render(<App identity={deterministicBrowserIdentity()} />);
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: cardName('overdue_tasks', 26),
-      }),
-    );
-    const panel = await screen.findByRole('region', {
-      name: copy.overdue.title({ company: companyA.displayName }),
-    });
-    await within(panel).findByRole('heading', { name: 'Overdue page Task 1' });
-    fireEvent.click(within(panel).getByRole('button', { name: 'Next page' }));
-    fireEvent.click(
-      await within(panel).findByRole('button', {
-        name: copy.overdue.openTask({
-          task: 'Overdue page Task 26',
-          project: project.title,
-          client: project.clientDisplayName,
+      ).toHaveFocus();
+      expect(shownCards()).toEqual([
+        cardName('active_clients', 71),
+        cardName('open_projects', 72),
+        cardName('overdue_tasks', 0),
+      ]);
+      expect(
+        screen.queryByRole('heading', { name: 'Overdue page Task 26' }),
+      ).toBeNull();
+      expect(overduePanel(companyA)).toBeNull();
+      await selectCompany(companyA.id);
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: cardName('overdue_tasks', 26),
         }),
-      }),
-    );
-    await waitFor(() =>
-      expect(server.count('GET /api/tasks/overdue-page-26')).toBe(1),
-    );
-    const projectsRegion = await screen.findByRole('region', {
-      name: 'Projects',
+      );
+      const returned = await screen.findByRole('region', {
+        name: copy.overdue.title({ company: companyA.displayName }),
+      });
+      await within(returned).findByRole('heading', {
+        name: 'Overdue page Task 1',
+      });
+      expect(
+        within(returned).getByRole('button', { name: 'Previous page' }),
+      ).toBeDisabled();
+      expect(
+        server.requests
+          .filter(
+            (request) =>
+              request.route === overdueRoute &&
+              request.companyId === companyA.id,
+          )
+          .map((request) => request.search),
+      ).toEqual(['?offset=0', '?offset=25', '?offset=0']);
     });
-    const taskRegion = await within(projectsRegion).findByRole('region', {
-      name: 'Tasks',
-    });
-    const openedTask = await within(taskRegion).findByRole('heading', {
-      name: 'Overdue page Task 26',
-    });
-    expect(openedTask).toBeVisible();
-    await waitFor(() => expect(openedTask).toHaveFocus());
-    expect(server.count(`GET /api/projects/${project.id}`)).toBe(1);
-    expect(
-      server.requests
-        .filter((request) => request.route === overdueRoute)
-        .map((request) => request.search),
-    ).toEqual(['?offset=0', '?offset=25']);
-    expect(window.location.href).not.toContain('overdue-page-26');
-  });
 
-  it('ignores a held next-page response after switching Company and restarts from zero on return', async () => {
-    window.history.replaceState(null, '', '/');
-    const server = installServer({ overdueTasks: nextPageTasks });
-    render(<App identity={deterministicBrowserIdentity()} />);
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: cardName('overdue_tasks', 26),
-      }),
+    // Clarté shows the overdue list as its own page, which hides the overview
+    // queue whose refused refresh this test uses to revalidate the Actor.
+    it.runIf(appInterface === 'current')(
+      'retires a held overdue page when live actor revalidation removes Task read',
+      async () => {
+        window.history.replaceState(null, '', '/');
+        const server = installServer({
+          overdueTasks: nextPageTasks,
+          actor: (companyId) => withOfferDecisionQueue(actorFor(companyId)),
+        });
+        renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+        );
+        fireEvent.click(
+          await screen.findByRole('button', {
+            name: cardName('overdue_tasks', 26),
+          }),
+        );
+        const panel = await screen.findByRole('region', {
+          name: copy.overdue.title({ company: companyA.displayName }),
+        });
+        await within(panel).findByRole('heading', {
+          name: 'Overdue page Task 1',
+        });
+        server.hold(overdueRoute, companyA.id);
+        fireEvent.click(
+          within(panel).getByRole('button', { name: 'Next page' }),
+        );
+        await waitFor(() =>
+          expect(server.count(overdueRoute, companyA.id)).toBe(2),
+        );
+        server.state.actor = (companyId) =>
+          withOfferDecisionQueue({
+            ...actorFor(companyId),
+            activeCompany: {
+              ...(companyId === companyB.id ? companyB : companyA),
+
+              grants: companyGrants(
+                {
+                  bundle: 'company_director_client_access',
+                  version: 'v1',
+                  assignmentId: 'client-grant',
+                },
+                {
+                  bundle: 'company_project_access',
+                  version: 'v1',
+                  assignmentId: 'project-grant',
+                },
+              ),
+            },
+          });
+        server.state.showTaskSummary = false;
+        try {
+          await refuseOverviewQueueRefresh({
+            refuse: () => {
+              server.state.queueRefusals = 1;
+            },
+            actorReads: () => server.count('GET /api/access/current-actor'),
+          });
+          await waitFor(() => expect(server.count(homeRoute)).toBe(2));
+          await waitFor(() => expect(overduePanel(companyA)).toBeNull());
+        } finally {
+          await server.release(overdueRoute, companyA.id);
+        }
+        expect(
+          screen.queryByRole('button', { name: cardName('overdue_tasks', 26) }),
+        ).toBeNull();
+        expect(
+          screen.queryByRole('heading', { name: 'Overdue page Task 26' }),
+        ).toBeNull();
+        expect(shownCards()).toEqual([
+          cardName('active_clients', 3),
+          cardName('open_projects', 2),
+        ]);
+        expect(server.count(overdueRoute, companyA.id)).toBe(2);
+      },
     );
-    const panel = await screen.findByRole('region', {
-      name: copy.overdue.title({ company: companyA.displayName }),
+
+    it('renders the region with its cards and counting date on the overview', async () => {
+      window.history.replaceState(null, '', '/');
+      const server = installServer();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await within(
+        await screen.findByRole('region', { name: copy.title }),
+      ).findByRole('button', { name: cardName('active_clients', 3) });
+      expect(shownCards()).toEqual([
+        cardName('active_clients', 3),
+        cardName('open_projects', 2),
+        cardName('overdue_tasks', 1),
+      ]);
+      expect(summary()).toHaveTextContent(
+        'Counted on Sep 27, 2026 from the records you can open in PRISMA-PRIM.',
+      );
+      expect(server.count(homeRoute)).toBe(1);
+      expect(server.count('GET /api/overdue-tasks')).toBe(0);
     });
-    await within(panel).findByRole('heading', { name: 'Overdue page Task 1' });
-    server.hold(overdueRoute, companyA.id);
-    fireEvent.click(within(panel).getByRole('button', { name: 'Next page' }));
-    await waitFor(() =>
-      expect(server.count(overdueRoute, companyA.id)).toBe(2),
+
+    // The Prisme hero and capabilities exist only in the current interface.
+    it.runIf(appInterface === 'current')(
+      'places the region between the Prisme hero and capabilities and re-reads it on returning to the overview',
+      async () => {
+        window.history.replaceState(null, '', '/');
+        const server = installServer();
+        renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+        );
+        const clients = await screen.findByRole('button', {
+          name: cardName('active_clients', 3),
+        });
+        const hero = screen.getByRole('region', {
+          name: 'Clarity to move forward.',
+        });
+        const capabilities = screen.getByRole('region', {
+          name: 'Your workspace',
+        });
+        expect(
+          hero.compareDocumentPosition(summary()) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(
+          summary().compareDocumentPosition(capabilities) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+
+        fireEvent.click(clients);
+        await waitFor(() => expect(window.location.hash).toBe('#clients'));
+        expect(screen.queryByRole('region', { name: copy.title })).toBeNull();
+        fireEvent.click(
+          within(
+            screen.getByRole('navigation', { name: 'Primary navigation' }),
+          ).getByRole('link', { name: home }),
+        );
+        await screen.findByRole('button', {
+          name: cardName('active_clients', 3),
+        });
+        expect(server.count(homeRoute)).toBe(2);
+      },
     );
-    try {
+
+    it('never renders a previous Company reply after a switch and closes the overdue panel', async () => {
+      window.history.replaceState(null, '', '/');
+      const server = installServer();
+      server.state.showAttention = true;
+      server.hold(homeRoute, companyA.id);
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await waitFor(() => expect(server.count(homeRoute, companyA.id)).toBe(1));
+
+      await selectCompany(companyB.id);
+      await screen.findByRole('button', {
+        name: cardName('active_clients', 71),
+      });
+      await server.release(homeRoute, companyA.id);
+      expect(shownCards()).toEqual([
+        cardName('active_clients', 71),
+        cardName('open_projects', 72),
+        cardName('overdue_tasks', 0),
+      ]);
+      expect(summary()).toHaveTextContent('records you can open in BIC.');
+      expect(summary()).not.toHaveTextContent('PRISMA-PRIM');
+      // Clarté shows the attention list under To do, beside the summary.
+      expect(
+        appInterface === 'clarte'
+          ? screen.getByRole('region', { name: 'To do' })
+          : summary(),
+      ).toHaveTextContent(
+        'Nothing needs your attention in BIC on Sep 27, 2026.',
+      );
+      expect(summary()).not.toHaveTextContent(overdueTask.title);
+
+      await selectCompany(companyA.id);
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: cardName('overdue_tasks', 1),
+        }),
+      );
+      expect(
+        await within(overduePanel(companyA) ?? summary()).findByRole(
+          'heading',
+          {
+            name: overdueTask.title,
+          },
+        ),
+      ).toBeVisible();
       await selectCompany(companyB.id);
       await screen.findByRole('button', {
         name: cardName('active_clients', 71),
       });
       expect(overduePanel(companyA)).toBeNull();
       expect(overduePanel(companyB)).toBeNull();
-      screen.getByLabelText('Active Company', { exact: true }).focus();
-    } finally {
-      await server.release(overdueRoute, companyA.id);
-    }
-    expect(
-      screen.getByLabelText('Active Company', { exact: true }),
-    ).toHaveFocus();
-    expect(shownCards()).toEqual([
-      cardName('active_clients', 71),
-      cardName('open_projects', 72),
-      cardName('overdue_tasks', 0),
-    ]);
-    expect(
-      screen.queryByRole('heading', { name: 'Overdue page Task 26' }),
-    ).toBeNull();
-    expect(overduePanel(companyA)).toBeNull();
-    await selectCompany(companyA.id);
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: cardName('overdue_tasks', 26),
-      }),
-    );
-    const returned = await screen.findByRole('region', {
-      name: copy.overdue.title({ company: companyA.displayName }),
+      expect(screen.queryByText(overdueTask.title)).toBeNull();
     });
-    await within(returned).findByRole('heading', {
-      name: 'Overdue page Task 1',
-    });
-    expect(
-      within(returned).getByRole('button', { name: 'Previous page' }),
-    ).toBeDisabled();
-    expect(
-      server.requests
-        .filter(
-          (request) =>
-            request.route === overdueRoute && request.companyId === companyA.id,
-        )
-        .map((request) => request.search),
-    ).toEqual(['?offset=0', '?offset=25', '?offset=0']);
-  });
 
-  it('retires a held overdue page when live actor revalidation removes Task read', async () => {
-    window.history.replaceState(null, '', '/');
-    const server = installServer({
-      overdueTasks: nextPageTasks,
-      actor: (companyId) => withOfferDecisionQueue(actorFor(companyId)),
-    });
-    render(<App identity={deterministicBrowserIdentity()} />);
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: cardName('overdue_tasks', 26),
-      }),
-    );
-    const panel = await screen.findByRole('region', {
-      name: copy.overdue.title({ company: companyA.displayName }),
-    });
-    await within(panel).findByRole('heading', { name: 'Overdue page Task 1' });
-    server.hold(overdueRoute, companyA.id);
-    fireEvent.click(within(panel).getByRole('button', { name: 'Next page' }));
-    await waitFor(() =>
-      expect(server.count(overdueRoute, companyA.id)).toBe(2),
-    );
-    server.state.actor = (companyId) =>
-      withOfferDecisionQueue({
-        ...actorFor(companyId),
-        activeCompany: {
-          ...(companyId === companyB.id ? companyB : companyA),
-
-          grants: companyGrants(
-            {
-              bundle: 'company_director_client_access',
-              version: 'v1',
-              assignmentId: 'client-grant',
-            },
-            {
-              bundle: 'company_project_access',
-              version: 'v1',
-              assignmentId: 'project-grant',
-            },
-          ),
-        },
+    it('remounts the region when the captured Client permission version changes', async () => {
+      window.history.replaceState(null, '', '/');
+      const server = installServer({
+        actor: (companyId) => withOfferDecisionQueue(actorFor(companyId)),
       });
-    server.state.showTaskSummary = false;
-    try {
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await screen.findByRole('button', {
+        name: cardName('active_clients', 3),
+      });
+      expect(server.count(homeRoute)).toBe(1);
+
+      // A refused read revalidates the actor, who now holds captured v2.
+      server.state.actor = (companyId) =>
+        withOfferDecisionQueue(actorFor(companyId, 'v2'));
+      server.state.clientsInA = 4;
       await refuseOverviewQueueRefresh({
         refuse: () => {
           server.state.queueRefusals = 1;
         },
         actorReads: () => server.count('GET /api/access/current-actor'),
       });
-      await waitFor(() => expect(server.count(homeRoute)).toBe(2));
-      await waitFor(() => expect(overduePanel(companyA)).toBeNull());
-    } finally {
-      await server.release(overdueRoute, companyA.id);
-    }
-    expect(
-      screen.queryByRole('button', { name: cardName('overdue_tasks', 26) }),
-    ).toBeNull();
-    expect(
-      screen.queryByRole('heading', { name: 'Overdue page Task 26' }),
-    ).toBeNull();
-    expect(shownCards()).toEqual([
-      cardName('active_clients', 3),
-      cardName('open_projects', 2),
-    ]);
-    expect(server.count(overdueRoute, companyA.id)).toBe(2);
-  });
-
-  it('renders the region with its cards and counting date on the overview', async () => {
-    window.history.replaceState(null, '', '/');
-    const server = installServer();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await within(
-      await screen.findByRole('region', { name: copy.title }),
-    ).findByRole('button', { name: cardName('active_clients', 3) });
-    expect(shownCards()).toEqual([
-      cardName('active_clients', 3),
-      cardName('open_projects', 2),
-      cardName('overdue_tasks', 1),
-    ]);
-    expect(summary()).toHaveTextContent(
-      'Counted on Sep 27, 2026 from the records you can open in PRISMA-PRIM.',
-    );
-    expect(server.count(homeRoute)).toBe(1);
-    expect(server.count('GET /api/overdue-tasks')).toBe(0);
-  });
-
-  it('places the region between the Prisme hero and capabilities and re-reads it on returning to the overview', async () => {
-    window.history.replaceState(null, '', '/');
-    const server = installServer();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    const clients = await screen.findByRole('button', {
-      name: cardName('active_clients', 3),
-    });
-    const hero = screen.getByRole('region', {
-      name: 'Clarity to move forward.',
-    });
-    const capabilities = screen.getByRole('region', { name: 'Your workspace' });
-    expect(
-      hero.compareDocumentPosition(summary()) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      summary().compareDocumentPosition(capabilities) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-
-    fireEvent.click(clients);
-    await waitFor(() => expect(window.location.hash).toBe('#clients'));
-    expect(screen.queryByRole('region', { name: copy.title })).toBeNull();
-    fireEvent.click(
-      within(
-        screen.getByRole('navigation', { name: 'Primary navigation' }),
-      ).getByRole('link', { name: 'Overview' }),
-    );
-    await screen.findByRole('button', { name: cardName('active_clients', 3) });
-    expect(server.count(homeRoute)).toBe(2);
-  });
-
-  it('never renders a previous Company reply after a switch and closes the overdue panel', async () => {
-    window.history.replaceState(null, '', '/');
-    const server = installServer();
-    server.state.showAttention = true;
-    server.hold(homeRoute, companyA.id);
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await waitFor(() => expect(server.count(homeRoute, companyA.id)).toBe(1));
-
-    await selectCompany(companyB.id);
-    await screen.findByRole('button', { name: cardName('active_clients', 71) });
-    await server.release(homeRoute, companyA.id);
-    expect(shownCards()).toEqual([
-      cardName('active_clients', 71),
-      cardName('open_projects', 72),
-      cardName('overdue_tasks', 0),
-    ]);
-    expect(summary()).toHaveTextContent('records you can open in BIC.');
-    expect(summary()).not.toHaveTextContent('PRISMA-PRIM');
-    expect(summary()).toHaveTextContent(
-      'Nothing needs your attention in BIC on Sep 27, 2026.',
-    );
-    expect(summary()).not.toHaveTextContent(overdueTask.title);
-
-    await selectCompany(companyA.id);
-    fireEvent.click(
-      await screen.findByRole('button', { name: cardName('overdue_tasks', 1) }),
-    );
-    expect(
-      await within(overduePanel(companyA) ?? summary()).findByRole('heading', {
-        name: overdueTask.title,
-      }),
-    ).toBeVisible();
-    await selectCompany(companyB.id);
-    await screen.findByRole('button', { name: cardName('active_clients', 71) });
-    expect(overduePanel(companyA)).toBeNull();
-    expect(overduePanel(companyB)).toBeNull();
-    expect(screen.queryByText(overdueTask.title)).toBeNull();
-  });
-
-  it('remounts the region when the captured Client permission version changes', async () => {
-    window.history.replaceState(null, '', '/');
-    const server = installServer({
-      actor: (companyId) => withOfferDecisionQueue(actorFor(companyId)),
-    });
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await screen.findByRole('button', { name: cardName('active_clients', 3) });
-    expect(server.count(homeRoute)).toBe(1);
-
-    // A refused read revalidates the actor, who now holds captured v2.
-    server.state.actor = (companyId) =>
-      withOfferDecisionQueue(actorFor(companyId, 'v2'));
-    server.state.clientsInA = 4;
-    await refuseOverviewQueueRefresh({
-      refuse: () => {
-        server.state.queueRefusals = 1;
-      },
-      actorReads: () => server.count('GET /api/access/current-actor'),
-    });
-    await screen.findByRole('button', { name: cardName('active_clients', 4) });
-    expect(server.count(homeRoute)).toBe(2);
-  });
-
-  it('opens the Project list and an overdue Task in its Project through the App intents', async () => {
-    window.history.replaceState(null, '', '/');
-    const server = installServer();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    const projectsRegion = () =>
-      screen.getByRole('region', { name: 'Projects' });
-
-    fireEvent.click(
-      await screen.findByRole('button', { name: cardName('open_projects', 2) }),
-    );
-    await waitFor(() => expect(window.location.hash).toBe('#projects'));
-    expect(
-      await within(projectsRegion()).findByRole('button', {
-        name: `${project.title} Client: ${project.clientDisplayName}`,
-      }),
-    ).toBeVisible();
-
-    navigateTo('Overview');
-    fireEvent.click(
-      await screen.findByRole('button', { name: cardName('overdue_tasks', 1) }),
-    );
-    const panel = await waitFor(() => {
-      const found = overduePanel(companyA);
-      if (!found) throw new Error('Expected the overdue panel.');
-      return found;
-    });
-    fireEvent.click(
-      await within(panel).findByRole('button', {
-        name: copy.overdue.openTask({
-          task: overdueTask.title,
-          project: project.title,
-          client: project.clientDisplayName,
-        }),
-      }),
-    );
-    await waitFor(() =>
-      expect(server.count(`GET /api/tasks/${overdueTask.id}`)).toBe(1),
-    );
-    expect(server.count(`GET /api/projects/${project.id}`)).toBe(1);
-    expect(window.location.href).not.toContain(overdueTask.id);
-  });
-
-  it('rejects an attention Task that does not belong to the admitted reader', async () => {
-    const server = installServer({
-      actor: (companyId) => ({
-        ...actorFor(companyId),
-        workspaceMembershipId: 'membership-other',
-      }),
-    });
-    server.state.showAttention = true;
-    render(<App identity={deterministicBrowserIdentity()} />);
-    expect(await screen.findByText(copy.error)).toBeInTheDocument();
-    expect(
-      screen.queryByRole('region', { name: copy.attention.title }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText(overdueTask.title)).not.toBeInTheDocument();
-  });
-
-  it('rejects an attention Task that matches no attention rule', async () => {
-    const server = installServer();
-    server.state.showAttention = true;
-    server.state.showNoRuleAttentionTask = true;
-    render(<App identity={deterministicBrowserIdentity()} />);
-    expect(await screen.findByText(copy.error)).toBeInTheDocument();
-    expect(
-      screen.queryByRole('region', { name: copy.attention.title }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText(overdueTask.title)).not.toBeInTheDocument();
-  });
-
-  it('opens an attention Task in its Project and ordinary My Tasks through App intents', async () => {
-    window.history.replaceState(null, '', '/');
-    const server = installServer();
-    server.state.showAttention = true;
-    render(<App identity={deterministicBrowserIdentity()} />);
-    const attention = await screen.findByRole('region', {
-      name: copy.attention.title,
-    });
-
-    fireEvent.click(
-      within(attention).getByRole('button', {
-        name: copy.attention.openTask({
-          task: overdueTask.title,
-          project: project.title,
-          client: project.clientDisplayName,
-        }),
-      }),
-    );
-    await waitFor(() =>
-      expect(server.count(`GET /api/tasks/${overdueTask.id}`)).toBe(1),
-    );
-    expect(window.location.href).not.toContain(overdueTask.id);
-
-    navigateTo('Overview');
-    fireEvent.click(
-      within(
-        await screen.findByRole('region', { name: copy.attention.title }),
-      ).getByRole('button', {
-        name: copy.attention.openMyTasks,
-      }),
-    );
-    await waitFor(() => expect(window.location.hash).toBe('#my-tasks'));
-    expect(screen.getByRole('region', { name: 'My Tasks' })).toBeVisible();
-  });
-
-  it('focuses the My Tasks region from My attention', async () => {
-    window.history.replaceState(null, '', '/');
-    const server = installServer();
-    server.state.showAttention = true;
-    render(<App identity={deterministicBrowserIdentity()} />);
-    const attention = await screen.findByRole('region', {
-      name: copy.attention.title,
-    });
-
-    fireEvent.click(
-      within(attention).getByRole('button', {
-        name: copy.attention.openMyTasks,
-      }),
-    );
-
-    const myTasks = await screen.findByRole('region', { name: 'My Tasks' });
-    expect(window.location.hash).toBe('#my-tasks');
-    expect(myTasks).toBeVisible();
-    await waitFor(() => expect(myTasks).toHaveFocus());
-    expect(document.querySelectorAll('#my-tasks')).toHaveLength(1);
-    expect(myTasks).toHaveAttribute('id', 'my-tasks');
-  });
-  it('revalidates newly granted Project and Task destinations before exposing refreshed cards', async () => {
-    window.history.replaceState(null, '', '/');
-    const server = installServer({
-      actor: () => ({
-        ...actorFor(companyA.id),
-        activeCompany: {
-          ...companyA,
-
-          grants: companyGrants({
-            bundle: 'company_director_client_access',
-            version: 'v1',
-            assignmentId: 'client-grant',
-          }),
-        },
-      }),
-    });
-    server.state.showProjectSummaries = false;
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await screen.findByRole('button', { name: cardName('active_clients', 3) });
-    expect(
-      within(
-        screen.getByRole('navigation', { name: 'Primary navigation' }),
-      ).queryByRole('link', { name: 'Projects' }),
-    ).toBeNull();
-
-    server.state.actor = (companyId) => actorFor(companyId);
-    server.state.showProjectSummaries = true;
-    server.hold('GET /api/access/current-actor', companyA.id);
-    fireEvent.click(screen.getByRole('button', { name: copy.refresh }));
-    await waitFor(() =>
-      expect(server.count('GET /api/access/current-actor', companyA.id)).toBe(
-        1,
-      ),
-    );
-    expect(
-      screen.queryByRole('button', { name: cardName('open_projects', 2) }),
-    ).toBeNull();
-    await server.release('GET /api/access/current-actor', companyA.id);
-
-    fireEvent.click(
-      await screen.findByRole('button', { name: cardName('open_projects', 2) }),
-    );
-    expect(
-      await screen.findByRole('region', { name: 'Projects' }),
-    ).toBeVisible();
-    navigateTo('Overview');
-    fireEvent.click(
-      await screen.findByRole('button', { name: cardName('overdue_tasks', 1) }),
-    );
-    const panel = await screen.findByRole('region', {
-      name: copy.overdue.title({ company: companyA.displayName }),
-    });
-    fireEvent.click(
-      await within(panel).findByRole('button', {
-        name: copy.overdue.openTask({
-          task: overdueTask.title,
-          project: project.title,
-          client: project.clientDisplayName,
-        }),
-      }),
-    );
-    await waitFor(() =>
-      expect(server.count(`GET /api/tasks/${overdueTask.id}`)).toBe(1),
-    );
-  });
-
-  it.each([
-    [
-      'no active Company',
-      { ...actorFor(companyA.id), activeCompany: undefined },
-    ],
-    [
-      'none of the three reads',
-      {
-        ...actorFor(companyA.id),
-        activeCompany: {
-          ...companyA,
-          grants: withoutCompanyGrants(
-            undefined,
-            'company_director_client_access',
-          ),
-        },
-      },
-    ],
-  ] satisfies Array<[string, ActorContext]>)(
-    'requests nothing and renders no region with %s',
-    async (_case, actor) => {
-      window.history.replaceState(null, '', '/');
-      const server = installServer({ actor: () => actor });
-      render(<App identity={deterministicBrowserIdentity()} />);
-      await screen.findByRole('heading', {
-        name: `Hello, ${attribution.displayName}.`,
+      await screen.findByRole('button', {
+        name: cardName('active_clients', 4),
       });
-      await act(
-        async () => await new Promise((resolve) => setTimeout(resolve)),
+      expect(server.count(homeRoute)).toBe(2);
+    });
+
+    it('opens the Project list and an overdue Task in its Project through the App intents', async () => {
+      window.history.replaceState(null, '', '/');
+      const server = installServer();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
       );
-      expect(screen.queryByRole('region', { name: copy.title })).toBeNull();
-      expect(server.count(homeRoute)).toBe(0);
-    },
-  );
-});
+      const projectsRegion = () =>
+        screen.getByRole('region', { name: 'Projects' });
+
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: cardName('open_projects', 2),
+        }),
+      );
+      await waitFor(() => expect(window.location.hash).toBe('#projects'));
+      expect(
+        await within(projectsRegion()).findByRole('button', {
+          name: `${project.title} Client: ${project.clientDisplayName}`,
+        }),
+      ).toBeVisible();
+
+      navigateTo(home);
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: cardName('overdue_tasks', 1),
+        }),
+      );
+      const panel = await waitFor(() => {
+        const found = overduePanel(companyA);
+        if (!found) throw new Error('Expected the overdue panel.');
+        return found;
+      });
+      fireEvent.click(
+        await within(panel).findByRole('button', {
+          name: copy.overdue.openTask({
+            task: overdueTask.title,
+            project: project.title,
+            client: project.clientDisplayName,
+          }),
+        }),
+      );
+      await waitFor(() =>
+        expect(server.count(`GET /api/tasks/${overdueTask.id}`)).toBe(1),
+      );
+      expect(server.count(`GET /api/projects/${project.id}`)).toBe(1);
+      expect(window.location.href).not.toContain(overdueTask.id);
+    });
+
+    it('rejects an attention Task that does not belong to the admitted reader', async () => {
+      const server = installServer({
+        actor: (companyId) => ({
+          ...actorFor(companyId),
+          workspaceMembershipId: 'membership-other',
+        }),
+      });
+      server.state.showAttention = true;
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      expect(await screen.findByText(copy.error)).toBeInTheDocument();
+      expect(
+        screen.queryByRole('region', { name: copy.attention.title }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(overdueTask.title)).not.toBeInTheDocument();
+    });
+
+    it('rejects an attention Task that matches no attention rule', async () => {
+      const server = installServer();
+      server.state.showAttention = true;
+      server.state.showNoRuleAttentionTask = true;
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      expect(await screen.findByText(copy.error)).toBeInTheDocument();
+      expect(
+        screen.queryByRole('region', { name: copy.attention.title }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(overdueTask.title)).not.toBeInTheDocument();
+    });
+
+    it('opens an attention Task in its Project and ordinary My Tasks through App intents', async () => {
+      window.history.replaceState(null, '', '/');
+      const server = installServer();
+      server.state.showAttention = true;
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      const attention = await screen.findByRole('region', {
+        name: copy.attention.title,
+      });
+
+      fireEvent.click(
+        within(attention).getByRole('button', {
+          name: copy.attention.openTask({
+            task: overdueTask.title,
+            project: project.title,
+            client: project.clientDisplayName,
+          }),
+        }),
+      );
+      await waitFor(() =>
+        expect(server.count(`GET /api/tasks/${overdueTask.id}`)).toBe(1),
+      );
+      expect(window.location.href).not.toContain(overdueTask.id);
+
+      navigateTo(home);
+      fireEvent.click(
+        within(
+          await screen.findByRole('region', { name: copy.attention.title }),
+        ).getByRole('button', {
+          name: copy.attention.openMyTasks,
+        }),
+      );
+      await waitFor(() => expect(window.location.hash).toBe('#my-tasks'));
+      expect(screen.getByRole('region', { name: 'My Tasks' })).toBeVisible();
+    });
+
+    it('focuses the My Tasks region from My attention', async () => {
+      window.history.replaceState(null, '', '/');
+      const server = installServer();
+      server.state.showAttention = true;
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      const attention = await screen.findByRole('region', {
+        name: copy.attention.title,
+      });
+
+      fireEvent.click(
+        within(attention).getByRole('button', {
+          name: copy.attention.openMyTasks,
+        }),
+      );
+
+      const myTasks = await screen.findByRole('region', { name: 'My Tasks' });
+      expect(window.location.hash).toBe('#my-tasks');
+      expect(myTasks).toBeVisible();
+      await waitFor(() => expect(myTasks).toHaveFocus());
+      expect(document.querySelectorAll('#my-tasks')).toHaveLength(1);
+      expect(myTasks).toHaveAttribute('id', 'my-tasks');
+    });
+    it('revalidates newly granted Project and Task destinations before exposing refreshed cards', async () => {
+      window.history.replaceState(null, '', '/');
+      const server = installServer({
+        actor: () => ({
+          ...actorFor(companyA.id),
+          activeCompany: {
+            ...companyA,
+
+            grants: companyGrants({
+              bundle: 'company_director_client_access',
+              version: 'v1',
+              assignmentId: 'client-grant',
+            }),
+          },
+        }),
+      });
+      server.state.showProjectSummaries = false;
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await screen.findByRole('button', {
+        name: cardName('active_clients', 3),
+      });
+      expect(
+        within(
+          screen.getByRole('navigation', { name: 'Primary navigation' }),
+        ).queryByRole('link', { name: 'Projects' }),
+      ).toBeNull();
+
+      server.state.actor = (companyId) => actorFor(companyId);
+      server.state.showProjectSummaries = true;
+      server.hold('GET /api/access/current-actor', companyA.id);
+      fireEvent.click(screen.getByRole('button', { name: copy.refresh }));
+      await waitFor(() =>
+        expect(server.count('GET /api/access/current-actor', companyA.id)).toBe(
+          1,
+        ),
+      );
+      expect(
+        screen.queryByRole('button', { name: cardName('open_projects', 2) }),
+      ).toBeNull();
+      await server.release('GET /api/access/current-actor', companyA.id);
+
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: cardName('open_projects', 2),
+        }),
+      );
+      expect(
+        await screen.findByRole('region', { name: 'Projects' }),
+      ).toBeVisible();
+      navigateTo(home);
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: cardName('overdue_tasks', 1),
+        }),
+      );
+      const panel = await screen.findByRole('region', {
+        name: copy.overdue.title({ company: companyA.displayName }),
+      });
+      fireEvent.click(
+        await within(panel).findByRole('button', {
+          name: copy.overdue.openTask({
+            task: overdueTask.title,
+            project: project.title,
+            client: project.clientDisplayName,
+          }),
+        }),
+      );
+      await waitFor(() =>
+        expect(server.count(`GET /api/tasks/${overdueTask.id}`)).toBe(1),
+      );
+    });
+
+    it.each([
+      [
+        'no active Company',
+        { ...actorFor(companyA.id), activeCompany: undefined },
+      ],
+      [
+        'none of the three reads',
+        {
+          ...actorFor(companyA.id),
+          activeCompany: {
+            ...companyA,
+            grants: withoutCompanyGrants(
+              undefined,
+              'company_director_client_access',
+            ),
+          },
+        },
+      ],
+    ] satisfies Array<[string, ActorContext]>)(
+      'requests nothing and renders no region with %s',
+      async (_case, actor) => {
+        window.history.replaceState(null, '', '/');
+        const server = installServer({ actor: () => actor });
+        renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+        );
+        // The greeting is the current heading, or the Clarté screen description.
+        await screen.findByText(`Hello, ${attribution.displayName}.`);
+        await act(
+          async () => await new Promise((resolve) => setTimeout(resolve)),
+        );
+        expect(screen.queryByRole('region', { name: copy.title })).toBeNull();
+        expect(server.count(homeRoute)).toBe(0);
+      },
+    );
+  },
+);
