@@ -1,13 +1,13 @@
 import { withoutCompanyGrants } from './access/company-grants.test-fixture';
 import {
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
 } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { appInterfaces, renderInInterface } from './test/app-interface';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import {
@@ -253,129 +253,148 @@ const scrollable: {
 } = Element.prototype;
 const nativeScrollIntoView = scrollable.scrollIntoView;
 
-describe('Offer history in the Activity Log', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    scrollable.scrollIntoView = vi.fn();
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn(
-        (query: string) =>
-          ({
-            matches: true,
-            media: query,
-            onchange: null,
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            dispatchEvent: vi.fn(() => false),
-          }) satisfies MediaQueryList,
-      ),
-    );
-    window.history.replaceState(null, '', '/#activity');
-  });
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-    scrollable.scrollIntoView = nativeScrollIntoView;
-    window.history.replaceState(null, '', '/');
-  });
+describe.each(appInterfaces)(
+  'Offer history in the Activity Log in the %s interface',
+  (appInterface) => {
+    beforeEach(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+      scrollable.scrollIntoView = vi.fn();
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn(
+          (query: string) =>
+            ({
+              matches: true,
+              media: query,
+              onchange: null,
+              addListener: vi.fn(),
+              removeListener: vi.fn(),
+              addEventListener: vi.fn(),
+              removeEventListener: vi.fn(),
+              dispatchEvent: vi.fn(() => false),
+            }) satisfies MediaQueryList,
+        ),
+      );
+      window.history.replaceState(null, '', '/#activity');
+    });
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+      scrollable.scrollIntoView = nativeScrollIntoView;
+      window.history.replaceState(null, '', '/');
+    });
 
-  it('names each Offer event by reference, exact version, outcome and simulated marker only', async () => {
-    installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
+    it('names each Offer event by reference, exact version, outcome and simulated marker only', async () => {
+      installTransport();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
 
-    const response = await activityRow(
-      'recorded the Client response to an Offer Version (Accepted)',
-    );
-    expect(response).toHaveTextContent(
-      'Target: Illustrative Offer 7 · version 2 · Simulated',
-    );
-    expect(
-      within(response).getByRole('button', { name: 'Open Offer Version' }),
-    ).toBeInTheDocument();
-    expect(
-      await activityRow('recorded the transmission of an Offer Version'),
-    ).toHaveTextContent('Target: Illustrative Offer 7 · version 1 · Simulated');
-    const approval = await activityRow('approved an Offer Version');
-    expect(approval).toHaveTextContent(
-      'Target: Illustrative Offer 7 · version 1',
-    );
-    expect(approval).not.toHaveTextContent('Simulated');
-    const creation = await activityRow('created an illustrative Offer');
-    expect(creation).toHaveTextContent(
-      'Target: Illustrative Offer 7 · version 1',
-    );
-    expect(
-      within(creation).getByRole('button', { name: 'Open Offer Version' }),
-    ).toBeInTheDocument();
-  });
-
-  it('opens the Request detail with the exact superseded Offer Version selected', async () => {
-    const transport = installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
-
-    fireEvent.click(
-      within(
+      const response = await activityRow(
+        'recorded the Client response to an Offer Version (Accepted)',
+      );
+      expect(response).toHaveTextContent(
+        'Target: Illustrative Offer 7 · version 2 · Simulated',
+      );
+      expect(
+        within(response).getByRole('button', { name: 'Open Offer Version' }),
+      ).toBeInTheDocument();
+      expect(
         await activityRow('recorded the transmission of an Offer Version'),
-      ).getByRole('button', { name: 'Open Offer Version' }),
-    );
+      ).toHaveTextContent(
+        'Target: Illustrative Offer 7 · version 1 · Simulated',
+      );
+      const approval = await activityRow('approved an Offer Version');
+      expect(approval).toHaveTextContent(
+        'Target: Illustrative Offer 7 · version 1',
+      );
+      expect(approval).not.toHaveTextContent('Simulated');
+      const creation = await activityRow('created an illustrative Offer');
+      expect(creation).toHaveTextContent(
+        'Target: Illustrative Offer 7 · version 1',
+      );
+      expect(
+        within(creation).getByRole('button', { name: 'Open Offer Version' }),
+      ).toBeInTheDocument();
+    });
 
-    expect(
-      await screen.findByText(`Original source of ${subject}`),
-    ).toBeVisible();
-    expect(
-      await within(offerRegion()).findByText('Historical version · read only'),
-    ).toBeVisible();
-    expect(
-      within(offerRegion()).getByText('Conditions of version 1'),
-    ).toBeVisible();
-    expect(transport.offerReads).toEqual(['/versions/version-one']);
-    expect(transport.mutations).toEqual([]);
-  });
+    it('opens the Request detail with the exact superseded Offer Version selected', async () => {
+      const transport = installTransport();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
 
-  it('opens version 1 from the Offer creation event after a successor exists', async () => {
-    const transport = installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
+      fireEvent.click(
+        within(
+          await activityRow('recorded the transmission of an Offer Version'),
+        ).getByRole('button', { name: 'Open Offer Version' }),
+      );
 
-    fireEvent.click(
-      within(await activityRow('created an illustrative Offer')).getByRole(
-        'button',
-        { name: 'Open Offer Version' },
-      ),
-    );
+      expect(
+        await screen.findByText(`Original source of ${subject}`),
+      ).toBeVisible();
+      expect(
+        await within(offerRegion()).findByText(
+          'Historical version · read only',
+        ),
+      ).toBeVisible();
+      expect(
+        within(offerRegion()).getByText('Conditions of version 1'),
+      ).toBeVisible();
+      expect(transport.offerReads).toEqual(['/versions/version-one']);
+      expect(transport.mutations).toEqual([]);
+    });
 
-    expect(
-      await within(
-        await screen.findByRole('region', { name: 'Illustrative Offer' }),
-      ).findByText('Historical version · read only'),
-    ).toBeVisible();
-    expect(
-      within(offerRegion()).getByText('Conditions of version 1'),
-    ).toBeVisible();
-    expect(transport.offerReads).toEqual(['/versions/version-one']);
-  });
+    it('opens version 1 from the Offer creation event after a successor exists', async () => {
+      const transport = installTransport();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
 
-  it('shows the existing unavailable state when the exact version is no longer readable', async () => {
-    const transport = installTransport();
-    transport.versionReadStatus = 404;
-    render(<App identity={deterministicBrowserIdentity()} />);
+      fireEvent.click(
+        within(await activityRow('created an illustrative Offer')).getByRole(
+          'button',
+          { name: 'Open Offer Version' },
+        ),
+      );
 
-    fireEvent.click(
-      within(
-        await activityRow('recorded the transmission of an Offer Version'),
-      ).getByRole('button', { name: 'Open Offer Version' }),
-    );
+      expect(
+        await within(
+          await screen.findByRole('region', { name: 'Illustrative Offer' }),
+        ).findByText('Historical version · read only'),
+      ).toBeVisible();
+      expect(
+        within(offerRegion()).getByText('Conditions of version 1'),
+      ).toBeVisible();
+      expect(transport.offerReads).toEqual(['/versions/version-one']);
+    });
 
-    expect(
-      await screen.findByText('The Offer could not be loaded. Try again.'),
-    ).toBeVisible();
-    await waitFor(() =>
-      expect(transport.offerReads).toEqual(['/versions/version-one']),
-    );
-    expect(screen.queryByText('Conditions of version 1')).toBeNull();
-    expect(screen.queryByText('Conditions of version 2')).toBeNull();
-  });
-});
+    it('shows the existing unavailable state when the exact version is no longer readable', async () => {
+      const transport = installTransport();
+      transport.versionReadStatus = 404;
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+
+      fireEvent.click(
+        within(
+          await activityRow('recorded the transmission of an Offer Version'),
+        ).getByRole('button', { name: 'Open Offer Version' }),
+      );
+
+      expect(
+        await screen.findByText('The Offer could not be loaded. Try again.'),
+      ).toBeVisible();
+      await waitFor(() =>
+        expect(transport.offerReads).toEqual(['/versions/version-one']),
+      );
+      expect(screen.queryByText('Conditions of version 1')).toBeNull();
+      expect(screen.queryByText('Conditions of version 2')).toBeNull();
+    });
+  },
+);

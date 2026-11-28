@@ -2,9 +2,10 @@ import {
   withoutCompanyGrants,
   withCompanyGrants,
 } from './access/company-grants.test-fixture';
-import { render, screen, within } from './test/render-with-interface-locale';
+import { screen, within } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
+import { appInterfaces, renderInInterface } from './test/app-interface';
 import { deterministicBrowserIdentity } from './access-composition';
 
 const COMPANY_ID = '00000000-0000-4000-8000-000000000313';
@@ -80,174 +81,194 @@ function stubTransport(events: unknown[]): void {
   );
 }
 
-describe('commercial history in the Activity Log', () => {
-  beforeEach(() => {
-    window.history.replaceState(null, '', '/#activity');
-  });
+describe.each(appInterfaces)(
+  'commercial history in the Activity Log in the %s interface',
+  (appInterface) => {
+    beforeEach(() => {
+      window.history.replaceState(null, '', '/#activity');
+    });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-    window.history.replaceState(null, '', '/');
-  });
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+      window.history.replaceState(null, '', '/');
+    });
 
-  it('shows the projected commercial events with actor, action and target', async () => {
-    stubTransport(commercialEvents);
+    it('shows the projected commercial events with actor, action and target', async () => {
+      stubTransport(commercialEvents);
 
-    render(<App identity={deterministicBrowserIdentity()} />);
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
 
-    expect(
-      await screen.findByText('Ada Ionescu created an initial Opportunity'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('Ada Ionescu captured a Client Request'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(`Target: Client Request: ${REQUEST_ID}`),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(`Target: Opportunity: ${OPPORTUNITY_ID}`),
-    ).toBeInTheDocument();
-  });
+      expect(
+        await screen.findByText('Ada Ionescu created an initial Opportunity'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('Ada Ionescu captured a Client Request'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(`Target: Client Request: ${REQUEST_ID}`),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(`Target: Opportunity: ${OPPORTUNITY_ID}`),
+      ).toBeInTheDocument();
+    });
 
-  it('names both responsible actors of an Opportunity change and offers its Request', async () => {
-    stubTransport([
-      {
-        id: 'event-3',
-        action: 'opportunity.responsible.changed',
-        occurredAt: '2026-09-21T10:07:00.000Z',
-        actor: { internalUserId: 'user-1', displayName: 'Ada Ionescu' },
-        target: {
-          type: 'opportunity',
-          opportunityId: OPPORTUNITY_ID,
-          clientRequestId: REQUEST_ID,
-          companyId: COMPANY_ID,
-        },
-        metadata: {
-          before: {
-            workspaceMembershipId: 'membership-1',
-            displayLabel: 'Ada Ionescu · 1A',
+    it('names both responsible actors of an Opportunity change and offers its Request', async () => {
+      stubTransport([
+        {
+          id: 'event-3',
+          action: 'opportunity.responsible.changed',
+          occurredAt: '2026-09-21T10:07:00.000Z',
+          actor: { internalUserId: 'user-1', displayName: 'Ada Ionescu' },
+          target: {
+            type: 'opportunity',
+            opportunityId: OPPORTUNITY_ID,
+            clientRequestId: REQUEST_ID,
+            companyId: COMPANY_ID,
           },
-          after: {
-            workspaceMembershipId: 'membership-2',
-            displayLabel: 'Ion Popa · 2B',
+          metadata: {
+            before: {
+              workspaceMembershipId: 'membership-1',
+              displayLabel: 'Ada Ionescu · 1A',
+            },
+            after: {
+              workspaceMembershipId: 'membership-2',
+              displayLabel: 'Ion Popa · 2B',
+            },
           },
         },
-      },
-    ]);
+      ]);
 
-    render(<App identity={deterministicBrowserIdentity()} />);
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
 
-    const entry = (
-      await screen.findByText(
-        'Ada Ionescu changed the responsible actor of an Opportunity (Ada Ionescu · 1A → Ion Popa · 2B)',
-      )
-    ).closest('li');
-    if (!entry) throw new Error('Expected the Activity entry.');
-    expect(entry).toHaveTextContent(`Target: Opportunity: ${OPPORTUNITY_ID}`);
-    expect(
-      within(entry).getByRole('button', { name: 'Open Request' }),
-    ).toBeInTheDocument();
-  });
+      const entry = (
+        await screen.findByText(
+          'Ada Ionescu changed the responsible actor of an Opportunity (Ada Ionescu · 1A → Ion Popa · 2B)',
+        )
+      ).closest('li');
+      if (!entry) throw new Error('Expected the Activity entry.');
+      expect(entry).toHaveTextContent(`Target: Opportunity: ${OPPORTUNITY_ID}`);
+      expect(
+        within(entry).getByRole('button', { name: 'Open Request' }),
+      ).toBeInTheDocument();
+    });
 
-  it('names the previous and new status and the loss reason of an Opportunity outcome change', async () => {
-    stubTransport([
-      {
-        id: 'event-4',
-        action: 'opportunity.outcome.changed',
-        occurredAt: '2026-09-21T10:08:00.000Z',
-        actor: { internalUserId: 'user-1', displayName: 'Ada Ionescu' },
-        target: {
-          type: 'opportunity',
-          opportunityId: OPPORTUNITY_ID,
-          clientRequestId: REQUEST_ID,
-          companyId: COMPANY_ID,
+    it('names the previous and new status and the loss reason of an Opportunity outcome change', async () => {
+      stubTransport([
+        {
+          id: 'event-4',
+          action: 'opportunity.outcome.changed',
+          occurredAt: '2026-09-21T10:08:00.000Z',
+          actor: { internalUserId: 'user-1', displayName: 'Ada Ionescu' },
+          target: {
+            type: 'opportunity',
+            opportunityId: OPPORTUNITY_ID,
+            clientRequestId: REQUEST_ID,
+            companyId: COMPANY_ID,
+          },
+          metadata: {
+            previousStatus: 'ON_HOLD',
+            newStatus: 'LOST',
+            lossReasonCode: 'COMPETITOR',
+          },
         },
-        metadata: {
-          previousStatus: 'ON_HOLD',
-          newStatus: 'LOST',
-          lossReasonCode: 'COMPETITOR',
+      ]);
+
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+
+      const entry = (
+        await screen.findByText(
+          'Ada Ionescu changed the status of an Opportunity (On hold → Lost: Competitor)',
+        )
+      ).closest('li');
+      if (!entry) throw new Error('Expected the Activity entry.');
+      expect(entry).toHaveTextContent(`Target: Opportunity: ${OPPORTUNITY_ID}`);
+      expect(
+        within(entry).getByRole('button', { name: 'Open Request' }),
+      ).toBeInTheDocument();
+    });
+
+    it('names the captured stage labels of a Sales Stage change and the created stage of the settings', async () => {
+      stubTransport([
+        {
+          id: 'event-5',
+          action: 'opportunity.stage.changed',
+          occurredAt: '2026-09-21T10:09:00.000Z',
+          actor: { internalUserId: 'user-1', displayName: 'Ada Ionescu' },
+          target: {
+            type: 'opportunity',
+            opportunityId: OPPORTUNITY_ID,
+            clientRequestId: REQUEST_ID,
+            companyId: COMPANY_ID,
+          },
+          metadata: { previousLabel: 'Qualification', newLabel: null },
         },
-      },
-    ]);
-
-    render(<App identity={deterministicBrowserIdentity()} />);
-
-    const entry = (
-      await screen.findByText(
-        'Ada Ionescu changed the status of an Opportunity (On hold → Lost: Competitor)',
-      )
-    ).closest('li');
-    if (!entry) throw new Error('Expected the Activity entry.');
-    expect(entry).toHaveTextContent(`Target: Opportunity: ${OPPORTUNITY_ID}`);
-    expect(
-      within(entry).getByRole('button', { name: 'Open Request' }),
-    ).toBeInTheDocument();
-  });
-
-  it('names the captured stage labels of a Sales Stage change and the created stage of the settings', async () => {
-    stubTransport([
-      {
-        id: 'event-5',
-        action: 'opportunity.stage.changed',
-        occurredAt: '2026-09-21T10:09:00.000Z',
-        actor: { internalUserId: 'user-1', displayName: 'Ada Ionescu' },
-        target: {
-          type: 'opportunity',
-          opportunityId: OPPORTUNITY_ID,
-          clientRequestId: REQUEST_ID,
-          companyId: COMPANY_ID,
+        {
+          id: 'event-6',
+          action: 'sales_stage.configured',
+          occurredAt: '2026-09-21T10:08:30.000Z',
+          actor: { internalUserId: 'user-1', displayName: 'Ada Ionescu' },
+          target: {
+            type: 'sales_stage',
+            salesStageId: 'stage-1',
+            companyId: COMPANY_ID,
+          },
+          metadata: { operation: 'CREATED', label: 'Negociere finală' },
         },
-        metadata: { previousLabel: 'Qualification', newLabel: null },
-      },
-      {
-        id: 'event-6',
-        action: 'sales_stage.configured',
-        occurredAt: '2026-09-21T10:08:30.000Z',
-        actor: { internalUserId: 'user-1', displayName: 'Ada Ionescu' },
-        target: {
-          type: 'sales_stage',
-          salesStageId: 'stage-1',
-          companyId: COMPANY_ID,
-        },
-        metadata: { operation: 'CREATED', label: 'Negociere finală' },
-      },
-    ]);
+      ]);
 
-    render(<App identity={deterministicBrowserIdentity()} />);
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
 
-    const changed = (
-      await screen.findByText(
-        'Ada Ionescu changed the Sales Stage of an Opportunity (Qualification → No Sales Stage)',
-      )
-    ).closest('li');
-    if (!changed) throw new Error('Expected the Activity entry.');
-    expect(changed).toHaveTextContent(`Target: Opportunity: ${OPPORTUNITY_ID}`);
-    expect(
-      within(changed).getByRole('button', { name: 'Open Request' }),
-    ).toBeInTheDocument();
-    const configured = screen
-      .getByText(
-        'Ada Ionescu configured a Sales Stage (created: Negociere finală)',
-      )
-      .closest('li');
-    if (!configured) throw new Error('Expected the Activity entry.');
-    expect(configured).toHaveTextContent('Target: Sales Stage settings');
-    expect(
-      within(configured).queryByRole('button', { name: 'Open Request' }),
-    ).not.toBeInTheDocument();
-  });
+      const changed = (
+        await screen.findByText(
+          'Ada Ionescu changed the Sales Stage of an Opportunity (Qualification → No Sales Stage)',
+        )
+      ).closest('li');
+      if (!changed) throw new Error('Expected the Activity entry.');
+      expect(changed).toHaveTextContent(
+        `Target: Opportunity: ${OPPORTUNITY_ID}`,
+      );
+      expect(
+        within(changed).getByRole('button', { name: 'Open Request' }),
+      ).toBeInTheDocument();
+      const configured = screen
+        .getByText(
+          'Ada Ionescu configured a Sales Stage (created: Negociere finală)',
+        )
+        .closest('li');
+      if (!configured) throw new Error('Expected the Activity entry.');
+      expect(configured).toHaveTextContent('Target: Sales Stage settings');
+      expect(
+        within(configured).queryByRole('button', { name: 'Open Request' }),
+      ).not.toBeInTheDocument();
+    });
 
-  it('shows the existing empty state when the authorized Company has no event', async () => {
-    stubTransport([]);
+    it('shows the existing empty state when the authorized Company has no event', async () => {
+      stubTransport([]);
 
-    render(<App identity={deterministicBrowserIdentity()} />);
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
 
-    expect(
-      await screen.findByText(
-        'No activity has been recorded in this workspace yet.',
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Client Request:/)).not.toBeInTheDocument();
-  });
-});
+      expect(
+        await screen.findByText(
+          'No activity has been recorded in this workspace yet.',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/Client Request:/)).not.toBeInTheDocument();
+    });
+  },
+);

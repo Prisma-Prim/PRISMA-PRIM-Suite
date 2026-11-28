@@ -241,6 +241,49 @@ function navigateTo(label: string) {
   fireEvent.change(field, { target: { value: label } });
   fireEvent.keyDown(field, { key: 'Enter' });
 }
+/**
+ * Grants Company Director Client Access to the member for Company A: through
+ * the access form in the current interface, through the member's rights in
+ * the Clarté Settings console.
+ */
+async function grantDirectorClientAccess() {
+  navigateTo('Team & access');
+  if (shown === 'current') {
+    const access = await screen.findByRole('region', {
+      name: 'Company access',
+    });
+    changeValue(
+      within(access).getByLabelText('Workspace member'),
+      membershipId,
+    );
+    changeValue(
+      within(access).getByLabelText('Company', { exact: true }),
+      companyA.id,
+    );
+    changeValue(
+      within(access).getByLabelText('Access bundle'),
+      'director-client',
+    );
+    fireEvent.click(
+      within(access).getByRole('button', { name: 'Grant access' }),
+    );
+  } else {
+    const team = await screen.findByRole('region', { name: 'Team & access' });
+    fireEvent.click(
+      await within(team).findByRole('button', { name: 'Preparer' }),
+    );
+    const panel = screen.getByRole('dialog', { name: 'Preparer' });
+    fireEvent.click(
+      within(panel).getByRole('button', { name: companyA.displayName }),
+    );
+    fireEvent.click(
+      within(panel).getByRole('button', {
+        name: 'Grant access — Company Director Client Access',
+      }),
+    );
+  }
+  await screen.findByText('Access granted. Server state refreshed.');
+}
 /** The opened Document: an article in the current interface, a side panel in Clarté. */
 function documentDetail() {
   return shown === 'current'
@@ -440,24 +483,7 @@ describe.each(appInterfaces)(
       await openLinkedDocument();
       await waitFor(() => expect(transport.heldLinkedReads).toHaveLength(1));
 
-      navigateTo('Team & access');
-      const access = screen.getByRole('region', { name: 'Company access' });
-      changeValue(
-        within(access).getByLabelText('Workspace member'),
-        membershipId,
-      );
-      changeValue(
-        within(access).getByLabelText('Company', { exact: true }),
-        companyA.id,
-      );
-      changeValue(
-        within(access).getByLabelText('Access bundle'),
-        'director-client',
-      );
-      fireEvent.click(
-        within(access).getByRole('button', { name: 'Grant access' }),
-      );
-      await screen.findByText('Access granted. Server state refreshed.');
+      await grantDirectorClientAccess();
       transport.heldLinkedReads[0]?.resolve(respond(linkedDocument));
       navigateTo('Working Documents');
 

@@ -150,19 +150,6 @@ describe('Clarté entries and tabs', () => {
         ['Invoice Records', 'Payment Observations', 'Payment proofs'],
       ],
       ['Improvement', ['Ideas', 'Operational Risks']],
-      [
-        'Settings',
-        [
-          'Companies',
-          'Team and access',
-          'Invitations',
-          'Activity Log',
-          'Service catalogue',
-          'Pricing configuration',
-          'Offer model',
-          'Contract model',
-        ],
-      ],
     ];
     for (const [entry, tabs] of expected) {
       fireEvent.click(
@@ -195,6 +182,34 @@ describe('Clarté entries and tabs', () => {
         }
       }
     }
+
+    // Settings draws its own list of sections: the console, not a tab row.
+    fireEvent.click(
+      within(primaryNavigation()).getByRole('link', { name: 'Settings' }),
+    );
+    expect(
+      screen.queryByRole('navigation', { name: 'Settings views' }),
+    ).not.toBeInTheDocument();
+    const sectionList = screen.getByRole('navigation', {
+      name: 'Settings sections',
+    });
+    expect(linkNames(sectionList)).toEqual([
+      'Companies',
+      'Team and access',
+      'Invitations',
+      'Service catalogue',
+      'Pricing configuration',
+      'Offer model',
+      'Contract model',
+      'Activity Log',
+    ]);
+    // A section no slice migrated yet keeps the current component.
+    fireEvent.click(
+      within(sectionList).getByRole('link', { name: 'Service catalogue' }),
+    );
+    expect(
+      screen.getByRole('region', { name: 'Service catalogue screen' }),
+    ).toBeVisible();
   });
 
   it('places each section exactly once in the table', () => {
@@ -202,7 +217,9 @@ describe('Clarté entries and tabs', () => {
       entry.tabs.map((tab) => tab.destination),
     );
 
-    expect([...placed].sort()).toEqual(['overview', ...sectionIds].sort());
+    expect([...placed].sort()).toEqual(
+      ['overview', 'settings', 'language', ...sectionIds].sort(),
+    );
   });
 
   it('shows an entry only when the composition offers one of its destinations', () => {
@@ -258,6 +275,78 @@ describe('Clarté entries and tabs', () => {
     expect(screen.queryByText('Unassigned Tasks content')).toBeNull();
     expect(screen.getByText('Team Tasks content')).not.toBeVisible();
     expect(screen.queryByText('Overview content')).toBeNull();
+  });
+});
+
+describe('Clarté-only screens and screens that draw their own views', () => {
+  const language = {
+    id: 'language',
+    label: 'Language',
+    description: 'Language description',
+    clarteContent: <p>Language content</p>,
+  } as const;
+
+  it('selects, mounts and places a Clarté-only screen like a section', () => {
+    window.history.replaceState(null, '', '/#language');
+    renderFrame({
+      sections: [section('clients'), section('activity')],
+      clarteScreens: [language],
+    });
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Settings' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Language content')).toBeVisible();
+    visit('#clients');
+    // Hidden like a section, and still mounted.
+    expect(screen.getByText('Language content')).not.toBeVisible();
+
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    const jump = screen.getByRole('dialog', { name: 'Go to a screen' });
+    expect(
+      within(jump)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual(['Today', 'Clients', 'LanguageSettings', 'Activity LogSettings']);
+  });
+
+  it('hands the offered views to a screen-drawn entry and draws neither its row of views nor its description', () => {
+    window.history.replaceState(null, '', '/#activity');
+    renderFrame({
+      sections: [section('access'), section('activity')],
+      clarteScreens: [language],
+    });
+
+    expect(
+      screen.queryByRole('navigation', { name: 'Settings views' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Activity Log description', {
+        selector: '.clarte-screen-description',
+      }),
+    ).toBeNull();
+    const sectionList = screen.getByRole('navigation', {
+      name: 'Settings sections',
+    });
+    expect(linkNames(sectionList)).toEqual([
+      'Language',
+      'Team and access',
+      'Activity Log',
+    ]);
+    fireEvent.click(
+      within(sectionList).getByRole('link', { name: 'Language' }),
+    );
+
+    expect(window.location.hash).toBe('#language');
+    expect(screen.getByText('Language content')).toBeVisible();
+    expect(
+      within(
+        screen.getByRole('navigation', { name: 'Settings sections' }),
+      ).getByRole('link', { name: 'Language' }),
+    ).toHaveAttribute('aria-current', 'page');
+    expect(
+      within(primaryNavigation()).getByRole('link', { name: 'Settings' }),
+    ).toHaveAttribute('aria-current', 'page');
   });
 });
 
