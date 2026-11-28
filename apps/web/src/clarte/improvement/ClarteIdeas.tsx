@@ -151,7 +151,7 @@ function IdeasTable({
   const text = useClarteImprovementCopy();
   return (
     <div className="clarte-table-wrap">
-      <table className="clarte-table clarte-improvement-table">
+      <table className="clarte-table clarte-improvement-table clarte-improvement-ideas-table">
         <thead>
           <tr>
             <th scope="col">{text('ideaColumn')}</th>
@@ -332,9 +332,8 @@ function IdeaPanel({
 }>) {
   const copy = useIdeasCopy();
   const text = useClarteImprovementCopy();
-  const { formatDateTime, formatNumber } = useInterfaceLocale();
+  const { formatNumber } = useInterfaceLocale();
   const { detail, page, selectedId, busy } = registry;
-  const decisionHeading = useRef<HTMLHeadingElement>(null);
   const historyHeading = useRef<HTMLHeadingElement>(null);
   const ready = detail?.status === 'ready' ? detail.value : undefined;
   const listed =
@@ -342,9 +341,10 @@ function IdeaPanel({
       ? page.value.ideas.find((idea) => idea.id === selectedId)
       : undefined;
   const shown = ready?.idea ?? listed;
+  const title = shown ? ideaExcerpt(shown.description) : copy('label');
   return (
     <ClarteSidePanel
-      title={shown ? ideaExcerpt(shown.description) : copy('label')}
+      title={title}
       description={shown ? `${copy('origin')}: ${shown.origin}` : undefined}
       icon={<Lightbulb />}
       dismissible={!busy}
@@ -357,10 +357,7 @@ function IdeaPanel({
               parts={[
                 {
                   label: text('decisionPart'),
-                  // A Reader reads the decision in the submission's facts.
-                  heading: registry.authority.review
-                    ? decisionHeading
-                    : registry.heading,
+                  heading: registry.heading,
                 },
                 { label: text('historyPart'), heading: historyHeading },
               ]}
@@ -375,73 +372,53 @@ function IdeaPanel({
             {copy('reload')}
           </ClarteButton>
         </div>
-        {notices}
-        {detail?.status === 'loading' && (
-          <ClarteLoadingState label={copy('loading')} />
-        )}
-        {(detail?.status === 'error' ||
-          detail?.status === 'denied' ||
-          detail?.status === 'unavailable') && (
-          <ClarteErrorState title={copy(detail.status)} />
-        )}
-        {ready && (
+        {ready ? (
           <article
             aria-label={copy('original')}
             className="clarte-improvement-record"
           >
             <h3 ref={registry.heading} tabIndex={-1}>
-              {copy('original')}
+              {text('currentDecision')}
             </h3>
-            <p className="clarte-improvement-literal clarte-improvement-lead">
-              {ready.idea.description}
+            <p className="clarte-improvement-meta">
+              <ClarteBadge tone={dispositionTone[ready.idea.disposition]}>
+                {copy(ready.idea.disposition)}
+              </ClarteBadge>{' '}
+              · {copy('revision')} {formatNumber(ready.idea.revision)}
             </p>
-            <dl className="clarte-improvement-facts">
-              <div>
-                <dt>{copy('origin')}</dt>
-                <dd className="clarte-improvement-literal">
-                  {ready.idea.origin}
-                </dd>
-              </div>
-              <div>
-                <dt>{copy('kind')}</dt>
-                <dd>
-                  <ClarteBadge tone={dispositionTone[ready.idea.disposition]}>
-                    {copy(ready.idea.disposition)}
-                  </ClarteBadge>{' '}
-                  · {copy('revision')} {formatNumber(ready.idea.revision)}
-                </dd>
-              </div>
-            </dl>
-            <p className="clarte-improvement-meta clarte-improvement-byline">
-              <span>
-                {copy('submittedBy')}: {ready.idea.submittedBy.displayName}
-              </span>
-              <span>
-                {copy('submittedAt')}: {formatDateTime(ready.idea.submittedAt)}
-              </span>
-            </p>
-            {registry.authority.review && (
-              <DecisionForm registry={registry} headingRef={decisionHeading} />
+            {notices}
+            {ready.idea.description.trim() !== title && (
+              <p className="clarte-improvement-literal clarte-improvement-lead">
+                {ready.idea.description}
+              </p>
             )}
+            {registry.authority.review && <DecisionForm registry={registry} />}
             <DecisionHistory
               registry={registry}
               history={ready.history}
+              idea={ready.idea}
               headingRef={historyHeading}
             />
           </article>
+        ) : (
+          <>
+            {notices}
+            {detail?.status === 'loading' && (
+              <ClarteLoadingState label={copy('loading')} />
+            )}
+            {(detail?.status === 'error' ||
+              detail?.status === 'denied' ||
+              detail?.status === 'unavailable') && (
+              <ClarteErrorState title={copy(detail.status)} />
+            )}
+          </>
         )}
       </div>
     </ClarteSidePanel>
   );
 }
 
-function DecisionForm({
-  registry,
-  headingRef,
-}: Readonly<{
-  registry: IdeasRegistry;
-  headingRef: Ref<HTMLHeadingElement>;
-}>) {
+function DecisionForm({ registry }: Readonly<{ registry: IdeasRegistry }>) {
   const copy = useIdeasCopy();
   const text = useClarteImprovementCopy();
   const id = useId();
@@ -454,9 +431,7 @@ function DecisionForm({
       aria-labelledby={`${id}-title`}
       className="clarte-improvement-section"
     >
-      <h3 id={`${id}-title`} ref={headingRef} tabIndex={-1}>
-        {text('decideHeading')}
-      </h3>
+      <h3 id={`${id}-title`}>{text('decideHeading')}</h3>
       {reviewSave.status === 'saved' && (
         <p role="status" className="clarte-improvement-notice">
           {copy('saveConfirmed')}
@@ -566,10 +541,12 @@ function DecisionForm({
 function DecisionHistory({
   registry,
   history,
+  idea,
   headingRef,
 }: Readonly<{
   registry: IdeasRegistry;
   history: History;
+  idea: Idea;
   headingRef: Ref<HTMLHeadingElement>;
 }>) {
   const copy = useIdeasCopy();
@@ -583,27 +560,35 @@ function DecisionHistory({
       <h3 ref={headingRef} tabIndex={-1}>
         {copy('history')}
       </h3>
-      {history.entries.length === 0 ? (
+      {history.entries.length === 0 && (
         <p className="clarte-improvement-quiet">{copy('historyEmpty')}</p>
-      ) : (
-        <ol className="clarte-improvement-timeline">
-          {history.entries.map((entry) => (
-            <li key={entry.id}>
-              <strong>{copy(entry.kind)}</strong>
-              <p className="clarte-improvement-literal">{entry.reason}</p>
-              <p className="clarte-improvement-meta">
-                {entry.recordedBy.displayName} ·{' '}
-                {formatDateTime(entry.recordedAt)}
-              </p>
-              {entry.reconsiderationDate && (
-                <p className="clarte-improvement-meta">
-                  {text('reviewDate')}: {formatDate(entry.reconsiderationDate)}
-                </p>
-              )}
-            </li>
-          ))}
-        </ol>
       )}
+      <ol className="clarte-improvement-timeline">
+        {history.entries.map((entry) => (
+          <li key={entry.id}>
+            <strong>{copy(entry.kind)}</strong>
+            <p className="clarte-improvement-literal">{entry.reason}</p>
+            <p className="clarte-improvement-meta">
+              {entry.recordedBy.displayName} ·{' '}
+              {formatDateTime(entry.recordedAt)}
+            </p>
+            {entry.reconsiderationDate && (
+              <p className="clarte-improvement-meta">
+                {text('reviewDate')}: {formatDate(entry.reconsiderationDate)}
+              </p>
+            )}
+          </li>
+        ))}
+        <li>
+          <strong>{text('ideaSubmitted')}</strong>
+          <p className="clarte-improvement-meta">
+            {copy('submittedBy')}: {idea.submittedBy.displayName}
+          </p>
+          <p className="clarte-improvement-meta">
+            {copy('submittedAt')}: {formatDateTime(idea.submittedAt)}
+          </p>
+        </li>
+      </ol>
       {history.nextCursor && (
         <ClarteButton
           size="small"

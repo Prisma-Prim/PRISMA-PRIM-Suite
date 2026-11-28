@@ -1,11 +1,13 @@
 import { Plus, RotateCw, TriangleAlert } from 'lucide-react';
-import { useRef, type Ref } from 'react';
+import { useRef, useState, type Ref } from 'react';
 import { useInterfaceLocale } from '../../localization/interface-locale';
 import { useOperationalRiskCopy } from '../../operational-risk/operational-risk.copy';
 import { factFields } from '../../operational-risk/operational-risk.editor';
 import type {
   OperationalRiskEntry,
   OperationalRiskFacts,
+  OperationalRiskJournalCorrection,
+  OperationalRiskJournalOriginal,
 } from '../../operational-risk/operational-risk.types';
 import {
   useOperationalRiskOwner,
@@ -23,6 +25,7 @@ import {
 } from '../components/ClarteState';
 import { ClartePanelParts } from './ClartePanelParts';
 import { ClarteRiskEditor } from './ClarteRiskEditor';
+import { ClarteRiskNotePicker } from './ClarteRiskNotePicker';
 import { ClarteRiskStatement } from './ClarteRiskStatement';
 import { RowChevron, RowChevronHead, openRowButton } from './ClarteRow';
 import { useClarteImprovementCopy } from './clarte-improvement.copy';
@@ -234,6 +237,9 @@ function RiskPanel({ owner }: Readonly<{ owner: OperationalRiskOwner }>) {
   const historical = risk !== undefined && risk.revision < knownRevision;
   const factsHeading = useRef<HTMLHeadingElement>(null);
   const historyHeading = useRef<HTMLHeadingElement>(null);
+  const [activePart, setActivePart] = useState<'facts' | 'log' | 'history'>(
+    'facts',
+  );
   return (
     <ClarteSidePanel
       title={title}
@@ -252,8 +258,24 @@ function RiskPanel({ owner }: Readonly<{ owner: OperationalRiskOwner }>) {
             {risk && (
               <ClartePanelParts
                 parts={[
-                  { label: text('factsPart'), heading: factsHeading },
-                  { label: text('historyPart'), heading: historyHeading },
+                  {
+                    label: text('factsPart'),
+                    heading: factsHeading,
+                    selected: activePart === 'facts',
+                    onSelect: () => setActivePart('facts'),
+                  },
+                  {
+                    label: text('logPart'),
+                    heading: historyHeading,
+                    selected: activePart === 'log',
+                    onSelect: () => setActivePart('log'),
+                  },
+                  {
+                    label: text('historyPart'),
+                    heading: historyHeading,
+                    selected: activePart === 'history',
+                    onSelect: () => setActivePart('history'),
+                  },
                 ]}
               />
             )}
@@ -398,7 +420,17 @@ function RiskPanel({ owner }: Readonly<{ owner: OperationalRiskOwner }>) {
                 <summary>{copy('original')}</summary>
                 <RiskFacts facts={risk.originalIntake.facts} />
               </details>
-              <RiskHistory owner={owner} headingRef={historyHeading} />
+              <RiskHistory
+                owner={owner}
+                showLog={activePart === 'log'}
+                canPickNote={
+                  canRecord &&
+                  !editor &&
+                  !historical &&
+                  notice !== 'savedRefreshError'
+                }
+                headingRef={historyHeading}
+              />
             </>
           ))}
       </div>
@@ -411,9 +443,16 @@ function RiskFacts({ facts }: Readonly<{ facts: OperationalRiskFacts }>) {
   const copy = useOperationalRiskCopy();
   const label = useFactLabel();
   const { formatDate } = useInterfaceLocale();
+  // Existing measures read before the planned one; every other field keeps
+  // its editor position, so no fact can drop out of the display.
+  const displayedFactFields = factFields
+    .filter((name) => name !== 'plannedMeasure')
+    .flatMap((name) =>
+      name === 'existingMeasures' ? [name, 'plannedMeasure' as const] : [name],
+    );
   return (
     <dl className="clarte-improvement-facts">
-      {factFields.map((name) => {
+      {displayedFactFields.map((name) => {
         const value = facts[name];
         return (
           <div key={name}>
@@ -436,24 +475,55 @@ function RiskFacts({ facts }: Readonly<{ facts: OperationalRiskFacts }>) {
   );
 }
 
+type JournalEntry =
+  OperationalRiskJournalOriginal | OperationalRiskJournalCorrection;
+
+function isJournalEntry(entry: OperationalRiskEntry): entry is JournalEntry {
+  return entry.kind !== 'intake-recorded' && entry.kind !== 'intake-corrected';
+}
+
+function journalRoot(entry: JournalEntry) {
+  return entry.kind === 'journal-corrected' ? entry.originalEntryId : entry.id;
+}
+
 function RiskHistory({
   owner,
+  showLog,
+  canPickNote,
   headingRef,
 }: Readonly<{
   owner: OperationalRiskOwner;
+  showLog: boolean;
+  canPickNote: boolean;
   headingRef: Ref<HTMLHeadingElement>;
 }>) {
   const copy = useOperationalRiskCopy();
+  const text = useClarteImprovementCopy();
   const { history, busy, editor, statement } = owner;
+  const [picking, setPicking] = useState(false);
+  const label = showLog ? text('riskLog') : copy('history');
+  const allEntries = history.kind === 'ready' ? history.value.items : [];
+  const journalEntries = showLog
+    ? allEntries.filter(isJournalEntry)
+    : undefined;
+  const displayedEntries = journalEntries ?? allEntries;
+  const choices = new Map<string, string>();
+  if (journalEntries && canPickNote) {
+    for (const entry of journalEntries) {
+      const root = journalRoot(entry);
+      if (choices.has(root)) continue;
+      choices.set(
+        root,
+        `${copy(entry.kind)} · ${copy('revision')} ${entry.revision} · ${entry.narrative.slice(0, 120)}`,
+      );
+    }
+  }
   const currentEntryId =
     statement.kind === 'ready' ? statement.value.currentEntry.id : undefined;
   return (
-    <section
-      aria-label={copy('history')}
-      className="clarte-improvement-section"
-    >
+    <section aria-label={label} className="clarte-improvement-section">
       <h3 ref={headingRef} tabIndex={-1}>
-        {copy('history')}
+        {label}
       </h3>
       {history.kind === 'loading' ? (
         <ClarteLoadingState label={copy('loading')} />
@@ -461,17 +531,44 @@ function RiskHistory({
         <ClarteErrorState title={copy('loadError')} />
       ) : (
         <>
-          <ol className="clarte-improvement-timeline">
-            {history.value.items.map((entry) => (
-              <HistoryEntry
-                key={entry.id}
-                entry={entry}
-                current={currentEntryId === entry.id}
-                disabled={busy || editor !== undefined}
-                onView={owner.viewStatement}
-              />
-            ))}
-          </ol>
+          {displayedEntries.length > 0 ? (
+            <ol className="clarte-improvement-timeline">
+              {displayedEntries.map((entry) => (
+                <HistoryEntry
+                  key={entry.id}
+                  entry={entry}
+                  current={currentEntryId === entry.id}
+                  disabled={busy || editor !== undefined}
+                  onView={owner.viewStatement}
+                />
+              ))}
+            </ol>
+          ) : (
+            showLog && (
+              <p className="clarte-improvement-quiet">{text('emptyLog')}</p>
+            )
+          )}
+          {choices.size > 0 && (
+            <div>
+              <ClarteButton
+                size="small"
+                disabled={busy}
+                onClick={() => setPicking(true)}
+              >
+                {text('pickNote')}
+              </ClarteButton>
+              {picking && (
+                <ClarteRiskNotePicker
+                  choices={choices}
+                  onClose={() => setPicking(false)}
+                  onView={(root) => {
+                    setPicking(false);
+                    owner.viewStatement(root);
+                  }}
+                />
+              )}
+            </div>
+          )}
           {history.more === 'error' && (
             <ClarteErrorState title={copy('loadError')} />
           )}
@@ -518,7 +615,7 @@ function HistoryEntry({
         {copy('author')}: <strong>{entry.actor.displayName}</strong> ·{' '}
         {formatDateTime(entry.recordedAt)}
       </p>
-      {entry.kind === 'intake-recorded' || entry.kind === 'intake-corrected' ? (
+      {!isJournalEntry(entry) ? (
         <>
           <RiskFacts facts={entry.facts} />
           {entry.kind === 'intake-corrected' && (
@@ -558,13 +655,7 @@ function HistoryEntry({
             <ClarteButton
               size="small"
               disabled={disabled}
-              onClick={() =>
-                onView(
-                  entry.kind === 'journal-corrected'
-                    ? entry.originalEntryId
-                    : entry.id,
-                )
-              }
+              onClick={() => onView(journalRoot(entry))}
             >
               {copy('viewStatement')}
             </ClarteButton>
