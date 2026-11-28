@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "9365ae03-c6be-4bc4-9c83-0fcb9ee33156:a3959ec71e8def77e",
+  "date": "2026-11-28",
+  "runType": "pull-request-proof",
+  "issue": 1576,
+  "pullRequest": 1589,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-28T13:17:11.280Z",
+    "end": "2026-11-28T13:29:08.496Z",
+    "durationSeconds": 717
+  },
+  "tokens": {
+    "input": 66,
+    "output": 12510,
+    "cacheCreation": 84606,
+    "cacheRead": 3264970
+  },
+  "models": [
+    {
+      "model": "claude-sonnet-5-5",
+      "tokens": {
+        "input": 66,
+        "output": 12510,
+        "cacheCreation": 84606,
+        "cacheRead": 3264970
+      },
+      "estimatedPriceUsd": 0.663244
+    }
+  ],
+  "price": {
+    "estimatedUsd": 0.663244,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Shepherd of a local Codex change: review, checks, local journey, PR."
+  }
+}

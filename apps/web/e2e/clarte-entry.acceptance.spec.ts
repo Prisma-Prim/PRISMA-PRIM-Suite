@@ -25,21 +25,38 @@ async function screenshot(page: Page, name: string) {
   });
 }
 
-/** The Clarté page outside the frame, with its own four languages. */
-async function expectClartePage(page: Page) {
-  await expect(page.locator('main.clarte-page')).toBeVisible();
-  await expect(
-    page.getByRole('group', { name: 'Interface language' }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('combobox', { name: 'Interface language' }),
-  ).toHaveCount(0);
+async function expectEntryLayout(page: Page) {
+  const main = page.locator('main.clarte-page');
+  await expect(main).toBeVisible();
   await expect(page.getByRole('banner')).toHaveCount(0);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+  return main;
+}
+
+async function expectClartePage(page: Page) {
+  const main = await expectEntryLayout(page);
+  await expect(
+    main.getByRole('group', { name: 'Interface language' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('combobox', { name: 'Interface language' }),
+  ).toHaveCount(0);
+}
+
+async function expectInvitationPage(page: Page) {
+  const main = await expectEntryLayout(page);
+  const card = main.locator('.clarte-page-card');
+  const brand = card.locator('.clarte-page-brand');
+  await expect(brand.locator('svg')).toBeVisible();
+  await expect(brand).toHaveText('');
+  await expect(card.getByRole('radio')).toHaveCount(0);
+  const language = { name: 'Interface language' };
+  await expect(card.getByRole('combobox', language)).toHaveCount(0);
+  await expect(page.getByRole('combobox', language)).toBeVisible();
 }
 
 function signedOut(page: Page) {
@@ -63,9 +80,10 @@ test('welcomes a signed-out visitor in Clarté and continues to sign-in', async 
   await expect(
     page.getByRole('heading', {
       level: 1,
-      name: 'Make every decision traceable.',
+      name: 'PRISMA-PRIM Suite',
     }),
   ).toBeVisible();
+  await expect(page.getByText('Make every decision traceable.')).toBeVisible();
   await expect(page.getByText('Access is invitation-only.')).toBeVisible();
   await expect(page.getByRole('link', { name: /sign up/iu })).toHaveCount(0);
   await expectClartePage(page);
@@ -73,7 +91,7 @@ test('welcomes a signed-out visitor in Clarté and continues to sign-in', async 
 
   await page.getByRole('radio', { name: 'Română' }).check();
   await expect(
-    page.getByRole('heading', { name: 'Faceți fiecare decizie trasabilă.' }),
+    page.getByText('Faceți fiecare decizie trasabilă.'),
   ).toBeVisible();
   await expect(
     page.getByRole('link', { name: 'Continuați pentru autentificare' }),
@@ -82,9 +100,26 @@ test('welcomes a signed-out visitor in Clarté and continues to sign-in', async 
   // A later visit without the opt-in parameter keeps the tester's choice.
   await page.goto('/');
   await expect(
-    page.getByRole('heading', { name: 'Make every decision traceable.' }),
+    page.getByRole('heading', { name: 'PRISMA-PRIM Suite' }),
   ).toBeVisible();
+  await expect(page.getByText('Make every decision traceable.')).toBeVisible();
   await expectClartePage(page);
+  if (isPhoneLayout(page)) {
+    const card = page.locator('.clarte-page-card');
+    await expect(card).toHaveCSS('padding-left', '28px');
+    await expect(card).toHaveCSS('padding-right', '28px');
+    await expect(
+      card.locator('.clarte-language-options > label').evaluateAll((labels) => {
+        const bounds = labels.map((label) => label.getBoundingClientRect());
+        return {
+          width:
+            Math.max(...bounds.map(({ right }) => right)) -
+            Math.min(...bounds.map(({ left }) => left)),
+          minHeight: Math.min(...bounds.map(({ height }) => height)),
+        };
+      }),
+    ).resolves.toEqual({ width: 292, minHeight: 44 });
+  }
   await screenshot(page, 'clarte-entry-welcome');
 
   // The one way on is the first stop of the keyboard.
@@ -142,8 +177,9 @@ test('shows the access check, inactive access, access error and signed-out state
   );
   await page.reload();
   await expect(
-    page.getByRole('heading', { name: 'Make every decision traceable.' }),
+    page.getByRole('heading', { name: 'PRISMA-PRIM Suite' }),
   ).toBeVisible();
+  await expect(page.getByText('Make every decision traceable.')).toBeVisible();
   await expectClartePage(page);
 });
 
@@ -166,7 +202,15 @@ test('refuses an invalid invitation ticket in Clarté without entering the Works
   await expect(
     page.getByRole('heading', { level: 1, name: 'Join your Workspace' }),
   ).toBeVisible();
-  await expectClartePage(page);
+  await expectInvitationPage(page);
+  await page.getByRole('combobox', { name: 'Interface language' }).click();
+  await expect(page.getByRole('option')).toHaveCount(4);
+  await page.getByRole('option', { name: 'Română' }).click();
+  await expect(
+    page.getByRole('button', { name: 'Acceptați invitația' }),
+  ).toBeVisible();
+  await page.getByRole('combobox', { name: 'Limba interfeței' }).click();
+  await page.getByRole('option', { name: 'English' }).click();
   await screenshot(page, 'clarte-entry-invitation');
 
   await page.getByRole('button', { name: 'Accept invitation' }).click();
@@ -182,7 +226,7 @@ test('refuses an invalid invitation ticket in Clarté without entering the Works
   await expect(page.getByText('Invited Workspace')).toHaveCount(0);
   expect(attempts).toBe(1);
   expect(page.url()).not.toContain('invalid_ticket');
-  await expectClartePage(page);
+  await expectInvitationPage(page);
   await screenshot(page, 'clarte-entry-invitation-refused');
 });
 
@@ -228,7 +272,7 @@ test('accepts an invitation in Clarté after an uncertain attempt and opens the 
   await expect(page.getByRole('alert')).toHaveText(
     'Acceptance could not be confirmed. Retry to check the same request safely.',
   );
-  await expectClartePage(page);
+  await expectInvitationPage(page);
   await screenshot(page, 'clarte-entry-invitation-retry');
 
   await page.getByRole('button', { name: 'Retry acceptance' }).click();

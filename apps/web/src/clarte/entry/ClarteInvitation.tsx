@@ -13,7 +13,7 @@ import { ClartePage } from './ClartePage';
 export function ClarteInvitationRefusal() {
   const copy = useInvitationAcceptanceCopy();
   return (
-    <ClartePage>
+    <ClartePage kind="invitation">
       <h1>{copy.title}</h1>
       <ClarteErrorState title={copy.denied} />
     </ClartePage>
@@ -37,7 +37,7 @@ export function ClarteInvitationAuthentication({
 }>) {
   const copy = useInvitationAcceptanceCopy();
   return (
-    <ClartePage>
+    <ClartePage kind="invitation">
       <h1>{copy.title}</h1>
       <p className="clarte-page-lead">{copy.authentication}</p>
       <ClerkNativeValidation>
@@ -70,7 +70,7 @@ export function ClarteInvitationAuthentication({
 export function ClarteInvitationIdentityCheck() {
   const copy = useInvitationAcceptanceCopy();
   return (
-    <ClartePage>
+    <ClartePage kind="invitation">
       <ClarteLoadingState label={copy.checking} />
     </ClartePage>
   );
@@ -94,7 +94,7 @@ export function ClarteInvitationAcceptance({
 }>) {
   const copy = useInvitationAcceptanceCopy();
   return (
-    <ClartePage>
+    <ClartePage kind="invitation">
       <h1>{copy.title}</h1>
       <p className="clarte-page-lead">{copy.description}</p>
       {step === 'loading' && (

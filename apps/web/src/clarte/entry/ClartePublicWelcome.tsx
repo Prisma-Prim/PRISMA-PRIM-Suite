@@ -9,9 +9,9 @@ import { ClartePage } from './ClartePage';
 export function ClartePublicWelcome() {
   const copy = usePublicWelcomeCopy();
   return (
-    <ClartePage>
-      <h1>{copy.title}</h1>
-      <p className="clarte-page-lead">{copy.description}</p>
+    <ClartePage kind="welcome">
+      <h1>{copy.product}</h1>
+      <p className="clarte-page-lead">{copy.title}</p>
       <div className="clarte-page-actions">
         <a className="clarte-button clarte-button--primary" href="/sign-in">
           {copy.signIn}
