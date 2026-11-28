@@ -207,7 +207,7 @@ test('reaches every authorized entry and tab from the menu and the jump list', a
       ],
     ],
     ['Documents', ['Working Documents', 'Knowledge evidence']],
-    ['Finance', ['Invoice Records', 'Manual incoming Payment observations']],
+    ['Finance', ['Invoices', 'Collections']],
     ['Improvement', ['Ideas', 'Operational risks']],
   ];
   for (const [entry, tabs] of walk) {

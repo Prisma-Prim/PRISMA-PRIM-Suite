@@ -20,7 +20,7 @@ One row per `ApplicationSection` id of `apps/web/src/production-shell/applicatio
 | --- | --- | --- | --- |
 | `#overview` | Overview | Home after sign-in: My attention, upcoming deadlines, overdue Tasks, the queues of Offers, Contracts and profitability estimates awaiting a decision, recent changes and, with several Companies, their summaries | `access-action-sequences`, `clarte-entry`, `clarte-today`, `company-overdue`, `contract-decision-queue`, `document-action-sequences`, `profitability-owner-action-sequences`, `multi-company-home`, `offer-decision-queue`, `operational-foundation`, `personal-attention`, `personal-upcoming`, `profitability-queue`, `project-task-action-sequences`, `ui-baseline-preservation` |
 | `#payments` | Manual incoming Payment observations | Manually recorded incoming Payments and the evidence they cite | `browser-sequence-lifetime`, `clarte-finance`, `financial-action-sequences`, `payment-observation` |
-| `#payment-proofs` | Payment proofs | Clarté only: payment evidence with its Versions and PDF, kept inside Documents in the current interface | `clarte-finance` |
+| `#payment-proofs` | Proofs | Clarté only: payment evidence with its Versions and PDF, kept inside Documents in the current interface | `clarte-finance` |
 | `#invoice-records` | Invoice Records | Invoice Records copied from registered external invoice PDFs | `clarte-finance`, `financial-action-sequences`, `invoice-record` |
 | `#knowledge-evidence` | Knowledge evidence | Passage search over approved knowledge sources and their cited versions | `clarte-documents`, `knowledge-evidence` |
 | `#internal-tasks` | Internal Tasks | Internal Company Tasks outside any Project | `clarte-tasks`, `internal-company-tasks` |

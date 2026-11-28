@@ -173,7 +173,7 @@ function ClarteProofOwner(
                       select({ kind: 'document', documentId: document.id }),
                     )}
                   >
-                    <td data-label={finance.text('proofColumn')}>
+                    <td>
                       <button
                         type="button"
                         className="clarte-finance-row-open"

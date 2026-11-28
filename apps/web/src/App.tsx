@@ -871,7 +871,10 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     };
     sections.push({
       id: 'payments',
-      label: paymentText.title,
+      label:
+        interfacePreference === 'clarte'
+          ? financeCopy.text('collectionsLabel')
+          : paymentText.title,
       description: paymentText.manualNotice,
       retainAfterSelection: true,
       content: (
@@ -922,7 +925,10 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     };
     sections.push({
       id: 'invoice-records',
-      label: invoiceCopy.title,
+      label:
+        interfacePreference === 'clarte'
+          ? financeCopy.text('invoicesLabel')
+          : invoiceCopy.title,
       description: invoiceCopy.description,
       retainAfterSelection: true,
       content: <InvoiceRecordsWorkspace {...invoiceProps} />,
