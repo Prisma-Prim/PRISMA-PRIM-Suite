@@ -57,6 +57,23 @@ Language and region and the console's home are Clarté-only screens from `useSet
 
 The configuration sections of [#1547](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1547) live in `settings-config/`. Sales stages, Project templates (with the Mission Plans) and Procedure deadlines sit inside Requests, Projects and a Certification Case in the current interface; in Clarté they are sections App pushes only while the preference is `clarte`, with `content: null`, the same gates as their current place, `mountWhenSelected` and `retainAfterSelection`, and Projects drops its configuration there. Each screen reuses its owner's hook (`useSalesStageSettings`, `useServiceCatalogue`, `usePricingRules`, `useTariffVersions`, `useCompanyModel`, `useTemplateConfiguration`, `useDeadlineAdministration`), so both interfaces send the same commands.
 
+## Missions and the mission space
+
+Missions and audits ([#1540](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1540)) is `missions/ClarteMissions.tsx`: the Project list, its creation panels and the mission space of the opened Project. It renders the Projects session the current interface renders too (`project/use-project-workspace.ts`), so the directory, registration drafts and commands, requested opens and their lifetimes keep one owner. The mission space header keeps the existing lifecycle, owner and next-action owners in side panels that stay mounted while closed.
+
+The mission space's views come from one table, `missions/mission-tabs.tsx`. Each row names the view (`id`, also its `project-<id>-tab` and `project-<id>-panel`), when it is offered (`available`), how it mounts and its `render`, which receives the opened Project, its copied Template plan, `openTask` and the section's callbacks. A view no slice migrated yet renders its current component. To migrate one, as #1541 does for Work, Applicability, Evidence and Review, replace only its row's `render`:
+
+```tsx
+{
+  id: 'review',
+  mount: 'hidden',
+  available: (context) => pilotPlanOf(context.templatePlan) !== undefined,
+  render: (context) => <ClarteResultReview {...context} />,
+},
+```
+
+Tasks has no `render`: the screen keeps the Project Tasks mounted across Projects, as the current interface does, so their drafts survive opening another Project. `src/test/project-interface.tsx` holds the App test steps that differ between the two interfaces on these screens.
+
 ## Certification Case page
 
 The Certification Cases live inside a Project, so their screen ([#1538](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1538)) has no tab of its own: `CertificationWorkspace` keeps the gate and the owner key and chooses `certification/ClarteCertification` while the preference is `clarte`, wherever the Project's Certification tab mounts it. Both interfaces share one owner, `useCertificationRegistry`, with every read, command, draft, retry and access recovery.
@@ -127,17 +144,17 @@ The Request stage embeds Commercial Intake's own detail through `CommercialIntak
 
 `clarte-tokens.css` defines the tokens on `.clarte-frame`: surfaces and ink (`--clarte-bg`, `--clarte-surface`, `--clarte-ink`, `--clarte-muted`, `--clarte-line`), the single accent (`--clarte-accent`, `--clarte-accent-soft`, `--clarte-accent-text` for text on soft accent), status tones (`--clarte-success`, `--clarte-warning`, `--clarte-danger`, `--clarte-info` and their `-soft`), radii, shadows, `--clarte-touch-target` (44 px on phone) and the fonts `--clarte-font-body` and `--clarte-font-heading`. The prism sequence `--clarte-stage-1` to `--clarte-stage-7` is reserved for the seven deal stages.
 
-| Need                      | Use                                                                                  |
-| ------------------------- | ------------------------------------------------------------------------------------ |
-| Buttons                   | `ClarteButton` (`primary` only for the main action, `secondary`, `quiet`, `danger`)  |
-| Fields                    | `ClarteField` with `className="clarte-input"`; the shared `Select` takes the same id |
-| Chips and status badges   | `ClarteBadge` with a `tone`; the text states the status                              |
-| Cards                     | `ClarteCard`; with a `title` it is a named region                                    |
-| Lists and tables          | `ul.clarte-list`, `table.clarte-table` inside `div.clarte-table-wrap`                |
-| Views of one screen       | `ClarteTabs` (links with their own URL)                                              |
-| Side panel                | `ClarteSidePanel`: modal, Escape closes, focus returns to the opener                 |
-| Confirmation              | `ClarteConfirmDialog`: starts on Cancel, the confirm button names the action         |
-| Empty, loading and errors | `ClarteEmptyState`, `ClarteLoadingState` (`status`), `ClarteErrorState` (`alert`)    |
+| Need                      | Use                                                                                                             |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Buttons                   | `ClarteButton` (`primary` only for the main action, `secondary`, `quiet`, `danger`)                             |
+| Fields                    | `ClarteField` with `className="clarte-input"`; the shared `Select` takes the same id                            |
+| Chips and status badges   | `ClarteBadge` with a `tone`; the text states the status                                                         |
+| Cards                     | `ClarteCard`; with a `title` it is a named region                                                               |
+| Lists and tables          | `ul.clarte-list`, `table.clarte-table` inside `div.clarte-table-wrap`                                           |
+| Views of one screen       | `ClarteTabs` (links with their own URL)                                                                         |
+| Side panel                | `ClarteSidePanel`: modal, Escape closes, focus returns to the opener; with `open` it stays mounted while closed |
+| Confirmation              | `ClarteConfirmDialog`: starts on Cancel, the confirm button names the action                                    |
+| Empty, loading and errors | `ClarteEmptyState`, `ClarteLoadingState` (`status`), `ClarteErrorState` (`alert`)                               |
 
 Screens not migrated yet keep their own markup; zero-specificity rules in `clarte-frame.css` give their plain controls a quiet Clarté look until their slice replaces them.
 

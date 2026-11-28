@@ -1,0 +1,735 @@
+/* Clarté Missions and audits: Project list, creation and mission space (#1540). */
+
+.clarte-frame .clarte-missions {
+  display: grid;
+  gap: 16px;
+}
+
+.clarte-frame .clarte-missions:focus,
+.clarte-frame .clarte-missions h2:focus {
+  outline: none;
+}
+
+.clarte-frame .clarte-missions > *,
+.clarte-frame .clarte-mission > * {
+  min-width: 0;
+}
+
+/* Project list */
+.clarte-frame .clarte-missions-card .clarte-card-head h2 {
+  font-size: 17px;
+}
+
+.clarte-frame .clarte-missions-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-bottom: 8px;
+}
+
+.clarte-frame .clarte-segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--clarte-surface-sunken);
+}
+
+.clarte-frame .clarte-segmented button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--clarte-muted);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-segmented button[aria-pressed='true'] {
+  color: var(--clarte-ink);
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+.clarte-frame .clarte-segmented button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Including closed Projects reads as one more segment, pressed when on. */
+.clarte-frame .clarte-segmented-toggle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: var(--clarte-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-segmented-toggle:has(input:checked) {
+  color: var(--clarte-ink);
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+.clarte-frame .clarte-segmented-toggle:has(input:focus-visible) {
+  box-shadow: var(--clarte-focus);
+}
+
+.clarte-frame .clarte-button.clarte-missions-accent {
+  border-color: transparent;
+  color: var(--clarte-accent-text);
+  background: var(--clarte-accent-soft);
+}
+
+.clarte-frame .clarte-button.clarte-missions-accent:hover:not(:disabled) {
+  border-color: var(--clarte-accent-line);
+  color: var(--clarte-accent-text);
+}
+
+.clarte-frame .clarte-missions-search {
+  flex: 1 1 220px;
+  max-width: 360px;
+}
+
+.clarte-frame .clarte-missions-retry {
+  margin-left: auto;
+}
+
+.clarte-frame .clarte-missions-alert {
+  margin: 6px 0;
+  padding: 10px 12px;
+  border-radius: var(--clarte-radius-sm);
+  color: var(--clarte-danger);
+  background: var(--clarte-danger-soft);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-missions-list {
+  display: grid;
+  gap: 16px;
+}
+
+.clarte-frame .clarte-missions-list[hidden] {
+  display: none;
+}
+
+.clarte-frame .clarte-table.clarte-missions-table td,
+.clarte-frame .clarte-table.clarte-missions-table th[scope='row'] {
+  vertical-align: middle;
+}
+
+.clarte-frame .clarte-missions-table th[scope='row'] {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--clarte-line-soft);
+  color: var(--clarte-ink);
+  font-size: 13.5px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.clarte-frame .clarte-missions-open {
+  padding: 0;
+  border: 0;
+  color: var(--clarte-ink);
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-missions-open:hover:not(:disabled) {
+  color: var(--clarte-accent-text);
+  text-decoration: underline;
+}
+
+.clarte-frame .clarte-missions-table tbody tr:hover {
+  background: var(--clarte-surface-muted);
+}
+
+.clarte-frame .clarte-missions-table time {
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-missions-form {
+  display: grid;
+  gap: 14px;
+}
+
+/* Mission space */
+.clarte-frame .clarte-mission {
+  display: grid;
+  gap: 14px;
+}
+
+.clarte-frame .clarte-mission[hidden] {
+  display: none;
+}
+
+.clarte-frame .clarte-mission-trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.clarte-frame .clarte-mission-trail .clarte-button {
+  padding: 0 8px;
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-mission-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 20px;
+}
+
+.clarte-frame .clarte-mission-identity {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-mission-identity h2 {
+  margin: 0;
+  font-family: var(--clarte-font-heading);
+  font-size: 28px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-mission-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 13.5px;
+}
+
+.clarte-frame .clarte-mission-meta p {
+  margin: 0;
+}
+
+.clarte-frame .clarte-mission-meta strong {
+  color: var(--clarte-ink-soft);
+}
+
+.clarte-frame .clarte-mission-commands {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-mission-notice {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--clarte-radius-sm);
+  color: var(--clarte-warning);
+  background: var(--clarte-warning-soft);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-mission-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-left: 3px solid var(--clarte-accent);
+}
+
+.clarte-frame .clarte-mission-next > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-mission-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--clarte-accent-text);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.clarte-frame .clarte-mission-kicker svg {
+  width: 14px;
+  height: 14px;
+}
+
+.clarte-frame .clarte-mission-next-text {
+  margin: 0;
+  font-weight: 700;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-mission-next-meta {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+/* Views of the mission space */
+.clarte-frame .clarte-mission-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-mission-tabs [role='tab'] {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: 999px;
+  color: var(--clarte-ink-soft);
+  background: var(--clarte-surface);
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.clarte-frame .clarte-mission-tabs [role='tab'][aria-selected='true'] {
+  border-color: var(--clarte-ink);
+  color: #fff;
+  background: var(--clarte-ink);
+}
+
+.clarte-frame .clarte-mission-panel {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.clarte-frame .clarte-mission-panel[hidden] {
+  display: none;
+}
+
+.clarte-frame .clarte-mission-panel:focus {
+  outline: none;
+}
+
+/* Views still rendered by their current components sit on a card. */
+.clarte-frame .clarte-mission-panel > section:not(.clarte-card),
+.clarte-frame .clarte-mission-panel > .mission-plan-region,
+.clarte-frame .clarte-mission-panel > div:not([class]) {
+  padding: 18px 20px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-lg);
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+/* Plan */
+.clarte-frame .clarte-mission-plan {
+  display: grid;
+  gap: 14px;
+}
+
+.clarte-frame .clarte-mission-plan-source {
+  margin: 0 0 6px;
+  font-weight: 700;
+}
+
+.clarte-frame .clarte-mission-plan-help {
+  margin: 8px 0 12px;
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-mission-table td small {
+  display: block;
+  margin-top: 3px;
+  color: var(--clarte-muted);
+  font-size: 12.5px;
+}
+
+.clarte-frame .clarte-mission-table .clarte-button {
+  white-space: normal;
+  text-align: left;
+}
+
+/* Only a confirmed absent copy disappears; its reads, refusals and errors stay. */
+.clarte-frame
+  .clarte-mission-plan-copy:not(
+    :has(section, [role='alert'], [role='status'])
+  ) {
+  display: none;
+}
+
+.clarte-frame .clarte-mission-plan-copy > .mission-plan-region {
+  padding: 18px 20px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-lg);
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+/* The empty plan shows only when no Mission Plan copy is present either. */
+.clarte-frame
+  .clarte-mission-plan:has(
+    .clarte-mission-plan-copy :is(section, [role='alert'], [role='status'])
+  )
+  .clarte-mission-plan-empty {
+  display: none;
+}
+
+.clarte-frame .clarte-mission-work {
+  display: grid;
+  gap: 14px;
+}
+
+.clarte-frame .clarte-mission-work > section,
+.clarte-frame .clarte-mission-work > .mission-plan-region:has(section) {
+  padding: 18px 20px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-lg);
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+/* The empty state shows only when no current component shows work, a read or a refusal. */
+.clarte-frame
+  .clarte-mission-work:has(section, [role='alert'], [role='status'])
+  .clarte-mission-work-empty {
+  display: none;
+}
+
+.clarte-frame .clarte-mission-work-empty,
+.clarte-frame .clarte-mission-plan-empty {
+  border: 1px dashed var(--clarte-line);
+  border-radius: var(--clarte-radius-lg);
+  background: var(--clarte-surface);
+}
+
+/*
+ * Lifecycle, owner, next action and Mission Plan creation keep their existing
+ * owners inside Clarté panels: the panel title replaces their own heading and
+ * their plain controls take the Clarté look.
+ */
+.clarte-frame .clarte-mission-owner-panel {
+  display: grid;
+  gap: 14px;
+  color: var(--clarte-ink);
+}
+
+.clarte-frame .clarte-mission-owner-panel > section > h4:first-child,
+.clarte-frame .clarte-mission-owner-panel > section > h3:first-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.clarte-frame .clarte-mission-owner-panel section {
+  display: grid;
+  gap: 12px;
+}
+
+.clarte-frame .clarte-mission-owner-panel h4,
+.clarte-frame .clarte-mission-owner-panel h5,
+.clarte-frame .clarte-mission-owner-panel h6 {
+  margin: 4px 0 0;
+  color: var(--clarte-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.clarte-frame .clarte-mission-owner-panel p {
+  margin: 0;
+}
+
+.clarte-frame .clarte-mission-owner-panel dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-mission-owner-panel dl > div {
+  display: grid;
+  grid-template-columns: minmax(8rem, 40%) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.clarte-frame .clarte-mission-owner-panel dt {
+  color: var(--clarte-muted);
+  font-size: 13px;
+}
+
+.clarte-frame .clarte-mission-owner-panel dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.clarte-frame .clarte-mission-owner-panel ol,
+.clarte-frame .clarte-mission-owner-panel ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.clarte-frame .clarte-mission-owner-panel ol > li {
+  position: relative;
+  padding: 0 0 0 18px;
+}
+
+.clarte-frame .clarte-mission-owner-panel ol > li::before {
+  position: absolute;
+  top: 7px;
+  left: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--clarte-accent);
+  content: '';
+}
+
+.clarte-frame .clarte-mission-owner-panel fieldset {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface);
+}
+
+.clarte-frame .clarte-mission-owner-panel legend {
+  padding: 0 4px;
+  font-weight: 700;
+}
+
+.clarte-frame .clarte-mission-owner-panel form,
+.clarte-frame .clarte-mission-owner-panel label {
+  display: grid;
+  gap: 6px;
+}
+
+.clarte-frame .clarte-mission-owner-panel label {
+  color: var(--clarte-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Present / missing and similar choices read as two chips. */
+.clarte-frame .clarte-mission-owner-panel .project-lifecycle-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clarte-frame .clarte-mission-owner-panel .project-lifecycle-choice label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--clarte-line);
+  border-radius: 999px;
+  background: var(--clarte-surface);
+  cursor: pointer;
+}
+
+.clarte-frame
+  .clarte-mission-owner-panel
+  .project-lifecycle-choice
+  label:has(input:checked) {
+  border-color: var(--clarte-accent);
+  color: var(--clarte-accent-text);
+  background: var(--clarte-accent-soft);
+}
+
+.clarte-frame .clarte-mission-owner-panel .project-lifecycle-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.clarte-frame .clarte-mission-owner-panel textarea,
+.clarte-frame
+  .clarte-mission-owner-panel
+  input:not([type='radio'], [type='checkbox']) {
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-sm);
+  color: var(--clarte-ink);
+  background: var(--clarte-surface);
+  font: inherit;
+}
+
+.clarte-frame .clarte-mission-owner-panel [class*='actions'],
+.clarte-frame .clarte-mission-owner-panel .next-action-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clarte-frame
+  .clarte-mission-owner-panel
+  button[type='submit']:not(.shared-select__trigger) {
+  border-color: transparent;
+  color: var(--clarte-accent-ink);
+  background: var(--clarte-accent);
+}
+
+.clarte-frame .clarte-mission-owner-panel [role='alert'] {
+  padding: 10px 12px;
+  border-radius: var(--clarte-radius-sm);
+  color: var(--clarte-danger);
+  background: var(--clarte-danger-soft);
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-mission-owner-panel [role='status'] {
+  color: var(--clarte-muted);
+}
+
+.clarte-frame .clarte-mission-owner-panel .project-warning,
+.clarte-frame .clarte-mission-owner-panel .project-lifecycle-hint {
+  padding: 10px 12px;
+  border-radius: var(--clarte-radius-sm);
+  color: var(--clarte-warning);
+  background: var(--clarte-warning-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.clarte-frame .clarte-mission-owner-panel .project-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.clarte-frame .clarte-mission-owner-panel .project-status i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+@media (max-width: 768px) {
+  .clarte-frame .clarte-missions-search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+
+  .clarte-frame .clarte-missions-retry {
+    margin-left: 0;
+  }
+
+  .clarte-frame .clarte-segmented {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .clarte-frame .clarte-segmented button,
+  .clarte-frame .clarte-segmented-toggle {
+    flex: 1;
+    justify-content: center;
+    min-height: var(--clarte-touch-target);
+    text-align: center;
+  }
+
+  /* Tables become one card per row. */
+  .clarte-frame .clarte-missions-table thead,
+  .clarte-frame .clarte-mission-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .clarte-frame .clarte-missions-table,
+  .clarte-frame .clarte-missions-table tbody,
+  .clarte-frame .clarte-missions-table tr,
+  .clarte-frame .clarte-missions-table th,
+  .clarte-frame .clarte-missions-table td,
+  .clarte-frame .clarte-mission-table,
+  .clarte-frame .clarte-mission-table tbody,
+  .clarte-frame .clarte-mission-table tr,
+  .clarte-frame .clarte-mission-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .clarte-frame .clarte-missions-table tr,
+  .clarte-frame .clarte-mission-table tr {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--clarte-line);
+  }
+
+  .clarte-frame .clarte-missions-table th[scope='row'],
+  .clarte-frame .clarte-missions-table td,
+  .clarte-frame .clarte-mission-table td {
+    padding: 4px 0;
+    border: 0;
+  }
+
+  .clarte-frame .clarte-missions-table td[data-label],
+  .clarte-frame .clarte-mission-table td[data-label] {
+    display: grid;
+    grid-template-columns: minmax(6.5rem, 36%) minmax(0, 1fr);
+    gap: 2px 12px;
+  }
+
+  .clarte-frame .clarte-missions-table td[data-label]::before,
+  .clarte-frame .clarte-mission-table td[data-label]::before {
+    grid-row: span 2;
+    color: var(--clarte-muted);
+    font-size: 12.5px;
+    content: attr(data-label);
+  }
+
+  .clarte-frame .clarte-missions-table td > .clarte-badge {
+    justify-self: start;
+  }
+
+  .clarte-frame .clarte-missions-open {
+    min-height: var(--clarte-touch-target);
+  }
+
+  .clarte-frame .clarte-mission-identity h2 {
+    font-size: 23px;
+  }
+
+  .clarte-frame .clarte-mission-tabs [role='tab'] {
+    min-height: var(--clarte-touch-target);
+  }
+
+  .clarte-frame .clarte-mission-owner-panel dl > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}

@@ -63,6 +63,46 @@ describe('Clarté side panel', () => {
   });
 });
 
+function RetainedPanelHost() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <ClarteButton onClick={() => setOpen(true)}>Open draft</ClarteButton>
+      <ClarteSidePanel
+        title="Retained record"
+        open={open}
+        onClose={() => setOpen(false)}
+      >
+        <ClarteField label="Note">
+          {(control) => <input className="clarte-input" {...control} />}
+        </ClarteField>
+      </ClarteSidePanel>
+    </>
+  );
+}
+
+describe('Clarté side panel kept mounted while closed', () => {
+  it('hides when closed, keeps its contents and moves focus only while open', () => {
+    render(<RetainedPanelHost />);
+    const opener = screen.getByRole('button', { name: 'Open draft' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    opener.focus();
+    fireEvent.click(opener);
+
+    const panel = screen.getByRole('dialog', { name: 'Retained record' });
+    expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
+    fireEvent.change(screen.getByLabelText('Note'), {
+      target: { value: 'Fictional draft' },
+    });
+    fireEvent.keyDown(panel, { key: 'Escape' });
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(opener).toHaveFocus();
+    fireEvent.click(opener);
+    expect(screen.getByLabelText('Note')).toHaveValue('Fictional draft');
+  });
+});
+
 describe('Clarté confirmation dialog', () => {
   it('starts on Cancel, cancels on Escape and confirms the named action', () => {
     const onConfirm = vi.fn();

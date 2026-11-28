@@ -61,6 +61,8 @@ import { useBlockedTasksCopy } from './project/blocked-tasks.copy';
 import { UnassignedTasks } from './project/UnassignedTasks';
 import { useUnassignedTasksCopy } from './project/unassigned-tasks.copy';
 import { ProjectWorkspace } from './project/ProjectWorkspace';
+import type { ProjectWorkspaceProps } from './project/use-project-workspace';
+import { ClarteMissions } from './clarte/missions/ClarteMissions';
 import {
   useProjectNavigation,
   type ProjectOpenTarget,
@@ -1396,75 +1398,81 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const configuresProjects =
     canReadProjectTemplateCatalogue(access.actor) ||
     missionPlanAuthority(access.actor, 'configure') !== null;
-  const projectWorkspace = access.actor.activeCompany && (
-    <ProjectWorkspace
-      onActorRevalidated={acceptRevalidatedActor}
-      onCompanyContextRejected={rejectCompanyContext}
-      onWorkspaceAccessRejected={rejectWorkspaceAccess}
-      catalogueRevision={templateCatalogueRevision}
-      onOpenContract={openRequest}
-      key={`project:${access.sessionGeneration}:${clientAuthorityGeneration}:${companySelectionGeneration}:${access.actor.activeCompany.id}`}
-      actor={access.actor}
-      identity={identity}
-      onActivityRecorded={refreshActivityLog}
-      clientIdentityRevision={clientIdentityGeneration}
-      onOpenClientDossier={openClientDossier}
-      onOpenDocument={openDocument}
-      navigation={projectNavigation.request}
-    />
-  );
   if (
     (canAccessProjects || (configuresProjects && !configurationInSettings)) &&
     access.actor.activeCompany
-  )
-    sections.push({
-      id: 'projects',
-      ...prismeCopy.sections.projects,
-      content: configurationInSettings ? (
-        projectWorkspace
-      ) : (
-        <>
-          {canAccessProjects && projectWorkspace}
+  ) {
+    const projectsKey = `project:${access.sessionGeneration}:${clientAuthorityGeneration}:${companySelectionGeneration}:${access.actor.activeCompany.id}`;
+    const projects = {
+      onActorRevalidated: acceptRevalidatedActor,
+      onCompanyContextRejected: rejectCompanyContext,
+      onWorkspaceAccessRejected: rejectWorkspaceAccess,
+      catalogueRevision: templateCatalogueRevision,
+      onOpenContract: openRequest,
+      actor: access.actor,
+      identity,
+      onActivityRecorded: refreshActivityLog,
+      clientIdentityRevision: clientIdentityGeneration,
+      onOpenClientDossier: openClientDossier,
+      onOpenDocument: openDocument,
+      navigation: projectNavigation.request,
+    } satisfies ProjectWorkspaceProps;
+    const projectConfiguration = (
+      <>
+        <div
+          id={
+            !canAccessProjects && !canReadProjectTemplateCatalogue(access.actor)
+              ? 'projects'
+              : undefined
+          }
+          tabIndex={-1}
+        >
+          <MissionPlanWorkspace
+            actor={access.actor}
+            identity={identity}
+            onActivityRecorded={refreshActivityLog}
+            onActorRevalidated={acceptRevalidatedActor}
+            onCompanyContextRejected={rejectCompanyContext}
+            onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          />
+        </div>
+        {canReadProjectTemplateCatalogue(access.actor) && (
           <div
-            id={
-              !canAccessProjects &&
-              !canReadProjectTemplateCatalogue(access.actor)
-                ? 'projects'
-                : undefined
-            }
-            tabIndex={-1}
+            id={canAccessProjects ? undefined : 'projects'}
+            tabIndex={canAccessProjects ? undefined : -1}
           >
-            <MissionPlanWorkspace
+            <ProjectTemplateConfiguration
+              key={`template-configuration:${access.sessionGeneration}`}
               actor={access.actor}
               identity={identity}
+              onCatalogueChanged={() =>
+                setTemplateCatalogueRevision((value) => value + 1)
+              }
               onActivityRecorded={refreshActivityLog}
               onActorRevalidated={acceptRevalidatedActor}
               onCompanyContextRejected={rejectCompanyContext}
               onWorkspaceAccessRejected={rejectWorkspaceAccess}
             />
           </div>
-          {canReadProjectTemplateCatalogue(access.actor) && (
-            <div
-              id={canAccessProjects ? undefined : 'projects'}
-              tabIndex={canAccessProjects ? undefined : -1}
-            >
-              <ProjectTemplateConfiguration
-                key={`template-configuration:${access.sessionGeneration}`}
-                actor={access.actor}
-                identity={identity}
-                onCatalogueChanged={() =>
-                  setTemplateCatalogueRevision((value) => value + 1)
-                }
-                onActivityRecorded={refreshActivityLog}
-                onActorRevalidated={acceptRevalidatedActor}
-                onCompanyContextRejected={rejectCompanyContext}
-                onWorkspaceAccessRejected={rejectWorkspaceAccess}
-              />
-            </div>
+        )}
+      </>
+    );
+    sections.push({
+      id: 'projects',
+      ...prismeCopy.sections.projects,
+      content: (
+        <>
+          {canAccessProjects && (
+            <ProjectWorkspace key={projectsKey} {...projects} />
           )}
+          {projectConfiguration}
         </>
       ),
+      // Clarté shows Template and Mission Plan configuration in Settings
+      // (#1547), so its Projects section exists only with Project access.
+      clarteContent: <ClarteMissions key={projectsKey} {...projects} />,
     });
+  }
   if (
     configurationInSettings &&
     configuresProjects &&

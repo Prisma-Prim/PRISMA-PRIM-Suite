@@ -253,6 +253,11 @@
   background: rgb(13 20 36 / 42%);
 }
 
+/* A side panel kept mounted while closed. */
+.clarte-frame .clarte-layer[hidden] {
+  display: none;
+}
+
 .clarte-frame .clarte-layer--side {
   /* One row exactly as tall as the screen, so a long panel body scrolls. */
   grid-template-rows: minmax(0, 1fr);

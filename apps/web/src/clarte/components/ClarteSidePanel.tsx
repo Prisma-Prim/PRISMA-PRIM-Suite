@@ -10,6 +10,9 @@ import { useModalFocus } from './use-modal-focus';
  * during a protected write, the panel stays open: Escape, the backdrop and
  * the close button do nothing. `titleRef` lets the owner move focus to the
  * title, which is then focusable. `icon` is a decorative mark beside it.
+ * With `open`, the owner instead keeps the panel mounted while it is closed,
+ * so the drafts, reads and commands of what it holds survive closing; a
+ * closed panel is hidden and takes no focus.
  */
 export function ClarteSidePanel({
   title,
@@ -18,6 +21,7 @@ export function ClarteSidePanel({
   dismissible = true,
   titleRef,
   icon,
+  open = true,
   onClose,
   children,
 }: Readonly<{
@@ -27,6 +31,7 @@ export function ClarteSidePanel({
   dismissible?: boolean;
   titleRef?: Ref<HTMLHeadingElement>;
   icon?: ReactNode;
+  open?: boolean;
   onClose: () => void;
   children: ReactNode;
 }>) {
@@ -36,10 +41,15 @@ export function ClarteSidePanel({
   const close = () => {
     if (dismissible) onClose();
   };
-  const handleKeyDown = useModalFocus({ container: panel, onDismiss: close });
+  const handleKeyDown = useModalFocus({
+    container: panel,
+    onDismiss: close,
+    active: open,
+  });
   return (
     <div
       className="clarte-layer clarte-layer--side"
+      hidden={!open}
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) close();
       }}
