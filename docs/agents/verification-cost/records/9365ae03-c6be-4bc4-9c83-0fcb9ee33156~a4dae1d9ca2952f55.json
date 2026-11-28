@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "runId": "9365ae03-c6be-4bc4-9c83-0fcb9ee33156:a4dae1d9ca2952f55",
+  "date": "2026-11-28",
+  "runType": "pull-request-proof",
+  "issue": 1556,
+  "pullRequest": 1557,
+  "harness": "claude-code-local",
+  "figuresSource": "claude-code-transcript",
+  "time": {
+    "start": "2026-11-28T03:12:28.691Z",
+    "end": "2026-11-28T03:15:52.603Z",
+    "durationSeconds": 204
+  },
+  "tokens": {
+    "input": 52,
+    "output": 10020,
+    "cacheCreation": 110754,
+    "cacheRead": 2446981
+  },
+  "models": [
+    {
+      "model": "claude-sonnet-5-5",
+      "tokens": {
+        "input": 52,
+        "output": 10020,
+        "cacheCreation": 110754,
+        "cacheRead": 2446981
+      },
+      "estimatedPriceUsd": 0.621887
+    }
+  ],
+  "price": {
+    "estimatedUsd": 0.621887,
+    "priceTable": "2026-11-11"
+  },
+  "outcome": {
+    "result": "pass",
+    "findings": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0
+    },
+    "notes": "Subagent run: land local fix, red-green proof, tests"
+  }
+}
