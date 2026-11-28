@@ -153,8 +153,8 @@ export const clarteEntries = [
     group: 'primary',
     icon: Files,
     tabs: [
-      { destination: 'documents', render: renderCurrentScreen },
-      { destination: 'knowledge-evidence', render: renderCurrentScreen },
+      { destination: 'documents', render: renderClarteScreen },
+      { destination: 'knowledge-evidence', render: renderClarteScreen },
     ],
   },
   {

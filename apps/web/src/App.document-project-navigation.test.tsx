@@ -4,7 +4,6 @@ import { changeValue } from './test/select-option';
 import {
   act,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
@@ -22,6 +21,10 @@ import {
   withoutCompanyGrants,
 } from './access/company-grants.test-fixture';
 import { documentGrantRequests } from './documents/document-grants.test-fixture';
+import { appInterfaces, renderInInterface } from './test/app-interface';
+
+/** The interface the running parameterized test renders. */
+let shown: (typeof appInterfaces)[number] = 'current';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -260,12 +263,27 @@ function installServer() {
 }
 
 function navigateTo(label: string) {
-  fireEvent.click(
-    within(
-      screen.getByRole('navigation', { name: 'Primary navigation' }),
-    ).getByRole('link', { name: label }),
-  );
+  if (shown === 'current') {
+    fireEvent.click(
+      within(
+        screen.getByRole('navigation', { name: 'Primary navigation' }),
+      ).getByRole('link', { name: label }),
+    );
+    return;
+  }
+  // Clarté groups sections under entries; its jump list reaches any of them.
+  fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+  const field = screen.getByRole('combobox', { name: 'Screen name' });
+  fireEvent.change(field, { target: { value: label } });
+  fireEvent.keyDown(field, { key: 'Enter' });
 }
+/** The menu link of the Projects section in the rendered interface. */
+const projectsLink = () =>
+  within(
+    screen.getByRole('navigation', { name: 'Primary navigation' }),
+  ).getByRole('link', {
+    name: shown === 'current' ? 'Projects' : 'Missions and audits',
+  });
 const projectsRegion = () => screen.getByRole('region', { name: 'Projects' });
 /** The Documents section; Project detail also has a Working Documents panel. */
 function documentsRegion() {
@@ -300,7 +318,10 @@ async function openLinkedDocument() {
       }),
     ),
   );
-  return waitFor(() => within(documentsRegion()).getByRole('article'));
+  // Clarté opens the Document in a side panel instead of an inline article.
+  return shown === 'current'
+    ? waitFor(() => within(documentsRegion()).getByRole('article'))
+    : screen.findByRole('dialog', { name: workingDocument.title });
 }
 async function selectCompany(companyId: string) {
   const selector = () =>
@@ -318,297 +339,327 @@ const scrollable: {
 } = Element.prototype;
 const nativeScrollIntoView = scrollable.scrollIntoView;
 
-describe('Opening the linked Project from a working Document through App', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    scrollable.scrollIntoView = vi.fn();
-    // The Prisme overview renders the motion hero when no section is selected.
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn(
-        (query: string) =>
-          ({
-            matches: true,
-            media: query,
-            onchange: null,
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            dispatchEvent: vi.fn(() => false),
-          }) satisfies MediaQueryList,
-      ),
-    );
-  });
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-    scrollable.scrollIntoView = nativeScrollIntoView;
-    window.history.replaceState(null, '', '/');
-  });
-
-  it('preserves Mine through the real App exact outside-Project Document intent', async () => {
-    window.history.replaceState(null, '', '/#projects');
-    const server = installServer();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await projectRow(betaRow);
-    const view = within(projectsRegion()).getByRole('combobox', {
-      name: 'Project view',
+describe.each(appInterfaces)(
+  'Opening the linked Project from a working Document through App in the %s interface',
+  (appInterface) => {
+    beforeEach(() => {
+      shown = appInterface;
+      localStorage.clear();
+      sessionStorage.clear();
+      scrollable.scrollIntoView = vi.fn();
+      // The Prisme overview renders the motion hero when no section is selected.
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn(
+          (query: string) =>
+            ({
+              matches: true,
+              media: query,
+              onchange: null,
+              addListener: vi.fn(),
+              removeListener: vi.fn(),
+              addEventListener: vi.fn(),
+              removeEventListener: vi.fn(),
+              dispatchEvent: vi.fn(() => false),
+            }) satisfies MediaQueryList,
+        ),
+      );
     });
-    const closed = within(projectsRegion()).getByRole('checkbox', {
-      name: 'Include closed Projects',
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+      scrollable.scrollIntoView = nativeScrollIntoView;
+      window.history.replaceState(null, '', '/');
     });
-    fireEvent.click(closed);
-    expect(closed).toBeChecked();
-    changeValue(view, 'mine_open');
-    await waitFor(() => {
-      const list = within(projectsRegion()).getByRole('list', {
-        name: 'Projects',
-      });
-      expect(within(list).getAllByRole('button')).toHaveLength(1);
-      expect(within(list).getByRole('button', { name: betaRow })).toBeVisible();
-      expect(
-        within(list).queryByRole('button', { name: atelierRow }),
-      ).toBeNull();
-    });
-    const allReads = server.count('GET /api/projects');
-    navigateTo('Working Documents');
-    fireEvent.click(
-      within(await openLinkedDocument()).getByRole('button', {
-        name: 'Open Project',
-      }),
-    );
-    await waitFor(() => {
-      const detail = projectDetail();
-      if (!detail) throw new Error('Expected independent Project detail.');
-      expect(
-        within(detail).getByText(`Client: ${atelier.displayName}`),
-      ).toBeVisible();
-    });
-    expect(view).toHaveTextContent('My open Projects');
-    expect(server.count('GET /api/projects')).toBe(allReads);
-    const list = within(projectsRegion()).getByRole('list', {
-      name: 'Projects',
-    });
-    expect(within(list).getAllByRole('button')).toHaveLength(1);
-    expect(within(list).getByRole('button', { name: betaRow })).toBeVisible();
-    expect(server.count(`GET ${atelierDetailPath}`)).toBe(1);
-    changeValue(view, 'all');
-    await waitFor(() => expect(view).toHaveTextContent('All Projects'));
-    expect(
-      within(projectsRegion()).getByRole('checkbox', {
-        name: 'Include closed Projects',
-      }),
-    ).toBeChecked();
-  });
 
-  it('opens the linked one of two same-titled Projects by its own read and keeps the other Project’s Task draft', async () => {
-    window.history.replaceState(null, '', '/#projects');
-    const server = installServer();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await chooseProjectRow(betaRow);
-    changeValue(await waitFor(visibleTaskTitle), taskDraft);
-
-    navigateTo('Working Documents');
-    const documentDetail = await openLinkedDocument();
-    expect(
-      within(documentDetail).getByText(titleReadWithDocument),
-    ).toBeVisible();
-    server.hold(`GET ${atelierDetailPath}`);
-    fireEvent.click(
-      within(documentDetail).getByRole('button', { name: 'Open Project' }),
-    );
-
-    // The Projects section is shown and focused before its own read answers.
-    await act(async () => {
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-    });
-    expect(document.activeElement).toBe(projectsRegion());
-    expect(projectsRegion()).toBeVisible();
-    expect(projectDetail()).not.toBeInTheDocument();
-    // The member moves on; the later reply must not take focus back.
-    const elsewhere = within(
-      screen.getByRole('navigation', { name: 'Primary navigation' }),
-    ).getByRole('link', { name: 'Projects' });
-    elsewhere.focus();
-    await server.release(`GET ${atelierDetailPath}`);
-
-    const detail = projectDetail();
-    if (!detail) throw new Error('Expected the linked Project to open.');
-    expect(detail).toBeVisible();
-    expect(
-      within(detail).getByText(`Client: ${atelier.displayName}`),
-    ).toBeVisible();
-    expect(
-      within(projectsRegion()).queryByText(titleReadWithDocument),
-    ).not.toBeInTheDocument();
-    expect(document.activeElement).toBe(elsewhere);
-    expect(server.count(`GET ${atelierDetailPath}`)).toBe(1);
-    // Nothing identifies the Project outside its owner's read.
-    expect(window.location.href).not.toContain(atelierProject.id);
-    expect(JSON.stringify(window.history.state ?? null)).not.toContain(
-      atelierProject.id,
-    );
-    expect(document.body.textContent).not.toContain(atelierProject.id);
-
-    expect(await chooseProjectRow(betaRow)).toBeVisible();
-    expect(visibleTaskTitle()).toHaveValue(taskDraft);
-    expect(server.count(`GET ${betaTasksPath}`)).toBe(1);
-    expect(server.count('POST /api/projects')).toBe(0);
-  });
-
-  it('keeps an uncertain Task command in the previously opened Project for an unchanged retry', async () => {
-    window.history.replaceState(null, '', '/#projects');
-    const server = installServer();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await chooseProjectRow(betaRow);
-    changeValue(await waitFor(visibleTaskTitle), taskDraft);
-    fireEvent.click(
-      within(projectsRegion()).getByRole('button', { name: 'Create Task' }),
-    );
-    expect(
-      await within(projectsRegion()).findByRole('button', {
-        name: 'Retry pending Task change',
-      }),
-    ).toBeInTheDocument();
-
-    navigateTo('Working Documents');
-    fireEvent.click(
-      within(await openLinkedDocument()).getByRole('button', {
-        name: 'Open Project',
-      }),
-    );
-    await waitFor(() =>
-      expect(
-        within(projectsRegion()).getByText(`Client: ${atelier.displayName}`, {
-          selector: 'article p',
-        }),
-      ).toBeInTheDocument(),
-    );
-
-    await chooseProjectRow(betaRow);
-    const retry = await within(projectsRegion()).findByRole('button', {
-      name: 'Retry pending Task change',
-    });
-    expect(visibleTaskTitle()).toHaveValue(taskDraft);
-    expect(server.count(`GET ${betaTasksPath}`)).toBe(1);
-    fireEvent.click(retry);
-    await waitFor(() => expect(server.count(`POST ${betaTasksPath}`)).toBe(2));
-    const [first, retried] = server.requests(`POST ${betaTasksPath}`);
-    expect(first?.key).toBeTruthy();
-    expect(retried?.key).toBe(first?.key);
-    expect(retried?.body).toBe(first?.body);
-  });
-
-  it.each([
-    {
-      waiting: 'its read is in flight',
-      prepare: (server: ReturnType<typeof installServer>) => {
-        server.hold(`GET ${atelierDetailPath}`);
-        return Promise.resolve();
-      },
-      atelierReads: 1,
-    },
-    {
-      waiting: 'a Project registration is pending',
-      prepare: async (server: ReturnType<typeof installServer>) => {
-        await projectRow(betaRow);
-        changeValue(
-          within(projectsRegion()).getByLabelText('Project title'),
-          registeredProject.title,
-        );
-        changeValue(within(projectsRegion()).getByLabelText('Client'), beta.id);
-        server.hold('POST /api/projects');
-        fireEvent.click(
-          within(projectsRegion()).getByRole('button', {
-            name: 'Create Project',
-          }),
-        );
-        await server.requested('POST /api/projects');
-      },
-      atelierReads: 0,
-    },
-  ])(
-    'retires the open requested while $waiting when the Company changes, and never replays it on return',
-    async ({ prepare, atelierReads }) => {
+    it('preserves Mine through the real App exact outside-Project Document intent', async () => {
       window.history.replaceState(null, '', '/#projects');
       const server = installServer();
-      render(<App identity={deterministicBrowserIdentity()} />);
-      await prepare(server);
-      await screen.findByRole('link', { name: 'Working Documents' });
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await projectRow(betaRow);
+      const view = within(projectsRegion()).getByRole('combobox', {
+        name: 'Project view',
+      });
+      const closed = within(projectsRegion()).getByRole('checkbox', {
+        name: 'Include closed Projects',
+      });
+      fireEvent.click(closed);
+      expect(closed).toBeChecked();
+      changeValue(view, 'mine_open');
+      await waitFor(() => {
+        const list = within(projectsRegion()).getByRole('list', {
+          name: 'Projects',
+        });
+        expect(within(list).getAllByRole('button')).toHaveLength(1);
+        expect(
+          within(list).getByRole('button', { name: betaRow }),
+        ).toBeVisible();
+        expect(
+          within(list).queryByRole('button', { name: atelierRow }),
+        ).toBeNull();
+      });
+      const allReads = server.count('GET /api/projects');
       navigateTo('Working Documents');
       fireEvent.click(
         within(await openLinkedDocument()).getByRole('button', {
           name: 'Open Project',
         }),
       );
-      await act(
-        async () => await new Promise((resolve) => setTimeout(resolve)),
-      );
-      expect(server.count(`GET ${atelierDetailPath}`)).toBe(atelierReads);
+      await waitFor(() => {
+        const detail = projectDetail();
+        if (!detail) throw new Error('Expected independent Project detail.');
+        expect(
+          within(detail).getByText(`Client: ${atelier.displayName}`),
+        ).toBeVisible();
+      });
+      expect(view).toHaveTextContent('My open Projects');
+      expect(server.count('GET /api/projects')).toBe(allReads);
+      const list = within(projectsRegion()).getByRole('list', {
+        name: 'Projects',
+      });
+      expect(within(list).getAllByRole('button')).toHaveLength(1);
+      expect(within(list).getByRole('button', { name: betaRow })).toBeVisible();
+      expect(server.count(`GET ${atelierDetailPath}`)).toBe(1);
+      changeValue(view, 'all');
+      await waitFor(() => expect(view).toHaveTextContent('All Projects'));
+      expect(
+        within(projectsRegion()).getByRole('checkbox', {
+          name: 'Include closed Projects',
+        }),
+      ).toBeChecked();
+    });
 
-      await selectCompany(companyB.id);
-      await projectRow(
-        `${otherCompanyProject.title} Client: ${beta.displayName}`,
+    it('opens the linked one of two same-titled Projects by its own read and keeps the other Project’s Task draft', async () => {
+      window.history.replaceState(null, '', '/#projects');
+      const server = installServer();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
       );
+      await chooseProjectRow(betaRow);
+      changeValue(await waitFor(visibleTaskTitle), taskDraft);
+
+      navigateTo('Working Documents');
+      const documentDetail = await openLinkedDocument();
+      expect(
+        within(documentDetail).getByText(titleReadWithDocument),
+      ).toBeVisible();
+      server.hold(`GET ${atelierDetailPath}`);
+      fireEvent.click(
+        within(documentDetail).getByRole('button', { name: 'Open Project' }),
+      );
+
+      // The Projects section is shown and focused before its own read answers.
+      await act(async () => {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      });
+      expect(document.activeElement).toBe(projectsRegion());
+      expect(projectsRegion()).toBeVisible();
+      expect(projectDetail()).not.toBeInTheDocument();
+      // The member moves on; the later reply must not take focus back.
+      const elsewhere = projectsLink();
+      elsewhere.focus();
+      await server.release(`GET ${atelierDetailPath}`);
+
+      const detail = projectDetail();
+      if (!detail) throw new Error('Expected the linked Project to open.');
+      expect(detail).toBeVisible();
+      expect(
+        within(detail).getByText(`Client: ${atelier.displayName}`),
+      ).toBeVisible();
+      expect(
+        within(projectsRegion()).queryByText(titleReadWithDocument),
+      ).not.toBeInTheDocument();
+      expect(document.activeElement).toBe(elsewhere);
+      expect(server.count(`GET ${atelierDetailPath}`)).toBe(1);
+      // Nothing identifies the Project outside its owner's read.
+      expect(window.location.href).not.toContain(atelierProject.id);
+      expect(JSON.stringify(window.history.state ?? null)).not.toContain(
+        atelierProject.id,
+      );
+      expect(document.body.textContent).not.toContain(atelierProject.id);
+
+      expect(await chooseProjectRow(betaRow)).toBeVisible();
+      expect(visibleTaskTitle()).toHaveValue(taskDraft);
+      expect(server.count(`GET ${betaTasksPath}`)).toBe(1);
+      expect(server.count('POST /api/projects')).toBe(0);
+    });
+
+    it('keeps an uncertain Task command in the previously opened Project for an unchanged retry', async () => {
+      window.history.replaceState(null, '', '/#projects');
+      const server = installServer();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await chooseProjectRow(betaRow);
+      changeValue(await waitFor(visibleTaskTitle), taskDraft);
+      fireEvent.click(
+        within(projectsRegion()).getByRole('button', { name: 'Create Task' }),
+      );
+      expect(
+        await within(projectsRegion()).findByRole('button', {
+          name: 'Retry pending Task change',
+        }),
+      ).toBeInTheDocument();
+
+      navigateTo('Working Documents');
+      fireEvent.click(
+        within(await openLinkedDocument()).getByRole('button', {
+          name: 'Open Project',
+        }),
+      );
+      await waitFor(() =>
+        expect(
+          within(projectsRegion()).getByText(`Client: ${atelier.displayName}`, {
+            selector: 'article p',
+          }),
+        ).toBeInTheDocument(),
+      );
+
+      await chooseProjectRow(betaRow);
+      const retry = await within(projectsRegion()).findByRole('button', {
+        name: 'Retry pending Task change',
+      });
+      expect(visibleTaskTitle()).toHaveValue(taskDraft);
+      expect(server.count(`GET ${betaTasksPath}`)).toBe(1);
+      fireEvent.click(retry);
+      await waitFor(() =>
+        expect(server.count(`POST ${betaTasksPath}`)).toBe(2),
+      );
+      const [first, retried] = server.requests(`POST ${betaTasksPath}`);
+      expect(first?.key).toBeTruthy();
+      expect(retried?.key).toBe(first?.key);
+      expect(retried?.body).toBe(first?.body);
+    });
+
+    it.each([
+      {
+        waiting: 'its read is in flight',
+        prepare: (server: ReturnType<typeof installServer>) => {
+          server.hold(`GET ${atelierDetailPath}`);
+          return Promise.resolve();
+        },
+        atelierReads: 1,
+      },
+      {
+        waiting: 'a Project registration is pending',
+        prepare: async (server: ReturnType<typeof installServer>) => {
+          await projectRow(betaRow);
+          changeValue(
+            within(projectsRegion()).getByLabelText('Project title'),
+            registeredProject.title,
+          );
+          changeValue(
+            within(projectsRegion()).getByLabelText('Client'),
+            beta.id,
+          );
+          server.hold('POST /api/projects');
+          fireEvent.click(
+            within(projectsRegion()).getByRole('button', {
+              name: 'Create Project',
+            }),
+          );
+          await server.requested('POST /api/projects');
+        },
+        atelierReads: 0,
+      },
+    ])(
+      'retires the open requested while $waiting when the Company changes, and never replays it on return',
+      async ({ prepare, atelierReads }) => {
+        window.history.replaceState(null, '', '/#projects');
+        const server = installServer();
+        renderInInterface(
+          appInterface,
+          <App identity={deterministicBrowserIdentity()} />,
+        );
+        await prepare(server);
+        if (shown === 'current')
+          await screen.findByRole('link', { name: 'Working Documents' });
+        else await screen.findByRole('button', { name: 'Go to a screen' });
+        navigateTo('Working Documents');
+        fireEvent.click(
+          within(await openLinkedDocument()).getByRole('button', {
+            name: 'Open Project',
+          }),
+        );
+        await act(
+          async () => await new Promise((resolve) => setTimeout(resolve)),
+        );
+        expect(server.count(`GET ${atelierDetailPath}`)).toBe(atelierReads);
+
+        await selectCompany(companyB.id);
+        await projectRow(
+          `${otherCompanyProject.title} Client: ${beta.displayName}`,
+        );
+        await selectCompany(companyA.id);
+        await projectRow(atelierRow);
+        server.serve(`GET ${atelierDetailPath}`);
+        if (atelierReads === 1)
+          await server.release(`GET ${atelierDetailPath}`);
+        else await server.release('POST /api/projects');
+
+        expect(projectDetail()).not.toBeInTheDocument();
+        expect(
+          within(projectsRegion()).queryByText(
+            `Client: ${atelier.displayName}`,
+            {
+              selector: 'article p',
+            },
+          ),
+        ).not.toBeInTheDocument();
+        expect(server.count(`GET ${atelierDetailPath}`)).toBe(atelierReads);
+      },
+    );
+
+    it('hides the action while project.read is lost and never replays the earlier open when it returns', async () => {
+      window.history.replaceState(null, '', '/#documents');
+      const server = installServer();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      server.hold(`GET ${atelierDetailPath}`);
+      fireEvent.click(
+        within(await openLinkedDocument()).getByRole('button', {
+          name: 'Open Project',
+        }),
+      );
+      await server.requested(`GET ${atelierDetailPath}`);
+
+      server.grantProjects([]);
+      await selectCompany(companyB.id);
       await selectCompany(companyA.id);
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('region', { name: 'Projects' }),
+        ).not.toBeInTheDocument(),
+      );
+      navigateTo('Working Documents');
+      const readerDetail = await openLinkedDocument();
+      expect(
+        within(readerDetail).getByText(workingDocument.purpose),
+      ).toBeVisible();
+      expect(
+        within(readerDetail).queryByText(titleReadWithDocument),
+      ).not.toBeInTheDocument();
+      expect(
+        within(readerDetail).queryByRole('button', { name: 'Open Project' }),
+      ).not.toBeInTheDocument();
+
+      server.grantProjects(['project.read']);
+      await selectCompany(companyB.id);
+      await selectCompany(companyA.id);
+      navigateTo('Projects');
       await projectRow(atelierRow);
       server.serve(`GET ${atelierDetailPath}`);
-      if (atelierReads === 1) await server.release(`GET ${atelierDetailPath}`);
-      else await server.release('POST /api/projects');
-
+      await server.release(`GET ${atelierDetailPath}`);
       expect(projectDetail()).not.toBeInTheDocument();
-      expect(
-        within(projectsRegion()).queryByText(`Client: ${atelier.displayName}`, {
-          selector: 'article p',
-        }),
-      ).not.toBeInTheDocument();
-      expect(server.count(`GET ${atelierDetailPath}`)).toBe(atelierReads);
-    },
-  );
-
-  it('hides the action while project.read is lost and never replays the earlier open when it returns', async () => {
-    window.history.replaceState(null, '', '/#documents');
-    const server = installServer();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    server.hold(`GET ${atelierDetailPath}`);
-    fireEvent.click(
-      within(await openLinkedDocument()).getByRole('button', {
-        name: 'Open Project',
-      }),
-    );
-    await server.requested(`GET ${atelierDetailPath}`);
-
-    server.grantProjects([]);
-    await selectCompany(companyB.id);
-    await selectCompany(companyA.id);
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('region', { name: 'Projects' }),
-      ).not.toBeInTheDocument(),
-    );
-    navigateTo('Working Documents');
-    const readerDetail = await openLinkedDocument();
-    expect(
-      within(readerDetail).getByText(workingDocument.purpose),
-    ).toBeVisible();
-    expect(
-      within(readerDetail).queryByText(titleReadWithDocument),
-    ).not.toBeInTheDocument();
-    expect(
-      within(readerDetail).queryByRole('button', { name: 'Open Project' }),
-    ).not.toBeInTheDocument();
-
-    server.grantProjects(['project.read']);
-    await selectCompany(companyB.id);
-    await selectCompany(companyA.id);
-    navigateTo('Projects');
-    await projectRow(atelierRow);
-    server.serve(`GET ${atelierDetailPath}`);
-    await server.release(`GET ${atelierDetailPath}`);
-    expect(projectDetail()).not.toBeInTheDocument();
-    expect(server.count(`GET ${atelierDetailPath}`)).toBe(1);
-  });
-});
+      expect(server.count(`GET ${atelierDetailPath}`)).toBe(1);
+    });
+  },
+);

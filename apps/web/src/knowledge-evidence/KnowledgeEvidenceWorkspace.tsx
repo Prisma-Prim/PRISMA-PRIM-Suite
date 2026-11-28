@@ -57,19 +57,30 @@ export function KnowledgeEvidenceWorkspace(props: KnowledgeEvidenceProps) {
   const authority = knowledgeAuthority(props.actor);
   return authority ? (
     <EvidenceOwner
-      key={authority.key + ':' + props.authorityGeneration}
+      key={knowledgeEvidenceKey(authority, props.authorityGeneration)}
       {...props}
       authority={authority}
     />
   ) : null;
 }
-function EvidenceOwner(
-  props: KnowledgeEvidenceProps & {
-    authority: NonNullable<ReturnType<typeof knowledgeAuthority>>;
-  },
-) {
-  const copy = useKnowledgeCopy();
-  const { locale } = useInterfaceLocale();
+export type KnowledgeEvidenceOwnerProps = KnowledgeEvidenceProps & {
+  authority: NonNullable<ReturnType<typeof knowledgeAuthority>>;
+};
+/**
+ * The owner key of one Knowledge evidence session: a changed authority or
+ * authority generation retires its reads and starts a fresh one.
+ */
+export function knowledgeEvidenceKey(
+  authority: NonNullable<ReturnType<typeof knowledgeAuthority>>,
+  authorityGeneration: string,
+): string {
+  return authority.key + ':' + authorityGeneration;
+}
+/**
+ * The reads, passages and verified PDF downloads of one Knowledge evidence
+ * session, rendered by the current interface and by the Clarté screen.
+ */
+export function useKnowledgeEvidence(props: KnowledgeEvidenceOwnerProps) {
   const [query, setQuery] = useState(''),
     [view, setView] = useState<View>({ kind: 'loading' });
   const recovery = useAccessRecovery({ ...props, authority: props.authority });
@@ -294,6 +305,35 @@ function EvidenceOwner(
     void list();
     return retire;
   }, [operation]);
+  return {
+    query,
+    setQuery,
+    view,
+    setView,
+    recovery,
+    heading,
+    retire,
+    list,
+    open,
+    download,
+  };
+}
+/** The current interface's rendering of one Knowledge evidence session. */
+function EvidenceOwner(props: KnowledgeEvidenceOwnerProps) {
+  const copy = useKnowledgeCopy();
+  const { locale } = useInterfaceLocale();
+  const {
+    query,
+    setQuery,
+    view,
+    setView,
+    recovery,
+    heading,
+    retire,
+    list,
+    open,
+    download,
+  } = useKnowledgeEvidence(props);
   if (recovery.denied)
     return (
       <section className="knowledge-evidence">

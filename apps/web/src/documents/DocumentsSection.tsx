@@ -1,6 +1,17 @@
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentType,
+} from 'react';
 import { SectionVisibility } from '../production-shell/section-visibility';
-import { DocumentWorkspace, type RequestedDocument } from './DocumentWorkspace';
+import {
+  DocumentWorkspace,
+  type DocumentWorkspaceProps,
+  type RequestedDocument,
+} from './DocumentWorkspace';
 import { paymentEvidenceAuthority } from '../payment-evidence/payment-evidence-authority';
 import {
   PaymentEvidenceSourcePanel,
@@ -14,19 +25,23 @@ type Pane =
   | { kind: 'native-opening' }
   | { kind: 'payment-evidence'; selection: PaymentEvidenceSelection };
 type NativeClientFilter = NonNullable<
-  Parameters<typeof DocumentWorkspace>[0]['clientFilter']
-> & { requestId: number };
+  DocumentWorkspaceProps['clientFilter']
+> & {
+  requestId: number;
+};
 type NativeIntent =
   | { kind: 'document'; request: RequestedDocument }
   | { kind: 'client'; filter: NativeClientFilter };
 type Props = Omit<
-  Parameters<typeof DocumentWorkspace>[0],
+  DocumentWorkspaceProps,
   | 'onSelectPaymentEvidence'
   | 'onProtectedWorkChange'
   | 'onProtectedReceivedAddendumWorkChange'
   | 'clientFilter'
 > & {
   clientKey: string;
+  /** The interface's rendering of the native Documents session. */
+  workspace?: ComponentType<DocumentWorkspaceProps>;
   requestedPaymentEvidence?: RequestedDocument & {
     paymentEvidenceVersionId?: string;
   };
@@ -57,6 +72,7 @@ function currentNativeIntent(
 /** One Documents surface: Source selection outlives unrelated Client keys. */
 export function DocumentsSection({
   clientKey,
+  workspace: Workspace = DocumentWorkspace,
   onProtectedSourceWorkChange,
   ...props
 }: Props) {
@@ -176,7 +192,7 @@ export function DocumentsSection({
   const canReadSource = paymentEvidenceAuthority(props.actor) !== undefined;
   if (pane.kind !== 'payment-evidence')
     return (
-      <DocumentWorkspace
+      <Workspace
         key={clientKey}
         {...props}
         requestedDocument={

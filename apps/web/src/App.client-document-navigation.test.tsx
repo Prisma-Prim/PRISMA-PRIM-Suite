@@ -1,9 +1,9 @@
 import { withCompanyGrants } from './access/company-grants.test-fixture';
 import { changeValue } from './test/select-option';
+import { appInterfaces, renderInInterface } from './test/app-interface';
 import {
   act,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
@@ -250,8 +250,18 @@ function installTransport(
 function navigation() {
   return screen.getByRole('navigation', { name: 'Primary navigation' });
 }
+/** The interface the running parameterized test renders. */
+let shown: (typeof appInterfaces)[number] = 'current';
 function navigateTo(label: string) {
-  fireEvent.click(within(navigation()).getByRole('link', { name: label }));
+  if (shown === 'current') {
+    fireEvent.click(within(navigation()).getByRole('link', { name: label }));
+    return;
+  }
+  // Clarté groups sections under entries; its jump list reaches any of them.
+  fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+  const field = screen.getByRole('combobox', { name: 'Screen name' });
+  fireEvent.change(field, { target: { value: label } });
+  fireEvent.keyDown(field, { key: 'Enter' });
 }
 function documentsRegion() {
   return screen.getByRole('region', { name: 'Working Documents' });
@@ -348,288 +358,323 @@ const scrollable: {
 } = Element.prototype;
 const nativeScrollIntoView = scrollable.scrollIntoView;
 
-describe('Client dossier and working Document navigation through App', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    scrollable.scrollIntoView = vi.fn();
-    // The Prisme overview renders the motion hero before a section is selected.
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn(
-        (query: string) =>
-          ({
-            matches: true,
-            media: query,
-            onchange: null,
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            dispatchEvent: vi.fn(() => false),
-          }) satisfies MediaQueryList,
-      ),
-    );
-    window.history.replaceState(null, '', '/#clients');
-  });
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
-    scrollable.scrollIntoView = nativeScrollIntoView;
-    window.history.replaceState(null, '', '/');
-  });
-
-  it('continues an inline exact Client Document into its focused existing detail', async () => {
-    installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await screen.findByRole('navigation', { name: 'Primary navigation' });
-    const dossier = await openDossier(firstClient.displayName);
-    const overview = await within(dossier).findByRole('region', {
-      name: 'Client Documents',
+describe.each(appInterfaces)(
+  'Client dossier and working Document navigation through App in the %s interface',
+  (appInterface) => {
+    beforeEach(() => {
+      shown = appInterface;
+      localStorage.clear();
+      sessionStorage.clear();
+      scrollable.scrollIntoView = vi.fn();
+      // The Prisme overview renders the motion hero before a section is selected.
+      vi.stubGlobal(
+        'matchMedia',
+        vi.fn(
+          (query: string) =>
+            ({
+              matches: true,
+              media: query,
+              onchange: null,
+              addListener: vi.fn(),
+              removeListener: vi.fn(),
+              addEventListener: vi.fn(),
+              removeEventListener: vi.fn(),
+              dispatchEvent: vi.fn(() => false),
+            }) satisfies MediaQueryList,
+        ),
+      );
+      window.history.replaceState(null, '', '/#clients');
     });
-    expect(await within(overview).findAllByRole('listitem')).toHaveLength(1);
-    expect(overview).toHaveTextContent(workingDocument.title);
-    expect(overview).not.toHaveTextContent(secondDocument.title);
-    fireEvent.click(
-      within(overview).getByRole('button', { name: 'Open Document' }),
-    );
-    const heading = await within(documentsRegion()).findByRole('heading', {
-      name: workingDocument.title,
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+      scrollable.scrollIntoView = nativeScrollIntoView;
+      window.history.replaceState(null, '', '/');
     });
-    await waitFor(() => expect(heading).toHaveFocus());
-    expect(window.location.href).not.toContain(workingDocument.id);
-  });
 
-  it('shows the united Client its loaded Documents without remounting the workspace', async () => {
-    installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await openLoadedDocuments();
-
-    const dossier = await openDossier(firstClient.displayName);
-    const canonical = await uniteFirstIntoSecond(dossier);
-
-    await openClientDocuments(canonical);
-    await waitFor(() =>
-      expect(documentTitles()).toEqual([
-        expect.stringContaining('First questionnaire'),
-        expect.stringContaining('Second questionnaire'),
-      ]),
-    );
-  });
-
-  it('restores the original Client its loaded Documents after a union reversal', async () => {
-    installTransport({ united: true });
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await openLoadedDocuments();
-
-    const dossier = await openDossier(secondClient.displayName);
-    const panel = dossier.parentElement ?? dossier;
-    fireEvent.click(
-      within(panel).getByRole('button', { name: 'Union history' }),
-    );
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'View authorized union details',
-      }),
-    );
-    const reversal = await screen.findByRole('form', { name: 'Reverse union' });
-    changeValue(
-      within(reversal).getByLabelText('Reason for reversal'),
-      'Restore the separate dossiers deliberately.',
-    );
-    fireEvent.click(within(reversal).getByRole('checkbox'));
-    fireEvent.click(
-      within(reversal).getByRole('button', { name: 'Reverse union' }),
-    );
-
-    const restored = await openDossier(firstClient.displayName);
-    await openClientDocuments(restored);
-    await waitFor(() =>
-      expect(documentTitles()).toEqual([
-        expect.stringContaining('First questionnaire'),
-      ]),
-    );
-  });
-
-  it('retires a superseded dossier restriction when the Client identity changes', async () => {
-    installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await openLoadedDocuments();
-    const dossier = await openDossier(firstClient.displayName);
-    await openClientDocuments(dossier);
-    await waitFor(() =>
-      expect(documentTitles()).toEqual([
-        expect.stringContaining('First questionnaire'),
-      ]),
-    );
-
-    navigateTo('Clients');
-    await uniteFirstIntoSecond(dossier);
-
-    navigateTo('Working Documents');
-    await waitFor(() => expect(documentTitles()).toHaveLength(2));
-    expect(documentFilter()).toHaveValue('');
-  });
-
-  it('keeps a dossier restriction when the member merely opens the canonical dossier from union history', async () => {
-    const transport = installTransport({ united: true });
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await openLoadedDocuments();
-    const dossier = await openDossier(secondClient.displayName);
-    await openClientDocuments(dossier);
-    await waitFor(() =>
-      expect(documentFilter()).toHaveValue(secondClient.displayName),
-    );
-    const documentReadsBefore = transport.documentReads;
-
-    navigateTo('Clients');
-    fireEvent.click(
-      within(dossier.parentElement ?? dossier).getByRole('button', {
-        name: 'Union history',
-      }),
-    );
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'View authorized union details',
-      }),
-    );
-    fireEvent.click(
-      await screen.findByRole('button', {
-        name: 'Open canonical Client dossier',
-      }),
-    );
-    const canonical = await screen.findByRole('region', {
-      name: secondClient.displayName,
+    it('continues an inline exact Client Document into its focused existing detail', async () => {
+      installTransport();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await screen.findByRole('navigation', { name: 'Primary navigation' });
+      const dossier = await openDossier(firstClient.displayName);
+      const overview = await within(dossier).findByRole('region', {
+        name: 'Client Documents',
+      });
+      expect(await within(overview).findAllByRole('listitem')).toHaveLength(1);
+      expect(overview).toHaveTextContent(workingDocument.title);
+      expect(overview).not.toHaveTextContent(secondDocument.title);
+      fireEvent.click(
+        within(overview).getByRole('button', { name: 'Open Document' }),
+      );
+      const heading = await within(documentsRegion()).findByRole('heading', {
+        name: workingDocument.title,
+      });
+      await waitFor(() => expect(heading).toHaveFocus());
+      expect(window.location.href).not.toContain(workingDocument.id);
     });
-    // The canonical dossier's own Client Documents overview reads once.
-    const overview = await within(canonical).findByRole('region', {
-      name: 'Client Documents',
+
+    it('shows the united Client its loaded Documents without remounting the workspace', async () => {
+      installTransport();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await openLoadedDocuments();
+
+      const dossier = await openDossier(firstClient.displayName);
+      const canonical = await uniteFirstIntoSecond(dossier);
+
+      await openClientDocuments(canonical);
+      await waitFor(() =>
+        expect(documentTitles()).toEqual([
+          expect.stringContaining('First questionnaire'),
+          expect.stringContaining('Second questionnaire'),
+        ]),
+      );
     });
-    await within(overview).findAllByRole('listitem');
-    expect(transport.documentReads).toBe(documentReadsBefore + 1);
 
-    navigateTo('Working Documents');
-    expect(documentFilter()).toHaveValue(secondClient.displayName);
-    expect(documentTitles()).toHaveLength(2);
-    expect(transport.documentReads).toBe(documentReadsBefore + 1);
-  });
+    it('restores the original Client its loaded Documents after a union reversal', async () => {
+      installTransport({ united: true });
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await openLoadedDocuments();
 
-  it('does not restore a previous Company restriction when the member returns to that Company', async () => {
-    installTransport();
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await openLoadedDocuments();
-    const dossier = await openDossier(firstClient.displayName);
-    await openClientDocuments(dossier);
-    await waitFor(() =>
-      expect(documentTitles()).toEqual([
-        expect.stringContaining('First questionnaire'),
-      ]),
-    );
+      const dossier = await openDossier(secondClient.displayName);
+      const panel = dossier.parentElement ?? dossier;
+      fireEvent.click(
+        within(panel).getByRole('button', { name: 'Union history' }),
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'View authorized union details',
+        }),
+      );
+      const reversal = await screen.findByRole('form', {
+        name: 'Reverse union',
+      });
+      changeValue(
+        within(reversal).getByLabelText('Reason for reversal'),
+        'Restore the separate dossiers deliberately.',
+      );
+      fireEvent.click(within(reversal).getByRole('checkbox'));
+      fireEvent.click(
+        within(reversal).getByRole('button', { name: 'Reverse union' }),
+      );
 
-    const company = screen.getByLabelText('Active Company', { exact: true });
-    changeValue(company, companyB.id);
-    await waitFor(() =>
-      expect(documentTitles()).toEqual([
-        expect.stringContaining('Other Company questionnaire'),
-      ]),
-    );
-    changeValue(company, companyA.id);
-
-    await waitFor(() => expect(documentTitles()).toHaveLength(2));
-    expect(documentFilter()).toHaveValue('');
-  });
-
-  it('does not reapply a previous restriction when Client authority changes', async () => {
-    installTransport({ administrator: true });
-    render(<App identity={deterministicBrowserIdentity()} />);
-    await openLoadedDocuments();
-    const dossier = await openDossier(firstClient.displayName);
-    await openClientDocuments(dossier);
-    await waitFor(() =>
-      expect(documentTitles()).toEqual([
-        expect.stringContaining('First questionnaire'),
-      ]),
-    );
-
-    navigateTo('Team & access');
-    const access = await screen.findByRole('region', {
-      name: 'Company access',
+      const restored = await openDossier(firstClient.displayName);
+      await openClientDocuments(restored);
+      await waitFor(() =>
+        expect(documentTitles()).toEqual([
+          expect.stringContaining('First questionnaire'),
+        ]),
+      );
     });
-    changeValue(
-      within(access).getByLabelText('Workspace member'),
-      membershipId,
-    );
-    changeValue(
-      within(access).getByLabelText('Company', { exact: true }),
-      companyA.id,
-    );
-    changeValue(
-      within(access).getByLabelText('Access bundle'),
-      'director-client',
-    );
-    fireEvent.click(
-      within(access).getByRole('button', { name: 'Grant access' }),
-    );
-    await screen.findByText('Access granted. Server state refreshed.');
 
-    navigateTo('Working Documents');
-    await waitFor(() => expect(documentTitles()).toHaveLength(2));
-    expect(documentFilter()).toHaveValue('');
-  });
+    it('retires a superseded dossier restriction when the Client identity changes', async () => {
+      installTransport();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await openLoadedDocuments();
+      const dossier = await openDossier(firstClient.displayName);
+      await openClientDocuments(dossier);
+      await waitFor(() =>
+        expect(documentTitles()).toEqual([
+          expect.stringContaining('First questionnaire'),
+        ]),
+      );
 
-  it('does not reopen a requested Client dossier after a Company A to B to A round trip', async () => {
-    const transport = installTransport();
-    // The production root renders under StrictMode, which replays mount effects.
-    render(<App identity={deterministicBrowserIdentity()} />, {
-      reactStrictMode: true,
+      navigateTo('Clients');
+      await uniteFirstIntoSecond(dossier);
+
+      navigateTo('Working Documents');
+      await waitFor(() => expect(documentTitles()).toHaveLength(2));
+      expect(documentFilter()).toHaveValue('');
     });
-    await requestDossierFromDocument();
-    const dossierReadsBefore = transport.dossierReads;
 
-    navigateTo('Working Documents');
-    const company = screen.getByLabelText('Active Company', { exact: true });
-    changeValue(company, companyB.id);
-    await waitFor(() =>
-      expect(documentTitles()).toEqual([
-        expect.stringContaining('Other Company questionnaire'),
-      ]),
-    );
-    changeValue(company, companyA.id);
-    await waitFor(() => expect(documentTitles()).toHaveLength(2));
+    it('keeps a dossier restriction when the member merely opens the canonical dossier from union history', async () => {
+      const transport = installTransport({ united: true });
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await openLoadedDocuments();
+      const dossier = await openDossier(secondClient.displayName);
+      await openClientDocuments(dossier);
+      await waitFor(() =>
+        expect(documentFilter()).toHaveValue(secondClient.displayName),
+      );
+      const documentReadsBefore = transport.documentReads;
 
-    await expectNoDossierReopened(transport, dossierReadsBefore);
-  });
+      navigateTo('Clients');
+      fireEvent.click(
+        within(dossier.parentElement ?? dossier).getByRole('button', {
+          name: 'Union history',
+        }),
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'View authorized union details',
+        }),
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Open canonical Client dossier',
+        }),
+      );
+      const canonical = await screen.findByRole('region', {
+        name: secondClient.displayName,
+      });
+      // The canonical dossier's own Client Documents overview reads once.
+      const overview = await within(canonical).findByRole('region', {
+        name: 'Client Documents',
+      });
+      await within(overview).findAllByRole('listitem');
+      expect(transport.documentReads).toBe(documentReadsBefore + 1);
 
-  it('does not reopen a requested Client dossier after a Client authority change', async () => {
-    const transport = installTransport({ administrator: true });
-    render(<App identity={deterministicBrowserIdentity()} />, {
-      reactStrictMode: true,
+      navigateTo('Working Documents');
+      expect(documentFilter()).toHaveValue(secondClient.displayName);
+      expect(documentTitles()).toHaveLength(2);
+      expect(transport.documentReads).toBe(documentReadsBefore + 1);
     });
-    await requestDossierFromDocument();
-    const dossierReadsBefore = transport.dossierReads;
 
-    navigateTo('Team & access');
-    const access = await screen.findByRole('region', {
-      name: 'Company access',
+    it('does not restore a previous Company restriction when the member returns to that Company', async () => {
+      installTransport();
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await openLoadedDocuments();
+      const dossier = await openDossier(firstClient.displayName);
+      await openClientDocuments(dossier);
+      await waitFor(() =>
+        expect(documentTitles()).toEqual([
+          expect.stringContaining('First questionnaire'),
+        ]),
+      );
+
+      const company = screen.getByLabelText('Active Company', { exact: true });
+      changeValue(company, companyB.id);
+      await waitFor(() =>
+        expect(documentTitles()).toEqual([
+          expect.stringContaining('Other Company questionnaire'),
+        ]),
+      );
+      changeValue(company, companyA.id);
+
+      await waitFor(() => expect(documentTitles()).toHaveLength(2));
+      expect(documentFilter()).toHaveValue('');
     });
-    changeValue(
-      within(access).getByLabelText('Workspace member'),
-      membershipId,
-    );
-    changeValue(
-      within(access).getByLabelText('Company', { exact: true }),
-      companyA.id,
-    );
-    changeValue(
-      within(access).getByLabelText('Access bundle'),
-      'director-client',
-    );
-    fireEvent.click(
-      within(access).getByRole('button', { name: 'Grant access' }),
-    );
-    await screen.findByText('Access granted. Server state refreshed.');
-    expect(transport.grants).toBe(1);
 
-    await expectNoDossierReopened(transport, dossierReadsBefore);
-  });
-});
+    it('does not reapply a previous restriction when Client authority changes', async () => {
+      installTransport({ administrator: true });
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      await openLoadedDocuments();
+      const dossier = await openDossier(firstClient.displayName);
+      await openClientDocuments(dossier);
+      await waitFor(() =>
+        expect(documentTitles()).toEqual([
+          expect.stringContaining('First questionnaire'),
+        ]),
+      );
+
+      navigateTo('Team & access');
+      const access = await screen.findByRole('region', {
+        name: 'Company access',
+      });
+      changeValue(
+        within(access).getByLabelText('Workspace member'),
+        membershipId,
+      );
+      changeValue(
+        within(access).getByLabelText('Company', { exact: true }),
+        companyA.id,
+      );
+      changeValue(
+        within(access).getByLabelText('Access bundle'),
+        'director-client',
+      );
+      fireEvent.click(
+        within(access).getByRole('button', { name: 'Grant access' }),
+      );
+      await screen.findByText('Access granted. Server state refreshed.');
+
+      navigateTo('Working Documents');
+      await waitFor(() => expect(documentTitles()).toHaveLength(2));
+      expect(documentFilter()).toHaveValue('');
+    });
+
+    it('does not reopen a requested Client dossier after a Company A to B to A round trip', async () => {
+      const transport = installTransport();
+      // The production root renders under StrictMode, which replays mount effects.
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+        {
+          reactStrictMode: true,
+        },
+      );
+      await requestDossierFromDocument();
+      const dossierReadsBefore = transport.dossierReads;
+
+      navigateTo('Working Documents');
+      const company = screen.getByLabelText('Active Company', { exact: true });
+      changeValue(company, companyB.id);
+      await waitFor(() =>
+        expect(documentTitles()).toEqual([
+          expect.stringContaining('Other Company questionnaire'),
+        ]),
+      );
+      changeValue(company, companyA.id);
+      await waitFor(() => expect(documentTitles()).toHaveLength(2));
+
+      await expectNoDossierReopened(transport, dossierReadsBefore);
+    });
+
+    it('does not reopen a requested Client dossier after a Client authority change', async () => {
+      const transport = installTransport({ administrator: true });
+      renderInInterface(
+        appInterface,
+        <App identity={deterministicBrowserIdentity()} />,
+        {
+          reactStrictMode: true,
+        },
+      );
+      await requestDossierFromDocument();
+      const dossierReadsBefore = transport.dossierReads;
+
+      navigateTo('Team & access');
+      const access = await screen.findByRole('region', {
+        name: 'Company access',
+      });
+      changeValue(
+        within(access).getByLabelText('Workspace member'),
+        membershipId,
+      );
+      changeValue(
+        within(access).getByLabelText('Company', { exact: true }),
+        companyA.id,
+      );
+      changeValue(
+        within(access).getByLabelText('Access bundle'),
+        'director-client',
+      );
+      fireEvent.click(
+        within(access).getByRole('button', { name: 'Grant access' }),
+      );
+      await screen.findByText('Access granted. Server state refreshed.');
+      expect(transport.grants).toBe(1);
+
+      await expectNoDossierReopened(transport, dossierReadsBefore);
+    });
+  },
+);
