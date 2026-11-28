@@ -28,6 +28,8 @@ interface Props {
   capture: () => () => boolean;
   captureRecovery: () => () => boolean;
   onChanged: () => Promise<void>;
+  /** Told whether this Task's command is pending or awaits its exact retry. */
+  onProtectionChange?: (held: boolean) => void;
 }
 /** One stable Task owner survives same-Company navigation; only its presentation is hidden. */
 export function InternalTaskDetail(props: Props) {
@@ -111,6 +113,7 @@ export function InternalTaskDetail(props: Props) {
             captureRecovery={props.captureRecovery}
             onConfirmed={changed}
             onReload={() => load(undefined, true)}
+            onProtectionChange={props.onProtectionChange}
           />
           {props.selected && (
             <>

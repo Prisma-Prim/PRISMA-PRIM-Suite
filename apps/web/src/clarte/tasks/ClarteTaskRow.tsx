@@ -15,6 +15,7 @@ import type { TaskState, TaskView } from '../../project/task-response';
 import { ClarteBadge, type ClarteTone } from '../components/ClarteBadge';
 import { ClarteButton } from '../components/ClarteButton';
 import { browserDate } from '../today/today-dates';
+import { dueTone } from './task-due';
 
 /** A Task row of a Tasks view, with the Project and Client labels its read carries. */
 export type ClarteTaskItem = TaskView & {
@@ -146,19 +147,6 @@ export function ClarteTaskRow({
       )}
     </li>
   );
-}
-
-/**
- * The colour of a due date beside the browser's own day: past, today or
- * later. It only colours the date the server returned.
- */
-export function dueTone(
-  dueDate: string | null,
-  today: string,
-): 'past' | 'today' | 'later' | 'none' {
-  if (dueDate === null) return 'none';
-  if (dueDate < today) return 'past';
-  return dueDate === today ? 'today' : 'later';
 }
 
 /**

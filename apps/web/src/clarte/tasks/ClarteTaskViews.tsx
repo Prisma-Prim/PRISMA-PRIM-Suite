@@ -3,7 +3,6 @@ import { useId, useState, type ReactNode } from 'react';
 import type { BrowserIdentity } from '../../access-composition';
 import type { ActorContext } from '../../access-types';
 import { useRequestLifetime } from '../../api/use-actor-requests';
-import { useInterfaceLocale } from '../../localization/interface-locale';
 import {
   assignedTasksAuthority,
   useAssignedTasks,
@@ -38,7 +37,9 @@ import {
   type ClarteTaskItem,
   type OpenTaskInProject,
 } from './ClarteTaskRow';
+import { ClarteTaskGroup } from './ClarteTaskGroup';
 import { useClarteTasksCopy } from './clarte-tasks.copy';
+import { dueGroup, dueGroups, groupRows } from './task-due';
 import './clarte-tasks.css';
 
 /** What every Clarté Tasks view receives from App, with the same gates and keys as the current one. */
@@ -115,9 +116,19 @@ function TaskList({
  * current interface's notes, which send the reader to the Project to act,
  * do not apply where the side panel acts.
  */
-function Toolbar({ children }: Readonly<{ children: ReactNode }>) {
+function Toolbar({
+  inline = false,
+  children,
+}: Readonly<{ inline?: boolean; children: ReactNode }>) {
+  // An inline toolbar shares the row of the first group heading below it.
   return (
-    <div className="clarte-tasks-toolbar">
+    <div
+      className={
+        inline
+          ? 'clarte-tasks-toolbar clarte-tasks-toolbar--inline'
+          : 'clarte-tasks-toolbar'
+      }
+    >
       <div className="clarte-tasks-toolbar-actions">{children}</div>
     </div>
   );
@@ -131,40 +142,20 @@ export function ClarteMyTasks(props: ClarteTaskViewProps) {
   return <MyTasksView key={assignedTasksAuthority(props.actor)} {...props} />;
 }
 
-type DueGroup =
-  'pastDueGroup' | 'todayGroup' | 'weekGroup' | 'laterGroup' | 'undatedGroup';
-const dueGroups: readonly DueGroup[] = [
-  'pastDueGroup',
-  'todayGroup',
-  'weekGroup',
-  'laterGroup',
-  'undatedGroup',
-];
-/** The calendar day `days` after `date`, as exact YYYY-MM-DD text. */
-function addDays(date: string, days: number): string {
-  const day = new Date(`${date}T00:00:00Z`);
-  day.setUTCDate(day.getUTCDate() + days);
-  return day.toISOString().slice(0, 10);
-}
-/**
- * Groups follow the server's due-date order; the browser's day only names
- * them: past due, today, the next six days, later and undated.
- */
-export function dueGroup(dueDate: string | null, today: string): DueGroup {
-  if (dueDate === null) return 'undatedGroup';
-  if (dueDate < today) return 'pastDueGroup';
-  if (dueDate === today) return 'todayGroup';
-  return dueDate < addDays(today, 7) ? 'weekGroup' : 'laterGroup';
-}
-
 function MyTasksView(props: ClarteTaskViewProps) {
   const copy = useMyTasksCopy();
   const text = useClarteTasksCopy();
-  const { formatNumber } = useInterfaceLocale();
   const { load, read } = useAssignedTasks(props);
   const panel = useTaskPanel(props, read);
   const today = browserDate();
-  const groupId = useId();
+  const groups =
+    load.kind === 'ready'
+      ? groupRows(
+          load.tasks,
+          (task) => dueGroup(task.dueDate, today),
+          dueGroups,
+        )
+      : [];
   return (
     <section
       id="my-tasks"
@@ -172,7 +163,7 @@ function MyTasksView(props: ClarteTaskViewProps) {
       className="clarte-tasks"
       aria-label={copy.title}
     >
-      <Toolbar>
+      <Toolbar inline={groups.length > 0}>
         <ClarteButton onClick={read}>
           <RotateCw aria-hidden="true" />
           {copy.refresh}
@@ -191,43 +182,29 @@ function MyTasksView(props: ClarteTaskViewProps) {
           <ClarteEmptyState title={copy.empty} />
         </ClarteCard>
       )}
-      {load.kind === 'ready' &&
-        dueGroups.map((group) => {
-          const tasks = load.tasks.filter(
-            (task) => dueGroup(task.dueDate, today) === group,
-          );
-          if (tasks.length === 0) return null;
-          const headingId = `${groupId}-${group}`;
-          return (
-            <section
-              key={group}
-              className="clarte-task-group"
-              data-group={group}
-              aria-labelledby={headingId}
-            >
-              <h2 id={headingId} className="clarte-task-group-head">
-                {text(group)}
-                <span>{formatNumber(tasks.length)}</span>
-              </h2>
-              <div className="clarte-card clarte-task-card">
-                <TaskList
-                  label={`${copy.listLabel} · ${text(group)}`}
-                  tasks={tasks}
-                  showAssignee={false}
-                  onSelect={panel.select}
-                  onOpenInProject={
-                    props.onOpenTask &&
-                    ((task) =>
-                      props.onOpenTask?.({
-                        projectId: task.projectId,
-                        taskId: task.id,
-                      }))
-                  }
-                />
-              </div>
-            </section>
-          );
-        })}
+      {groups.map(({ key, rows }) => (
+        <ClarteTaskGroup
+          key={key}
+          heading={text(key)}
+          count={rows.length}
+          late={key === 'pastDueGroup'}
+        >
+          <TaskList
+            label={`${copy.listLabel} · ${text(key)}`}
+            tasks={rows}
+            showAssignee={false}
+            onSelect={panel.select}
+            onOpenInProject={
+              props.onOpenTask &&
+              ((task) =>
+                props.onOpenTask?.({
+                  projectId: task.projectId,
+                  taskId: task.id,
+                }))
+            }
+          />
+        </ClarteTaskGroup>
+      ))}
       {panel.panel}
     </section>
   );
@@ -369,6 +346,9 @@ function Pagination({
   );
 }
 
+/** The group key of Team Tasks without a responsible member; members are keyed by their UUID. */
+const unassignedKey = 'unassigned';
+
 type ClarteTeamTasksProps = ClarteTaskViewProps &
   Pick<
     TeamTasksProps,
@@ -400,6 +380,23 @@ function TeamTasksView(props: ClarteTeamTasksProps) {
     () => read(filters, applied.offset),
     props.onOpenTask && openTask,
   );
+  // On phone the criteria fold under their card so the Tasks come first;
+  // they stay mounted, keeping their drafts, and the applied line stays.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const criteriaId = useId();
+  // The page's rows grouped by responsible member, each group in the
+  // server's due-date order; Unassigned comes last.
+  const groups =
+    load.kind === 'ready'
+      ? groupRows(
+          load.page.tasks,
+          (task) => task.assignee?.workspaceMembershipId ?? unassignedKey,
+        ).sort(
+          (left, right) =>
+            Number(left.key === unassignedKey) -
+            Number(right.key === unassignedKey),
+        )
+      : [];
   return (
     <section
       id="team-tasks"
@@ -413,8 +410,25 @@ function TeamTasksView(props: ClarteTeamTasksProps) {
           {copy('refresh')}
         </ClarteButton>
       </Toolbar>
-      <ClarteCard title={text('filtersHeading')}>
-        <div className="clarte-task-criteria">
+      <ClarteCard
+        title={text('filtersHeading')}
+        actions={
+          <ClarteButton
+            size="small"
+            className="clarte-task-filters-toggle"
+            aria-expanded={filtersOpen}
+            aria-controls={criteriaId}
+            onClick={() => setFiltersOpen(!filtersOpen)}
+          >
+            {text(filtersOpen ? 'hideFilters' : 'showFilters')}
+          </ClarteButton>
+        }
+      >
+        <div
+          id={criteriaId}
+          className="clarte-task-criteria"
+          data-open={filtersOpen}
+        >
           <TeamTaskCriteria pending={busy} onApply={(next) => read(next, 0)} />
         </div>
         <p className="clarte-task-applied" aria-label={copy('applied')}>
@@ -462,19 +476,25 @@ function TeamTasksView(props: ClarteTeamTasksProps) {
             </div>
           </ClarteCard>
         ) : (
-          <div className="clarte-card clarte-task-card">
-            <TaskList
-              label={copy('list')}
-              tasks={load.page.tasks}
-              showAssignee
-              onSelect={panel.select}
-              onOpenInProject={
-                props.onOpenTask &&
-                ((task) =>
-                  openTask({ projectId: task.projectId, taskId: task.id }))
-              }
-            />
-          </div>
+          groups.map(({ key, rows }) => {
+            const heading =
+              rows[0]?.assignee?.displayLabel ?? native.unassigned;
+            return (
+              <ClarteTaskGroup key={key} heading={heading} count={rows.length}>
+                <TaskList
+                  label={`${copy('list')} · ${heading}`}
+                  tasks={rows}
+                  showAssignee={false}
+                  onSelect={panel.select}
+                  onOpenInProject={
+                    props.onOpenTask &&
+                    ((task) =>
+                      openTask({ projectId: task.projectId, taskId: task.id }))
+                  }
+                />
+              </ClarteTaskGroup>
+            );
+          })
         ))}
       <Pagination
         previous={copy('previous')}

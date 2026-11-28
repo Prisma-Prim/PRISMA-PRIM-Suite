@@ -19,6 +19,8 @@ const keys = [
   'closeEdit',
   'planningLead',
   'filtersHeading',
+  'showFilters',
+  'hideFilters',
   'assigneesHeading',
 ] as const;
 
@@ -48,6 +50,8 @@ export const clarteTasksMessages = defineMessages(keys, {
     planningLead:
       'Planificați împreună până la 50 de sarcini deschise ale acestui proiect.',
     filtersHeading: 'Filtre',
+    showFilters: 'Afișați filtrele',
+    hideFilters: 'Ascundeți filtrele',
     assigneesHeading: 'Membri responsabili eligibili',
   },
   ru: {
@@ -69,6 +73,8 @@ export const clarteTasksMessages = defineMessages(keys, {
     closeEdit: 'Закрыть форму',
     planningLead: 'Запланируйте вместе до 50 открытых задач этого проекта.',
     filtersHeading: 'Фильтры',
+    showFilters: 'Показать фильтры',
+    hideFilters: 'Скрыть фильтры',
     assigneesHeading: 'Доступные ответственные',
   },
   fr: {
@@ -90,6 +96,8 @@ export const clarteTasksMessages = defineMessages(keys, {
     closeEdit: 'Fermer le formulaire',
     planningLead: 'Planifiez ensemble jusqu’à 50 tâches ouvertes de ce projet.',
     filtersHeading: 'Filtres',
+    showFilters: 'Afficher les filtres',
+    hideFilters: 'Masquer les filtres',
     assigneesHeading: 'Membres responsables possibles',
   },
   en: {
@@ -111,6 +119,8 @@ export const clarteTasksMessages = defineMessages(keys, {
     closeEdit: 'Close the form',
     planningLead: 'Plan up to 50 open Tasks of this Project together.',
     filtersHeading: 'Filters',
+    showFilters: 'Show filters',
+    hideFilters: 'Hide filters',
     assigneesHeading: 'Eligible responsible members',
   },
 });

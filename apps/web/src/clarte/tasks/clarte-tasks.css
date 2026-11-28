@@ -21,6 +21,13 @@
   gap: 12px 16px;
 }
 
+.clarte-frame .clarte-tasks-toolbar--inline {
+  position: relative;
+  z-index: 1;
+  justify-self: end;
+  margin-bottom: -46px;
+}
+
 .clarte-frame .clarte-tasks-toolbar-actions {
   display: flex;
   flex-wrap: wrap;
@@ -54,13 +61,13 @@
   font-weight: 500;
 }
 
-.clarte-frame .clarte-task-group[data-group='pastDueGroup'] h2 {
+.clarte-frame .clarte-task-group[data-late] h2 {
   color: var(--clarte-danger);
 }
 
 /* Task rows */
 .clarte-frame .clarte-card.clarte-task-card {
-  padding: 4px 16px;
+  padding: 2px 16px;
 }
 
 .clarte-frame .clarte-task-list {
@@ -75,7 +82,7 @@
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 14px;
-  padding: 13px 0;
+  padding: 9px 0;
   border-top: 1px solid var(--clarte-line-soft);
 }
 
@@ -112,7 +119,7 @@
 
 .clarte-frame .clarte-task-title {
   margin: 0;
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -317,6 +324,16 @@
   min-width: 0;
 }
 
+/* The responsible name field shows only while the name search is chosen. */
+.clarte-frame .clarte-task-criteria form > div[hidden] {
+  display: none;
+}
+
+/* The filters' fold control serves the phone layout only. */
+.clarte-frame .clarte-task-filters-toggle {
+  display: none;
+}
+
 .clarte-frame .clarte-task-criteria label,
 .clarte-frame .clarte-task-form label {
   color: var(--clarte-ink-soft);
@@ -351,12 +368,20 @@
   min-width: 0;
 }
 
+/* The tabs sit on a white band under the panel head, across the body. */
 .clarte-frame .clarte-task-parts {
   display: flex;
   flex-wrap: wrap;
   gap: 2px 18px;
-  margin: -4px 0 0;
+  margin: -18px -20px 0;
+  padding: 6px 20px 0;
   border-bottom: 1px solid var(--clarte-line);
+  background: var(--clarte-surface);
+}
+
+/* The Tasks list behind a Task's panel softens, as in the reference. */
+.clarte-frame .clarte-tasks .clarte-layer--side {
+  backdrop-filter: blur(3px);
 }
 
 .clarte-frame .clarte-task-parts [role='tab'] {
@@ -448,13 +473,30 @@
   overflow-wrap: anywhere;
 }
 
-.clarte-frame .clarte-task-panel-wide {
-  grid-column: 1 / -1;
+.clarte-frame .clarte-task-instructions-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--clarte-line);
+  border-radius: var(--clarte-radius-md);
+  background: var(--clarte-surface);
+  box-shadow: var(--clarte-shadow);
+}
+
+.clarte-frame .clarte-task-instructions-card h4 {
+  margin: 0;
+  color: var(--clarte-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .clarte-frame .clarte-task-instructions {
+  margin: 0;
+  color: var(--clarte-ink);
+  font-size: 13.5px;
   white-space: pre-wrap;
-  font-weight: 500;
 }
 
 .clarte-frame .clarte-task-notice {
@@ -808,6 +850,18 @@
   .clarte-frame .clarte-task-row {
     grid-template-columns: auto minmax(0, 1fr);
     gap: 8px 12px;
+  }
+
+  .clarte-frame .clarte-tasks-toolbar--inline .clarte-tasks-toolbar-actions {
+    width: auto;
+  }
+
+  .clarte-frame .clarte-task-filters-toggle {
+    display: inline-flex;
+  }
+
+  .clarte-frame .clarte-task-criteria[data-open='false'] {
+    display: none;
   }
 
   .clarte-frame .clarte-task-side {

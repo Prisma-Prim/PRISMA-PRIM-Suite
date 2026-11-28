@@ -527,6 +527,12 @@ describe('Clarté Tasks', () => {
     expect(screen.getByRole('dialog', { name: tasksTitles.procedure })).toBe(
       panel,
     );
+    // Leaving for the Project would close the panel and drop the retry.
+    expect(
+      within(showPart(panel, 'Project')).getByRole('button', {
+        name: 'Open in its Project',
+      }),
+    ).toBeDisabled();
     fireEvent.click(retry);
     expect(
       await within(panel).findByText('Task change recorded.'),
@@ -541,6 +547,155 @@ describe('Clarté Tasks', () => {
     expect(sent[1]).toEqual(sent[0]);
     expect(api.task('procedure')?.status).toBe('done');
     expect(within(panel).getByRole('button', { name: 'Close' })).toBeEnabled();
+  });
+
+  it('keeps an uncertain result command in the open panel and its Task in place', async () => {
+    let lose = true;
+    const api = createClarteTasksApi();
+    serve(api, ({ method, path }) => {
+      if (method === 'POST' && path.endsWith('/results') && lose) {
+        lose = false;
+        return 'lost';
+      }
+      return undefined;
+    });
+    openTasks('my-tasks');
+    const view = await region('My Tasks');
+    const panel = await openPanel(view, tasksTitles.checklist);
+    const result = showPart(panel, 'Result');
+    await within(result).findByText('No declared result.');
+    fireEvent.change(within(result).getByLabelText('Result declaration'), {
+      target: { value: 'Checklist prepared' },
+    });
+    selectOption(
+      within(result).getByLabelText('Frozen mission Version'),
+      tasksResultReference.versionId,
+    );
+    fireEvent.click(
+      within(result).getByRole('button', { name: 'Record result' }),
+    );
+    const retry = await within(result).findByRole('button', {
+      name: 'Retry exact result command',
+    });
+    expect(within(panel).getByRole('button', { name: 'Close' })).toBeDisabled();
+    const project = showPart(panel, 'Project');
+    expect(
+      within(project).getByRole('button', { name: 'Open in its Project' }),
+    ).toBeDisabled();
+    expect(
+      within(project).getByRole('button', {
+        name: 'New Task in this Project',
+      }),
+    ).toBeDisabled();
+    fireEvent.click(within(panel).getByRole('tab', { name: 'Result' }));
+    fireEvent.click(retry);
+    expect(await within(result).findByText('Result confirmed.')).toBeVisible();
+    await waitFor(() =>
+      expect(
+        within(panel).getByRole('button', { name: 'Close' }),
+      ).toBeEnabled(),
+    );
+    const keys = vi
+      .mocked(fetch)
+      .mock.calls.filter(
+        ([input, init]) =>
+          init?.method === 'POST' && String(input).endsWith('/results'),
+      )
+      .map(([, init]) => new Headers(init?.headers).get('idempotency-key'));
+    expect(keys).toHaveLength(2);
+    expect(keys[1]).toBe(keys[0]);
+    expect(api.commands).toHaveLength(1);
+  });
+
+  it('returns from the create form to the Task it was opened from', async () => {
+    serve();
+    openTasks('my-tasks');
+    const view = await region('My Tasks');
+    const panel = await openPanel(view, tasksTitles.calibration);
+    fireEvent.click(
+      within(showPart(panel, 'Project')).getByRole('button', {
+        name: 'New Task in this Project',
+      }),
+    );
+    const create = await within(panel).findByRole('region', {
+      name: 'Create a Task',
+    });
+    fireEvent.click(
+      within(create).getByRole('button', { name: 'Back to the Task' }),
+    );
+    expect(
+      await screen.findByRole('dialog', { name: tasksTitles.calibration }),
+    ).toBe(panel);
+    expect(
+      await within(panel).findByRole('tab', { name: 'Task' }),
+    ).toBeVisible();
+    fireEvent.click(within(panel).getByRole('tab', { name: 'History' }));
+    expect(
+      await within(
+        within(panel).getByRole('tabpanel', { name: 'History' }),
+      ).findByText('Task created'),
+    ).toBeVisible();
+  });
+
+  it('keeps an uncertain internal Task creation in its open panel until its exact retry confirms it', async () => {
+    let lose = true;
+    serve(createClarteTasksApi(), ({ method, path }) => {
+      if (method === 'POST' && path === '/api/company-internal-tasks' && lose) {
+        lose = false;
+        return 'lost';
+      }
+      return undefined;
+    });
+    const fetcher = vi.mocked(fetch);
+    openTasks('internal-tasks');
+    const view = await region('Internal Tasks');
+    await within(view).findByRole('heading', {
+      name: 'Renew the training room booking',
+    });
+    fireEvent.click(
+      within(view).getByRole('button', { name: 'Create internal Task' }),
+    );
+    const create = await screen.findByRole('dialog', {
+      name: 'Create internal Task',
+    });
+    const form = within(create).getByRole('form', {
+      name: 'Create internal Task',
+    });
+    fireEvent.change(
+      within(form).getByRole('textbox', { name: 'Task title' }),
+      { target: { value: 'Order the new archive boxes' } },
+    );
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Create internal Task' }),
+    );
+    const retry = await within(create).findByRole('button', {
+      name: 'Retry the same command',
+    });
+    expect(
+      within(create).getByRole('button', { name: 'Close' }),
+    ).toBeDisabled();
+    fireEvent.keyDown(create, { key: 'Escape' });
+    expect(screen.getByRole('dialog', { name: 'Create internal Task' })).toBe(
+      create,
+    );
+    fireEvent.click(retry);
+    expect(
+      await within(create).findByText('Internal Task saved.'),
+    ).toBeVisible();
+    const keys = fetcher.mock.calls
+      .filter(
+        ([input, init]) =>
+          init?.method === 'POST' &&
+          String(input).endsWith('/api/company-internal-tasks'),
+      )
+      .map(([, init]) => new Headers(init?.headers).get('idempotency-key'));
+    expect(keys).toHaveLength(2);
+    expect(keys[1]).toBe(keys[0]);
+    await waitFor(() =>
+      expect(
+        within(create).getByRole('button', { name: 'Close' }),
+      ).toBeEnabled(),
+    );
   });
 
   it('states loading, empty and failed reads of the views', async () => {

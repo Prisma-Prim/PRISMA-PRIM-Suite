@@ -25,7 +25,10 @@ import {
   ClarteTaskMark,
   clarteTaskStateTone,
 } from './ClarteTaskRow';
+import { ClarteTaskGroup } from './ClarteTaskGroup';
 import { useClarteTasksCopy } from './clarte-tasks.copy';
+import { dueGroup, dueGroups, groupRows } from './task-due';
+import { browserDate } from '../today/today-dates';
 import './clarte-tasks.css';
 
 /**
@@ -36,9 +39,14 @@ import './clarte-tasks.css';
  */
 export function ClarteInternalTasks(props: InternalTaskProps) {
   const copy = useInternalTaskCopy();
+  const text = useClarteTasksCopy();
   const owner = useInternalTaskWorkspace(props);
   const [creating, setCreating] = useState(false);
   const [panelTaskId, setPanelTaskId] = useState<string | null>(null);
+  // A panel stays open while its editor's command is pending or awaits its
+  // exact retry: closing would drop the command and its idempotency key.
+  const [createHeld, setCreateHeld] = useState(false);
+  const [detailHeld, setDetailHeld] = useState(false);
   if (owner.denied)
     return (
       <section
@@ -51,6 +59,9 @@ export function ClarteInternalTasks(props: InternalTaskProps) {
       </section>
     );
   const { page, pageState } = owner;
+  // Loaded rows grouped by due date beside the browser's own day; each
+  // group keeps the server's order and later pages join their groups.
+  const today = browserDate();
   const panelTask = page.tasks.find((task) => task.id === panelTaskId);
   return (
     <section
@@ -98,10 +109,22 @@ export function ClarteInternalTasks(props: InternalTaskProps) {
           <ClarteEmptyState title={copy('empty')} />
         </div>
       )}
-      {page.tasks.length > 0 && (
-        <div className="clarte-card clarte-task-card">
-          <ol className="clarte-task-list" aria-label={copy('title')}>
-            {page.tasks.map((task) => (
+      {groupRows(
+        page.tasks,
+        (task) => dueGroup(task.dueDate, today),
+        dueGroups,
+      ).map(({ key, rows }) => (
+        <ClarteTaskGroup
+          key={key}
+          heading={text(key)}
+          count={rows.length}
+          late={key === 'pastDueGroup'}
+        >
+          <ol
+            className="clarte-task-list"
+            aria-label={`${copy('title')} · ${text(key)}`}
+          >
+            {rows.map((task) => (
               <InternalTaskRow
                 key={task.id}
                 task={task}
@@ -112,8 +135,8 @@ export function ClarteInternalTasks(props: InternalTaskProps) {
               />
             ))}
           </ol>
-        </div>
-      )}
+        </ClarteTaskGroup>
+      ))}
       {page.nextBeforeTaskId && (
         <div className="clarte-tasks-pagination">
           <ClarteButton
@@ -135,6 +158,7 @@ export function ClarteInternalTasks(props: InternalTaskProps) {
           title={copy('create')}
           description={copy('help')}
           icon={<Building2 />}
+          dismissible={!createHeld}
           onClose={() => setCreating(false)}
         >
           <div className="clarte-task-panel clarte-internal-task-panel">
@@ -147,6 +171,7 @@ export function ClarteInternalTasks(props: InternalTaskProps) {
               capture={owner.capture}
               captureRecovery={owner.captureRecovery}
               onConfirmed={owner.created}
+              onProtectionChange={setCreateHeld}
             />
           </div>
         </ClarteSidePanel>
@@ -156,6 +181,7 @@ export function ClarteInternalTasks(props: InternalTaskProps) {
           title={panelTask?.title ?? copy('title')}
           description={copy('help')}
           icon={<Building2 />}
+          dismissible={!detailHeld}
           onClose={() => setPanelTaskId(null)}
         >
           <div className="clarte-task-panel clarte-internal-task-panel">
@@ -173,6 +199,7 @@ export function ClarteInternalTasks(props: InternalTaskProps) {
               capture={owner.capture}
               captureRecovery={owner.captureRecovery}
               onChanged={owner.loadPage}
+              onProtectionChange={setDetailHeld}
             />
           </div>
         </ClarteSidePanel>

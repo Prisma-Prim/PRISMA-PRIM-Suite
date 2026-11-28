@@ -84,6 +84,10 @@ function TaskPanelOwner({
   // One requested open per mounted panel; the owner consumes it once.
   const [requestedTask] = useState({ taskId: target.taskId, requestId: 1 });
   const [creating, setCreating] = useState(false);
+  // The Task a create form returns to.
+  const [returnTo, setReturnTo] = useState<string | null>(null);
+  // Whether the result owner holds a pending or uncertain command.
+  const [resultHeld, setResultHeld] = useState(false);
   const owner = useProjectTaskOwner({
     active: true,
     actor,
@@ -113,13 +117,14 @@ function TaskPanelOwner({
   const title = showCreate
     ? text('newTaskTitle')
     : (current?.task.title ?? target.title);
-  // The panel owns its commands: it stays open while a Task command or the
-  // grouped planning is pending or uncertain, so its exact retry is kept,
-  // as grouped planning already holds its own uncertain save.
+  // The panel owns its commands: it stays open, and keeps the Task it shows,
+  // while a Task command, a result command or the grouped planning is
+  // pending or uncertain, so each exact retry is kept.
   const settled =
     mutation.kind !== 'pending' &&
     mutation.kind !== 'uncertain' &&
-    !owner.planningProtected;
+    !owner.planningProtected &&
+    !resultHeld;
   return (
     <ClarteSidePanel
       title={title}
@@ -159,7 +164,13 @@ function TaskPanelOwner({
           <ClarteErrorState title={copy.missing} />
         )}
         {showCreate && (
-          <CreateTask owner={owner} onBack={() => setCreating(false)} />
+          <CreateTask
+            owner={owner}
+            onBack={() => {
+              setCreating(false);
+              void owner.open(returnTo ?? target.taskId);
+            }}
+          />
         )}
         {tabbed && owner.selected !== null && (
           <>
@@ -184,6 +195,7 @@ function TaskPanelOwner({
                 projectId={target.projectId}
                 observedProjectStatus={null}
                 observedTaskVersion={current?.task.version}
+                onProtectionChange={setResultHeld}
               />
             </TaskPart>
             <TaskPart
@@ -206,7 +218,7 @@ function TaskPanelOwner({
           <div className="clarte-task-actions">
             {onOpenTask && (
               <ClarteButton
-                disabled={owner.busy}
+                disabled={!settled}
                 onClick={() => {
                   const open = {
                     projectId: target.projectId,
@@ -225,8 +237,9 @@ function TaskPanelOwner({
               load.kind === 'ready' &&
               !showCreate && (
                 <ClarteButton
-                  disabled={owner.busy}
+                  disabled={owner.busy || resultHeld}
                   onClick={() => {
+                    setReturnTo(owner.selected);
                     setCreating(true);
                     void owner.open(null);
                   }}
@@ -392,14 +405,6 @@ function TaskFacts({ owner }: Readonly<{ owner: ProjectTaskOwner }>) {
     <>
       <dl className="clarte-task-panel-facts">
         <div>
-          <dt>{copy.status}</dt>
-          <dd>
-            <ClarteBadge tone={clarteTaskStateTone[task.status]}>
-              {copy.states[task.status]}
-            </ClarteBadge>
-          </dd>
-        </div>
-        <div>
           <dt>{copy.assignee}</dt>
           <dd>{task.assignee?.displayLabel ?? copy.unassigned}</dd>
         </div>
@@ -410,6 +415,14 @@ function TaskFacts({ owner }: Readonly<{ owner: ProjectTaskOwner }>) {
           </dd>
         </div>
         <div>
+          <dt>{copy.status}</dt>
+          <dd>
+            <ClarteBadge tone={clarteTaskStateTone[task.status]}>
+              {copy.states[task.status]}
+            </ClarteBadge>
+          </dd>
+        </div>
+        <div>
           <dt>{copy.priority}</dt>
           <dd>{copy.priorities[task.priority]}</dd>
         </div>
@@ -417,13 +430,8 @@ function TaskFacts({ owner }: Readonly<{ owner: ProjectTaskOwner }>) {
           <dt>{copy.createdBy}</dt>
           <dd>{task.createdBy.displayName}</dd>
         </div>
-        <div className="clarte-task-panel-wide">
-          <dt>{copy.description}</dt>
-          <dd className="clarte-task-instructions">
-            {task.description ?? copy.noDescription}
-          </dd>
-        </div>
       </dl>
+      <InstructionsCard text={task.description ?? copy.noDescription} />
       {task.status === 'done' && (
         <p>
           {copy.completion} {task.completion.actor.displayName} {copy.at}{' '}
@@ -451,6 +459,21 @@ function TaskFacts({ owner }: Readonly<{ owner: ProjectTaskOwner }>) {
         </p>
       )}
     </>
+  );
+}
+
+/** The Task's recorded instructions, in their own card. */
+function InstructionsCard({ text }: Readonly<{ text: string }>) {
+  const copy = useProjectTaskCopy();
+  const headingId = useId();
+  return (
+    <section
+      className="clarte-task-instructions-card"
+      aria-labelledby={headingId}
+    >
+      <h4 id={headingId}>{copy.description}</h4>
+      <p className="clarte-task-instructions">{text}</p>
+    </section>
   );
 }
 
